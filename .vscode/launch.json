@@ -1,0 +1,151 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: EzCo",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ez_co.main",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
+            "name": "Python: EzCo(Archive:False)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ez_co.main",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--conf:archive.enabled=False"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
+            "name": "Python: EzCo(Profile:Test)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ez_co.main",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--profile=テスト"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
+            "name": "Python: EzCo(Profile:Test and Archive:False)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ez_co.main",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--profile=テスト",
+                "--conf:archive.enabled=False"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
+            "name": "▶ ビルド (poetry run build)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tooling/noop.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "preLaunchTask": "EzCo: ビルド"
+        },
+        {
+            "name": "▶ ビルド (--safe-mode)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tooling/noop.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "preLaunchTask": "EzCo: ビルド (--safe-mode)"
+        },
+        {
+            "name": "▶ 頒布用zip (poetry run collect)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tooling/noop.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "preLaunchTask": "EzCo: 頒布用zip (collect)"
+        },
+        {
+            "name": "▶ 初期化 (poetry run init-env)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tooling/noop.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "preLaunchTask": "EzCo: 初期化"
+        },
+        {
+            "name": "py-spy: top (EzCo)",
+            "type": "node-terminal",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${workspaceFolder}/.vscode/pyspy.ps1\" -Mode top",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
+            "name": "py-spy: record SVG (EzCo)",
+            "type": "node-terminal",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${workspaceFolder}/.vscode/pyspy.ps1\" -Mode record-svg",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
+            "name": "py-spy: record speedscope (EzCo)",
+            "type": "node-terminal",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${workspaceFolder}/.vscode/pyspy.ps1\" -Mode record-speedscope",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "ビルド → Python: EzCo",
+            "configurations": [
+                "Python: EzCo"
+            ],
+            "preLaunchTask": "EzCo: ビルド",
+            "stopAll": true
+        }
+    ]
+}

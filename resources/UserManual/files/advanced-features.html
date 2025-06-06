@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高度な機能 - EzCo ユーザーマニュアル</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="icon" type="image/x-icon" href="../files/icon.ico">
+</head>
+<body>
+    <div class="container">
+        <!-- ヘッダー -->
+        <header class="header">
+            <div class="header-content">
+                <h1><img src="../files/icon_32x32.png" alt="EzCo" class="logo-icon"> EzCo ユーザーマニュアル</h1>
+                <div class="language-switch">
+                    <a href="advanced-features.html" class="active">日本語</a>
+                    <a href="advanced-features-en.html">English</a>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="searchBox" placeholder="検索..." />
+                    <button id="searchBtn">🔍</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <!-- サイドバー（目次） -->
+            <nav class="sidebar">
+                <div class="toc">
+                    <h3>📖 目次</h3>
+                    <ul class="toc-list">
+                        <li><a href="../Manual(JP).html" class="toc-link">← メインページ</a></li>
+                        <li><a href="#archives" class="toc-link">アーカイブファイル</a></li>
+                        <li><a href="#gestures" class="toc-link">マウスジェスチャー</a></li>
+                        <li><a href="#bookmarks" class="toc-link">ブックマーク機能</a></li>
+                        <li><a href="#history" class="toc-link">履歴機能</a></li>
+                        <li><a href="#virtual-path" class="toc-link">仮想パス機能</a></li>
+                        <li><a href="#customization" class="toc-link">カスタマイズ機能</a>
+                            <ul class="toc-sublist">
+                                <li><a href="#custom-fonts" class="toc-link">カスタムフォント</a></li>
+                                <li><a href="#custom-languages" class="toc-link">カスタム言語</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- メインコンテンツ -->
+            <main class="content">
+                <div class="content-wrapper">
+                    <h1>🚀 高度な機能</h1>
+                    
+                    <!-- アーカイブファイル -->
+                    <section id="archives" class="section">
+                        <h2>📦 アーカイブファイル</h2>
+                        <p>EzCoは様々なアーカイブ形式に対応しており、圧縮ファイルを展開せずに直接中身の画像を表示できます。</p>
+
+                        <h3>対応アーカイブ形式</h3>
+                        <div class="feature-grid">
+                            <div class="feature-card">
+                                <div class="feature-icon">📁</div>
+                                <h4>標準アーカイブ</h4>
+                                <p><strong>ZIP, 7Z, RAR, TAR</strong><br>
+                                一般的なアーカイブ形式に対応</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">📚</div>
+                                <h4>コミック形式</h4>
+                                <p><strong>CBZ, CBR, PDF</strong><br>
+                                コミック専用のアーカイブ形式とPDF</p>
+                            </div>
+                        </div>
+
+                        <h3>日本語ファイル名対応</h3>
+                        <p>EzCoは日本語を含むファイル名の自動エンコーディング判定に対応しています。</p>
+                    </section>
+
+                    <!-- マウスジェスチャー -->
+                    <section id="gestures" class="section">
+                        <h2>👆 マウスジェスチャー</h2>
+                        <p>右クリックを押しながらマウスをドラッグすることで、様々な操作を素早く実行できます。下表は、プロファイルが無い初回起動（または新規プロファイル作成）のときだけ入るデフォルトです。消した割り当ては再起動しても戻りません。</p>
+
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ジェスチャー</th>
+                                        <th>アクション</th>
+                                        <th>説明</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>←</td>
+                                        <td>前のコミック</td>
+                                        <td>前のファイルに移動</td>
+                                    </tr>
+                                    <tr>
+                                        <td>→</td>
+                                        <td>次のコミック</td>
+                                        <td>次のファイルに移動</td>
+                                    </tr>
+                                    <tr>
+                                        <td>↓</td>
+                                        <td>アプリケーション終了</td>
+                                        <td>EzCoを終了</td>
+                                    </tr>
+                                    <tr>
+                                        <td>↓→</td>
+                                        <td>フルスクリーン切り替え</td>
+                                        <td>全画面モードのON/OFF</td>
+                                    </tr>
+                                    <tr>
+                                        <td>↑↓</td>
+                                        <td>最後に開いたファイル</td>
+                                        <td>履歴の最後の1件を開く</td>
+                                    </tr>
+                                    <tr>
+                                        <td>→← / ←→</td>
+                                        <td>最初／最後のページ</td>
+                                        <td>先頭または末尾の画像へ移動</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- ブックマーク機能 -->
+                    <section id="bookmarks" class="section">
+                        <h2>📑 ブックマーク機能</h2>
+                        <p>お気に入りのページをブックマークして、フォルダで整理して管理できます。</p>
+
+                        <div class="method-grid">
+                            <div class="method-card">
+                                <h4>📌 ブックマーク追加</h4>
+                                <p><kbd>Ctrl + Shift + B</kbd><br>
+                                または<code>機能／拡張</code> → <code>ブックマーク追加/削除</code></p>
+                            </div>
+                            <div class="method-card">
+                                <h4>📂 サイドバー表示</h4>
+                                <p><kbd>Ctrl + B</kbd><br>
+                                または<code>機能／拡張</code> → <code>ブックマーク</code></p>
+                            </div>
+                        </div>
+                        <p>サイドバーの項目は、クリックで今のタブ、Ctrl+クリックまたは中央クリックで新しいタブ、右クリックでどちらにするか選べます。</p>
+                    </section>
+
+                    <!-- 履歴機能 -->
+                    <section id="history" class="section">
+                        <h2>📚 履歴機能</h2>
+                        <p>最近開いたファイルとその最後に見たページを自動的に記録し、簡単にアクセスできます。</p>
+
+                        <div class="tip-box">
+                            <h3>💡 履歴機能</h3>
+                            <ul>
+                                <li>ファイルごとに最後に見たページを自動保存</li>
+                                <li>設定可能な履歴上限（1-99件）</li>
+                                <li>履歴サイドバーから素早くアクセス（クリックは今のタブ、Ctrl+クリックまたは中央クリックは新しいタブ）</li>
+                                <li>削除されたファイルの自動クリーンアップ</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- 仮想パス機能 -->
+                    <section id="virtual-path" class="section">
+                        <h2>🔗 仮想パス機能</h2>
+                        <p>アーカイブファイル内の特定の画像ファイルを直接指定するためのパス形式です。</p>
+
+                        <div class="info-box">
+                            <h3>📋 基本構文</h3>
+                            <p><code>archive://アーカイブファイルのパス|アーカイブ内のファイル名</code></p>
+                        </div>
+
+                        <div class="method-grid">
+                            <div class="method-card">
+                                <h4>🖱️ コマンドライン起動</h4>
+                                <p><code>EzCo.exe "archive://path|file"</code></p>
+                            </div>
+                            <div class="method-card">
+                                <h4>📝 ショートカット作成</h4>
+                                <p>デスクトップショートカットの引数に指定</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ナビゲーション -->
+                                            <!-- カスタマイズ機能 -->
+                        <section id="customization" class="section">
+                            <h2>🎨 カスタマイズ機能</h2>
+                            <p>EzCoは外部ファイルによる高度なカスタマイズに対応しています。</p>
+
+                            <h3 id="custom-fonts">📝 カスタムフォント (font/ フォルダ)</h3>
+                            <div class="info-box">
+                                <h4>💡 フォントのカスタマイズ</h4>
+                                <p>EzCoの実行ファイルと同じディレクトリに<code>font/</code>フォルダを作成し、TTFファイルを配置することで、独自のフォントを使用できます。</p>
+                            </div>
+
+                            <div class="step-container">
+                                <div class="step">
+                                    <div class="step-number">1</div>
+                                    <div class="step-content">
+                                        <h4>フォルダの作成</h4>
+                                        <p>EzCo.exeと同じディレクトリに<code>font</code>フォルダを作成します。</p>
+                                        <div class="code-block">EzCo.exe
+font/
+├── MyFont.ttf
+├── CustomUI.ttf
+└── JapaneseFont.ttf</div>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <div class="step-number">2</div>
+                                    <div class="step-content">
+                                        <h4>フォントファイルの配置</h4>
+                                        <p>TTF形式のフォントファイルを<code>font/</code>フォルダにコピーします。</p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <div class="step-number">3</div>
+                                    <div class="step-content">
+                                        <h4>設定での指定</h4>
+                                        <p>設定ダイアログのフォント設定、またはエクスポートYAMLの<code>ui_font.font_family</code>で配置したフォント名を指定します。</p>
+                                        <div class="code-block">ui_font:
+  font_family: "MyFont"</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="warning-box">
+                                <h4>⚠️ フォントに関する注意</h4>
+                                <ul>
+                                    <li>対応形式：TTF（TrueType Font）のみ</li>
+                                    <li>フォント名は拡張子を除いたファイル名で指定</li>
+                                    <li>日本語フォントを使用する場合は、日本語文字に対応したフォントを選択</li>
+                                    <li>フォント変更は再起動後に反映されます</li>
+                                </ul>
+                            </div>
+
+                            <h3 id="custom-languages">🌐 カスタム言語 (langs/ フォルダ)</h3>
+                            <div class="info-box">
+                                <h4>💡 多言語サポート</h4>
+                                <p>EzCoは内蔵の日本語・英語に加えて、<code>langs/</code>フォルダにJSONファイルを配置することで、独自の言語や表記をカスタマイズできます。</p>
+                                <p><strong>デフォルト動作:</strong> 外部言語ファイルが存在しない場合、または無効な言語コードが指定された場合は、内蔵の日本語表示がデフォルトとして使用されます。</p>
+                            </div>
+
+                            <div class="step-container">
+                                <div class="step">
+                                    <div class="step-number">1</div>
+                                    <div class="step-content">
+                                        <h4>フォルダの作成</h4>
+                                        <p>EzCo.exeと同じディレクトリに<code>langs</code>フォルダを作成します。</p>
+                                        <div class="code-block">EzCo.exe
+langs/
+├── ja.json     # 日本語カスタマイズ
+├── en.json     # 英語カスタマイズ
+├── zh.json     # 中国語（新規言語）
+└── kr.json     # 韓国語（新規言語）</div>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <div class="step-number">2</div>
+                                    <div class="step-content">
+                                        <h4>言語ファイルの作成</h4>
+                                        <p>JSON形式で言語データを定義します。内蔵言語ファイルと同じ構造を使用してください。</p>
+                                        <div class="code-block">{
+  "app_name": "EzCo",
+  "language": "中文",
+  "language_code": "zh",
+  "ui": {
+    "file": "文件",
+    "edit": "编辑",
+    "view": "查看",
+    ...
+  }
+}</div>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <div class="step-number">3</div>
+                                    <div class="step-content">
+                                        <h4>言語の選択</h4>
+                                        <p>設定ダイアログの言語設定、またはエクスポートYAMLの<code>language.code</code>で言語ファイル名（拡張子なし）を指定します。</p>
+                                        <div class="code-block">language:
+  code: "zh"    # langs/zh.json を使用</div>
+                                        <p><strong>フォールバック動作:</strong> 指定した言語ファイルが存在しない場合、内蔵の日本語が自動的に使用されます。</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tip-box">
+                                <h4>💡 言語カスタマイズのヒント</h4>
+                                <ul>
+                                    <li><strong>部分カスタマイズ:</strong> 一部の表記のみを変更したい場合は、該当項目のみを定義</li>
+                                    <li><strong>優先順位:</strong> 
+                                        <ol>
+                                            <li>外部言語ファイル（<code>langs/</code>フォルダ）</li>
+                                            <li>内蔵言語ファイル（en.json、ja.json）</li>
+                                            <li>デフォルト（内蔵日本語）※ファイルが存在しない場合</li>
+                                        </ol>
+                                    </li>
+                                    <li><strong>systemモード:</strong> <code>language.code: "system"</code>の場合、OSの言語設定に基づいて内蔵言語（日本語/英語）を自動選択</li>
+                                    <li><strong>文字エンコーディング:</strong> UTF-8で保存してください</li>
+                                    <li><strong>構造の確認:</strong> 内蔵の<code>src/ez_co/resources/langs/</code>を参考に</li>
+                                </ul>
+                            </div>
+
+                            <div class="method-grid">
+                                <div class="method-card">
+                                    <h4>🔧 既存言語のカスタマイズ</h4>
+                                    <p>日本語や英語の一部表記を変更したい場合</p>
+                                    <div class="code-block">// langs/ja.json（部分カスタマイズ例）
+{
+  "ui": {
+    "next_page": "➡️ 次へ",
+    "prev_page": "⬅️ 前へ"
+  }
+}</div>
+                                </div>
+                                <div class="method-card">
+                                    <h4>🌍 新規言語の追加</h4>
+                                    <p>完全に新しい言語を追加する場合</p>
+                                    <div class="code-block">// langs/fr.json（フランス語例）
+{
+  "app_name": "EzCo",
+  "language": "Français",
+  "language_code": "fr",
+  "ui": {
+    "file": "Fichier",
+    "edit": "Édition",
+    ...
+  }
+}</div>
+                                </div>
+                            </div>
+
+                            <div class="warning-box">
+                                <h4>⚠️ 言語ファイルに関する注意</h4>
+                                <ul>
+                                    <li>JSON構文エラーがあると読み込みに失敗します</li>
+                                    <li>不正な言語コードを指定すると、システムデフォルト言語にフォールバック</li>
+                                    <li>言語変更は再起動後に反映されます</li>
+                                    <li>必須項目（app_name、language_code等）は省略しないでください</li>
+                                </ul>
+                            </div>
+                        </section>
+
+                        <div class="pagination">
+                            <a href="../Manual(JP).html" class="page-link">← メインページ</a>
+                            <a href="settings.html" class="page-link">設定 →</a>
+                        </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/search.js"></script>
+</body>
+</html>

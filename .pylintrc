@@ -1,0 +1,9 @@
+[MASTER]
+extension-pkg-whitelist=PySide6
+disable=C0111,C0103
+
+[FORMAT]
+max-line-length=200
+
+[MESSAGES]
+disable=C0111,C0103,W0238

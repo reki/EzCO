@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EzCo ユーザーマニュアル</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/theme.css">
+</head>
+<body>
+    <div class="container">
+        <!-- ヘッダー -->
+        <header class="header">
+            <div class="header-content">
+                <h1><img src="files/icon_32x32.png" alt="EzCo" class="logo-icon"> EzCo ユーザーマニュアル</h1>
+                <div class="language-switch">
+                    <a href="Manual(JP).html" class="active">日本語</a>
+                    <a href="Manual(EN).html">English</a>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="searchBox" placeholder="検索..." />
+                    <button id="searchBtn">🔍</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <!-- サイドバー（目次） -->
+            <nav class="sidebar">
+                <div class="toc">
+                    <h3>📖 目次</h3>
+                    <ul class="toc-list">
+                        <li><a href="#overview" class="toc-link">EzCoについて</a></li>
+                        <li><a href="#installation" class="toc-link">インストール</a></li>
+                        <li>
+                            <a href="#basic-usage" class="toc-link">基本操作</a>
+                            <ul class="toc-sublist">
+                                <li><a href="#opening-files" class="toc-link">ファイルを開く</a></li>
+                                <li><a href="#session-files" class="toc-link">状態の保存と復元</a></li>
+                                <li><a href="#navigation" class="toc-link">ページめくり</a></li>
+                                <li><a href="#zoom" class="toc-link">ズーム機能</a></li>
+                                <li><a href="#rotation" class="toc-link">画像回転</a></li>
+                                <li><a href="#comic-view" class="toc-link">コミック表示（両開き）</a></li>
+                                <li><a href="#tabs" class="toc-link">タブ</a></li>
+                            </ul>
+                        </li>
+                        <li>
+                            <a href="#advanced-features" class="toc-link">高度な機能</a>
+                            <ul class="toc-sublist">
+                                <li><a href="files/advanced-features.html#archives" class="toc-link">アーカイブファイル</a></li>
+                                <li><a href="files/advanced-features.html#gestures" class="toc-link">マウスジェスチャー</a></li>
+                                <li><a href="files/advanced-features.html#bookmarks" class="toc-link">ブックマーク</a></li>
+                                <li><a href="files/advanced-features.html#history" class="toc-link">履歴</a></li>
+                                <li><a href="files/advanced-features.html#virtual-path" class="toc-link">仮想パス</a></li>
+                                <li><a href="files/advanced-features.html#customization" class="toc-link">カスタマイズ機能</a>
+                                    <ul class="toc-sublist">
+                                        <li><a href="files/advanced-features.html#custom-fonts" class="toc-link">カスタムフォント</a></li>
+                                        <li><a href="files/advanced-features.html#custom-languages" class="toc-link">カスタム言語</a></li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </li>
+                        <li><a href="#command-line" class="toc-link">コマンドライン引数</a></li>
+                        <li>
+                            <a href="files/settings.html" class="toc-link">設定</a>
+                            <ul class="toc-sublist">
+                                <li><a href="files/settings.html#window-settings" class="toc-link">ウィンドウ設定</a></li>
+                                <li><a href="files/settings.html#viewer-settings" class="toc-link">ビューア設定</a></li>
+                                <li><a href="files/settings.html#cache-settings" class="toc-link">キャッシュ設定</a></li>
+                                <li><a href="files/settings.html#history-settings" class="toc-link">履歴設定</a></li>
+                                <li><a href="files/settings.html#language-settings" class="toc-link">言語設定</a></li>
+                                <li><a href="files/settings.html#debug-settings" class="toc-link">デバッグ設定</a></li>
+                                <li><a href="files/settings.html#archive-settings" class="toc-link">アーカイブ設定</a></li>
+                                <li><a href="files/settings-shortcuts.html" class="toc-link">ショートカット設定</a></li>
+                                <li><a href="files/settings.html#font-settings" class="toc-link">フォント設定</a></li>
+                                <li><a href="files/settings.html#imagelist-settings" class="toc-link">画像リスト設定</a></li>
+                                <li><a href="files/settings.html#tab-settings" class="toc-link">タブ設定</a></li>
+                                <li><a href="files/settings.html#plugin-settings" class="toc-link">ファイル設定</a></li>
+                                <li><a href="files/settings.html#profile-settings" class="toc-link">プロファイル設定</a></li>
+                            </ul>
+                        </li>
+                        <li>
+                            <a href="#troubleshooting" class="toc-link">トラブルシューティング</a>
+                            <ul class="toc-sublist">
+                                <li><a href="#debug-mode" class="toc-link">デバッグモード</a></li>
+                                <li><a href="#common-issues" class="toc-link">よくある問題</a></li>
+                            </ul>
+                        </li>
+                                                        <li><a href="#future-features" class="toc-link">今後の予定機能</a></li>
+                                <li><a href="#appendix" class="toc-link">付録</a></li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- メインコンテンツ -->
+            <main class="content">
+                <div class="content-wrapper">
+                    <!-- 概要セクション -->
+                    <section id="overview" class="section">
+                        <h2>📚 EzCoについて</h2>
+                        <div class="feature-grid">
+                            <div class="feature-card">
+                                <div class="feature-icon">🖼️</div>
+                                <h3>画像ビューア</h3>
+                                <p>PNG、JPG、GIF、BMP、TIFF、WebPなど、主要な画像形式に対応。画像ファイルやフォルダを直接開けます。</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">📦</div>
+                                <h3>アーカイブ対応</h3>
+                                <p>ZIP、7Z、RAR、CBZ、CBR、TAR、PDFなど、様々なアーカイブ形式を直接開けます。</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">👆</div>
+                                <h3>マウスジェスチャー</h3>
+                                <p>右クリックドラッグでアプリケーションを直感的に操作できます。</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">⚡</div>
+                                <h3>高速表示</h3>
+                                <p>プリフェッチ機能により、ページめくりを高速化します。</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">📖</div>
+                                <h3>両開き表示</h3>
+                                <p>単ページ、両開き（右）、両開き（左）をメニューから切り替えられます。見開き単位でページ送りします。</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">👤</div>
+                                <h3>プロファイル</h3>
+                                <p>設定・ブックマーク・履歴を用途別に分けて管理できます。メニューから追加・切替・管理が可能です。</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🗂️</div>
+                                <h3>タブ</h3>
+                                <p>複数ファイルを同時に開けます。中央クリックでタブを閉じ、Ctrl+1〜9 で切り替えられます。</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">📑</div>
+                                <h3>ブックマーク</h3>
+                                <p>お気に入りのページをブックマークして素早くアクセスできます。</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🌐</div>
+                                <h3>多言語対応</h3>
+                                <p>日本語と英語に対応し、カスタム言語ファイルも追加できます。外部言語ファイルで未定義のキーはキー名が表示されます。</p>
+                            </div>
+                        </div>
+
+                        <div class="info-box">
+                            <h3>💡 EzCoの特徴</h3>
+                            <ul>
+                                <li><strong>軽量・高速：</strong> 最小限のリソースで高速な画像表示を実現</li>
+                                <li><strong>豊富な形式対応：</strong> 画像ファイルからアーカイブファイルまで幅広くサポート</li>
+                                <li><strong>カスタマイズ可能：</strong> ショートカット、ジェスチャー、見た目などを自由に設定</li>
+                                <li><strong>コミックビューア：</strong> 漫画や電子書籍の閲覧に最適化</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- インストールセクション -->
+                    <section id="installation" class="section">
+                        <h2>⬇️ インストール</h2>
+                        <p>EzCoは実行ファイル形式で配布されており、インストール不要で使用できます。</p>
+                        
+                        <div class="step-container">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h3>ダウンロード</h3>
+                                    <p>リリースページから最新版の<code>EzCo.exe</code>をダウンロードします。</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h3>配置</h3>
+                                    <p>任意のフォルダに<code>EzCo.exe</code>を配置します。</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h3>実行</h3>
+                                    <p><code>EzCo.exe</code>をダブルクリックして起動します。</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="warning-box">
+                            <h3>⚠️ 注意事項</h3>
+                            <ul>
+                                <li>初回起動時に設定・ブックマーク・履歴をまとめたデータベース（<code>config.db</code>）が自動作成されます。旧バージョンの<code>bookmarks.db</code>だけがある場合は<code>config.db</code>へリネームされます</li>
+                                <li>Windows Defenderが警告を表示する場合がありますが、実行許可してください</li>
+                                <li>動作にはWindows 10以降が必要です</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- 基本操作セクション -->
+                    <section id="basic-usage" class="section">
+                        <h2>🎮 基本操作</h2>
+                        
+                        <h3 id="opening-files">ファイルを開く</h3>
+                        <div class="method-grid">
+                            <div class="method-card">
+                                <h4>📁 メニューから開く</h4>
+                                <p><code>ファイル</code> → <code>ファイルを開く</code> / <code>新しいタブでファイルを開く</code> / <code>フォルダを開く</code>。</p>
+                            </div>
+                            <div class="method-card">
+                                <h4>🖱️ ドラッグ&ドロップ</h4>
+                                <p>ファイルやフォルダ、状態ファイル（<code>.ezs</code>）をウィンドウにドロップして開けます。</p>
+                            </div>
+                            <div class="method-card">
+                                <h4>⌨️ ショートカット</h4>
+                                <p><kbd>Ctrl + O</kbd>でファイル選択。<code>フォルダを開く</code>はショートカット設定から割り当てできます。</p>
+                            </div>
+                            <div class="method-card">
+                                <h4>🔗 ファイル関連付け</h4>
+                                <p>画像ファイルをEzCoに関連付けることでダブルクリックで開けます。</p>
+                            </div>
+                        </div>
+                        <div class="info-box">
+                            <h3>💡 ファイルダイアログ</h3>
+                            <p>先頭の「対応しているファイル」に、画像・アーカイブ・読み込み済みプラグインの拡張子・状態ファイルがまとめて出ます。続けて画像／アーカイブ／プラグイン形式／状態ファイル／すべてのファイルを選べます。</p>
+                        </div>
+
+                        <h3 id="session-files">状態の保存と復元</h3>
+                        <p>開いているタブのファイル（またはフォルダ）とページを、状態ファイル（<code>.ezs</code>）に保存できます。空のタブは保存しません。</p>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>操作</th>
+                                        <th>方法（デフォルト）</th>
+                                        <th>説明</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>状態を名前をつけて保存</td>
+                                        <td><code>ファイル</code>メニュー、<kbd>Ctrl + S</kbd>（初回）</td>
+                                        <td>全タブのパスとページ、今のタブ位置を保存</td>
+                                    </tr>
+                                    <tr>
+                                        <td>状態を復元</td>
+                                        <td>ファイルを開く／D&amp;D</td>
+                                        <td><code>.ezs</code>を開くとタブを復元</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="info-box">
+                            <h3>💡 すでにファイルを開いているとき</h3>
+                            <ul>
+                                <li><strong>すべて閉じる:</strong> 今のタブを閉じて、保存した状態だけを開く</li>
+                                <li><strong>開いているタブに追加:</strong> 今のタブはそのまま、後ろに復元タブを足す</li>
+                                <li><strong>新規ウィンドウで表示:</strong> 今のウィンドウはそのまま、新しいウィンドウで復元する</li>
+                                <li><strong>キャンセル:</strong> 何も変えない</li>
+                            </ul>
+                            <p>空のウィンドウでは確認せず、そのまま復元します。見つからないファイルのタブはエラー表示になり、見つかった分は開きます。</p>
+                        </div>
+
+                        <h3 id="navigation">ページめくり</h3>
+                        <div class="info-box">
+                            <h3>⚙️ ショートカットのカスタマイズ</h3>
+                            <p>すべての基本操作のキーボードショートカットやマウス操作は、<code>設定</code> → <code>ショートカット設定</code>から自由に変更できます。</p>
+                        </div>
+
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>操作</th>
+                                        <th>方法（デフォルト）</th>
+                                        <th>説明</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>次のページ</td>
+                                        <td><kbd>→</kbd>, <kbd>Space</kbd>, 左クリック</td>
+                                        <td>次の画像を表示</td>
+                                    </tr>
+                                    <tr>
+                                        <td>前のページ</td>
+                                        <td><kbd>←</kbd>, <kbd>V</kbd>, 右クリック</td>
+                                        <td>前の画像を表示</td>
+                                    </tr>
+                                    <tr>
+                                        <td>次のファイル</td>
+                                        <td><kbd>Ctrl + →</kbd></td>
+                                        <td>次のファイルに移動</td>
+                                    </tr>
+                                    <tr>
+                                        <td>前のファイル</td>
+                                        <td><kbd>Ctrl + ←</kbd></td>
+                                        <td>前のファイルに移動</td>
+                                    </tr>
+                                    <tr>
+                                        <td>最初のページ</td>
+                                        <td>ジェスチャー: →←</td>
+                                        <td>最初の画像に戻る</td>
+                                    </tr>
+                                    <tr>
+                                        <td>最後のページ</td>
+                                        <td>ジェスチャー: ←→</td>
+                                        <td>最後の画像に移動</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3 id="zoom">ズーム機能</h3>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>操作</th>
+                                        <th>方法</th>
+                                        <th>説明</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>拡大</td>
+                                        <td>ホイール下</td>
+                                        <td>画像を拡大</td>
+                                    </tr>
+                                    <tr>
+                                        <td>縮小</td>
+                                        <td>ホイール上</td>
+                                        <td>画像を縮小</td>
+                                    </tr>
+                                    <tr>
+                                        <td>ズームリセット</td>
+                                        <td><kbd>Ctrl + 0</kbd></td>
+                                        <td>ズーム倍率を100%に戻す</td>
+                                    </tr>
+                                    <tr>
+                                        <td>画像移動</td>
+                                        <td>左ドラッグ（拡大時）</td>
+                                        <td>拡大した画像を移動</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3 id="rotation">画像回転</h3>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>操作</th>
+                                        <th>方法</th>
+                                        <th>説明</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>右回転</td>
+                                        <td><kbd>Ctrl + R</kbd></td>
+                                        <td>画像を時計回りに90度回転</td>
+                                    </tr>
+                                    <tr>
+                                        <td>左回転</td>
+                                        <td><kbd>Ctrl + O</kbd></td>
+                                        <td>画像を反時計回りに90度回転</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3 id="comic-view">コミック表示（両開き）</h3>
+                        <p>メニューバーの<code>コミック</code>（表示の右隣）から、ページの並べ方を切り替えられます。選択は現在のプロファイルに保存されます。</p>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>モード</th>
+                                        <th>並び</th>
+                                        <th>説明</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>単ページ</td>
+                                        <td>1ページずつ</td>
+                                        <td>通常の1枚表示です。</td>
+                                    </tr>
+                                    <tr>
+                                        <td>両開き（右）</td>
+                                        <td>右が軸 N、左が N+1</td>
+                                        <td>右綴じ向け。スライダーは右が先頭です。</td>
+                                    </tr>
+                                    <tr>
+                                        <td>両開き（左）</td>
+                                        <td>左が軸 N、右が N+1</td>
+                                        <td>左綴じ向け。スライダーは左が先頭です。</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="info-box">
+                            <h3>💡 両開きの動作</h3>
+                            <ul>
+                                <li><strong>ページ送り:</strong> 次/前は見開き単位（2ページ）です。最終奇数ページのみ単ページ表示になります</li>
+                                <li><strong>選択ページを軸:</strong> 設定で有効にすると、スライダーで選んだページが見開きの先頭（N）になります。2ページ目から前に戻ると、1ページ目だけ単ページになることがあります</li>
+                                <li><strong>スライダー方向:</strong> 単ページと両開き（右）は右が先頭。両開き（左）のみ左が先頭です</li>
+                                <li><strong>切替の優先:</strong> 設定ダイアログの全般→ビューアで「前回の選択を維持」「右を優先」「左を優先」を選べます</li>
+                                <li><strong>ショートカット:</strong> 単ページ／両開き（右）／両開き（左）／両開き切替は初期未割り当てです。ショートカット設定から割り当てできます</li>
+                            </ul>
+                        </div>
+
+                        <h3 id="tabs">タブ</h3>
+                        <p>メニューバーの<code>タブ</code>（コミックの右隣）から、新規・閉じる・再表示・左右／先頭／末尾への移動ができます。割り当て済みのキーボードショートカットは、メニュー項目の右側に表示されます。</p>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>操作</th>
+                                        <th>方法（デフォルト）</th>
+                                        <th>説明</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>新しいタブ</td>
+                                        <td><kbd>Ctrl + T</kbd></td>
+                                        <td>空のタブを追加</td>
+                                    </tr>
+                                    <tr>
+                                        <td>タブを閉じる</td>
+                                        <td><kbd>Ctrl + W</kbd>、タブの中央クリック</td>
+                                        <td>今のタブ（またはクリックしたタブ）を閉じる。最後の1枚を閉じるとウィンドウも閉じます</td>
+                                    </tr>
+                                    <tr>
+                                        <td>タブの再表示</td>
+                                        <td><kbd>Ctrl + Shift + T</kbd></td>
+                                        <td>直前に閉じたタブを戻す。戻せるタブが無いときはメニューを無効化</td>
+                                    </tr>
+                                    <tr>
+                                        <td>左右のタブ</td>
+                                        <td><kbd>Ctrl + PageUp</kbd> / <kbd>Ctrl + PageDown</kbd></td>
+                                        <td>左／右のタブへ移動</td>
+                                    </tr>
+                                    <tr>
+                                        <td>1〜9番目／最後</td>
+                                        <td><kbd>Ctrl + 1</kbd>〜<kbd>9</kbd>、<kbd>Ctrl + 0</kbd> / <kbd>Ctrl + End</kbd></td>
+                                        <td>番号のタブ、または最後のタブを表示。メニュー項目はなし</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="info-box">
+                            <h3>💡 タブの動作</h3>
+                            <ul>
+                                <li><strong>タブバー:</strong> 2枚以上のときだけ表示。幅は固定で、長い名前は省略し、マウスを乗せると全文が出ます</li>
+                                <li><strong>タブ一覧:</strong> <code>機能／拡張</code> → <code>サイドバー</code> → <code>タブ一覧</code>。クリックで切替、中央クリックまたは右クリックで閉じる</li>
+                                <li><strong>フルスクリーン:</strong> <code>表示</code> → <code>フルスクリーン時にタブを表示</code>で、フルスクリーン中もタブバーを出すか選べます</li>
+                                <li><strong>開く:</strong> 「ファイルを開く」「フォルダを開く」は今のタブ。「新しいタブでファイルを開く」は新規。履歴とブックマークはクリック＝今のタブ、Ctrl+クリックまたは中央クリック＝新規タブ</li>
+                                <li><strong>復元:</strong> 再起動ではタブ全部は戻しません。履歴の最後の1件だけを開く設定があります。複数タブは「状態を名前をつけて保存」で戻せます</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- コマンドライン引数セクション -->
+                    <section id="command-line" class="section">
+                        <h2>⚙️ コマンドライン引数</h2>
+                        <p>EzCoは起動時にコマンドライン引数を使用して、一時的に設定を変更することができます。この機能により、設定ファイルを変更することなく、起動時のみ特定の設定を有効にできます。</p>
+
+                        <h3>基本的な使用方法</h3>
+                        <div class="code-block">
+                            <pre><code>EzCo.exe --conf:section.key=value --profile=profile_name</code></pre>
+                        </div>
+
+                        <div class="info-box">
+                            <h3>💡 特徴</h3>
+                            <ul>
+                                <li><strong>一時的な変更：</strong> 設定ファイルは変更されず、起動中のみ有効</li>
+                                <li><strong>UI非活性化：</strong> オーバーライドされた設定項目は設定画面とメニューで非活性化</li>
+                                <li><strong>複数指定可能：</strong> 複数の設定を同時にオーバーライド可能</li>
+                                <li><strong>型自動変換：</strong> ブール値、数値、文字列を自動で判別</li>
+                            </ul>
+                        </div>
+
+                        <h3>使用例</h3>
+                        <div class="example-container">
+                            <div class="example-card">
+                                <h4>📦 アーカイブ機能を無効化</h4>
+                                <div class="code-block">
+                                    <pre><code>EzCo.exe --conf:archive.enabled=False</code></pre>
+                                </div>
+                                <p>起動中のみアーカイブファイルを開けなくします。</p>
+                            </div>
+
+                            <div class="example-card">
+                                <h4>🖼️ ウィンドウ自動リサイズを有効化</h4>
+                                <div class="code-block">
+                                    <pre><code>EzCo.exe --conf:window.auto_resize=True</code></pre>
+                                </div>
+                                <p>画像読み込み時にウィンドウサイズを自動調整します。</p>
+                            </div>
+
+                            <div class="example-card">
+                                <h4>🐛 デバッグモードを有効化</h4>
+                                <div class="code-block">
+                                    <pre><code>EzCo.exe --conf:debug.enabled=True</code></pre>
+                                </div>
+                                <p>デバッグログファイルを出力します。</p>
+                            </div>
+
+                            <div class="example-card">
+                                <h4>🔧 複数設定の同時指定</h4>
+                                <div class="code-block">
+                                    <pre><code>EzCo.exe --conf:archive.enabled=False --conf:window.auto_resize=True --conf:debug.enabled=True</code></pre>
+                                </div>
+                                <p>複数の設定を同時にオーバーライドできます。</p>
+                            </div>
+
+                            <div class="example-card">
+                                <h4>👤 プロファイル指定</h4>
+                                <div class="code-block">
+                                    <pre><code>EzCo.exe --profile=仕事用</code></pre>
+                                </div>
+                                <p>存在するプロファイルを指定して、そのセッションだけ使用します（<code>-p 名前</code>も可）。<strong>存在しない場合は作成せず、前回使ったプロファイルで起動します。</strong>前回の選択は書き換えません。</p>
+                            </div>
+
+                            <div class="example-card">
+                                <h4>🔗 プロファイルと設定の組み合わせ</h4>
+                                <div class="code-block">
+                                    <pre><code>EzCo.exe --profile=デバッグ --conf:debug.enabled=True</code></pre>
+                                </div>
+                                <p>プロファイル指定と設定オーバーライドを同時に使用できます。</p>
+                            </div>
+                        </div>
+
+                        <h3>プロファイル機能</h3>
+                        <div class="info-box">
+                            <h3>👤 プロファイルとは</h3>
+                            <p>プロファイル機能を使用することで、異なる用途（仕事用、プライベート用など）に応じて、設定・履歴・ブックマークをまとめて分けて管理できます。操作はメニューバーの<code>プロファイル</code>から行います（設定ダイアログにはプロファイルタブはありません）。</p>
+                        </div>
+
+                        <div class="feature-grid">
+                            <div class="feature-card">
+                                <div class="feature-icon">📁</div>
+                                <h4>独立したデータ</h4>
+                                <p>各プロファイルは独自の設定・履歴・ブックマークを持ち、相互に影響しません。</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">⚡</div>
+                                <h4>簡単切り替え</h4>
+                                <p>メニューからプロファイルを選ぶと、両開き・背景・言語・ショートカットなどがすぐに反映されます。</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🚀</div>
+                                <h4>起動時指定</h4>
+                                <p>コマンドライン引数で、そのセッションだけプロファイルを指定できます。</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🔧</div>
+                                <h4>管理</h4>
+                                <p>メニューから追加・改名・削除できます。追加時は今の設定（プラグイン選択を含む）をコピーし、履歴とブックマークは空です。既定プロファイルは削除できません。CLIで存在しない名前を指定しても作成しません。</p>
+                            </div>
+                        </div>
+
+                        <h4>プロファイル使用例</h4>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>コマンド</th>
+                                        <th>説明</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>EzCo.exe --profile=仕事</code></td>
+                                        <td>「仕事」プロファイルで起動</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>EzCo.exe --profile=プライベート</code></td>
+                                        <td>「プライベート」プロファイルで起動</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>EzCo.exe --profile=研究資料</code></td>
+                                        <td>「研究資料」プロファイルで起動<br><small class="text-muted">※ 存在しない場合は前回のプロファイルを使用</small></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3>設定可能な主要項目</h3>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>設定項目</th>
+                                        <th>例</th>
+                                        <th>説明</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>archive.enabled</code></td>
+                                        <td><code>--conf:archive.enabled=False</code></td>
+                                        <td>アーカイブファイルサポートの有効/無効</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>window.auto_resize</code></td>
+                                        <td><code>--conf:window.auto_resize=True</code></td>
+                                        <td>画像読み込み時のウィンドウ自動リサイズ</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>window.always_on_top</code></td>
+                                        <td><code>--conf:window.always_on_top=True</code></td>
+                                        <td>ウィンドウを常に手前に表示</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>viewer.fit_to_window_minimum</code></td>
+                                        <td><code>--conf:viewer.fit_to_window_minimum=False</code></td>
+                                        <td>最小縮小率の制限（100%まで）</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>viewer.mouse_lock</code></td>
+                                        <td><code>--conf:viewer.mouse_lock=True</code></td>
+                                        <td>マウスロック機能</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>debug.enabled</code></td>
+                                        <td><code>--conf:debug.enabled=True</code></td>
+                                        <td>デバッグモード</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>language.code</code></td>
+                                        <td><code>--conf:language.code=en</code></td>
+                                        <td>言語設定（ja/en/system）</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3>値の型</h3>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>型</th>
+                                        <th>指定可能な値</th>
+                                        <th>例</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>ブール値</td>
+                                        <td><code>True</code>, <code>False</code>, <code>yes</code>, <code>no</code>, <code>on</code>, <code>off</code>, <code>1</code>, <code>0</code></td>
+                                        <td><code>--conf:debug.enabled=True</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>数値</td>
+                                        <td>整数または小数</td>
+                                        <td><code>--conf:cache.prefetch_pages=10</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>文字列</td>
+                                        <td>任意のテキスト</td>
+                                        <td><code>--conf:language.code=en</code></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="warning-box">
+                            <h3>⚠️ 注意事項</h3>
+                            <ul>
+                                <li>オーバーライドされた設定項目は、設定画面やメニューで非活性化（グレーアウト）されます</li>
+                                <li>設定データベース（config.db）の永続値は変更されません。永続的な変更は設定画面から行ってください</li>
+                                <li>ジェスチャーやショートカットの設定は、コマンドライン引数では変更できません</li>
+                                <li>存在しない設定項目を指定した場合は無視されます</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- 今後の予定機能 -->
+                    <section id="future-features" class="section">
+                        <h2>🚧 今後予定されている機能</h2>
+                        <div class="info-box">
+                            <h3>🛠️ 開発予定</h3>
+                            <p>以下の機能が今後のバージョンで実装予定です：</p>
+                        </div>
+
+                        <div class="feature-grid">
+                            <div class="feature-card">
+                                <div class="feature-icon">📦</div>
+                                <h4>ネストアーカイブ</h4>
+                                <p>アーカイブ内のアーカイブファイル対応</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🌙</div>
+                                <h4>ダークモード</h4>
+                                <p>目に優しい暗色テーマの実装</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🔌</div>
+                                <h4>プラグインシステム</h4>
+                                <p>Pythonによる機能拡張</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🎯</div>
+                                <h4>コマンドパレット</h4>
+                                <p>キーワードによる機能検索・実行</p>
+                            </div>
+                        </div>
+
+                        <div class="tip-box">
+                            <h3>💡 Susieプラグイン対応</h3>
+                            <p>将来的にSusieプラグインの対応により、より多くの画像形式やアーカイブ形式をサポート予定です。</p>
+                        </div>
+                    </section>
+
+                    <!-- 付録セクション -->
+                    <section id="appendix" class="section">
+                        <h2>📋 付録</h2>
+                        
+                        <h3>対応ファイル形式</h3>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>種類</th>
+                                        <th>形式</th>
+                                        <th>拡張子</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>画像ファイル</td>
+                                        <td>PNG, JPEG, GIF, BMP, TIFF, WebP</td>
+                                        <td>.png, .jpg, .jpeg, .gif, .bmp, .tiff, .tif, .webp</td>
+                                    </tr>
+                                    <tr>
+                                        <td>アーカイブ・圧縮ファイル</td>
+                                        <td>ZIP, 7-Zip, RAR, TAR, GZip, BZip2, XZ</td>
+                                        <td>.zip, .7z, .rar, .tar, .tar.gz, .tar.bz2, .tar.xz, .gz, .bz2, .xz</td>
+                                    </tr>
+                                    <tr>
+                                        <td>コミックアーカイブ</td>
+                                        <td>Comic Book ZIP/RAR/PDF</td>
+                                        <td>.cbz, .cbr, .pdf</td>
+                                    </tr>
+                                    <tr>
+                                        <td>フォルダ</td>
+                                        <td>画像ファイルが含まれるフォルダ</td>
+                                        <td>（拡張子なし）</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3>設定ファイル</h3>
+                        <div class="info-box">
+                            <h3>📁 重要なファイルとフォルダ</h3>
+                            <ul>
+                                <li><strong>config.db:</strong> 設定・ブックマーク・履歴をプロファイル単位で保存するデータベース</li>
+                                <li><strong>langs/:</strong> カスタム言語ファイル（独自言語・表記カスタマイズ。未定義キーはキー名表示）</li>
+                                <li><strong>font/:</strong> カスタムTTFフォントファイル（UIフォント追加）</li>
+                                <li><strong>logs/:</strong> デバッグログファイル（デバッグモード有効時）</li>
+                            </ul>
+                        </div>
+
+                        <h3>キーボードショートカット一覧</h3>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ショートカット</th>
+                                        <th>動作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td><kbd>Ctrl + O</kbd></td><td>ファイルを開く</td></tr>
+                                    <tr><td><kbd>Ctrl + S</kbd></td><td>状態を名前をつけて保存</td></tr>
+                                    <tr><td><kbd>Ctrl + Shift + O</kbd></td><td>新しいタブでファイルを開く</td></tr>
+                                    <tr><td><kbd>→</kbd> / <kbd>Space</kbd></td><td>次のページ</td></tr>
+                                    <tr><td><kbd>←</kbd> / <kbd>V</kbd></td><td>前のページ</td></tr>
+                                    <tr><td><kbd>Ctrl + →</kbd></td><td>次のファイル</td></tr>
+                                    <tr><td><kbd>Ctrl + ←</kbd></td><td>前のファイル</td></tr>
+                                    <tr><td><kbd>Ctrl + 0</kbd></td><td>最後のタブ（初期はズームリセットと同じキー。タブ切替が先）</td></tr>
+                                    <tr><td><kbd>Ctrl + 1</kbd>〜<kbd>9</kbd></td><td>1〜9番目のタブ</td></tr>
+                                    <tr><td><kbd>Ctrl + T</kbd></td><td>新しいタブ（常に手前と同じ初期キー）</td></tr>
+                                    <tr><td><kbd>Ctrl + W</kbd></td><td>タブを閉じる</td></tr>
+                                    <tr><td><kbd>Ctrl + Shift + T</kbd></td><td>タブの再表示</td></tr>
+                                    <tr><td><kbd>Ctrl + R</kbd></td><td>右回転</td></tr>
+                                    <tr><td><kbd>Enter</kbd></td><td>フルスクリーン切り替え</td></tr>
+                                    <tr><td><kbd>Ctrl + L</kbd></td><td>画像一覧</td></tr>
+                                    <tr><td><kbd>Ctrl + B</kbd></td><td>ブックマーク表示切り替え</td></tr>
+                                    <tr><td><kbd>Ctrl + H</kbd></td><td>履歴表示切り替え</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                    
+                    <!-- ページネーション -->
+                    <div class="pagination">
+                        <a href="#" class="page-link" onclick="showSection('overview')">概要</a>
+                        <a href="#" class="page-link" onclick="showSection('basic-usage')">基本操作</a>
+                        <a href="#" class="page-link" onclick="showSection('command-line')">コマンドライン引数</a>
+                        <a href="files/advanced-features.html" class="page-link">高度な機能</a>
+                        <a href="files/settings.html" class="page-link">設定</a>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script src="js/search.js"></script>
+</body>
+</html> 

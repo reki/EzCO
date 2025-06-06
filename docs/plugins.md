@@ -1,0 +1,564 @@
+# EzCo プラグインマニュアル
+
+ファイル読み込みプラグインの開発者向けリファレンスです。エンドユーザー向けの配置手順は [plugins/README.md](../plugins/README.md) を参照してください。
+
+- **API バージョン**: `1`（`manifest.json` の `api_version` と一致必須）
+- **配置場所**: 実行ファイル（またはプロジェクトルート）旁の `plugins/` のみ
+- **配布形式**: ZIP（`.zip`）。DLL は口だけあり、現状はスキップされる
+- **担当範囲**: 独自形式を解いて、Qt / PIL が読める**画像バイト**を返す。描画はホスト側
+
+---
+
+## 目次
+
+1. [概要と制約](#1-概要と制約)
+2. [パッケージ構造](#2-パッケージ構造)
+3. [読み込みと優先度](#3-読み込みと優先度)
+4. [manifest.json](#4-manifestjson)
+5. [ローダー契約 `FileLoader`](#5-ローダー契約-fileloader)
+6. [ホスト API](#6-ホスト-api)
+7. [多言語 `get_text`](#7-多言語-get_text)
+8. [暗号化アーカイブ](#8-暗号化アーカイブ)
+9. [設定キー](#9-設定キー)
+10. [サンプル](#10-サンプル)
+11. [トラブルシューティング](#11-トラブルシューティング)
+
+---
+
+## 1. 概要と制約
+
+プラグインはホストからコールバックされるだけです。`if __name__ == "__main__"` の `main` は実行されません。
+
+| できること | できないこと |
+| --- | --- |
+| 画像／アーカイブを独自に展開して画像バイトを返す | `import ez_co` / `import ez_co.*` |
+| ホストのパスワードダイアログを呼ぶ | 他プラグインのモジュールを import する |
+| プラグイン ZIP 内の `langs/` `resources/` を読む | 本体ウィンドウを直接操作する（アクションは将来用） |
+| サードパーティ（`PIL`, `pyzipper` など本体依存）を import する | DLL プラグイン（未実装） |
+
+`src/` が import ルートです。同じ ZIP 内の `from mark import mark_image` は許可されます。
+
+ホストは起動時に `plugins/` を掃引し、有効な ZIP を読み込みます。変更を反映するにはアプリの再起動が必要です。
+
+---
+
+## 2. パッケージ構造
+
+ZIP のルート直下に次を置きます。余分な親フォルダを挟まないでください。
+
+```
+my_plugin.zip
+├── manifest.json          # 必須
+├── src/                   # 必須。import ルート
+│   ├── loader.py          # entry で指定するモジュール
+│   └── mark.py            # 任意のサブモジュール
+├── langs/                 # 任意。ja.json / en.json
+│   ├── ja.json
+│   └── en.json
+├── resources/             # 任意。root.read_bytes で読む
+└── test/                  # 任意。ホストは読まない
+```
+
+開発中は `plugins/example_zip/` のように展開フォルダを置いても構いません。ホストが読むのは **同名の `.zip`** です。変更後は ZIP を作り直してください。
+
+```python
+from pathlib import Path
+import zipfile
+
+src = Path("plugins/example_zip")
+dst = Path("plugins/example_zip.zip")
+with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zf:
+    for path in sorted(src.rglob("*")):
+        if path.is_file():
+            zf.write(path, path.relative_to(src).as_posix())
+```
+
+---
+
+## 3. 読み込みと優先度
+
+### 3.1 掃引
+
+1. `plugins/` 直下のファイルだけを見る（サブフォルダは無視）
+2. 拡張子 `.zip` を Python バックエンドで読み込む
+3. 拡張子 `.dll` は未対応のためスキップしてログを出す
+4. `manifest.json` を解析し、`api_version` がホストと一致するものだけを実体化する
+
+### 3.2 拡張子の担当
+
+同じ拡張子をビルドインとプラグインの両方が宣言できます。既定は**ビルドイン優先**です。
+
+メニューのファイル設定で、拡張子ごとに「ビルドイン」「`id(ver:version)`」「読み込まない」を選べます。OK すると開いているファイルを一律再読み込みします（拡張子の照合はしません。ページ数が足りなければ末尾に寄せます）。新規 ZIP の追加は再起動が必要です。
+
+ビルドインに無い拡張子（例: `.ezpack`）は、プラグインが宣言すればそのプラグインが担当します。読み込み済みプラグインの拡張子は、「ファイルを開く」ダイアログの「対応しているファイル」と「プラグイン形式」に入り、フォルダを開いたときのスキャン対象にも含まれます。
+
+### 3.3 解決順
+
+`PluginManager.resolve_extension` の順です。
+
+1. 設定 `plugins.extension_handlers[ext]` が `none`（読み込まない）
+2. 設定が無く、旧アーカイブ設定でその種類が無効
+3. 設定が `id(ver:version)`（または旧形式）で、一致するプラグインが当該拡張子を提供している
+4. 設定が `builtin` で、ビルドインがその拡張子を知っている
+5. ビルドインがその拡張子を知っている（設定なしの既定）
+6. プラグインだけが知っている（先に掃引されたものが選ばれる）
+7. どれも知らない
+
+同じ `id` の別バージョンは共存できます。設定キーは `com.ezco.example.zip(ver:1.1.0)` です。完全一致が無いときは同じ `id` の新しいバージョンへ落ちます。`id` と `version` が両方同じ zip が二つあると、後から読んだ方が失敗します。
+
+---
+
+## 4. `manifest.json`
+
+ホストが最初に読むメタデータです。JSON オブジェクトであること。
+
+### フィールド
+
+| 名前 | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| `id` | `string` | はい | プラグイン ID。設定キーと内部識別は `id(ver:version)`。一覧 UI の ID 列はバージョンなし。例: `com.ezco.example.zip` |
+| `name` | `string` | はい | 設定ダイアログに出す表示名 |
+| `version` | `string` | はい | パッケージ版。`id` 重複時の区別と、設定の `(ver:version)` に使う |
+| `api_version` | `int` | はい | ホスト API バージョン。現在は `1` のみ |
+| `entry` | `string` | はい | `モジュール:クラス`。モジュールは `src/` からのドットパス |
+| `description` | `string` | いいえ | 説明。ホストは現状ログ以外では使わない |
+| `author` | `string` | いいえ | 作者 |
+
+### `entry` の解釈
+
+```
+loader:FileLoader     →  src/loader.py の FileLoader
+pkg.mod:MyLoader      →  src/pkg/mod.py の MyLoader
+```
+
+`モジュール:クラス` が必須です。クラス名の省略や、ホスト側でのクラス探索はありません。
+
+`.py` 接尾辞と `/` 区切りも受け付け、内部でドットパスに正規化します。
+
+### 例
+
+```json
+{
+  "id": "com.ezco.example.zip",
+  "name": "Example ZIP Loader",
+  "version": "1.1.0",
+  "api_version": 1,
+  "entry": "loader:FileLoader",
+  "description": "Sample .zip loader.",
+  "author": "EzCo"
+}
+```
+
+### 検証エラー
+
+| 条件 | 結果 |
+| --- | --- |
+| 必須フィールド欠落 | 読み込み失敗。`failed` に載る |
+| `api_version != 1` | 読み込み失敗 |
+| `entry` が `モジュール:クラス` でない | 読み込み失敗 |
+| `src/` に entry モジュールが無い | 読み込み失敗 |
+| 指定クラスがモジュールに無い | 読み込み失敗 |
+| クラスに `supported_formats` が無い | 読み込み失敗 |
+| 対応形式が空 | 読み込み失敗 |
+
+---
+
+## 5. ローダー契約 `FileLoader`
+
+プラグインは `ez_co.plugins.api` を import しません。ホストが `manifest.entry` のクラスを `FileLoader(root, get_text, host)` で生成し、以降は名前の決まったメソッドを呼びます。
+
+### 5.1 コンストラクタ
+
+ホストは次の 1 通りだけを呼びます。
+
+```
+Class(root, get_text, host)
+```
+
+使わない引数も受け取って保持してください。ホストが渡すので、プラグイン側で探したりフォールバックしたりする必要はありません。
+
+```python
+class FileLoader:
+    def __init__(self, root, get_text, host):
+        self.root = root
+        self.get_text = get_text
+        self.host = host
+```
+
+| 引数 | 用途 |
+| --- | --- |
+| `root` | プラグイン ZIP 内のファイル。`read_bytes` / `exists` |
+| `get_text` | 文言。`get_text("plugin.watermark")` |
+| `host` | ダイアログとアクション。`host.ask_password(...)` |
+
+---
+
+### `supported_formats()`
+
+ホストが掃引直後に一度呼び、対応拡張子と種別を登録します。
+
+**戻り値:** 次のいずれかのシーケンス
+
+- `[(".zip", "archive"), (".png", "image")]`
+- `[{"extension": ".zip", "kind": "archive"}]`
+- `[{"ext": ".png", "type": "image"}]`
+
+| 要素 | 説明 |
+| --- | --- |
+| 拡張子 | `.` 無しでもよい。内部で `.png` に正規化 |
+| 種別 | `"image"` / `"img"` または `"archive"` / `"arch"` |
+
+- `image`: ファイル自体を 1 枚の画像として開く
+- `archive`: 中の画像一覧をページとして開く
+
+**例外:** 空、または解釈不能な要素だけだと読み込み失敗。
+
+---
+
+### `get_file_count(file_path)`
+
+**引数**
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| `file_path` | `str` | ユーザーが開いた実ファイルのパス |
+
+**戻り値:** `int` — 画像エントリ数。ホストは `int(...)` する。
+
+アーカイブなら `len(list_entries(file_path))` でよい。画像なら通常 `1`。
+
+---
+
+### `list_entries(file_path)`
+
+ホストがアーカイブ展開時と、各ページ読み込み時に呼びます。
+
+**引数**
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| `file_path` | `str` | 実ファイルのパス |
+
+**戻り値:** エントリ名のシーケンス。各要素は `str` 化される。
+
+- ディレクトリ名は返さない
+- ホストが読める画像だけを返す（プラグイン側でフィルタしてよい）
+- 暗号化アーカイブは、ここでパスワードを取らないと件数 0 になる
+
+返した名前の順がページ順です。
+
+---
+
+### `read_entry(file_path, index)`
+
+**引数**
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| `file_path` | `str` | 実ファイルのパス |
+| `index` | `int` | `list_entries` の 0 始まりインデックス |
+
+**戻り値:** `name` と `data` を持つオブジェクト。
+
+| 属性 | 型 | 説明 |
+| --- | --- | --- |
+| `name` | `str` | エントリ名。仮想パスのファイル名になる |
+| `data` | `bytes` | PNG / JPEG など、PIL が開ける画像バイト |
+
+描画・ズーム・見開きはホストが行います。プラグインはバイトを返すだけです。
+
+```python
+class _Entry:
+    def __init__(self, name, data):
+        self.name = name
+        self.data = data
+```
+
+**例外:** ホストは捕捉してログし、その画像を失敗扱いにする。パスワードキャンセルも例外でよい。
+
+---
+
+### 呼び出しタイミング
+
+| 操作 | 呼ばれるメソッド |
+| --- | --- |
+| プラグイン読み込み | `supported_formats` |
+| 画像ファイルを開く | `read_entry(path, 0)` |
+| アーカイブを開く | `list_entries` → 仮想パスを作る |
+| ページ表示／プリフェッチ | `list_entries` のあと `read_entry(path, index)` |
+
+`read_entry` はワーカースレッドから呼ばれることがあります。UI が必要な処理はホスト API（`ask_password` など）を使ってください。ホスト側で UI スレッドに渡します。
+
+---
+
+## 6. ホスト API
+
+`ez_co` は import できません。入口はコンストラクタ引数です。
+
+| 引数 | 例 |
+| --- | --- |
+| `get_text` | `self.get_text("plugin.watermark")` |
+| `host` | `self.host.ask_password(...)` |
+| `root` | `self.root.read_bytes("resources/icon.png")` |
+
+同じ名前はモジュールの組み込みとしても渡します。モジュール先頭の関数から `get_text(...)` や `host.ask_password(...)` と書けます。`root` や組み込みから別経路を探さないでください。
+
+---
+
+### `get_text`
+
+```text
+get_text(key: str, **kwargs) -> str
+```
+
+プラグインまたは本体の文言を返す。
+
+**引数**
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| `key` | `str` | ドット区切りキー。例: `plugin.watermark` |
+| `**kwargs` | | `str.format(**kwargs)` に渡す |
+
+**戻り値:** 見つかった文字列。無ければ本体の `get_text` に委譲。本体にも無ければキー自身など本体の既定。
+
+**探索順**
+
+1. プラグイン `langs/{現在言語}.json`
+2. プラグイン `langs/ja.json` または `en.json`（フォールバック）
+3. プラグイン `src/langs/{言語}.json`（互換）
+4. 本体の言語ファイル
+
+同じキーはプラグインが勝ちます。言語は本体の現在言語です。
+
+---
+
+### `root`（`ZipPluginRoot`）
+
+プラグイン ZIP 内リソースへの入口。
+
+#### 属性
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| `zip_path` | `Path` | 読み込んだプラグイン ZIP のパス |
+| `get_text` | `callable` | コンストラクタの `get_text` と同じ |
+| `host` | `PluginHost` | コンストラクタの `host` と同じ |
+
+#### `root.read_bytes(relative_path)`
+
+```text
+read_bytes(relative_path: str) -> bytes
+```
+
+ZIP 内の相対パスを読む。`\\` は `/` に直し、先頭 `/` は除く。
+
+**例外:** エントリが無ければ `KeyError`。
+
+#### `root.exists(relative_path)`
+
+```text
+exists(relative_path: str) -> bool
+```
+
+ZIP 内にその相対パスがあるか。
+
+`test/` はホストが自動では使いません。自分で `read_bytes("test/foo.bin")` すれば読めます。
+
+---
+
+### `ask_password`
+
+```text
+ask_password(file_path: str, mismatch: bool = False, verify=None) -> str | None
+```
+
+本体のアーカイブパスワードダイアログを出す。セッションキャッシュと履歴（Windows DPAPI）も見る。
+
+**引数**
+
+| 名前 | 型 | 既定 | 説明 |
+| --- | --- | --- | --- |
+| `file_path` | `str` | | 対象ファイル。キャッシュ／履歴のキー |
+| `mismatch` | `bool` | `False` | 初回から「一致しません」を出すか。履歴不一致時はホストが True にする |
+| `verify` | `callable` or `None` | `None` | `verify(password: str) -> bool`。False なら再入力 |
+
+**戻り値**
+
+| 値 | 意味 |
+| --- | --- |
+| `str` | 確定したパスワード。空文字もあり得る |
+| `None` | キャンセル、または閉じる／X でアプリ終了 |
+
+**処理順**
+
+1. セッションにパスワードがあれば `verify`（無ければ成功）
+2. 履歴の保存パスワードがあれば同様。失敗なら `mismatch=True` でダイアログ
+3. ダイアログ。成功したらセッションに保存
+4. 閉じる／X → アプリ終了、`None`
+
+ワーカーから呼んでも UI スレッドで実行されます。`verify` も UI スレッドで走ります。重い処理は避けてください。
+
+```python
+password = ask_password(file_path, verify=lambda pwd: _can_open(file_path, pwd))
+if password is None:
+    raise RuntimeError("password cancelled")
+```
+
+---
+
+### `show_dialog`
+
+```text
+show_dialog(name: str, **kwargs) -> Any
+```
+
+名前でホストのダイアログを選ぶ口。今ある実装はパスワードのみ。
+
+**引数**
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| `name` | `str` | ダイアログ名。大小無視 |
+| `file_path` / `path` | `str` | パスワード対象 |
+| `mismatch` | `bool` | `ask_password` と同じ |
+| `verify` | `callable` | `ask_password` と同じ |
+
+**`name`**
+
+| 値 | 動作 |
+| --- | --- |
+| `password` | `ask_password` |
+| `archive_password` | 同上 |
+| `ask_password` | 同上 |
+| それ以外 | 警告ログ、`None` |
+
+```python
+password = show_dialog("password", file_path=file_path, verify=fn)
+```
+
+---
+
+### `run_action`
+
+```text
+run_action(action_id: str, **kwargs) -> bool
+```
+
+本体アクションを呼ぶ将来用の口。
+
+**引数**
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| `action_id` | `str` | 将来 `Actions` の値（例: `next_page`） |
+| `**kwargs` | | 未使用 |
+
+**戻り値:** 成功なら `True`。現状は未配線のため常に `False`。
+
+---
+
+### `host`（`PluginHost`）
+
+`ask_password` / `show_dialog` / `run_action` を持つオブジェクト。コンストラクタの第 3 引数です。プラグインから `bind` を呼ぶ必要はありません。ホストがウィンドウ初期化時に親ウィジェットと DB を結びます。
+
+```python
+password = self.host.ask_password(file_path, verify=fn)
+```
+
+---
+
+## 7. 多言語 `get_text`
+
+`langs/ja.json` / `langs/en.json` は入れ子オブジェクトです。キーはドットで辿ります。
+
+```json
+{
+  "plugin": {
+    "watermark": "プラグイン読み込み表示"
+  }
+}
+```
+
+```python
+label = get_text("plugin.watermark")
+# プレースホルダ
+# langs: { "plugin.count": "{n} 件" }
+get_text("plugin.count", n=3)
+```
+
+`\\n` は改行に展開されます。本体と同じキーを置けば、プラグイン文言が本体より優先されます。
+
+---
+
+## 8. 暗号化アーカイブ
+
+プラグイン担当の拡張子では、ホストの `_ensure_archive_unlocked` は走りません。パスワードが必要ならプラグインが `ask_password` してください。
+
+推奨:
+
+1. 暗号化されていなければダイアログを出さない
+2. `verify` で実際に 1 エントリ読めるか試す
+3. 成功パスワードをパス単位でキャッシュする
+4. ZIP は `pyzipper.AESZipFile` を使う（ZipCrypto と WinZip AES の両方）
+
+本体のビルドイン ZIP も `pyzipper.AESZipFile` です。標準 `zipfile` は AES（compress=99）を解けません。
+
+閉じる／X はアプリ終了です。プラグインは `None` を受けて展開を打ち切ります。
+
+---
+
+## 9. 設定キー
+
+プロファイル設定（`profile_settings`）に保存されます。
+
+```yaml
+plugins:
+  extension_handlers:
+    .zip: com.ezco.example.zip(ver:1.1.0)
+    .png: builtin
+    .7z: none
+  dialog:
+    plugin_table:
+      order: [name, id, version, extensions, status]
+      widths: {name: 180, id: 220, version: 80, extensions: 90, status: 110}
+    ext_table:
+      order: [extension, kind, handler]
+      widths: {extension: 100, kind: 110, handler: 280}
+```
+
+| キー | 型 | 説明 |
+| --- | --- | --- |
+| `plugins.extension_handlers` | `object` | 拡張子 → `"builtin"`、`id(ver:version)`、または `"none"`（読み込まない）。旧形式も読む |
+| `plugins.dialog` | `object` | ファイル設定ダイアログの列順と幅。OK / キャンセルどちらでも保存する |
+
+UI は「ファイル設定」ダイアログです。読み込み方式に「読み込まない」があり、旧アーカイブ設定の代替です。読み込み済み一覧の初期列順は「名前 / ID / バージョン / 対応拡張子 / 状態」で、ID に `(ver:)` は付けません。ヘッダーのドラッグで列幅と列順を変えられ、はみ出した分は横スクロールします。
+
+---
+
+## 10. サンプル
+
+| パス | 内容 |
+| --- | --- |
+| `plugins/example_png/` と `.zip` | `.png` を `image` として読む。色重ねは確認用 |
+| `plugins/example_zip/` と `.zip` | `.zip` を `archive` として読む。パスワードダイアログの呼び方も含む |
+
+ソースの `loader.py` 先頭にホスト契約のコメントがあります。確認するときはファイル設定で当該拡張子の読み込み方式をサンプル側にして OK してください。開いているファイルはすぐ再読み込みされます。新規に ZIP を置いた直後だけ再起動してください。
+
+色と「プラグイン読み込み表示」はサンプル固有です。本番では画像バイトをそのまま返してください。
+
+---
+
+## 11. トラブルシューティング
+
+| 症状 | 確認 |
+| --- | --- |
+| 一覧に出ない | `plugins/` 直下の `.zip` か。ZIP 内が `manifest.json` 始まりか。`api_version` が `1` か |
+| ビルドインのまま開く | ファイル設定の読み込み方式。OK したか。新規 ZIP なら再起動したか |
+| `ImportError: ez_co` | プラグインから `ez_co` を import している |
+| パスワードが一致しない | AES なのに標準 `zipfile` を使っていないか。`verify` の例外をログで見る |
+| ダイアログが出ない | `list_entries` より前に暗号化判定して `self.host.ask_password` しているか |
+| 件数 0 | 画像拡張子フィルタ、パスワード未解除、エントリがディレクトリだけ |
+| 文言がキーのまま | `langs/ja.json` の入れ子と `get_text` のキーが一致しているか |
+
+開発時は設定のデバッグモードを有効にすると、掃引・読み込み失敗・パスワード検証がログに出ます。

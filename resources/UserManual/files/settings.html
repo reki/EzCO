@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>設定 - EzCo ユーザーマニュアル</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/settings.css">
+</head>
+<body>
+    <div class="container">
+        <!-- ヘッダー -->
+        <header class="header">
+            <div class="header-content">
+                <h1><img src="../files/icon_32x32.png" alt="EzCo" class="logo-icon"> EzCo ユーザーマニュアル</h1>
+                <div class="language-switch">
+                    <a href="../Manual(JP).html">日本語</a>
+                    <a href="../Manual(EN).html">English</a>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="searchBox" placeholder="検索..." />
+                    <button id="searchBtn">🔍</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <main class="content">
+                <div class="content-wrapper">
+                    <div class="breadcrumb">
+                        <a href="../Manual(JP).html">ホーム</a> > 設定
+                    </div>
+
+                    <h1>⚙️ 設定</h1>
+                    <p>EzCoの設定はSQLiteデータベース（<code>config.db</code>）に、<strong>プロファイル単位</strong>で保存されます。設定ダイアログからの変更は現在のプロファイルに反映されます。このページでは各項目の意味と内部キー名を説明します。YAML例はエクスポート形式の参考です。</p>
+
+                    <div class="warning-box">
+                        <h3>⚠️ 重要な注意</h3>
+                        <ul>
+                            <li>通常は設定ダイアログから変更してください。変更は現在のプロファイルに保存されます</li>
+                            <li>YAMLを直接扱う場合は、エクスポートしたファイルを編集してインポートしてください。インポートは現在のプロファイルを上書きします</li>
+                            <li>YAML形式ではインデント（字下げ）が重要です。スペースを使用し、タブは使わないでください</li>
+                            <li>旧バージョンの<code>config.yaml</code>が残っている場合、起動時に取り込み確認が表示されます</li>
+                        </ul>
+                    </div>
+
+                    <!-- ウィンドウ設定 -->
+                    <section id="window-settings" class="config-section">
+                        <h3>🪟 ウィンドウ設定 (window)</h3>
+                        <p>ウィンドウの表示に関する設定を行います。</p>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">幅</span>
+                                <span class="setting-key">window.width</span>
+                                <span class="setting-type">整数</span>
+                            </div>
+                            <p>ウィンドウの初期幅をピクセル単位で指定します。</p>
+                            <div class="setting-value">デフォルト: 800（推奨: 800～1920）</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">高さ</span>
+                                <span class="setting-key">window.height</span>
+                                <span class="setting-type">整数</span>
+                            </div>
+                            <p>ウィンドウの初期高さをピクセル単位で指定します。</p>
+                            <div class="setting-value">デフォルト: 600（推奨: 600～1080）</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">自動リサイズ</span>
+                                <span class="setting-key">window.auto_resize</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>画像を読み込んだ時に、ウィンドウサイズを画像に合わせて自動調整します。</p>
+                            <div class="setting-value">デフォルト: false</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">常に手前表示</span>
+                                <span class="setting-key">window.always_on_top</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>ウィンドウを常に最前面に表示します。</p>
+                            <div class="setting-value">デフォルト: false</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">ウィンドウ状態保存</span>
+                                <span class="setting-key">window.save_window_state</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>ウィンドウのサイズ・位置・最大化（フルスクリーンではない）を終了時に保存し、次回起動時に復元します。ファイルを開いていなくても保存します。最大化中でも、元の通常サイズを別途覚えておきます。</p>
+                            <div class="setting-value">デフォルト: true</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">最大化状態</span>
+                                <span class="setting-key">window.maximized</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>終了時にウィンドウが最大化されていたかです。設定画面には出ず、自動保存されます。フルスクリーンとは別です。</p>
+                            <div class="setting-value">デフォルト: false</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">起動時は常に最大化</span>
+                                <span class="setting-key">window.maximize_on_startup</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>前回が通常サイズでも、起動時は常にウィンドウを最大化します。</p>
+                            <div class="setting-value">デフォルト: false</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">サイドバー状態</span>
+                                <span class="setting-key">window.dock_state</span>
+                                <span class="setting-type">文字列</span>
+                            </div>
+                            <p>開いていたサイドバー、左右の位置、幅を保存します。プロファイル単位で、次回起動時とプロファイル切替時に復元します。この項目は自動保存され、設定画面には出ません。</p>
+                        </div>
+
+                        <div class="yaml-example">
+window:
+  width: 1024              # ウィンドウの幅（ピクセル）
+  height: 768              # ウィンドウの高さ（ピクセル）
+  auto_resize: true        # 画像に合わせてウィンドウサイズを自動調整
+  always_on_top: false     # 常に最前面に表示
+  save_window_state: true  # ウィンドウ状態を保存・復元
+  maximized: false         # 終了時に最大化していたか（自動保存）
+  maximize_on_startup: false  # 起動時は常に最大化
+  min_width: 400           # 最小幅（ピクセル）
+  min_height: 300          # 最小高さ（ピクセル）
+  x: 100                   # 初期X座標
+  y: 100                   # 初期Y座標
+                        </div>
+                    </section>
+
+                    <!-- ビューア設定 -->
+                    <section id="viewer-settings" class="config-section">
+                        <h3>🖼️ ビューア設定 (viewer)</h3>
+                        <p>画像の表示に関する設定を行います。</p>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">背景色</span>
+                                <span class="setting-key">viewer.background_color</span>
+                                <span class="setting-type">文字列</span>
+                            </div>
+                            <p>ビューアの背景色を16進カラーコードで指定します。</p>
+                            <div class="setting-value">
+                                <span class="color-sample" style="background-color: #c0ffc0;"></span>
+                                デフォルト: "#c0ffc0" (薄緑色)
+                            </div>
+                            <div class="tip-box">
+                                <strong>色の例:</strong>
+                                <br><span class="color-sample" style="background-color: #000000;"></span> "#000000" (黒)
+                                <br><span class="color-sample" style="background-color: #ffffff;"></span> "#ffffff" (白)
+                                <br><span class="color-sample" style="background-color: #2b2b2b;"></span> "#2b2b2b" (ダークグレー)
+                                <br><span class="color-sample" style="background-color: #f0f0f0;"></span> "#f0f0f0" (ライトグレー)
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">ウィンドウに合わせる</span>
+                                <span class="setting-key">viewer.fit_to_window</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>画像をウィンドウサイズに合わせて自動的に拡大・縮小します。</p>
+                            <div class="setting-value">デフォルト: false</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">最小縮小率制限</span>
+                                <span class="setting-key">viewer.fit_to_window_minimum</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>最小縮小率を100%（等倍）までに制限します。</p>
+                            <div class="setting-value">デフォルト: true</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">ページ表示モード</span>
+                                <span class="setting-key">viewer.page_mode</span>
+                                <span class="setting-type">文字列</span>
+                            </div>
+                            <p>単ページまたは両開きの並びを指定します。メニューバーの<code>コミック</code>からも切り替えできます。</p>
+                            <div class="setting-value">デフォルト: "single"（<code>single</code> / <code>spread_right</code> / <code>spread_left</code>）</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">選択ページを軸</span>
+                                <span class="setting-key">viewer.spread_selected_as_axis</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>両開き時、スライダーで選んだページを見開きの先頭（N）にし、隣を N+1 にします。</p>
+                            <div class="setting-value">デフォルト: false</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">両開き／単ページ切替の優先</span>
+                                <span class="setting-key">viewer.spread_toggle_preference</span>
+                                <span class="setting-type">文字列</span>
+                            </div>
+                            <p>両開き切替アクションや単ページとの行き来で、どちらの見開きを使うかを決めます。</p>
+                            <div class="setting-value">デフォルト: "keep_previous"（<code>keep_previous</code> / <code>prefer_right</code> / <code>prefer_left</code>）</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">画像移動感度</span>
+                                <span class="setting-key">viewer.image_move_sensitivity</span>
+                                <span class="setting-type">小数</span>
+                            </div>
+                            <p>画像をドラッグで移動する際の感度を設定します（0.5～2.0）。</p>
+                            <div class="setting-value">デフォルト: 1.2</div>
+                        </div>
+
+                        <div class="yaml-example">
+viewer:
+  background_color: "#2b2b2b"         # ビューアの背景色（16進カラーコード）
+  fit_to_window: true                 # 画像をウィンドウサイズに自動調整
+  fit_to_window_minimum: true         # 最小縮小率を100%に制限
+  page_mode: "spread_right"           # single / spread_right / spread_left
+  spread_selected_as_axis: false      # スライダー選択ページを見開きの軸にする
+  spread_toggle_preference: "keep_previous"  # keep_previous / prefer_right / prefer_left
+  mouse_lock: false                   # マウスロック機能
+  mouse_lock_hide_cursor: true        # マウスロック時にカーソルを非表示
+  image_move_sensitivity: 1.5         # 画像移動感度（0.5～2.0）
+                        </div>
+                    </section>
+
+                    <!-- キャッシュ設定 -->
+                    <section id="cache-settings" class="config-section">
+                        <h3>💾 キャッシュ設定 (cache)</h3>
+                        <p>画像のキャッシュとプリフェッチに関する設定を行います。これらの設定により、ページめくりの応答性を大幅に改善できます。</p>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">メモリキャッシュサイズ</span>
+                                <span class="setting-key">cache.memory_limit</span>
+                                <span class="setting-type">文字列</span>
+                            </div>
+                            <p>読み込んだ画像をメモリに保持するキャッシュのサイズを文字列形式で指定します。大きく設定するほど、より多くの画像をメモリに保持でき、ページめくりが高速になります。</p>
+                            <div class="setting-value">デフォルト: "256MB"（推奨: "128MB"～"8GB"）</div>
+                            <div class="tip-box">
+                                <strong>設定例:</strong>
+                                <br>• <strong>低スペックPC:</strong> "128MB"～"256MB"
+                                <br>• <strong>標準PC:</strong> "512MB"～"1GB"
+                                <br>• <strong>高スペックPC:</strong> "2GB"～"8GB"
+                                <br>• <strong>数値形式:</strong> "1.5GB", "2.5GB"なども可能
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">プリフェッチページ数</span>
+                                <span class="setting-key">cache.prefetch_pages</span>
+                                <span class="setting-type">整数</span>
+                            </div>
+                            <p>現在のページから前後何ページ分を先読みしてキャッシュするかを設定します。大きく設定するほど、より多くのページが事前に読み込まれ、スムーズなページめくりが可能になります。</p>
+                            <div class="setting-value">デフォルト: 15（推奨: 5～30、範囲: 1～50）</div>
+                            <div class="tip-box">
+                                <strong>最適化のポイント:</strong>
+                                <br>• <strong>高速SSD環境:</strong> 10～15ページ（読み込み速度が速いため）
+                                <br>• <strong>HDD環境:</strong> 20～30ページ（読み込み速度が遅いため多めに設定）
+                                <br>• <strong>大容量ファイル:</strong> 5～10ページ（メモリ使用量を抑制）
+                                <br>• <strong>小容量ファイル:</strong> 25～50ページ（より多くのページを先読み）
+                            </div>
+                        </div>
+
+                        <div class="info-box">
+                            <h4>💡 キャッシュの動作仕様</h4>
+                            <ul>
+                                <li><strong>距離ベース削除:</strong> メモリ上限に達すると、現在のページから最も遠いページから削除</li>
+                                <li><strong>プリフェッチ優先度:</strong> 現在のページ → 次のページ → 前のページ → 前後2-3ページの順</li>
+                                <li><strong>バックグラウンド処理:</strong> 別スレッドで実行されるため、メイン表示に影響なし</li>
+                                <li><strong>適応制御:</strong> ファイルハンドル非保持モード時は一部制限される場合あり</li>
+                            </ul>
+                        </div>
+
+                        <div class="yaml-example">
+cache:
+  memory_limit: "512MB"   # キャッシュメモリサイズ（文字列形式）
+  prefetch_pages: 15      # 事前読み込みページ数（1～50）
+                        </div>
+                    </section>
+
+                    <!-- 履歴設定 -->
+                    <section id="history-settings" class="config-section">
+                        <h3>📚 履歴設定 (history)</h3>
+                        <p>ファイル閲覧履歴に関する設定を行います。</p>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">最大保存数</span>
+                                <span class="setting-key">history.max_count</span>
+                                <span class="setting-type">整数</span>
+                            </div>
+                            <p>履歴として保存する項目の最大数を指定します（1～99）。</p>
+                            <div class="setting-value">デフォルト: 20（範囲: 1～99）</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">ページ復元</span>
+                                <span class="setting-key">history.restore_page_on_reopen</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>同じファイルやフォルダを再度開く際に、履歴に保存された最後のページを自動的に復元します。</p>
+                            <div class="setting-value">デフォルト: false</div>
+                            <div class="tip-box">
+                                <strong>💡 機能説明:</strong>
+                                <br>• 以前開いたファイルのページ位置を記憶
+                                <br>• フォルダやアーカイブファイルにも対応
+                                <br>• 無効の場合は常に1ページ目から開始
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">起動時復元</span>
+                                <span class="setting-key">history.open_last_file_on_startup</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>アプリケーション起動時にコマンドライン引数でファイルが指定されていない場合、自動的に最後に開いたファイルを開きます。</p>
+                            <div class="setting-value">デフォルト: false</div>
+                            <div class="tip-box">
+                                <strong>💡 機能説明:</strong>
+                                <br>• 前回終了時に開いていたファイルを自動で再開
+                                <br>• コマンドライン引数でファイルが指定された場合は無効
+                                <br>• 履歴が空の場合は何も開かない
+                            </div>
+                        </div>
+
+                        <div class="yaml-example">
+history:
+  max_count: 50                     # 履歴の最大保存数（1～99）
+  restore_page_on_reopen: true      # 同じファイルを開く際にページを復元
+  open_last_file_on_startup: true   # 起動時に最後に開いたファイルを開く
+                        </div>
+                    </section>
+
+                    <!-- 言語設定 -->
+                    <section id="language-settings" class="config-section">
+                        <h3>🌐 言語設定 (language)</h3>
+                        <p>表示言語に関する設定を行います。</p>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">言語コード</span>
+                                <span class="setting-key">language.code</span>
+                                <span class="setting-type">文字列</span>
+                            </div>
+                            <p>表示言語を指定します。</p>
+                            <div class="setting-value">
+                                デフォルト: "system"
+                                <br>指定可能な値: "system", "ja", "en"
+                            </div>
+                            <div class="tip-box">
+                                <strong>言語コードの説明:</strong>
+                                <br>• "system": OSの言語設定に従う
+                                <br>• "ja": 日本語
+                                <br>• "en": 英語
+                                <br>• カスタム言語: <code>langs/</code>フォルダに独自言語ファイルを追加可能
+                            </div>
+                        </div>
+
+                        <div class="yaml-example">
+language:
+  code: "ja"    # 表示言語（"system", "ja", "en", または外部言語ファイル名）
+                        </div>
+                    </section>
+
+                    <!-- デバッグ設定 -->
+                    <section id="debug-settings" class="config-section">
+                        <h3>🐛 デバッグ設定 (debug)</h3>
+                        <p>デバッグ機能とファイルハンドル管理に関する設定を行います。</p>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">デバッグモード</span>
+                                <span class="setting-key">debug.enabled</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>デバッグモードを有効にすると、次回起動時に<code>logs</code>フォルダにログファイルが作成されます。</p>
+                            <div class="setting-value">デフォルト: false</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">ファイル／フォルダハンドルを保持</span>
+                                <span class="setting-key">debug.keep_archive_handles</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>アーカイブファイルやフォルダを開く際のファイルハンドル管理方法を設定します。この設定により、ファイルロックの発生を制御できます。</p>
+                            <div class="setting-value">デフォルト: false（推奨: 無効）</div>
+                            <div class="tip-box">
+                                <strong>⚠️ 重要な注意:</strong>
+                                <br>• <strong>無効（推奨）:</strong> ファイルロックが発生せず、フォルダやファイルの移動・削除が可能
+                                <br>• <strong>有効:</strong> 高速なファイルアクセスだが、ファイルロックが発生し移動・削除不可
+                                <br>• <strong>対象形式:</strong> ZIP、TAR、圧縮ファイル、フォルダスキャン
+                                <br>• <strong>非対象:</strong> 7Z、RAR（専用ライブラリのため常に適切な管理）
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">ファイルメタデータキャッシュ</span>
+                                <span class="setting-key">debug.cache_archive_metadata</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>アーカイブファイルの構造情報をメモリにキャッシュして高速化します。（将来の機能拡張用）</p>
+                            <div class="setting-value">デフォルト: true</div>
+                        </div>
+
+                        <div class="warning-box">
+                            <h3>🔧 ファイルハンドル管理の使い分け</h3>
+                            <ul>
+                                <li><strong>コミック整理作業中:</strong> keep_archive_handles: false（ファイル移動・リネーム・削除を頻繁に行うため）</li>
+                                <li><strong>読書専用環境:</strong> keep_archive_handles: true（ファイル操作は行わず、読み込み速度を最優先）</li>
+                                <li><strong>ネットワークドライブ使用:</strong> keep_archive_handles: true（ネットワーク遅延を最小化）</li>
+                            </ul>
+                        </div>
+
+                        <div class="yaml-example">
+debug:
+  enabled: true                      # デバッグログを有効にする
+  keep_archive_handles: false       # ファイルハンドル保持（推奨: false）
+  cache_archive_metadata: true      # アーカイブメタデータキャッシュ
+                        </div>
+                    </section>
+
+                    <!-- アーカイブ設定 -->
+                    <section id="archive-settings" class="config-section">
+                        <h3>📦 アーカイブ設定 (archive)</h3>
+                        <p>互換用の内部キーです。画面からの操作はメニューの「ファイル設定」で、拡張子の読み込み方式を「読み込まない」にします。ファイル設定を保存すると、こちらのキーも同期されます。</p>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">アーカイブサポート</span>
+                                <span class="setting-key">archive.enabled</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>アーカイブファイル全体のサポートを有効/無効にします。無効にすると個別設定は無視されます。</p>
+                            <div class="setting-value">デフォルト: true</div>
+                        </div>
+
+                        <div class="info-box">
+                            <h4>📋 対応アーカイブ形式</h4>
+                            <p>以下の各形式について、個別に有効/無効を設定できます：</p>
+                            <ul>
+                                <li><strong>ZIP</strong> (.zip) - 最も一般的な圧縮形式 (設定キー: <code>zip</code>)</li>
+                                <li><strong>7-Zip</strong> (.7z) - 高圧縮率の形式 (設定キー: <code>7z</code>)</li>
+                                <li><strong>RAR</strong> (.rar) - WinRAR形式 (設定キー: <code>rar</code>)</li>
+                                <li><strong>TAR</strong> (.tar) - Unix系の書庫形式 (設定キー: <code>tar</code>)</li>
+                                <li><strong>TAR.GZ</strong> (.tar.gz, .tgz) - 設定キー: <code>tar_gz</code></li>
+                                <li><strong>TAR.BZ2</strong> (.tar.bz2, .tbz2) - 設定キー: <code>tar_bz2</code></li>
+                                <li><strong>TAR.XZ</strong> (.tar.xz, .txz) - 設定キー: <code>tar_xz</code></li>
+                                <li><strong>CBZ/CBR</strong> (.cbz, .cbr) - コミック専用形式 (設定キー: <code>cbz</code>, <code>cbr</code>)</li>
+                                <li><strong>PDF</strong> (.pdf) - ページをそのまま表示。描画できない場合は埋め込み画像 (設定キー: <code>pdf</code>)。パスワード付きPDFは入力ダイアログで解除し、履歴に暗号化して保存します</li>
+                                <li><strong>GZ/BZ2/XZ</strong> (.gz, .bz2, .xz) - 単一ファイル圧縮 (設定キー: <code>gz</code>, <code>bz2</code>, <code>xz</code>)</li>
+                            </ul>
+                        </div>
+
+                        <div class="yaml-example">
+archive:
+  enabled: true    # アーカイブサポート全体の有効/無効
+  zip: true        # ZIP形式（.zip）
+  7z: true         # 7-Zip形式（.7z）
+  rar: true        # RAR形式（.rar）
+  tar: true        # TAR形式（.tar）
+  tar_gz: true     # TAR.GZ形式（.tar.gz, .tgz）
+  tar_bz2: true    # TAR.BZ2形式（.tar.bz2, .tbz2）
+  tar_xz: true     # TAR.XZ形式（.tar.xz, .txz）
+  gz: false        # GZ形式（通常は画像圧縮に使わない）
+  bz2: false       # BZ2形式（通常は画像圧縮に使わない）
+  xz: false        # XZ形式（通常は画像圧縮に使わない）
+  cbz: true        # コミックブック ZIP（.cbz）
+  cbr: true        # コミックブック RAR（.cbr）
+  pdf: true        # PDF（.pdf）
+                        </div>
+                    </section>
+
+                    <!-- UIフォント設定 -->
+                    <section id="font-settings" class="config-section">
+                        <h3>🔤 UIフォント設定 (ui_font)</h3>
+                        <p>アプリケーションのUI要素に使用するフォントを設定します。</p>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">フォントファミリ</span>
+                                <span class="setting-key">ui_font.font_family</span>
+                                <span class="setting-type">文字列</span>
+                            </div>
+                            <p>UIで使用するフォント名を指定します。システムにインストールされているフォントを使用してください。</p>
+                            <div class="setting-value">
+                                デフォルト: システム依存
+                                <br>日本語候補: "メイリオ", "游ゴシック", "ＭＳ ゴシック"
+                                <br>英語候補: "Segoe UI", "Arial", "Tahoma"
+                            </div>
+                            <div class="tip-box">
+                                <strong>💡 フォント追加方法:</strong>
+                                <br>• <code>font/</code>フォルダにTTFファイルを配置
+                                <br>• システムフォントとカスタムフォントの両方が利用可能
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">フォントサイズ</span>
+                                <span class="setting-key">ui_font.font_size</span>
+                                <span class="setting-type">整数</span>
+                            </div>
+                            <p>UIフォントのサイズをポイント単位で指定します。</p>
+                            <div class="setting-value">デフォルト: 10 (推奨範囲: 8～16)</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">文字色</span>
+                                <span class="setting-key">ui_font.font_color</span>
+                                <span class="setting-type">文字列</span>
+                            </div>
+                            <p>UI文字の色を16進カラーコードで指定します。</p>
+                            <div class="setting-value">
+                                <span class="color-sample" style="background-color: #00008d;"></span>
+                                デフォルト: "#00008d" (濃い青)
+                            </div>
+                            <div class="tip-box">
+                                <strong>文字色の例:</strong>
+                                <br><span class="color-sample" style="background-color: #000000;"></span> "#000000" (黒)
+                                <br><span class="color-sample" style="background-color: #333333;"></span> "#333333" (ダークグレー)
+                                <br><span class="color-sample" style="background-color: #ffffff; border: 1px solid #ccc;"></span> "#ffffff" (白)
+                                <br><span class="color-sample" style="background-color: #0066cc;"></span> "#0066cc" (青)
+                                <br><span class="color-sample" style="background-color: #008000;"></span> "#008000" (緑)
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">背景色</span>
+                                <span class="setting-key">ui_font.bg_color</span>
+                                <span class="setting-type">文字列</span>
+                            </div>
+                            <p>UI要素の背景色を16進カラーコードで指定します。</p>
+                            <div class="setting-value">
+                                <span class="color-sample" style="background-color: #ffffff;"></span>
+                                デフォルト: "#ffffff" (白)
+                            </div>
+                            <div class="tip-box">
+                                <strong>背景色の例:</strong>
+                                <br><span class="color-sample" style="background-color: #ffffff;"></span> "#ffffff" (白)
+                                <br><span class="color-sample" style="background-color: #f0f0f0;"></span> "#f0f0f0" (薄いグレー)
+                                <br><span class="color-sample" style="background-color: #2b2b2b;"></span> "#2b2b2b" (ダークグレー)
+                                <br><span class="color-sample" style="background-color: #000000;"></span> "#000000" (黒)
+                                <br><span class="color-sample" style="background-color: #fffacd;"></span> "#fffacd" (薄い黄色)
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">透明度</span>
+                                <span class="setting-key">ui_font.alpha</span>
+                                <span class="setting-type">整数</span>
+                            </div>
+                            <p>UI要素の透明度を0（完全透明）～255（完全不透明）で指定します。</p>
+                            <div class="setting-value">デフォルト: 150 (約60%の不透明度)</div>
+                        </div>
+
+                        <div class="yaml-example">
+ui_font:
+  font_family: "メイリオ"      # UIフォント名（システム or fontフォルダ）
+  font_size: 12               # フォントサイズ（ポイント）
+  font_color: "#000000"       # 文字色（16進カラーコード）
+  bg_color: "#ffffff"         # 背景色（16進カラーコード）
+  alpha: 200                  # 透明度（0～255）
+                        </div>
+                    </section>
+
+                    <!-- 画像一覧設定 -->
+                    <section id="imagelist-settings" class="config-section">
+                        <h3>🖼️ 画像一覧設定 (image_list)</h3>
+                        <p>画像一覧ダイアログの動作を設定します。</p>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">選択後に閉じる</span>
+                                <span class="setting-key">image_list.close_after_select</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>画像を選択した後に自動的にダイアログを閉じるかどうかを設定します。</p>
+                            <div class="setting-value">デフォルト: true</div>
+                        </div>
+
+                        <div class="yaml-example">
+image_list:
+  close_after_select: false    # 選択後にダイアログを閉じる（true）/開いたまま（false）
+                        </div>
+                    </section>
+
+                    <section id="tab-settings" class="config-section">
+                        <h3>🗂️ タブ設定 (viewer.drop_opens_new_tab)</h3>
+                        <p>ファイルをドロップしたときの開き先です。メニューの「ファイルを開く」は今のタブ、「新しいタブでファイルを開く」は新規タブです。履歴とブックマークはクリック＝今のタブ、Ctrl+クリックまたは中央クリック＝新しいタブ、右クリックでも選べます。タブバーの中央クリックはそのタブを閉じます。</p>
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">ファイルのドロップ先</span>
+                                <span class="setting-key">viewer.drop_opens_new_tab</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>false なら既存タブ、true なら新しいタブ。複数パスの残りは常に新規タブです。最後のタブを閉じるとウィンドウも閉じます。</p>
+                            <div class="setting-value">デフォルト: false</div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">フルスクリーン時にタブを表示</span>
+                                <span class="setting-key">viewer.show_tabs_in_fullscreen</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>表示メニューのチェックで切り替えます。false ならフルスクリーン中はタブバーを隠します。タブが 1 枚だけのときは、通常時もタブバーは出ません。</p>
+                            <div class="setting-value">デフォルト: false</div>
+                        </div>
+                        <p>タブバーの幅は固定です。長い名前は省略し、マウスを乗せると全文が出ます。ショートカット設定にあるキーボード割り当ては、対応するメニュー項目の右側に表示されます。</p>
+                    </section>
+
+                    <!-- ファイル設定 -->
+                    <section id="plugin-settings" class="config-section">
+                        <h3>🔌 ファイル設定 (plugins)</h3>
+                        <p>メニューの「ファイル設定」で、拡張子ごとの読み込み方式と、読み込み済みプラグインの一覧を扱います。設定は現在のプロファイルに保存されます。旧アーカイブ設定の代替として、読み込み方式に「読み込まない」があります。読み込み済みプラグインの拡張子は、「ファイルを開く」ダイアログの「対応しているファイル」と「プラグイン形式」に入り、フォルダを開いたときのスキャン対象にも含まれます。</p>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">拡張子ごとの読み込み方式</span>
+                                <span class="setting-key">plugins.extension_handlers</span>
+                                <span class="setting-type">オブジェクト</span>
+                            </div>
+                            <p>拡張子から <code>builtin</code>、<code>id(ver:version)</code>、または <code>none</code>（読み込まない）への対応です。OK すると開いているファイルを再読み込みします。ページ数が足りなければ末尾のページに寄せます。</p>
+                            <div class="setting-value">デフォルト: 空（ビルドインが知っている拡張子はビルドイン優先）</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">ダイアログの列レイアウト</span>
+                                <span class="setting-key">plugins.dialog</span>
+                                <span class="setting-type">オブジェクト</span>
+                            </div>
+                            <p>一覧の列幅と列順です。ヘッダーをドラッグして変更できます。はみ出した分は横スクロールします。OK / キャンセルどちらでも保存します。ID 列はバージョンなしのプラグイン ID です。</p>
+                        </div>
+
+                        <div class="yaml-example">
+plugins:
+  extension_handlers:
+    .zip: com.ezco.example.zip(ver:1.1.0)
+    .png: builtin
+    .7z: none
+  dialog:
+    plugin_table:
+      order: [name, id, version, extensions, status]
+                        </div>
+                    </section>
+
+                    <!-- プロファイル設定 -->
+                    <section id="profile-settings" class="config-section">
+                        <h3>👤 プロファイル</h3>
+                        <p>プロファイルごとに設定・ブックマーク・履歴が分かれます。現行プロファイルは<code>config.db</code>の<code>app_state.current_profile</code>に保存されます。</p>
+
+                        <div class="info-box">
+                            <h4>📋 プロファイルの概念</h4>
+                            <ul>
+                                <li><strong>独立データ:</strong> 各プロファイルは独自の設定・ブックマーク・履歴を持ちます</li>
+                                <li><strong>用途分け:</strong> 仕事用、プライベート用、研究用など目的別に管理</li>
+                                <li><strong>メニュー操作:</strong> メニューバーの<code>プロファイル</code>から追加・管理（改名・削除）・選択</li>
+                                <li><strong>追加時は現在の設定をコピー:</strong> 表示・ショートカット・プラグイン優先度など。履歴とブックマークはコピーせず空です</li>
+                                <li><strong>既定は削除不可:</strong> 初回作成される既定プロファイルは削除できません</li>
+                            </ul>
+                        </div>
+
+                        <div class="warning-box">
+                            <h3>⚠️ プロファイル使用時の注意点</h3>
+                            <ul>
+                                <li><strong>完全分離:</strong> 表示モード、背景、言語、ショートカット、プラグイン選択、ブックマーク、履歴はプロファイルごとに分かれます</li>
+                                <li><strong>削除注意:</strong> プロファイルを削除すると、その設定・ブックマーク・履歴は完全に削除されます</li>
+                                <li><strong>CLIはセッション限定:</strong> <code>--profile=名前</code> / <code>-p 名前</code>はその起動中だけ使います。前回の選択は書き換えません</li>
+                                <li><strong>存在しない名前:</strong> CLIで無いプロファイルを指定しても作成せず、前回のプロファイルを使います</li>
+                                <li><strong>エクスポート/インポート:</strong> 現在のプロファイルの設定をYAMLで書き出し／上書きします</li>
+                            </ul>
+                        </div>
+
+                        <h4>プロファイルの作成と切り替え方法</h4>
+
+                        <div class="method-grid">
+                            <div class="method-card">
+                                <h4>📋 メニューから</h4>
+                                <p><code>プロファイル</code> → 追加、管理、一覧から選択。追加すると今の設定をコピーします（履歴・ブックマークは空）。切替はすぐに反映されます。</p>
+                            </div>
+                            <div class="method-card">
+                                <h4>🚀 起動時指定</h4>
+                                <p><code>EzCo.exe --profile=プロファイル名</code>でそのセッションだけ指定できます。<strong>存在しない場合は作成せず、前回のプロファイルを使用します。</strong></p>
+                            </div>
+                            <div class="method-card">
+                                <h4>📥 旧YAMLの取り込み</h4>
+                                <p>残っている<code>config.yaml</code>は起動時の確認後、選んだプロファイルへ取り込めます。</p>
+                            </div>
+                        </div>
+
+                        <h4>プロファイル使用例</h4>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>用途</th>
+                                        <th>プロファイル名例</th>
+                                        <th>説明</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>仕事用</td>
+                                        <td>"仕事", "Work", "業務"</td>
+                                        <td>業務関連の資料やマニュアルの閲覧</td>
+                                    </tr>
+                                    <tr>
+                                        <td>趣味・娯楽</td>
+                                        <td>"プライベート", "漫画", "エンタメ"</td>
+                                        <td>個人的な画像や漫画の閲覧</td>
+                                    </tr>
+                                    <tr>
+                                        <td>学習・研究</td>
+                                        <td>"研究", "勉強", "参考資料"</td>
+                                        <td>学術資料や技術文書の閲覧</td>
+                                    </tr>
+                                    <tr>
+                                        <td>プロジェクト別</td>
+                                        <td>"プロジェクトA", "案件X"</td>
+                                        <td>特定プロジェクトの資料管理</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="tip-box">
+                            <strong>🎯 プロファイル活用のコツ:</strong>
+                            <br>• <strong>目的別分類:</strong> 仕事、プライベート、学習など明確に用途を分ける
+                            <br>• <strong>一時プロファイル:</strong> 特定の作業用に一時的なプロファイルを作成
+                            <br>• <strong>起動スクリプト:</strong> バッチファイルで既存プロファイルを指定して起動を自動化
+                            <br>• <strong>定期整理:</strong> 不要になったプロファイルは定期的に削除して管理
+                        </div>
+                    </section>
+
+                    <div class="pagination">
+                        <a href="../Manual(JP).html" class="page-link">← ホーム</a>
+                        <a href="settings-shortcuts.html" class="page-link">ショートカット設定 →</a>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/search.js"></script>
+</body>
+</html>

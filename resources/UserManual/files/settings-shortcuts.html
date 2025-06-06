@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ショートカット設定 - EzCo ユーザーマニュアル</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/settings.css">
+</head>
+<body>
+    <div class="container">
+        <!-- ヘッダー -->
+        <header class="header">
+            <div class="header-content">
+                <h1><img src="../files/icon_32x32.png" alt="EzCo" class="logo-icon"> EzCo ユーザーマニュアル</h1>
+                <div class="language-switch">
+                    <a href="../Manual(JP).html">日本語</a>
+                    <a href="../Manual(EN).html">English</a>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="searchBox" placeholder="検索..." />
+                    <button id="searchBtn">🔍</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <main class="content">
+                <div class="content-wrapper">
+                    <div class="breadcrumb">
+                        <a href="../Manual(JP).html">ホーム</a> > <a href="settings.html">設定</a> > ショートカット設定
+                    </div>
+
+                    <h1>⌨️ ショートカット設定</h1>
+                    <p>ショートカットとジェスチャーの詳細設定</p>
+
+                    <!-- ショートカット設定 -->
+                    <section id="shortcuts" class="config-section">
+                        <h3>⌨️ ショートカット設定 (shortcuts)</h3>
+                        <p>キーボードキーとマウスボタンによるショートカットを設定します。</p>
+
+                        <div class="warning-box">
+                            <h4>⚠️ ショートカット設定の注意点</h4>
+                            <ul>
+                                <li>各アクションには複数のショートカットを配列で設定できます</li>
+                                <li>修飾キー（Ctrl、Alt、Shift）は「+」で連結します</li>
+                                <li>マウスボタンとキーボードキーを混在させることができます</li>
+                                <li>デフォルト割り当ては、プロファイルが無い初回起動（または新規プロファイル作成）のときだけ入ります。消した割り当ては再起動しても戻りません</li>
+                                <li>設定変更後は、EzCoを再起動する必要があります</li>
+                            </ul>
+                        </div>
+
+                        <div class="info-box">
+                            <h4>📋 アクション一覧</h4>
+                            <p>以下のアクションに対してショートカットを設定できます：</p>
+                        </div>
+
+                        <div class="action-grid">
+                            <div class="action-item">
+                                <div class="action-name">次のページ</div>
+                                <div class="action-key">shortcuts.next_page</div>
+                                <div class="action-shortcuts">デフォルト: 左クリック、右矢印、スペース</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">前のページ</div>
+                                <div class="action-key">shortcuts.prev_page</div>
+                                <div class="action-shortcuts">デフォルト: 右クリック、V、左矢印</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">次のファイル</div>
+                                <div class="action-key">shortcuts.next_file</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+右矢印</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">前のファイル</div>
+                                <div class="action-key">shortcuts.prev_file</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+左矢印</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">次のコミック</div>
+                                <div class="action-key">shortcuts.next_comic</div>
+                                <div class="action-shortcuts">デフォルト: W</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">前のコミック</div>
+                                <div class="action-key">shortcuts.prev_comic</div>
+                                <div class="action-shortcuts">デフォルト: Q</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">拡大</div>
+                                <div class="action-key">shortcuts.zoom_in</div>
+                                <div class="action-shortcuts">デフォルト: マウスホイール下</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">縮小</div>
+                                <div class="action-key">shortcuts.zoom_out</div>
+                                <div class="action-shortcuts">デフォルト: マウスホイール上</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">ズームリセット</div>
+                                <div class="action-key">shortcuts.reset_zoom</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+0</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">右回転</div>
+                                <div class="action-key">shortcuts.rotate_right</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+R</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">左回転</div>
+                                <div class="action-key">shortcuts.rotate_left</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+O</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">フルスクリーン</div>
+                                <div class="action-key">shortcuts.fullscreen</div>
+                                <div class="action-shortcuts">デフォルト: Return</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">アプリを閉じる</div>
+                                <div class="action-key">shortcuts.close_app</div>
+                                <div class="action-shortcuts">デフォルト: E</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">画像一覧</div>
+                                <div class="action-key">shortcuts.image_list</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+L</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">常に手前表示</div>
+                                <div class="action-key">shortcuts.always_on_top</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+T</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">前回のファイルを開く</div>
+                                <div class="action-key">shortcuts.reopen_last_file</div>
+                                <div class="action-shortcuts">デフォルト: R</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">ブックマーク追加/削除</div>
+                                <div class="action-key">shortcuts.toggle_bookmark</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+Shift+B</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">ブックマークサイドバー</div>
+                                <div class="action-key">shortcuts.toggle_bookmark_dock</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+B</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">履歴サイドバー</div>
+                                <div class="action-key">shortcuts.toggle_history_dock</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+H</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">新しいタブでファイルを開く</div>
+                                <div class="action-key">shortcuts.open_file_in_new_tab</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+Shift+O</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">フォルダを開く</div>
+                                <div class="action-key">shortcuts.open_folder</div>
+                                <div class="action-shortcuts">デフォルト: 未割り当て</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">状態を名前をつけて保存</div>
+                                <div class="action-key">shortcuts.save_session</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+S</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">新規ウィンドウ</div>
+                                <div class="action-key">shortcuts.new_window</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+Shift+N</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">マウスロック</div>
+                                <div class="action-key">shortcuts.toggle_mouse_lock</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+K</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">単ページ</div>
+                                <div class="action-key">shortcuts.page_mode_single</div>
+                                <div class="action-shortcuts">デフォルト: 未割り当て</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">両開き（右）</div>
+                                <div class="action-key">shortcuts.page_mode_spread_right</div>
+                                <div class="action-shortcuts">デフォルト: 未割り当て</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">両開き（左）</div>
+                                <div class="action-key">shortcuts.page_mode_spread_left</div>
+                                <div class="action-shortcuts">デフォルト: 未割り当て</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">両開き切替</div>
+                                <div class="action-key">shortcuts.toggle_spread</div>
+                                <div class="action-shortcuts">デフォルト: 未割り当て</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">新しいタブ</div>
+                                <div class="action-key">shortcuts.new_tab</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+T</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">タブを閉じる</div>
+                                <div class="action-key">shortcuts.close_tab</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+W</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">タブの再表示</div>
+                                <div class="action-key">shortcuts.reopen_closed_tab</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+Shift+T</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">左右・先頭・末尾のタブ</div>
+                                <div class="action-key">shortcuts.prev_tab / next_tab / first_tab / last_tab</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+PageUp / PageDown / Home / End。last_tab は Ctrl+0 も初期割り当て</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">1〜9番目のタブ</div>
+                                <div class="action-key">shortcuts.show_tab_1 〜 show_tab_9</div>
+                                <div class="action-shortcuts">デフォルト: Ctrl+1〜Ctrl+9（メニューには出ません）</div>
+                            </div>
+                        </div>
+
+                        <div class="tip-box">
+                            <h4>💡 使用可能なキー</h4>
+                            <p><strong>修飾キー:</strong> <span class="key-sample">Ctrl</span> <span class="key-sample">Alt</span> <span class="key-sample">Shift</span> <span class="key-sample">Meta</span></p>
+                            <p><strong>矢印キー:</strong> <span class="key-sample">Left</span> <span class="key-sample">Right</span> <span class="key-sample">Up</span> <span class="key-sample">Down</span></p>
+                            <p><strong>特殊キー:</strong> <span class="key-sample">Return</span> <span class="key-sample">Escape</span> <span class="key-sample">Space</span> <span class="key-sample">Tab</span> <span class="key-sample">Home</span> <span class="key-sample">End</span> <span class="key-sample">PageUp</span> <span class="key-sample">PageDown</span></p>
+                            <p><strong>ファンクションキー:</strong> <span class="key-sample">F1</span>～<span class="key-sample">F12</span></p>
+                            <p><strong>文字キー:</strong> <span class="key-sample">A</span>～<span class="key-sample">Z</span>, <span class="key-sample">0</span>～<span class="key-sample">9</span></p>
+                            <p><strong>マウス:</strong> <span class="key-sample">MouseLeft</span> <span class="key-sample">MouseRight</span> <span class="key-sample">MouseMiddle</span> <span class="key-sample">MouseWheelUp</span> <span class="key-sample">MouseWheelDown</span> <span class="key-sample">MouseX1</span> <span class="key-sample">MouseX2</span> <span class="key-sample">MouseDouble</span></p>
+                        </div>
+
+                        <div class="yaml-example">
+shortcuts:
+  # ページ操作
+  next_page: ["MouseLeft", "Right", "Space"]          # 次のページ
+  prev_page: ["MouseRight", "V", "Left"]              # 前のページ
+  next_file: ["Ctrl+Right"]                           # 次のファイル
+  prev_file: ["Ctrl+Left"]                            # 前のファイル
+  
+  # 表示操作
+  zoom_in: ["MouseWheelDown", "+"]                    # 拡大
+  zoom_out: ["MouseWheelUp", "-"]                     # 縮小
+  reset_zoom: ["Ctrl+0"]                              # ズームリセット（last_tab と同じ初期キー）
+  fullscreen: ["Return", "F11"]                       # フルスクリーン
+  
+  # アプリ操作
+  close_app: ["E", "Alt+F4"]                          # アプリを閉じる
+  always_on_top: ["Ctrl+T"]                           # 常に手前表示
+  image_list: ["Ctrl+L"]                              # 画像一覧
+  
+  # ブックマーク・履歴
+  toggle_bookmark: ["Ctrl+Shift+B"]                   # ブックマーク追加/削除
+  toggle_bookmark_dock: ["Ctrl+B"]                    # ブックマークサイドバー
+  toggle_history_dock: ["Ctrl+H"]                     # 履歴サイドバー
+  
+  # その他
+  open_file_in_new_tab: ["Ctrl+Shift+O"]              # 新しいタブでファイルを開く
+  open_folder: []                                     # フォルダを開く（初期未割り当て）
+  save_session: ["Ctrl+S"]                            # 状態を名前をつけて保存
+  new_window: ["Ctrl+Shift+N"]                        # 新規ウィンドウ
+  toggle_mouse_lock: ["Ctrl+K"]                       # マウスロック
+  page_mode_single: []                                # 単ページ（初期未割り当て）
+  page_mode_spread_right: []                          # 両開き（右）
+  page_mode_spread_left: []                           # 両開き（左）
+  toggle_spread: []                                   # 両開き切替
+  new_tab: ["Ctrl+T"]                                 # 新しいタブ
+  close_tab: ["Ctrl+W"]                               # タブを閉じる
+  reopen_closed_tab: ["Ctrl+Shift+T"]                 # タブの再表示
+  prev_tab: ["Ctrl+PageUp"]                           # 左側のタブ
+  next_tab: ["Ctrl+PageDown"]                         # 右側のタブ
+  first_tab: ["Ctrl+Home"]                            # 最初のタブ
+  last_tab: ["Ctrl+End", "Ctrl+0"]                    # 最後のタブ
+  show_tab_1: ["Ctrl+1"]                              # 1番目のタブ（〜show_tab_9）
+                        </div>
+                    </section>
+
+                    <!-- ジェスチャー設定 -->
+                    <section id="gesture-settings" class="config-section">
+                        <h3>👆 ジェスチャー設定 (gesture_map)</h3>
+                        <p>マウスの右ボタンドラッグによるジェスチャー機能を設定します。下の割り当ては初回プロファイル作成時のデフォルトです。消したジェスチャーは再起動しても戻りません。</p>
+
+                        <div class="info-box">
+                            <h4>🖱️ ジェスチャーの使い方</h4>
+                            <p>右ボタンを押しながらマウスを動かすことで、設定されたアクションを実行できます。複数の方向を組み合わせた複合ジェスチャーも設定可能です。</p>
+                        </div>
+
+                        <div class="action-grid">
+                            <div class="action-item">
+                                <div class="action-name">
+                                    <span class="gesture-display">←</span>前のコミック
+                                </div>
+                                <div class="action-key">gesture_map."←"</div>
+                                <div class="action-shortcuts">左方向のスワイプ → prev_comic</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">
+                                    <span class="gesture-display">→</span>次のコミック
+                                </div>
+                                <div class="action-key">gesture_map."→"</div>
+                                <div class="action-shortcuts">右方向のスワイプ → next_comic</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">
+                                    <span class="gesture-display">↓</span>アプリを閉じる
+                                </div>
+                                <div class="action-key">gesture_map."↓"</div>
+                                <div class="action-shortcuts">下方向のスワイプ → close_app</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">
+                                    <span class="gesture-display">↓→</span>フルスクリーン
+                                </div>
+                                <div class="action-key">gesture_map."↓→"</div>
+                                <div class="action-shortcuts">下→右の複合ジェスチャー → fullscreen</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">
+                                    <span class="gesture-display">↑↓</span>前回のファイル
+                                </div>
+                                <div class="action-key">gesture_map."↑↓"</div>
+                                <div class="action-shortcuts">上→下の複合ジェスチャー → reopen_last_file</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">
+                                    <span class="gesture-display">→←</span>最初のページ
+                                </div>
+                                <div class="action-key">gesture_map."→←"</div>
+                                <div class="action-shortcuts">右→左の複合ジェスチャー → first_page</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">
+                                    <span class="gesture-display">←→</span>最後のページ
+                                </div>
+                                <div class="action-key">gesture_map."←→"</div>
+                                <div class="action-shortcuts">左→右の複合ジェスチャー → last_page</div>
+                            </div>
+                            <div class="action-item">
+                                <div class="action-name">
+                                    <span class="gesture-display">↓→←</span>ページスライダー
+                                </div>
+                                <div class="action-key">gesture_map."↓→←"</div>
+                                <div class="action-shortcuts">下→右→左の複合ジェスチャー → page_slider_dialog</div>
+                            </div>
+                        </div>
+
+                        <div class="tip-box">
+                            <h4>💡 ジェスチャーのコツ</h4>
+                            <ul>
+                                <li><strong>方向記号:</strong> ← (左) → (右) ↑ (上) ↓ (下)</li>
+                                <li><strong>複合ジェスチャー:</strong> 方向を連続して組み合わせることで、より多くのアクションを設定可能</li>
+                                <li><strong>認識精度:</strong> ゆっくりと明確に方向を描くと認識精度が向上します</li>
+                                <li><strong>カスタマイズ:</strong> 任意のアクションに任意のジェスチャーを割り当てることができます</li>
+                            </ul>
+                        </div>
+
+                        <div class="yaml-example">
+gesture_map:
+  # 基本ジェスチャー（単一方向）
+  "←": "prev_comic"              # 左スワイプ → 前のコミック
+  "→": "next_comic"              # 右スワイプ → 次のコミック
+  "↓": "close_app"               # 下スワイプ → アプリを閉じる
+  
+  # 複合ジェスチャー（2方向）
+  "↓→": "fullscreen"             # 下→右 → フルスクリーン
+  "↑↓": "reopen_last_file"       # 上→下 → 前回のファイル
+  "→←": "first_page"             # 右→左 → 最初のページ
+  "←→": "last_page"              # 左→右 → 最後のページ
+  
+  # 複合ジェスチャー（3方向）
+  "↓→←": "page_slider_dialog"    # 下→右→左 → ページスライダー
+  
+  # カスタムジェスチャーの例
+  "↑": "zoom_in"                 # 上スワイプ → 拡大
+  "↑→": "rotate_right"           # 上→右 → 右回転
+  "↑←": "rotate_left"            # 上→左 → 左回転
+                        </div>
+                    </section>
+
+                    <!-- 完全なショートカット設定例 -->
+                    <section class="config-section">
+                        <h3>📋 完全なショートカット設定例</h3>
+                        <p>カスタマイズされたショートカットとジェスチャーの設定例：</p>
+
+                        <div class="yaml-example">
+# カスタマイズされたショートカット設定
+shortcuts:
+  # ページ操作
+  next_page: ["MouseLeft", "Right", "Space", "L"]
+  prev_page: ["MouseRight", "V", "Left", "H"]
+  
+  # ファイル操作
+  next_file: ["Ctrl+Right", "Ctrl+L"]
+  prev_file: ["Ctrl+Left", "Ctrl+H"]
+  next_comic: ["W", "PageDown"]
+  prev_comic: ["Q", "PageUp"]
+  
+  # 表示操作
+  zoom_in: ["MouseWheelDown", "+", "Ctrl+="]
+  zoom_out: ["MouseWheelUp", "-", "Ctrl+-"]
+  reset_zoom: ["Ctrl+0", "Ctrl+R"]
+  rotate_right: ["Ctrl+R", "."]
+  rotate_left: ["Ctrl+L", ","]
+  fullscreen: ["Return", "F11", "F"]
+  
+  # アプリ操作
+  close_app: ["E", "Escape", "Alt+F4"]
+  always_on_top: ["Ctrl+T", "T"]
+  image_list: ["Ctrl+L", "I"]
+  
+  # ブックマーク・履歴
+  toggle_bookmark: ["Ctrl+Shift+B", "B"]
+  toggle_bookmark_dock: ["Ctrl+B"]
+  toggle_history_dock: ["Ctrl+H"]
+  
+  # その他
+  new_window: ["Ctrl+Shift+N", "N"]
+  toggle_mouse_lock: ["Ctrl+K", "K"]
+  reopen_last_file: ["R", "Ctrl+Shift+O"]
+
+# カスタマイズされたジェスチャー設定
+gesture_map:
+  # 基本操作
+  "←": "prev_comic"
+  "→": "next_comic"
+  "↑": "zoom_in"
+  "↓": "close_app"
+  
+  # 複合操作
+  "↓←": "fullscreen"
+  "↑↓": "reopen_last_file"
+  "→←": "first_page"
+  "←→": "last_page"
+  
+  # 高度な操作
+  "↓→←": "page_slider_dialog"
+  "↑→": "rotate_right"
+  "↑←": "rotate_left"
+  "↓→": "image_list"
+                        </div>
+                    </section>
+
+                    <div class="pagination">
+                        <a href="settings.html" class="page-link">← 基本設定</a>
+                        <a href="../Manual(JP).html" class="page-link">ホーム</a>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/search.js"></script>
+</body>
+</html> 

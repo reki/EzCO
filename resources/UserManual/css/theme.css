@@ -1,0 +1,535 @@
+/* =====================================================================
+   EzCo User Manual - Theme Stylesheet
+   ===================================================================== */
+
+/* Light Theme (Default) */
+:root {
+    /* Primary colors */
+    --primary-50: #eff6ff;
+    --primary-100: #dbeafe;
+    --primary-200: #bfdbfe;
+    --primary-300: #93c5fd;
+    --primary-400: #60a5fa;
+    --primary-500: #3b82f6;
+    --primary-600: #2563eb;
+    --primary-700: #1d4ed8;
+    --primary-800: #1e40af;
+    --primary-900: #1e3a8a;
+
+    /* Neutral colors */
+    --neutral-50: #f8fafc;
+    --neutral-100: #f1f5f9;
+    --neutral-200: #e2e8f0;
+    --neutral-300: #cbd5e1;
+    --neutral-400: #94a3b8;
+    --neutral-500: #64748b;
+    --neutral-600: #475569;
+    --neutral-700: #334155;
+    --neutral-800: #1e293b;
+    --neutral-900: #0f172a;
+
+    /* Semantic colors */
+    --success-50: #f0fdf4;
+    --success-500: #10b981;
+    --warning-50: #fef3c7;
+    --warning-500: #f59e0b;
+    --error-50: #fef2f2;
+    --error-500: #ef4444;
+
+    /* Background colors */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8fafc;
+    --bg-tertiary: #f1f5f9;
+    
+    /* Text colors */
+    --text-primary: #1e293b;
+    --text-secondary: #475569;
+    --text-tertiary: #64748b;
+    --text-inverse: #ffffff;
+    
+    /* Border colors */
+    --border-primary: #e2e8f0;
+    --border-secondary: #cbd5e1;
+    --border-focus: #3b82f6;
+    
+    /* Shadow colors */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+    /* Primary colors (brighter for dark theme) */
+    --primary-50: #1e3a8a;
+    --primary-100: #1d4ed8;
+    --primary-200: #2563eb;
+    --primary-300: #3b82f6;
+    --primary-400: #60a5fa;
+    --primary-500: #93c5fd;
+    --primary-600: #bfdbfe;
+    --primary-700: #dbeafe;
+    --primary-800: #eff6ff;
+    --primary-900: #f8fafc;
+
+    /* Neutral colors (inverted) */
+    --neutral-50: #0f172a;
+    --neutral-100: #1e293b;
+    --neutral-200: #334155;
+    --neutral-300: #475569;
+    --neutral-400: #64748b;
+    --neutral-500: #94a3b8;
+    --neutral-600: #cbd5e1;
+    --neutral-700: #e2e8f0;
+    --neutral-800: #f1f5f9;
+    --neutral-900: #f8fafc;
+
+    /* Background colors */
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    
+    /* Text colors */
+    --text-primary: #f8fafc;
+    --text-secondary: #e2e8f0;
+    --text-tertiary: #cbd5e1;
+    --text-inverse: #0f172a;
+    
+    /* Border colors */
+    --border-primary: #334155;
+    --border-secondary: #475569;
+    --border-focus: #60a5fa;
+    
+    /* Shadow colors (darker) */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 8px 10px -6px rgb(0 0 0 / 0.3);
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    z-index: 1000;
+    background: var(--bg-primary);
+    border: 2px solid var(--border-primary);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-lg);
+    transition: all 0.3s ease;
+    font-size: 1.5rem;
+}
+
+.theme-toggle:hover {
+    background: var(--bg-secondary);
+    transform: scale(1.1);
+}
+
+/* Color Scheme Variants */
+.color-scheme-blue {
+    --primary-500: #3b82f6;
+    --primary-600: #2563eb;
+}
+
+.color-scheme-purple {
+    --primary-500: #8b5cf6;
+    --primary-600: #7c3aed;
+}
+
+.color-scheme-green {
+    --primary-500: #10b981;
+    --primary-600: #059669;
+}
+
+.color-scheme-red {
+    --primary-500: #ef4444;
+    --primary-600: #dc2626;
+}
+
+.color-scheme-orange {
+    --primary-500: #f59e0b;
+    --primary-600: #d97706;
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+    :root {
+        --text-primary: #000000;
+        --text-secondary: #333333;
+        --bg-primary: #ffffff;
+        --border-primary: #000000;
+    }
+    
+    [data-theme="dark"] {
+        --text-primary: #ffffff;
+        --text-secondary: #cccccc;
+        --bg-primary: #000000;
+        --border-primary: #ffffff;
+    }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Color Scheme Preference */
+@media (prefers-color-scheme: dark) {
+    :root {
+        /* Automatically apply dark theme if user prefers dark mode */
+        color-scheme: dark;
+    }
+}
+
+/* Theme-aware styles using CSS variables */
+body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.container {
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-xl);
+}
+
+.header {
+    background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+    color: var(--text-inverse);
+    box-shadow: var(--shadow-md);
+}
+
+.sidebar {
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-primary);
+}
+
+.toc h3 {
+    color: var(--primary-600);
+}
+
+.toc-link {
+    color: var(--text-tertiary);
+    border-left: 3px solid transparent;
+}
+
+.toc-link:hover {
+    background: var(--bg-tertiary);
+    color: var(--primary-600);
+    border-left-color: var(--primary-600);
+}
+
+.toc-link.active {
+    background: var(--primary-50);
+    color: var(--primary-600);
+    border-left-color: var(--primary-600);
+}
+
+.section h2 {
+    color: var(--text-primary);
+    border-bottom: 3px solid var(--primary-500);
+}
+
+.section h3 {
+    color: var(--text-secondary);
+}
+
+.section h4 {
+    color: var(--text-secondary);
+}
+
+.section p {
+    color: var(--text-tertiary);
+}
+
+.feature-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.feature-card:hover {
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary-500);
+}
+
+.feature-card h3 {
+    color: var(--text-primary);
+}
+
+.feature-card p {
+    color: var(--text-tertiary);
+}
+
+.info-box {
+    background: var(--primary-50);
+    border-left-color: var(--primary-500);
+}
+
+.warning-box {
+    background: var(--warning-50);
+    border-left-color: var(--warning-500);
+}
+
+.tip-box {
+    background: var(--success-50);
+    border-left-color: var(--success-500);
+}
+
+.step-number {
+    background: var(--primary-500);
+    color: var(--text-inverse);
+}
+
+.method-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+}
+
+.method-card:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--primary-500);
+}
+
+.control-table table {
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.control-table th {
+    background: var(--primary-500);
+    color: var(--text-inverse);
+}
+
+.control-table td {
+    border-bottom: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+}
+
+.control-table tr:hover {
+    background: var(--bg-secondary);
+}
+
+kbd {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-secondary);
+    box-shadow: var(--shadow-sm);
+}
+
+code {
+    background: var(--bg-tertiary);
+    color: var(--primary-600);
+}
+
+.page-link {
+    color: var(--primary-500);
+    border: 1px solid var(--primary-500);
+}
+
+.page-link:hover {
+    background: var(--primary-500);
+    color: var(--text-inverse);
+}
+
+.search-container input {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+}
+
+.search-container input:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--primary-100);
+}
+
+/* Dark theme specific adjustments */
+[data-theme="dark"] .search-container input:focus {
+    box-shadow: 0 0 0 3px var(--primary-900);
+}
+
+[data-theme="dark"] .toc-link.active {
+    background: var(--primary-900);
+}
+
+[data-theme="dark"] .info-box {
+    background: var(--primary-900);
+}
+
+[data-theme="dark"] .warning-box {
+    background: var(--warning-900);
+}
+
+[data-theme="dark"] .tip-box {
+    background: var(--success-900);
+}
+
+/* Print styles with theme awareness */
+@media print {
+    :root {
+        --text-primary: #000000;
+        --text-secondary: #333333;
+        --text-tertiary: #666666;
+        --bg-primary: #ffffff;
+        --border-primary: #cccccc;
+    }
+    
+    .theme-toggle {
+        display: none;
+    }
+}
+
+/* Custom scrollbar for dark theme */
+[data-theme="dark"] .sidebar::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .sidebar::-webkit-scrollbar-thumb {
+    background: var(--border-secondary);
+}
+
+[data-theme="dark"] .sidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tertiary);
+}
+
+/* Animation for theme transition */
+*,
+*::before,
+*::after {
+    transition: 
+        background-color 0.3s ease,
+        border-color 0.3s ease,
+        color 0.3s ease,
+        box-shadow 0.3s ease;
+}
+
+/* Focus ring with theme awareness */
+a:focus,
+button:focus,
+input:focus {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+}
+
+/* Special styling for code blocks in dark theme */
+[data-theme="dark"] pre {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] pre code {
+    background: transparent;
+    color: inherit;
+}
+
+/* Table striping for better readability */
+.control-table tbody tr:nth-child(even) {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .control-table tbody tr:nth-child(even) {
+    background: var(--bg-tertiary);
+}
+
+/* Enhanced button styles with theme support */
+.btn {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-primary {
+    background: var(--primary-500);
+    color: var(--text-inverse);
+}
+
+.btn-primary:hover {
+    background: var(--primary-600);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+}
+
+.btn-secondary:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--border-secondary);
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid var(--border-primary);
+    border-top-color: var(--primary-500);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 0.5rem;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Tooltip styles */
+.tooltip {
+    position: relative;
+}
+
+.tooltip::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    border: 1px solid var(--border-primary);
+    box-shadow: var(--shadow-md);
+    z-index: 1000;
+}
+
+.tooltip:hover::before {
+    opacity: 1;
+} 

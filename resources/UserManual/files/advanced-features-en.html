@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Features - EzCo User Manual</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="icon" type="image/x-icon" href="../files/icon.ico">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1><img src="../files/icon_32x32.png" alt="EzCo" class="logo-icon"> EzCo User Manual</h1>
+                <div class="language-switch">
+                    <a href="advanced-features.html">日本語</a>
+                    <a href="advanced-features-en.html" class="active">English</a>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="searchBox" placeholder="Search..." />
+                    <button id="searchBtn">🔍</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <!-- Sidebar (Table of Contents) -->
+            <nav class="sidebar">
+                <div class="toc">
+                    <h3>📖 Table of Contents</h3>
+                    <ul class="toc-list">
+                        <li><a href="../Manual(EN).html" class="toc-link">← Main Page</a></li>
+                        <li><a href="#customization" class="toc-link">Customization Features</a>
+                            <ul class="toc-sublist">
+                                <li><a href="#custom-fonts" class="toc-link">Custom Fonts</a></li>
+                                <li><a href="#custom-languages" class="toc-link">Custom Languages</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="#archives" class="toc-link">Archive Files</a></li>
+                        <li><a href="#gestures" class="toc-link">Mouse Gestures</a></li>
+                        <li><a href="#bookmarks" class="toc-link">Bookmarks</a></li>
+                        <li><a href="#history" class="toc-link">History</a></li>
+                        <li><a href="#virtual-path" class="toc-link">Virtual Paths</a></li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="content">
+                <div class="content-wrapper">
+                    <div class="breadcrumb">
+                        <a href="../Manual(EN).html">Home</a> > Advanced Features
+                    </div>
+
+                    <h1>🚀 Advanced Features</h1>
+                    <p>EzCo offers powerful advanced features to enhance your image viewing experience.</p>
+
+                    <!-- Customization Features -->
+                    <section id="customization" class="section">
+                        <h2>🎨 Customization Features</h2>
+                        <p>EzCo supports advanced customization through external files.</p>
+
+                        <h3 id="custom-fonts">📝 Custom Fonts (font/ folder)</h3>
+                        <div class="info-box">
+                            <h4>💡 Font Customization</h4>
+                            <p>Create a <code>font/</code> folder in the same directory as the EzCo executable and add TTF files to use custom fonts.</p>
+                        </div>
+
+                        <div class="step-container">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h4>Create Folder</h4>
+                                    <p>Create a <code>font</code> folder in the same directory as EzCo.exe.</p>
+                                    <div class="code-block">EzCo.exe
+font/
+├── MyFont.ttf
+├── CustomUI.ttf
+└── JapaneseFont.ttf</div>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h4>Place Font Files</h4>
+                                    <p>Copy TTF format font files to the <code>font/</code> folder.</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h4>Configure Settings</h4>
+                                    <p>Specify the font name in the settings dialog (Font) or in exported YAML under <code>ui_font.font_family</code>.</p>
+                                    <div class="code-block">ui_font:
+  font_family: "MyFont"</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="warning-box">
+                            <h4>⚠️ Font Notes</h4>
+                            <ul>
+                                <li>Supported format: TTF (TrueType Font) only</li>
+                                <li>Specify font name without extension (filename)</li>
+                                <li>For Japanese fonts, choose fonts that support Japanese characters</li>
+                                <li>Font changes are applied after restart</li>
+                            </ul>
+                        </div>
+
+                        <h3 id="custom-languages">🌐 Custom Languages (langs/ folder)</h3>
+                                                    <div class="info-box">
+                                <h4>💡 Multi-language Support</h4>
+                                <p>In addition to built-in Japanese and English, you can customize your own languages or text by placing JSON files in the <code>langs/</code> folder.</p>
+                                <p><strong>Default behavior:</strong> If external language files don't exist or an invalid language code is specified, the built-in Japanese display is used as default.</p>
+                            </div>
+
+                        <div class="step-container">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h4>Create Folder</h4>
+                                    <p>Create a <code>langs</code> folder in the same directory as EzCo.exe.</p>
+                                    <div class="code-block">EzCo.exe
+langs/
+├── ja.json     # Japanese customization
+├── en.json     # English customization
+├── zh.json     # Chinese (new language)
+└── kr.json     # Korean (new language)</div>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h4>Create Language File</h4>
+                                    <p>Define language data in JSON format. Use the same structure as built-in language files.</p>
+                                    <div class="code-block">{
+  "app_name": "EzCo",
+  "language": "中文",
+  "language_code": "zh",
+  "ui": {
+    "file": "文件",
+    "edit": "编辑",
+    "view": "查看",
+    ...
+  }
+}</div>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                                                    <div class="step-content">
+                                        <h4>Select Language</h4>
+                                        <p>Specify the language filename (without extension) in the settings dialog (Language) or in exported YAML under <code>language.code</code>.</p>
+                                        <div class="code-block">language:
+  code: "zh"    # Use langs/zh.json</div>
+                                        <p><strong>Fallback behavior:</strong> If the specified language file doesn't exist, built-in Japanese is automatically used.</p>
+                                    </div>
+                            </div>
+                        </div>
+
+                                                    <div class="tip-box">
+                                <h4>💡 Language Customization Tips</h4>
+                                <ul>
+                                    <li><strong>Partial customization:</strong> Define only the items you want to change</li>
+                                    <li><strong>Priority:</strong> 
+                                        <ol>
+                                            <li>External language files (<code>langs/</code> folder)</li>
+                                            <li>Built-in language files (en.json, ja.json)</li>
+                                            <li>Default (built-in Japanese) ※When file doesn't exist</li>
+                                        </ol>
+                                    </li>
+                                    <li><strong>System mode:</strong> When <code>language.code: "system"</code>, automatically selects built-in language (Japanese/English) based on OS language settings</li>
+                                    <li><strong>Character encoding:</strong> Save as UTF-8</li>
+                                    <li><strong>Structure reference:</strong> Refer to built-in <code>src/ez_co/resources/langs/</code></li>
+                                </ul>
+                            </div>
+
+                        <div class="method-grid">
+                            <div class="method-card">
+                                <h4>🔧 Customize Existing Language</h4>
+                                <p>When you want to change some text in Japanese or English</p>
+                                <div class="code-block">// langs/ja.json (partial customization example)
+{
+  "ui": {
+    "next_page": "➡️ Next",
+    "prev_page": "⬅️ Previous"
+  }
+}</div>
+                            </div>
+                            <div class="method-card">
+                                <h4>🌍 Add New Language</h4>
+                                <p>When adding a completely new language</p>
+                                <div class="code-block">// langs/fr.json (French example)
+{
+  "app_name": "EzCo",
+  "language": "Français",
+  "language_code": "fr",
+  "ui": {
+    "file": "Fichier",
+    "edit": "Édition",
+    ...
+  }
+}</div>
+                            </div>
+                        </div>
+
+                        <div class="warning-box">
+                            <h4>⚠️ Language File Notes</h4>
+                            <ul>
+                                <li>JSON syntax errors will cause loading to fail</li>
+                                <li>Invalid language codes will fallback to system default language</li>
+                                <li>Language changes are applied after restart</li>
+                                <li>Don't omit required items (app_name, language_code, etc.)</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- Archive Files -->
+                    <section id="archives" class="section">
+                        <h2>📦 Archive File Support</h2>
+                        <p>EzCo supports a wide variety of archive formats, allowing you to directly view images inside compressed files without extracting them first.</p>
+
+                        <h3>Supported Archive Formats</h3>
+                        <div class="feature-grid">
+                            <div class="feature-card">
+                                <div class="feature-icon">📁</div>
+                                <h4>Standard Archives</h4>
+                                <p><strong>ZIP, 7Z, RAR, TAR</strong><br>
+                                Common archive formats</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">📚</div>
+                                <h4>Comic Formats</h4>
+                                <p><strong>CBZ, CBR, PDF</strong><br>
+                                Comic-specific archive formats and PDF</p>
+                            </div>
+                        </div>
+
+                        <h3>Japanese Filename Support</h3>
+                        <p>EzCo supports automatic encoding detection for filenames containing Japanese characters.</p>
+                    </section>
+
+                    <!-- Mouse Gestures -->
+                    <section id="gestures" class="section">
+                        <h2>👆 Mouse Gestures</h2>
+                        <p>Mouse gestures allow you to quickly perform common actions by drawing patterns with the right mouse button. The table below is registered only when creating the first profile (or a new profile). Deleted assignments are not restored on the next start.</p>
+
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Gesture</th>
+                                        <th>Action</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>←</td>
+                                        <td>Previous Comic</td>
+                                        <td>Move to the previous file</td>
+                                    </tr>
+                                    <tr>
+                                        <td>→</td>
+                                        <td>Next Comic</td>
+                                        <td>Move to the next file</td>
+                                    </tr>
+                                    <tr>
+                                        <td>↓</td>
+                                        <td>Exit Application</td>
+                                        <td>Close EzCo</td>
+                                    </tr>
+                                    <tr>
+                                        <td>↓→</td>
+                                        <td>Toggle Fullscreen</td>
+                                        <td>Switch fullscreen mode ON/OFF</td>
+                                    </tr>
+                                    <tr>
+                                        <td>↑↓</td>
+                                        <td>Reopen last file</td>
+                                        <td>Open the latest history item</td>
+                                    </tr>
+                                    <tr>
+                                        <td>→← / ←→</td>
+                                        <td>First / last page</td>
+                                        <td>Jump to the first or last image</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- Bookmarks -->
+                    <section id="bookmarks" class="section">
+                        <h2>📑 Bookmark Features</h2>
+                        <p>Save your favorite pages and organize them in folders for quick access.</p>
+
+                        <div class="method-grid">
+                            <div class="method-card">
+                                <h4>📌 Add Bookmark</h4>
+                                <p><kbd>Ctrl + Shift + B</kbd><br>
+                                or <code>Features / Extensions</code> → <code>Add/Remove Bookmark</code></p>
+                            </div>
+                            <div class="method-card">
+                                <h4>📂 Show Sidebar</h4>
+                                <p><kbd>Ctrl + B</kbd><br>
+                                or <code>Features / Extensions</code> → <code>Bookmarks</code></p>
+                            </div>
+                        </div>
+                        <p>In the sidebar, click opens the current tab, Ctrl+click or middle-click opens a new tab, and right-click lets you choose.</p>
+                    </section>
+
+                    <!-- History -->
+                    <section id="history" class="section">
+                        <h2>📚 History Features</h2>
+                        <p>EzCo automatically keeps track of recently viewed files and their last viewed pages.</p>
+
+                        <div class="tip-box">
+                            <h3>💡 History Features</h3>
+                            <ul>
+                                <li>Automatically saves the last viewed page for each file</li>
+                                <li>Configurable history limit (1-99 entries)</li>
+                                <li>Quick access through the history sidebar (click = current tab, Ctrl+click or middle-click = new tab)</li>
+                                <li>Automatic cleanup of deleted files</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- Virtual Paths -->
+                    <section id="virtual-path" class="section">
+                        <h2>🔗 Virtual Path Features</h2>
+                        <p>Virtual paths allow you to directly reference specific files within archive files.</p>
+
+                        <div class="info-box">
+                            <h3>📋 Basic Syntax</h3>
+                            <p><code>archive://archive_file_path|internal_file_name</code></p>
+                        </div>
+
+                        <div class="method-grid">
+                            <div class="method-card">
+                                <h4>🖱️ Command Line Launch</h4>
+                                <p><code>EzCo.exe "archive://path|file"</code></p>
+                            </div>
+                            <div class="method-card">
+                                <h4>📝 Create Shortcut</h4>
+                                <p>Specify as desktop shortcut argument</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Navigation -->
+                    <div class="pagination">
+                        <a href="../Manual(EN).html" class="page-link">← Home</a>
+                        <a href="settings-en.html" class="page-link">Settings →</a>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/search.js"></script>
+</body>
+</html> 

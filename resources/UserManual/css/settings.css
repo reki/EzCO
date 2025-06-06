@@ -1,0 +1,181 @@
+/* 設定ページ専用スタイル */
+
+.color-sample {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    margin-right: 8px;
+    border: 1px solid #ddd;
+    vertical-align: middle;
+}
+
+.setting-item {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: var(--background-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.setting-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.setting-name {
+    font-weight: bold;
+    color: var(--primary-600);
+    font-size: 1.1em;
+}
+
+.setting-key {
+    font-family: 'Consolas', 'Monaco', monospace;
+    background: var(--background-primary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.setting-type {
+    background: var(--accent-color);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 500;
+}
+
+.setting-value {
+    font-family: 'Consolas', 'Monaco', monospace;
+    background: var(--background-tertiary);
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    margin: 5px 0;
+}
+
+.config-section {
+    margin-bottom: 40px;
+}
+
+.config-section h3 {
+    color: var(--primary-600);
+    border-bottom: 2px solid var(--primary-600);
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+}
+
+.yaml-example {
+    background: var(--background-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9em;
+    line-height: 1.6;
+    overflow-x: auto;
+    position: relative;
+}
+
+.yaml-example::before {
+    content: "export YAML";
+    position: absolute;
+    top: -10px;
+    left: 15px;
+    background: var(--background-secondary);
+    padding: 2px 8px;
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.breadcrumb {
+    margin-bottom: 20px;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+.breadcrumb a {
+    color: var(--primary-600);
+    text-decoration: none;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.action-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.action-item {
+    background: var(--background-secondary);
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.action-name {
+    font-weight: bold;
+    color: var(--primary-600);
+    margin-bottom: 5px;
+    font-size: 0.95em;
+}
+
+.action-key {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+}
+
+.action-shortcuts {
+    font-size: 0.9em;
+    color: var(--text-primary);
+}
+
+.gesture-display {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--accent-color);
+    margin-right: 10px;
+}
+
+.key-sample {
+    background: var(--background-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9em;
+    margin: 0 2px;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .setting-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .action-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .yaml-example {
+        font-size: 0.8em;
+        padding: 15px;
+    }
+} 

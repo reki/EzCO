@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EzCo User Manual</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/theme.css">
+    <link rel="icon" type="image/x-icon" href="../resources/icon.ico">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1><img src="../resources/icon_32x32.png" alt="EzCo" class="logo-icon"> EzCo User Manual</h1>
+                <div class="language-switch">
+                    <a href="Manual(JP).html">日本語</a>
+                    <a href="Manual(EN).html" class="active">English</a>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="searchBox" placeholder="Search..." />
+                    <button id="searchBtn">🔍</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <!-- Sidebar (Table of Contents) -->
+            <nav class="sidebar">
+                <div class="toc">
+                    <h3>📖 Table of Contents</h3>
+                    <ul class="toc-list">
+                        <li><a href="#overview" class="toc-link">About EzCo</a></li>
+                        <li><a href="#installation" class="toc-link">Installation</a></li>
+                        <li>
+                            <a href="#basic-usage" class="toc-link">Basic Usage</a>
+                            <ul class="toc-sublist">
+                                <li><a href="#opening-files" class="toc-link">Opening Files</a></li>
+                                <li><a href="#session-files" class="toc-link">Save and Restore State</a></li>
+                                <li><a href="#navigation" class="toc-link">Page Navigation</a></li>
+                                <li><a href="#zoom" class="toc-link">Zoom Features</a></li>
+                                <li><a href="#rotation" class="toc-link">Image Rotation</a></li>
+                                <li><a href="#comic-view" class="toc-link">Comic View (Spread)</a></li>
+                                <li><a href="#tabs" class="toc-link">Tabs</a></li>
+                            </ul>
+                        </li>
+                        <li>
+                            <a href="#advanced-features" class="toc-link">Advanced Features</a>
+                            <ul class="toc-sublist">
+                                <li><a href="files/advanced-features-en.html#archives" class="toc-link">Archive Files</a></li>
+                                <li><a href="files/advanced-features-en.html#gestures" class="toc-link">Mouse Gestures</a></li>
+                                <li><a href="files/advanced-features-en.html#bookmarks" class="toc-link">Bookmarks</a></li>
+                                <li><a href="files/advanced-features-en.html#history" class="toc-link">History</a></li>
+                                <li><a href="files/advanced-features-en.html#virtual-path" class="toc-link">Virtual Paths</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="#command-line" class="toc-link">Command-Line Arguments</a></li>
+                        <li>
+                            <a href="files/settings-en.html" class="toc-link">Settings</a>
+                            <ul class="toc-sublist">
+                                <li><a href="files/settings-en.html#window-settings" class="toc-link">Window Settings</a></li>
+                                <li><a href="files/settings-en.html#viewer-settings" class="toc-link">Viewer Settings</a></li>
+                                <li><a href="files/settings-en.html#cache-settings" class="toc-link">Cache Settings</a></li>
+                                <li><a href="files/settings-en.html#debug-settings" class="toc-link">Debug Settings</a></li>
+                                <li><a href="files/settings-en.html#shortcuts" class="toc-link">Shortcuts</a></li>
+                                <li><a href="files/settings-en.html#language-settings" class="toc-link">Language Settings</a></li>
+                                <li><a href="files/settings-en.html#font-settings" class="toc-link">Font Settings</a></li>
+                                <li><a href="files/settings-en.html#plugin-settings" class="toc-link">File Settings</a></li>
+                                <li><a href="files/settings-en.html#profile-settings" class="toc-link">Profile Settings</a></li>
+                            </ul>
+                        </li>
+                        <li>
+                            <a href="#troubleshooting" class="toc-link">Troubleshooting</a>
+                            <ul class="toc-sublist">
+                                <li><a href="#debug-mode" class="toc-link">Debug Mode</a></li>
+                                <li><a href="#common-issues" class="toc-link">Common Issues</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="#future-features" class="toc-link">Planned Features</a></li>
+                        <li><a href="#appendix" class="toc-link">Appendix</a></li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="content">
+                <div class="content-wrapper">
+                    <!-- Overview Section -->
+                    <section id="overview" class="section">
+                        <h2>📚 About EzCo</h2>
+                        <div class="feature-grid">
+                            <div class="feature-card">
+                                <div class="feature-icon">🖼️</div>
+                                <h3>Image Viewer</h3>
+                                <p>A viewer that supports major image formats including PNG, JPG, GIF, BMP, TIFF, and WebP. Can directly open image files and folders.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">📦</div>
+                                <h3>Archive Support</h3>
+                                <p>Directly open various archive formats including ZIP, 7Z, RAR, CBZ, CBR, TAR, and PDF.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">👆</div>
+                                <h3>Mouse Gestures</h3>
+                                <p>Control the application intuitively with right-click drag gestures.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">⚡</div>
+                                <h3>High-Speed Display</h3>
+                                <p>Prefetch functionality accelerates page turning for smooth reading.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">📖</div>
+                                <h3>Spread View</h3>
+                                <p>Switch single page, spread (right), or spread (left) from the Comic menu. Page turning moves two pages at a time.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">👤</div>
+                                <h3>Profiles</h3>
+                                <p>Keep settings, bookmarks, and history separate by purpose. Add, switch, and manage from the Profile menu.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🗂️</div>
+                                <h3>Tabs</h3>
+                                <p>Open multiple files at once. Middle-click closes a tab. Ctrl+1–9 switches tabs.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">📑</div>
+                                <h3>Bookmarks</h3>
+                                <p>Bookmark favorite pages for quick access later.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🌐</div>
+                                <h3>Multi-language Support</h3>
+                                <p>Supports Japanese and English, with the ability to add custom language files. Undefined keys in external language files display the key name.</p>
+                            </div>
+                        </div>
+
+                        <div class="info-box">
+                            <h3>💡 EzCo Features</h3>
+                            <ul>
+                                <li><strong>Lightweight & Fast:</strong> High-speed image display with minimal resource usage</li>
+                                <li><strong>Wide Format Support:</strong> Supports everything from image files to archive files</li>
+                                <li><strong>Highly Customizable:</strong> Freely configure shortcuts, gestures, appearance, and more</li>
+                                <li><strong>Comic Viewer:</strong> Optimized for reading manga and electronic books</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- Installation Section -->
+                    <section id="installation" class="section">
+                        <h2>⬇️ Installation</h2>
+                        <p>EzCo is distributed as an executable file and can be used without installation.</p>
+                        
+                        <div class="step-container">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h3>Download</h3>
+                                    <p>Download the latest version of <code>EzCo.exe</code> from the release page.</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h3>Placement</h3>
+                                    <p>Place <code>EzCo.exe</code> in any folder of your choice.</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h3>Execution</h3>
+                                    <p>Double-click <code>EzCo.exe</code> to launch the application.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="warning-box">
+                            <h3>⚠️ Important Notes</h3>
+                            <ul>
+                                <li>On first launch, a database (<code>config.db</code>) is created for settings, bookmarks, and history. If only a legacy <code>bookmarks.db</code> exists, it is renamed to <code>config.db</code></li>
+                                <li>Windows Defender may display warnings, but please allow execution</li>
+                                <li>Requires Windows 10 or later to run</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- Basic Usage Section -->
+                    <section id="basic-usage" class="section">
+                        <h2>🎮 Basic Usage</h2>
+                        
+                        <h3 id="opening-files">Opening Files</h3>
+                        <div class="method-grid">
+                            <div class="method-card">
+                                <h4>📁 Open from Menu</h4>
+                                <p><code>File</code> → <code>Open File</code> / <code>Open File in New Tab</code> / <code>Open Folder</code>.</p>
+                            </div>
+                            <div class="method-card">
+                                <h4>🖱️ Drag & Drop</h4>
+                                <p>Drop files, folders, or state files (<code>.ezs</code>) onto the window.</p>
+                            </div>
+                            <div class="method-card">
+                                <h4>⌨️ Shortcut</h4>
+                                <p><kbd>Ctrl + O</kbd> opens the file dialog. Assign a shortcut to <code>Open Folder</code> in Shortcut Settings if you want one.</p>
+                            </div>
+                            <div class="method-card">
+                                <h4>🔗 File Association</h4>
+                                <p>Associate image files with EzCo to open them with a double-click.</p>
+                            </div>
+                        </div>
+                        <div class="info-box">
+                            <h3>💡 File Dialog</h3>
+                            <p>The first filter, Supported Files, lists images, archives, loaded plugin extensions, and state files. You can then choose Images, Archives, Plugin formats, State Files, or All Files.</p>
+                        </div>
+
+                        <h3 id="session-files">Save and Restore State</h3>
+                        <p>Save the file (or folder) and page of every open tab to a state file (<code>.ezs</code>). Empty tabs are not saved.</p>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Action</th>
+                                        <th>Method (Default)</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Save State As...</td>
+                                        <td><code>File</code> menu, <kbd>Ctrl + S</kbd> (first profile)</td>
+                                        <td>Saves every tab path and page, plus the current tab</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Restore state</td>
+                                        <td>Open File / drag and drop</td>
+                                        <td>Opening a <code>.ezs</code> restores the tabs</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="info-box">
+                            <h3>💡 If files are already open</h3>
+                            <ul>
+                                <li><strong>Close All:</strong> Close current tabs and restore only the saved state</li>
+                                <li><strong>Add to Open Tabs:</strong> Keep current tabs and append the restored tabs</li>
+                                <li><strong>Open in New Window:</strong> Leave this window as-is and restore in a new window</li>
+                                <li><strong>Cancel:</strong> Change nothing</li>
+                            </ul>
+                            <p>An empty window restores immediately. Missing files become error tabs; files that still exist open normally.</p>
+                        </div>
+
+                        <h3 id="navigation">Page Navigation</h3>
+                        <div class="info-box">
+                            <h3>⚙️ Shortcut Customization</h3>
+                            <p>All basic operation keyboard shortcuts and mouse actions can be freely changed in <code>Settings</code> → <code>Shortcut Settings</code>.</p>
+                        </div>
+
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Action</th>
+                                        <th>Method (Default)</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Next Page</td>
+                                        <td><kbd>→</kbd>, <kbd>Space</kbd>, Left Click</td>
+                                        <td>Display the next image</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Previous Page</td>
+                                        <td><kbd>←</kbd>, <kbd>V</kbd>, Right Click</td>
+                                        <td>Display the previous image</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Next File</td>
+                                        <td><kbd>Ctrl + →</kbd></td>
+                                        <td>Move to the next file</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Previous File</td>
+                                        <td><kbd>Ctrl + ←</kbd></td>
+                                        <td>Move to the previous file</td>
+                                    </tr>
+                                    <tr>
+                                        <td>First Page</td>
+                                        <td>Gesture: →←</td>
+                                        <td>Return to the first image</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Last Page</td>
+                                        <td>Gesture: ←→</td>
+                                        <td>Move to the last image</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3 id="zoom">Zoom Features</h3>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Action</th>
+                                        <th>Method</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Zoom In</td>
+                                        <td>Wheel Down</td>
+                                        <td>Enlarge the image</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Zoom Out</td>
+                                        <td>Wheel Up</td>
+                                        <td>Reduce the image</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Reset Zoom</td>
+                                        <td><kbd>Ctrl + 0</kbd></td>
+                                        <td>Reset zoom level to 100%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Move Image</td>
+                                        <td>Left Drag (when zoomed)</td>
+                                        <td>Move the enlarged image</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3 id="rotation">Image Rotation</h3>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Action</th>
+                                        <th>Method</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Rotate Right</td>
+                                        <td><kbd>Ctrl + R</kbd></td>
+                                        <td>Rotate the image 90 degrees clockwise</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Rotate Left</td>
+                                        <td><kbd>Ctrl + L</kbd></td>
+                                        <td>Rotate the image 90 degrees counterclockwise</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3 id="comic-view">Comic View (Spread)</h3>
+                        <p>Use the <code>Comic</code> menu (next to View) to change how pages are arranged. The choice is saved in the current profile.</p>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Mode</th>
+                                        <th>Layout</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Single page</td>
+                                        <td>One page at a time</td>
+                                        <td>Standard single-image view.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Spread (right)</td>
+                                        <td>Right is axis N, left is N+1</td>
+                                        <td>For right-bound books. The slider starts from the right.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Spread (left)</td>
+                                        <td>Left is axis N, right is N+1</td>
+                                        <td>For left-bound books. The slider starts from the left.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="info-box">
+                            <h3>💡 Spread Behavior</h3>
+                            <ul>
+                                <li><strong>Page turning:</strong> Next/previous moves two pages. The last odd page is shown alone</li>
+                                <li><strong>Selected page as axis:</strong> When enabled, the slider-selected page becomes the first page (N) of the spread. Going back from page 2 may show page 1 alone</li>
+                                <li><strong>Slider direction:</strong> Right is first for single page and spread (right). Left is first only for spread (left)</li>
+                                <li><strong>Toggle preference:</strong> In Settings → General → Viewer, choose Keep previous, Prefer right, or Prefer left</li>
+                                <li><strong>Shortcuts:</strong> Single / Spread (right) / Spread (left) / Toggle spread are unassigned by default. Assign them in Shortcut Settings</li>
+                            </ul>
+                        </div>
+
+                        <h3 id="tabs">Tabs</h3>
+                        <p>The <code>Tab</code> menu (next to Comic) has New, Close, Reopen, and move left / right / first / last. Assigned keyboard shortcuts appear on the right of matching menu items.</p>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Action</th>
+                                        <th>Method (Default)</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>New tab</td>
+                                        <td><kbd>Ctrl + T</kbd></td>
+                                        <td>Add an empty tab</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Close tab</td>
+                                        <td><kbd>Ctrl + W</kbd>, middle-click a tab</td>
+                                        <td>Close the current tab (or the clicked tab). Closing the last tab closes the window</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Reopen tab</td>
+                                        <td><kbd>Ctrl + Shift + T</kbd></td>
+                                        <td>Restore the last closed tab. The menu item is disabled when there is nothing to restore</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Left / right tab</td>
+                                        <td><kbd>Ctrl + PageUp</kbd> / <kbd>Ctrl + PageDown</kbd></td>
+                                        <td>Move to the left or right tab</td>
+                                    </tr>
+                                    <tr>
+                                        <td>1st–9th / last</td>
+                                        <td><kbd>Ctrl + 1</kbd>–<kbd>9</kbd>, <kbd>Ctrl + 0</kbd> / <kbd>Ctrl + End</kbd></td>
+                                        <td>Show that tab. These are shortcuts only (no menu items for 1–9)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="info-box">
+                            <h3>💡 Tab Behavior</h3>
+                            <ul>
+                                <li><strong>Tab bar:</strong> Shown only with two or more tabs. Width is fixed; long names are elided and the full name appears on hover</li>
+                                <li><strong>Tab list:</strong> <code>Extensions</code> → <code>Sidebar</code> → <code>Tab List</code>. Click to switch; middle-click or right-click to close</li>
+                                <li><strong>Fullscreen:</strong> <code>View</code> → <code>Show Tabs in Fullscreen</code> keeps the tab bar visible while fullscreen</li>
+                                <li><strong>Open:</strong> Open File and Open Folder use the current tab. Open File in New Tab creates tabs. History and bookmarks: click = current tab; Ctrl+click or middle-click = new tab</li>
+                                <li><strong>Restore:</strong> Restart does not restore every tab. An option can reopen only the latest history item. Use Save State As... to restore multiple tabs later</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- Command-Line Arguments Section -->
+                    <section id="command-line" class="section">
+                        <h2>⚙️ Command-Line Arguments</h2>
+                        <p>EzCo allows you to temporarily modify settings at startup using command-line arguments. This feature enables you to activate specific settings for a single session without permanently changing the configuration file.</p>
+
+                        <h3>Basic Usage</h3>
+                        <div class="code-block">
+                            <pre><code>EzCo.exe --conf:section.key=value --profile=profile_name</code></pre>
+                        </div>
+
+                        <div class="info-box">
+                            <h3>💡 Features</h3>
+                            <ul>
+                                <li><strong>Temporary Changes:</strong> Configuration file remains unchanged, effective only during startup</li>
+                                <li><strong>UI Deactivation:</strong> Overridden settings are disabled in settings screens and menus</li>
+                                <li><strong>Multiple Settings:</strong> Specify multiple settings simultaneously</li>
+                                <li><strong>Automatic Type Conversion:</strong> Automatically detects boolean, numeric, and string values</li>
+                            </ul>
+                        </div>
+
+                        <h3>Usage Examples</h3>
+                        <div class="example-container">
+                            <div class="example-card">
+                                <h4>📦 Disable Archive Support</h4>
+                                <div class="code-block">
+                                    <pre><code>EzCo.exe --conf:archive.enabled=False</code></pre>
+                                </div>
+                                <p>Prevents opening archive files during this session only.</p>
+                            </div>
+
+                            <div class="example-card">
+                                <h4>🖼️ Enable Auto Window Resize</h4>
+                                <div class="code-block">
+                                    <pre><code>EzCo.exe --conf:window.auto_resize=True</code></pre>
+                                </div>
+                                <p>Automatically adjusts window size when loading images.</p>
+                            </div>
+
+                            <div class="example-card">
+                                <h4>🐛 Enable Debug Mode</h4>
+                                <div class="code-block">
+                                    <pre><code>EzCo.exe --conf:debug.enabled=True</code></pre>
+                                </div>
+                                <p>Outputs debug log files for this session.</p>
+                            </div>
+
+                            <div class="example-card">
+                                <h4>🔧 Multiple Settings</h4>
+                                <div class="code-block">
+                                    <pre><code>EzCo.exe --conf:archive.enabled=False --conf:window.auto_resize=True --conf:debug.enabled=True</code></pre>
+                                </div>
+                                <p>Override multiple settings simultaneously.</p>
+                            </div>
+
+                            <div class="example-card">
+                                <h4>👤 Profile Specification</h4>
+                                <div class="code-block">
+                                    <pre><code>EzCo.exe --profile=Work</code></pre>
+                                </div>
+                                <p>Use an existing profile for this session only (<code>-p name</code> also works). <strong>If it does not exist, nothing is created and the last used profile is used instead.</strong> The last selection is not overwritten.</p>
+                            </div>
+
+                            <div class="example-card">
+                                <h4>🔗 Profile and Settings Combination</h4>
+                                <div class="code-block">
+                                    <pre><code>EzCo.exe --profile=Debug --conf:debug.enabled=True</code></pre>
+                                </div>
+                                <p>Combine profile specification with setting overrides.</p>
+                            </div>
+                        </div>
+
+                        <h3>Profile Feature</h3>
+                        <div class="info-box">
+                            <h3>👤 What is a Profile?</h3>
+                            <p>Profiles keep settings, history, and bookmarks separate by purpose (work, personal, and so on). Manage them from the <code>Profile</code> menu (there is no Profile tab in the settings dialog).</p>
+                        </div>
+
+                        <div class="feature-grid">
+                            <div class="feature-card">
+                                <div class="feature-icon">📁</div>
+                                <h4>Independent Data</h4>
+                                <p>Each profile has its own settings, bookmarks, and history that don't affect each other.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">⚡</div>
+                                <h4>Easy Switching</h4>
+                                <p>Choosing a profile from the menu immediately applies spread mode, background, language, shortcuts, and more.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🚀</div>
+                                <h4>Startup Specification</h4>
+                                <p>Specify a profile for the current session via command-line arguments.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🔧</div>
+                                <h4>Management</h4>
+                                <p>Add, rename, or delete from the menu. Add copies the current settings (including plugin handlers); bookmarks and history stay empty. The default profile cannot be deleted. A missing CLI name is not created.</p>
+                            </div>
+                        </div>
+
+                        <h4>Profile Usage Examples</h4>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Command</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>EzCo.exe --profile=Work</code></td>
+                                        <td>Launch with "Work" profile</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>EzCo.exe --profile=Personal</code></td>
+                                        <td>Launch with "Personal" profile</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>EzCo.exe --profile="Research Materials"</code></td>
+                                        <td>Launch with "Research Materials" profile<br><small class="text-muted">※ Uses the last profile if it does not exist</small></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3>Main Configurable Settings</h3>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Setting</th>
+                                        <th>Example</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>archive.enabled</code></td>
+                                        <td><code>--conf:archive.enabled=False</code></td>
+                                        <td>Enable/disable archive file support</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>window.auto_resize</code></td>
+                                        <td><code>--conf:window.auto_resize=True</code></td>
+                                        <td>Auto-resize window when loading images</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>window.always_on_top</code></td>
+                                        <td><code>--conf:window.always_on_top=True</code></td>
+                                        <td>Keep window always on top</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>viewer.fit_to_window_minimum</code></td>
+                                        <td><code>--conf:viewer.fit_to_window_minimum=False</code></td>
+                                        <td>Minimum scale restriction (up to 100%)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>viewer.mouse_lock</code></td>
+                                        <td><code>--conf:viewer.mouse_lock=True</code></td>
+                                        <td>Mouse lock functionality</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>debug.enabled</code></td>
+                                        <td><code>--conf:debug.enabled=True</code></td>
+                                        <td>Debug mode</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>language.code</code></td>
+                                        <td><code>--conf:language.code=en</code></td>
+                                        <td>Language setting (ja/en/system)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3>Value Types</h3>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Acceptable Values</th>
+                                        <th>Example</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Boolean</td>
+                                        <td><code>True</code>, <code>False</code>, <code>yes</code>, <code>no</code>, <code>on</code>, <code>off</code>, <code>1</code>, <code>0</code></td>
+                                        <td><code>--conf:debug.enabled=True</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Numeric</td>
+                                        <td>Integer or decimal numbers</td>
+                                        <td><code>--conf:cache.prefetch_pages=10</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>String</td>
+                                        <td>Any text</td>
+                                        <td><code>--conf:language.code=en</code></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="warning-box">
+                            <h3>⚠️ Important Notes</h3>
+                            <ul>
+                                <li>Overridden settings are disabled (grayed out) in settings screens and menus</li>
+                                <li>Persistent values in the settings database (config.db) are not modified. Use the settings screen for permanent changes</li>
+                                <li>Gesture and shortcut settings cannot be changed via command-line arguments</li>
+                                <li>Non-existent setting items are ignored if specified</li>
+                            </ul>
+                        </div>
+                    </section>
+
+                    <!-- Advanced Features Section -->
+                    <section id="advanced-features" class="section">
+                        <h2>🚀 Advanced Features</h2>
+                        
+                        <h3 id="archives">Archive File Support</h3>
+                        <p>EzCo supports a wide variety of archive formats, allowing you to directly view images inside compressed files without extracting them first.</p>
+                        
+                        <div class="feature-grid">
+                            <div class="method-card">
+                                <h4>📦 Supported Formats</h4>
+                                <p><strong>ZIP, 7Z, RAR, CBZ, CBR, TAR, TAR.GZ, TAR.BZ2, TAR.XZ, GZ, BZ2, XZ, PDF</strong></p>
+                            </div>
+                            <div class="method-card">
+                                <h4>⚙️ File Settings</h4>
+                                <p>Choose Built-in, a plugin, or Don't load per extension in <code>Settings</code> → <code>File Settings</code></p>
+                            </div>
+                        </div>
+
+                        <h3 id="gestures">Mouse Gestures</h3>
+                        <p>Mouse gestures allow you to quickly perform common actions by drawing patterns with the right mouse button.</p>
+                        
+                        <div class="info-box">
+                            <h3>🖱️ How to Use Gestures</h3>
+                            <ol>
+                                <li>Hold down the right mouse button</li>
+                                <li>Drag the mouse in the desired direction(s)</li>
+                                <li>Release the right mouse button to execute the action</li>
+                            </ol>
+                        </div>
+
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Gesture</th>
+                                        <th>Action</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>←</td>
+                                        <td>Previous Comic</td>
+                                        <td>Move to the previous comic file</td>
+                                    </tr>
+                                    <tr>
+                                        <td>→</td>
+                                        <td>Next Comic</td>
+                                        <td>Move to the next comic file</td>
+                                    </tr>
+                                    <tr>
+                                        <td>↓</td>
+                                        <td>Exit Application</td>
+                                        <td>Close EzCo</td>
+                                    </tr>
+                                    <tr>
+                                        <td>↑</td>
+                                        <td>Toggle Fullscreen</td>
+                                        <td>Switch between fullscreen and windowed mode</td>
+                                    </tr>
+                                    <tr>
+                                        <td>↑↓</td>
+                                        <td>Reopen Last File</td>
+                                        <td>Open the last opened file</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3 id="bookmarks">Bookmarks</h3>
+                        <p>Save your favorite pages and organize them in folders for quick access.</p>
+                        
+                        <div class="method-grid">
+                            <div class="method-card">
+                                <h4>📑 Add Bookmark</h4>
+                                <p>Press <kbd>Ctrl + Shift + B</kbd> or use the menu to bookmark the current page.</p>
+                            </div>
+                            <div class="method-card">
+                                <h4>📁 Organize Bookmarks</h4>
+                                <p>Create folders to organize your bookmarks by series or category.</p>
+                            </div>
+                        </div>
+
+                        <h3 id="history">History</h3>
+                        <p>EzCo automatically keeps track of recently viewed files and their last viewed pages.</p>
+                        
+                        <div class="tip-box">
+                            <h3>💡 History Features</h3>
+                            <ul>
+                                <li>Automatically saves the last viewed page for each file</li>
+                                <li>Configurable history limit (1-99 entries)</li>
+                                <li>Quick access through the history sidebar</li>
+                                <li>Automatic cleanup of deleted files</li>
+                            </ul>
+                        </div>
+
+                        <h3 id="virtual-path">Virtual Paths</h3>
+                        <p>Virtual paths allow you to directly reference specific files within archive files.</p>
+                        
+                        <div class="info-box">
+                            <h3>📋 Virtual Path Format</h3>
+                            <p><code>archive://path/to/archive.zip#internal/file.jpg</code></p>
+                            <p>This format allows you to create shortcuts or links that open specific images within archive files.</p>
+                        </div>
+                    </section>
+
+                    <!-- Settings Section -->
+                    <section id="settings" class="section">
+                        <h2>⚙️ Settings</h2>
+                        
+                        <p>EzCo provides extensive customization options through its settings system. Access settings via <code>Settings</code> → <code>Settings</code> in the menu.</p>
+
+                        <h3 id="window-settings">Window Settings</h3>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Setting</th>
+                                        <th>Description</th>
+                                        <th>Default</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Auto-resize window</td>
+                                        <td>Automatically adjust window size when loading images</td>
+                                        <td>Disabled</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Save window state</td>
+                                        <td>Remember window size and position</td>
+                                        <td>Disabled</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Always on top</td>
+                                        <td>Keep window in front of other applications</td>
+                                        <td>Disabled</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3 id="viewer-settings">Viewer Settings</h3>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Setting</th>
+                                        <th>Description</th>
+                                        <th>Default</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Background color</td>
+                                        <td>Color displayed behind images</td>
+                                        <td>Light green</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Fit to window</td>
+                                        <td>Automatically scale images to fit the window</td>
+                                        <td>Disabled</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3 id="shortcuts">Shortcut Configuration</h3>
+                        <p>Customize keyboard and mouse shortcuts for all actions through <code>Settings</code> → <code>Shortcut Settings</code>.</p>
+
+                        <h3 id="language-settings">Language Settings</h3>
+                        <p>EzCo supports multiple languages and automatic language detection.</p>
+                        
+                        <div class="info-box">
+                            <h3>🌐 Language Support</h3>
+                            <ul>
+                                <li><strong>Built-in Languages:</strong> Japanese (ja) and English (en)</li>
+                                <li><strong>Custom Languages:</strong> Add your own language files in the <code>langs</code> folder</li>
+                                <li><strong>System Default:</strong> Automatically detects your system language</li>
+                                <li><strong>Fallback Behavior:</strong> When loading external language files, undefined keys display as the key name itself</li>
+                            </ul>
+                        </div>
+
+                        <h3 id="font-settings">Font Settings</h3>
+                        <p>Customize the appearance of UI popups and overlays.</p>
+                    </section>
+
+                    <!-- Troubleshooting Section -->
+                    <section id="troubleshooting" class="section">
+                        <h2>🔧 Troubleshooting</h2>
+                        
+                        <h3 id="debug-mode">Debug Mode</h3>
+                        <p>Enable debug mode to generate detailed logs for troubleshooting issues.</p>
+                        
+                        <div class="step-container">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h3>Enable Debug Mode</h3>
+                                    <p>Go to <code>Settings</code> → <code>Settings</code> → <code>Debug Settings</code> and check "Debug Mode".</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h3>Restart Application</h3>
+                                    <p>Close and restart EzCo to begin logging.</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h3>Check Logs</h3>
+                                    <p>Debug logs are saved in the <code>logs</code> folder with timestamps.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 id="common-issues">Common Issues</h3>
+                        <div class="method-grid">
+                            <div class="method-card">
+                                <h4>🚫 Archive Files Won't Open</h4>
+                                <p>Check <code>Settings</code> → <code>File Settings</code> and make sure the extension is not set to Don't load.</p>
+                            </div>
+                            <div class="method-card">
+                                <h4>🔤 Garbled Text in Archives</h4>
+                                <p>EzCo automatically detects encoding, but some files may not display correctly due to encoding issues.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Planned Features Section -->
+                    <section id="future-features" class="section">
+                        <h2>🚧 Planned Features</h2>
+                        <div class="info-box">
+                            <h3>🛠️ In Development</h3>
+                            <p>The following features are planned for future versions:</p>
+                        </div>
+
+                        <div class="feature-grid">
+                            <div class="feature-card">
+                                <div class="feature-icon">📦</div>
+                                <h4>Nested Archives</h4>
+                                <p>Support for archives within archives</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🌙</div>
+                                <h4>Dark Mode</h4>
+                                <p>Eye-friendly dark theme implementation</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🔌</div>
+                                <h4>Plugin System</h4>
+                                <p>Python-based functionality extensions</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🎯</div>
+                                <h4>Command Palette</h4>
+                                <p>Keyword-based function search and execution</p>
+                            </div>
+                        </div>
+
+                        <div class="tip-box">
+                            <h3>💡 Susie Plugin Support</h3>
+                            <p>Future support for Susie plugins will enable even more image and archive formats.</p>
+                        </div>
+                    </section>
+
+                    <!-- Appendix Section -->
+                    <section id="appendix" class="section">
+                        <h2>📋 Appendix</h2>
+                        
+                        <h3>Supported File Formats</h3>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Formats</th>
+                                        <th>Extensions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Image Files</td>
+                                        <td>PNG, JPEG, GIF, BMP, TIFF, WebP</td>
+                                        <td>.png, .jpg, .jpeg, .gif, .bmp, .tiff, .tif, .webp</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Archive & Compressed Files</td>
+                                        <td>ZIP, 7-Zip, RAR, TAR, GZip, BZip2, XZ</td>
+                                        <td>.zip, .7z, .rar, .tar, .tar.gz, .tar.bz2, .tar.xz, .gz, .bz2, .xz</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Comic Archives</td>
+                                        <td>Comic Book ZIP/RAR/PDF</td>
+                                        <td>.cbz, .cbr, .pdf</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Folders</td>
+                                        <td>Folders containing image files</td>
+                                        <td>(no extension)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3>Configuration Files</h3>
+                        <div class="info-box">
+                            <h3>📁 Important Files and Folders</h3>
+                            <ul>
+                                <li><strong>config.db:</strong> Database for per-profile settings, bookmarks, and history</li>
+                                <li><strong>langs/:</strong> Custom language files (external language/notation customization, undefined keys show key names)</li>
+                                <li><strong>font/:</strong> Custom TTF font files (additional UI fonts)</li>
+                                <li><strong>logs/:</strong> Debug log files (when debug mode is enabled)</li>
+                            </ul>
+                        </div>
+
+                        <h3>Keyboard Shortcuts Quick Reference</h3>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Shortcut</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td><kbd>Ctrl + O</kbd></td><td>Open file</td></tr>
+                                    <tr><td><kbd>Ctrl + S</kbd></td><td>Save state as</td></tr>
+                                    <tr><td><kbd>Ctrl + Shift + O</kbd></td><td>Open file in new tab</td></tr>
+                                    <tr><td><kbd>→</kbd> / <kbd>Space</kbd></td><td>Next page</td></tr>
+                                    <tr><td><kbd>←</kbd> / <kbd>V</kbd></td><td>Previous page</td></tr>
+                                    <tr><td><kbd>Ctrl + →</kbd></td><td>Next file</td></tr>
+                                    <tr><td><kbd>Ctrl + ←</kbd></td><td>Previous file</td></tr>
+                                    <tr><td><kbd>Ctrl + 0</kbd></td><td>Last tab (same default key as reset zoom; tab switch wins)</td></tr>
+                                    <tr><td><kbd>Ctrl + 1</kbd>–<kbd>9</kbd></td><td>1st–9th tab</td></tr>
+                                    <tr><td><kbd>Ctrl + T</kbd></td><td>New tab (same default key as always on top)</td></tr>
+                                    <tr><td><kbd>Ctrl + W</kbd></td><td>Close tab</td></tr>
+                                    <tr><td><kbd>Ctrl + Shift + T</kbd></td><td>Reopen tab</td></tr>
+                                    <tr><td><kbd>Ctrl + R</kbd></td><td>Rotate right</td></tr>
+                                    <tr><td><kbd>Enter</kbd></td><td>Toggle fullscreen</td></tr>
+                                    <tr><td><kbd>Ctrl + L</kbd></td><td>Image list</td></tr>
+                                    <tr><td><kbd>Ctrl + B</kbd></td><td>Toggle bookmarks</td></tr>
+                                    <tr><td><kbd>Ctrl + H</kbd></td><td>Toggle history</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination">
+                        <a href="#" class="page-link" onclick="showSection('overview')">Overview</a>
+                        <a href="#" class="page-link" onclick="showSection('basic-usage')">Basic Usage</a>
+                        <a href="#" class="page-link" onclick="showSection('command-line')">Command-Line Arguments</a>
+                        <a href="files/advanced-features-en.html" class="page-link">Advanced Features</a>
+                        <a href="files/settings-en.html" class="page-link">Settings</a>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script src="js/search.js"></script>
+</body>
+</html>
+ 

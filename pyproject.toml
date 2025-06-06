@@ -1,0 +1,73 @@
+[project]
+name = "ez_co"
+version = "1.0.0"
+description = "お手軽なコミックビューワー"
+license = {text = "MIT"}
+authors = [
+    {name = "reki",email = "old.time.missing@gmail.com"}
+]
+readme = "README.md"
+homepage = "https://github.com/reki/ez_co"
+repository = "https://github.com/reki/ez_co"
+documentation = "https://github.com/reki/ez_co#readme"
+issues = "https://github.com/reki/ez_co/issues"
+keywords = ["comic", "viewer", "manga", "image", "archive", "zip", "rar"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Graphics :: Viewers",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "pyside6 (>=6.9.1,<7.0.0)",
+    "pillow (>=11.2.1,<12.0.0)",
+    "py7zr (>=1.0.0,<2.0.0)",
+    "rarfile (>=4.2,<5.0)",
+    "click (>=8.2.1,<9.0.0)",
+    "numpy (>=2.2.6,<3.0.0)",
+    "torch (>=2.7.1,<3.0.0)",
+    "setuptools (>=80.9.0,<81.0.0)",
+    "tomli (>=2.2.1,<3.0.0)",
+    "pytray (>=0.3.4,<0.4.0)",
+    "pystray (>=0.19.5,<0.20.0)",
+    "pyyaml (>=6.0.2,<7.0.0)",
+    "pynput (>=1.8.1,<2.0.0)",
+    "humanfriendly (>=10.0,<11.0)",
+    "pypdf (>=6.16.2,<7.0.0)",
+    "pyzipper (>=0.4.0,<0.5.0)"
+]
+
+[project.scripts]
+build = "tooling.build_cli:main"
+collect = "tooling.collect_cli:main"
+init-env = "tooling.init_cli:main"
+
+[tool.poetry]
+name = "ez_co"
+version = "1.0.0"
+description = "お手軽なコミックビューワー"
+authors = ["reki <old.time.missing@gmail.com>"]
+readme = "README.md"
+packages = [
+    {include = "ez_co", from = "src"},
+    {include = "tooling"},
+]
+
+[tool.poetry.group.dev.dependencies]
+pylint = "^3.3.7"
+pytest = "^8.4.0"
+nuitka = "^2.7.6"
+pytest-qt = "^4.5.0"
+py-spy = "^0.4.2"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

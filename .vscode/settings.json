@@ -1,0 +1,16 @@
+{
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/__init__.py": false,
+      "**/.venv": true,
+      ".spec": true,
+      "build/": true,
+      "**/.git_keep": true,
+      "**/poetry.lock": true
+    },
+    "pylint.enabled": true,
+    "pylint.args": [
+        "--rcfile=.pylintrc"
+    ],
+    "commentTranslate.hover.enabled": true
+}
