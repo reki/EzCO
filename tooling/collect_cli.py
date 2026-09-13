@@ -51,14 +51,17 @@ def _make_release_zip(root: Path, *, skip_build: bool) -> Path:
 
     with tempfile.TemporaryDirectory() as td:
         inner = Path(td) / BUNDLE_NAME
-        stage_release_dir(inner, root, consume_exe=not skip_build)
+        stage_release_dir(inner, root, consume_exe=False)
 
         archive_path = shutil.make_archive(
             str(root / zip_stem),
             "zip",
             root_dir=td,
-            base_dir=bundle_name,
+            base_dir=BUNDLE_NAME,
         )
+        if not skip_build and exe.is_file():
+            print("Removing EzCo.exe from project root...")
+            exe.unlink()
 
     out = Path(archive_path)
     print(f"作成した zip: {out}")
