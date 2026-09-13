@@ -56,6 +56,7 @@
                                 <li><a href="#delete-config" class="toc-link">delete_config</a></li>
                                 <li><a href="#load-ui" class="toc-link">load_ui</a></li>
                                 <li><a href="#get-current" class="toc-link">get_current</a></li>
+                                <li><a href="#reload-current" class="toc-link">reload_current</a></li>
                                 <li><a href="#on-off" class="toc-link">on / off</a></li>
                                 <li><a href="#get-app-config" class="toc-link">get_app_config</a></li>
                                 <li><a href="#ask-password" class="toc-link">ask_password</a></li>
@@ -79,7 +80,7 @@
 
                     <h1>🔌 プラグインリファレンス</h1>
                     <p>本体がプラグインに渡す契約です。JavaDoc のように型と引数を並べています。ユーザー向けの配置手順は <a href="settings.html#plugin-settings">プラグイン設定</a> を、開発者向けの長文はリポジトリの <code>docs/plugins.md</code> を見てください。</p>
-                    <p><strong>API バージョン:</strong> <code>1</code>　／　<strong>配置:</strong> データフォルダの <code>plugins/</code> の ZIP のみ（設定の「データの置き場」）</p>
+                    <p><strong>API バージョン:</strong> <code>1</code>　／　<strong>配置:</strong> データフォルダの <code>plugins/</code> の ZIP、または <code>manifest.json</code> 付きフォルダ（設定の「データの置き場」）</p>
 
                     <section id="overview" class="config-section">
                         <h3>概要</h3>
@@ -88,7 +89,7 @@
                             <a href="#loader"><div class="api-index-name">FileLoader</div><div class="api-index-desc">画像／アーカイブの読み込み契約</div></a>
                             <a href="#host"><div class="api-index-name">host</div><div class="api-index-desc">登録・設定・ダイアログ・アクション</div></a>
                             <a href="#gettext"><div class="api-index-name">get_text</div><div class="api-index-desc">多言語文言</div></a>
-                            <a href="#root"><div class="api-index-name">root</div><div class="api-index-desc">ZIP 内リソース</div></a>
+                            <a href="#root"><div class="api-index-name">root</div><div class="api-index-desc">プラグイン内リソース</div></a>
                         </div>
                     </section>
 
@@ -100,12 +101,12 @@
 │   └── loader.py
 ├── langs/               # 任意 ja.json / en.json
 └── resources/           # 任意。root.read_bytes</pre>
-                        <p>余分な親フォルダを挟まないでください。開発フォルダを置いても、ホストが読むのは同名の ZIP です。</p>
+                        <p>余分な親フォルダを挟まないでください。同じ構成の展開フォルダを <code>plugins/</code> 直下に置けば、ZIP にしなくても読み込まれます。</p>
                     </section>
 
                     <section id="manifest" class="config-section">
                         <h3>manifest.json</h3>
-                        <p>ZIP の直下に置きます。ホストはこのファイルだけを見てプラグインを識別します。</p>
+                        <p>ZIP またはフォルダの直下に置きます。ホストはこのファイルだけを見てプラグインを識別します。</p>
 
                         <div class="api-field">
                             <div class="api-field-head">
@@ -221,7 +222,7 @@ class _Entry:
                                 <table>
                                     <thead><tr><th>引数</th><th>説明</th></tr></thead>
                                     <tbody>
-                                        <tr><td><code>root</code></td><td>ZIP 内ファイル。<code>read_bytes</code> / <code>exists</code></td></tr>
+                                        <tr><td><code>root</code></td><td>プラグイン内ファイル。<code>read_bytes</code> / <code>exists</code></td></tr>
                                         <tr><td><code>get_text</code></td><td>文言</td></tr>
                                         <tr><td><code>host</code></td><td>登録・設定・状態</td></tr>
                                     </tbody>
@@ -314,7 +315,7 @@ host.register_format(".xyz", "archive")</pre>
                         <article id="register-sidebar" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None) -&gt; None</code></div>
                             <div class="api-body">
-                                <p><code>QWidget</code> または <code>QLayout</code>。ドック化は本体。開閉アクション <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code> を自動登録します。ドックの題名は <code>title</code> のまま、ショートカット／ジェスチャーの表示は本体が <code>{title}サイドバー表示/非表示</code> にします。<code>aliases</code> は旧ショートカット ID など。本体は特定プラグインの ID を知りません。</p>
+                                <p><code>QWidget</code> または <code>QLayout</code>。ドック化は本体。開閉アクション <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code> を自動登録します。ドックの題名とサイドバーメニューは <code>title</code>、ショートカット／ジェスチャーの表示は本体が <code>{title}サイドバー表示/非表示</code> にします。<code>aliases</code> は旧ショートカット ID など。本体は特定プラグインの ID を知りません。</p>
 <pre class="api-example">widget = QWidget()
 host.register_sidebar("info", get_text("title"), widget)
 # 公開 ID: plugin:com.example.sidebar:sidebar:info
@@ -421,6 +422,14 @@ page = host.get_current("page")</pre>
                             </div>
                         </article>
 
+                        <article id="reload-current" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.reload_current(page=None) -&gt; bool</code></div>
+                            <div class="api-body">
+                                <p>現在のファイルを開き直します。画像キャッシュも消えます。<code>page</code> は 1 始まり。省略時は今のページです。範囲外は先頭または末尾に丸めます。</p>
+<pre class="api-example">host.reload_current(3)</pre>
+                            </div>
+                        </article>
+
                         <article id="on-off" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.on(event, callback) / host.off(event, callback=None)</code></div>
                             <div class="api-body">
@@ -499,7 +508,7 @@ status = get_text("status", count=3)</pre>
                         <article class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>root.read_bytes(relative_path: str) -&gt; bytes</code></div>
                             <div class="api-body">
-                                <p>ZIP 内の相対パス。無ければ <code>KeyError</code>。</p>
+                                <p>プラグイン内の相対パス。無ければ <code>KeyError</code>。</p>
 <pre class="api-example">ui = root.read_bytes("resources/sidebar.ui")
 icon = root.read_bytes("resources/icon.png")</pre>
                             </div>
@@ -507,7 +516,7 @@ icon = root.read_bytes("resources/icon.png")</pre>
                         <article class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>root.exists(relative_path: str) -&gt; bool</code></div>
                             <div class="api-body">
-                                <p>ZIP 内にあるか。</p>
+                                <p>プラグイン内にあるか。</p>
 <pre class="api-example">if root.exists("resources/sidebar.ui"):
     widget = host.load_ui(root.read_bytes("resources/sidebar.ui"))</pre>
                             </div>
@@ -545,7 +554,7 @@ host.on("config_changed", _on_config)</pre>
                             <li>ドックの貼り付け／フローティングは本体</li>
                             <li>他プラグインの設定は読めない（<code>plugin_id</code> はハッシュ化）</li>
                             <li>DLL プラグインは未対応</li>
-                            <li>ZIP を足したら再起動が必要</li>
+                            <li>ZIP またはフォルダを足したら再起動が必要</li>
                         </ul>
                     </section>
 

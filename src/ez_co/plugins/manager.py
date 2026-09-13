@@ -189,9 +189,7 @@ class PluginManager:
             self._scanned = True
             return
         logger.info(get_log_text("plugin_scan_start", path=directory))
-        for path in sorted(directory.iterdir(), key=lambda item: item.name.lower()):
-            if not path.is_file():
-                continue
+        for path in sorted(directory.iterdir(), key=lambda item: (item.is_file(), item.name.lower())):
             backend = next((item for item in self._backends if item.can_load(path)), None)
             if backend is None:
                 continue
@@ -215,6 +213,18 @@ class PluginManager:
                 )
                 existing = self._match_plugin(plugin.provider_id, exact_version=True)
                 if existing is not None:
+                    if existing.zip_path.is_dir() and path.is_file():
+                        if archive is not None and hasattr(archive, "close"):
+                            archive.close()
+                        logger.info(
+                            get_log_text(
+                                "plugin_skip_zip_folder_preferred",
+                                provider_id=plugin.provider_id,
+                                path=path,
+                                existing_path=existing.zip_path,
+                            )
+                        )
+                        continue
                     raise ValueError(
                         get_log_text(
                             "plugin_duplicate_provider",

@@ -7,7 +7,7 @@ Sidebar plugin for the current folder. Shows `info.json` and `folder.jpg` when p
 | ID | `com.ezco.product_info` |
 | Version | `1.0.0` |
 | Kind | Sidebar |
-| ZIP | `plugins/product_info.zip` |
+| ZIP | `dist-sample-plugins/product_info.zip` |
 | Entry | `plugin:ProductInfoPlugin` |
 
 ## Usage
@@ -37,6 +37,6 @@ While fetching, the sidebar stays empty. Failures do not change the folder.
 
 ## Development
 
-Source lives in `plugins/product_info/`. Fetching uses the standard library only. The host reads the ZIP.
+Source lives in `plugins/product_info/`. Fetching uses the standard library only. Put that folder in the data `plugins/` directory to load it. Packaged ZIP is in `dist-sample-plugins/`.
 
 See the [Plugin Reference](../../resources/UserManual/files/plugin-reference-en.html) and [docs/plugins.md](../../docs/plugins.md).

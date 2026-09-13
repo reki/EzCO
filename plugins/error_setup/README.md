@@ -7,7 +7,7 @@
 | ID | `com.ezco.error_setup` |
 | バージョン | `1.0.0` |
 | 種別 | サイドバー（setup のみ） |
-| ZIP | `plugins/error_setup.zip` |
+| ZIP | `dist-sample-plugins/error_setup.zip` |
 | 入口 | `plugin:ErrorSetupPlugin` |
 
 ## 使い方
@@ -22,4 +22,4 @@
 
 ## 開発
 
-ソースは `plugins/error_setup/` です。ホストが読むのは ZIP です。
+ソースは `plugins/error_setup/` です。データフォルダの `plugins/` にこのフォルダを置けばそのまま読めます。配布 ZIP は `dist-sample-plugins/` です。

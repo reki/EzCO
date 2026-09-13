@@ -7,7 +7,7 @@
 | ID | `com.ezco.example.zip` |
 | バージョン | `1.1.0` |
 | 種別 | ファイル（アーカイブ） |
-| ZIP | `plugins/example_zip.zip` |
+| ZIP | `dist-sample-plugins/example_zip.zip` |
 | 入口 | `loader:FileLoader` |
 
 ## 使い方
@@ -23,6 +23,6 @@
 
 ## 開発
 
-ソースは `plugins/example_zip/` です。`pyzipper` は本体依存です。ホストが読むのは ZIP です。
+ソースは `plugins/example_zip/` です。`pyzipper` は本体依存です。データフォルダの `plugins/` にこのフォルダを置けばそのまま読めます。配布 ZIP は `dist-sample-plugins/` です。
 
 ホスト API の一覧はユーザーマニュアルの [プラグインリファレンス](../../resources/UserManual/files/plugin-reference.html) と [docs/plugins.md](../../docs/plugins.md) を見てください。

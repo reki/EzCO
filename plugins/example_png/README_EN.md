@@ -7,7 +7,7 @@ Sample image plugin. Opens `.png` through the plugin and overlays a color tint p
 | ID | `com.ezco.example.png` |
 | Version | `1.0.0` |
 | Kind | File (image) |
-| ZIP | `plugins/example_png.zip` |
+| ZIP | `dist-sample-plugins/example_png.zip` |
 | Entry | `loader:FileLoader` |
 
 ## Usage
@@ -23,6 +23,6 @@ There are no settings or custom actions.
 
 ## Development
 
-Source lives in `plugins/example_png/`. The host reads the ZIP.
+Source lives in `plugins/example_png/`. Put that folder in the data `plugins/` directory to load it. Packaged ZIP is in `dist-sample-plugins/`.
 
 See the [Plugin Reference](../../resources/UserManual/files/plugin-reference-en.html) and [docs/plugins.md](../../docs/plugins.md).

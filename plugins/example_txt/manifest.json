@@ -1,0 +1,9 @@
+{
+  "id": "com.ezco.example_txt",
+  "name": "Example Text Pages",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "plugin:TextImagePlugin",
+  "description": "Sample .txt loader. Renders the text as image pages. Sidebar controls font, colors, and horizontal / vertical reading.",
+  "author": "EzCo"
+}

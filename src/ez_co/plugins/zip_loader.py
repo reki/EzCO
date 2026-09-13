@@ -10,14 +10,13 @@ import json
 import logging
 import re
 import sys
-import zipfile
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
 from ez_co.plugins.api import HOST_API_VERSION, normalize_formats
 from ez_co.plugins.manifest import PluginManifest, parse_manifest
-from ez_co.plugins.root import ZipPluginRoot
+from ez_co.plugins.root import PluginRoot, open_plugin_source
 from ez_co.utils.language_manager import get_log_text
 
 logger = logging.getLogger(__name__)
@@ -33,9 +32,9 @@ def safe_module_prefix(plugin_id: str) -> str:
     return f"{PLUGIN_MODULE_PREFIX}{cleaned}"
 
 
-def _build_src_map(archive: zipfile.ZipFile) -> dict[str, str]:
+def _build_src_map(source) -> dict[str, str]:
     src_map: dict[str, str] = {}
-    for name in archive.namelist():
+    for name in source.namelist():
         normalized = name.replace("\\", "/")
         if not normalized.startswith("src/") or normalized.endswith("/"):
             continue
@@ -57,7 +56,7 @@ class _PluginSrcLoader(importlib.abc.Loader):
         plugin_id: str,
         prefix: str,
         zip_path: Path,
-        archive: zipfile.ZipFile,
+        source,
         zip_name: str,
         src_map: dict[str, str],
         is_package: bool,
@@ -67,7 +66,7 @@ class _PluginSrcLoader(importlib.abc.Loader):
         self.plugin_id = plugin_id
         self.prefix = prefix
         self.zip_path = zip_path
-        self.archive = archive
+        self.source = source
         self.zip_name = zip_name
         self.src_map = src_map
         self._is_package = is_package
@@ -81,7 +80,7 @@ class _PluginSrcLoader(importlib.abc.Loader):
         return None
 
     def exec_module(self, module: ModuleType):
-        source = self.archive.read(self.zip_name).decode("utf-8")
+        source = self.source.read_bytes(self.zip_name).decode("utf-8")
         relative = self.zip_name[len("src/") :] if self.zip_name.startswith("src/") else self.zip_name
         module.__file__ = f"{self.zip_path.as_posix()}/src/{relative}"
         module.__ezco_plugin_id__ = self.plugin_id
@@ -124,7 +123,7 @@ class PluginSrcFinder(importlib.abc.MetaPathFinder):
         plugin_id: str,
         prefix: str,
         zip_path: Path,
-        archive: zipfile.ZipFile,
+        source,
         src_map: dict[str, str],
         get_text=None,
         host=None,
@@ -132,7 +131,7 @@ class PluginSrcFinder(importlib.abc.MetaPathFinder):
         self.plugin_id = plugin_id
         self.prefix = prefix
         self.zip_path = zip_path
-        self.archive = archive
+        self.source = source
         self.src_map = src_map
         self.get_text = get_text
         self.host = host
@@ -152,7 +151,7 @@ class PluginSrcFinder(importlib.abc.MetaPathFinder):
             if not is_package:
                 return None
             zip_name = f"src/{local_name.replace('.', '/')}/__init__.py"
-            if zip_name not in self.archive.namelist():
+            if not self.source.exists(zip_name):
                 spec = importlib.machinery.ModuleSpec(fullname, loader=None, is_package=True)
                 spec.submodule_search_locations = [f"{self.zip_path.as_posix()}/src/{local_name.replace('.', '/')}"]
                 return spec
@@ -160,7 +159,7 @@ class PluginSrcFinder(importlib.abc.MetaPathFinder):
             self.plugin_id,
             self.prefix,
             self.zip_path,
-            self.archive,
+            self.source,
             zip_name,
             self.src_map,
             is_package=is_package or zip_name.endswith("/__init__.py"),
@@ -184,7 +183,7 @@ def _unload_prefix(prefix: str) -> None:
     ]
 
 
-def _instantiate(module: ModuleType, class_name: str, root: ZipPluginRoot, get_text, host) -> Any:
+def _instantiate(module: ModuleType, class_name: str, root: PluginRoot, get_text, host) -> Any:
     exported = vars(module)
     if class_name not in exported:
         raise ValueError(f"entry class not found in module: {class_name}")
@@ -194,11 +193,12 @@ def _instantiate(module: ModuleType, class_name: str, root: ZipPluginRoot, get_t
     return candidate(root, get_text, host)
 
 
-def load_zip_plugin(zip_path: Path, host=None) -> tuple[PluginManifest, Any, ZipPluginRoot, zipfile.ZipFile]:
-    archive = zipfile.ZipFile(zip_path, "r")
+def load_plugin(path: Path, host=None) -> tuple[PluginManifest, Any, PluginRoot, Any]:
+    path = Path(path)
+    source = open_plugin_source(path)
     try:
         try:
-            raw = json.loads(archive.read("manifest.json").decode("utf-8"))
+            raw = json.loads(source.read_bytes("manifest.json").decode("utf-8"))
         except KeyError as exc:
             raise ValueError("manifest.json is missing") from exc
         manifest = parse_manifest(raw)
@@ -211,7 +211,7 @@ def load_zip_plugin(zip_path: Path, host=None) -> tuple[PluginManifest, Any, Zip
                     host_api_version=HOST_API_VERSION,
                 )
             )
-        src_map = _build_src_map(archive)
+        src_map = _build_src_map(source)
         if manifest.entry_module not in src_map:
             raise ValueError(f"entry module not found in src/: {manifest.entry_module}")
         prefix = safe_module_prefix(f"{manifest.plugin_id}_{manifest.version}")
@@ -225,16 +225,16 @@ def load_zip_plugin(zip_path: Path, host=None) -> tuple[PluginManifest, Any, Zip
             scoped = shared.scoped(manifest.plugin_id)
         else:
             scoped = shared
-        root = ZipPluginRoot(zip_path, archive, get_text=lambda key, **kwargs: key, host=scoped)
+        root = PluginRoot(path, source, get_text=lambda key, **kwargs: key, host=scoped)
         get_text_fn = make_plugin_get_text(root)
         root.get_text = get_text_fn
         finder = PluginSrcFinder(
-            manifest.plugin_id, prefix, zip_path, archive, src_map, get_text=get_text_fn, host=scoped
+            manifest.plugin_id, prefix, path, source, src_map, get_text=get_text_fn, host=scoped
         )
         sys.meta_path.insert(0, finder)
         if prefix not in sys.modules:
             pkg = ModuleType(prefix)
-            pkg.__path__ = [f"{zip_path.as_posix()}/src"]
+            pkg.__path__ = [f"{path.as_posix()}/src"]
             pkg.__package__ = prefix
             sys.modules[prefix] = pkg
         module = importlib.import_module(f"{prefix}.{manifest.entry_module}")
@@ -251,7 +251,11 @@ def load_zip_plugin(zip_path: Path, host=None) -> tuple[PluginManifest, Any, Zip
         if not formats and not has_sidebar and not has_setup:
             raise ValueError(get_log_text("plugin_no_formats", plugin_id=manifest.plugin_id))
         instance._ezco_formats = formats
-        return manifest, instance, root, archive
+        return manifest, instance, root, source.archive
     except Exception:
-        archive.close()
+        source.close()
         raise
+
+
+def load_zip_plugin(zip_path: Path, host=None) -> tuple[PluginManifest, Any, PluginRoot, Any]:
+    return load_plugin(zip_path, host=host)

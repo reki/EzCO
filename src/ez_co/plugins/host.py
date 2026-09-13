@@ -185,6 +185,7 @@ class PluginHost:
         self._run_action = None
         self._bridge = None
         self._get_current = None
+        self._reload_current = None
         self._get_app_config = None
         self._mount_sidebar = None
         self._unmount_sidebar = None
@@ -210,6 +211,7 @@ class PluginHost:
         db_manager=None,
         run_action: Optional[Callable] = None,
         get_current: Optional[Callable] = None,
+        reload_current: Optional[Callable] = None,
         get_app_config: Optional[Callable] = None,
         mount_sidebar: Optional[Callable] = None,
         unmount_sidebar: Optional[Callable] = None,
@@ -219,6 +221,7 @@ class PluginHost:
         self._db = db_manager
         self._run_action = run_action
         self._get_current = get_current
+        self._reload_current = reload_current
         self._get_app_config = get_app_config
         self._mount_sidebar = mount_sidebar
         self._unmount_sidebar = unmount_sidebar
@@ -530,6 +533,24 @@ class PluginHost:
             logger.debug(get_log_text("plugin_current_failed", key=key, error=exc))
             return None
 
+    def reload_current(self, page=None) -> bool:
+        target = None
+        if page is not None:
+            try:
+                target = int(page)
+            except (TypeError, ValueError):
+                target = None
+        return bool(self._call_on_ui(lambda: self._reload_current_ui(target)))
+
+    def _reload_current_ui(self, page) -> bool:
+        if self._reload_current is None:
+            return False
+        try:
+            return bool(self._reload_current(page))
+        except Exception as exc:
+            logger.debug(get_log_text("plugin_event_failed", event="reload_current", error=exc))
+            return False
+
     def _run_action_ui(self, action_id: str, kwargs: dict) -> bool:
         if self.invoke_registered(action_id):
             return True
@@ -650,6 +671,9 @@ class ScopedPluginHost:
 
     def get_current(self, key: str):
         return self._host._current_value(key)
+
+    def reload_current(self, page=None) -> bool:
+        return bool(self._host.reload_current(page))
 
     def on(self, event: str, callback: Callable) -> None:
         self._host._on(self._plugin_id, event, callback)

@@ -69,7 +69,7 @@ poetry run installer
 4. **「Python: EzCo」** で手動確認する。配布物を見るときだけ **「▶ ビルド」** または **「▶ ビルド (--safe-mode)」**
 5. [Pull Request](../../compare) で変更内容を説明する
 
-プラグインを触る場合は [docs/plugins.md](docs/plugins.md) と [plugins/README.md](plugins/README.md) を見てください。サンプルのソースを直したら対応する `.zip` も作り直します。
+プラグインを触る場合は [docs/plugins.md](docs/plugins.md) と [plugins/README.md](plugins/README.md) を見てください。開発中は `plugins/` のフォルダがそのまま読めます。配布するときだけ [`dist-sample-plugins/`](dist-sample-plugins/) の `.zip` を作り直します。
 
 ## コードスタイル
 
@@ -151,7 +151,7 @@ Use [Feature Request Issue](../../issues/new?template=feature_request.md). Expla
 4. Verify with **“Python: EzCo”**. Use **“▶ ビルド”** or **“▶ ビルド (--safe-mode)”** only when you need a packaged build.
 5. Open a [Pull Request](../../compare) and describe the change.
 
-For plugins, see [docs/plugins.md](docs/plugins.md) and [plugins/README.md](plugins/README.md). After editing sample sources, rebuild the matching `.zip`.
+For plugins, see [docs/plugins.md](docs/plugins.md) and [plugins/README.md](plugins/README.md). Folders under `plugins/` load as-is while developing. Rebuild the `.zip` in [`dist-sample-plugins/`](dist-sample-plugins/) only when distributing.
 
 ## Code Style
 

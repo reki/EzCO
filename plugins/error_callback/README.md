@@ -7,7 +7,7 @@
 | ID | `com.ezco.error_callback` |
 | バージョン | `1.0.0` |
 | 種別 | サイドバー |
-| ZIP | `plugins/error_callback.zip` |
+| ZIP | `dist-sample-plugins/error_callback.zip` |
 | 入口 | `plugin:ErrorCallbackPlugin` |
 
 ## 使い方
@@ -22,4 +22,4 @@
 
 ## 開発
 
-ソースは `plugins/error_callback/` です。ホストが読むのは ZIP です。
+ソースは `plugins/error_callback/` です。データフォルダの `plugins/` にこのフォルダを置けばそのまま読めます。配布 ZIP は `dist-sample-plugins/` です。

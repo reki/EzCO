@@ -56,6 +56,7 @@
                                 <li><a href="#delete-config" class="toc-link">delete_config</a></li>
                                 <li><a href="#load-ui" class="toc-link">load_ui</a></li>
                                 <li><a href="#get-current" class="toc-link">get_current</a></li>
+                                <li><a href="#reload-current" class="toc-link">reload_current</a></li>
                                 <li><a href="#on-off" class="toc-link">on / off</a></li>
                                 <li><a href="#get-app-config" class="toc-link">get_app_config</a></li>
                                 <li><a href="#ask-password" class="toc-link">ask_password</a></li>
@@ -79,7 +80,7 @@
 
                     <h1>🔌 Plugin Reference</h1>
                     <p>Contract the host gives to plugins, listed like Javadoc. For end-user install steps see <a href="settings-en.html#plugin-settings">Plugin Settings</a>. Longer developer notes live in <code>docs/plugins.md</code>.</p>
-                    <p><strong>API version:</strong> <code>1</code>　／　<strong>Location:</strong> ZIP files in the data folder <code>plugins/</code> (Settings → Data location)</p>
+                    <p><strong>API version:</strong> <code>1</code>　／　<strong>Location:</strong> a ZIP or a folder with <code>manifest.json</code> in the data folder <code>plugins/</code> (Settings → Data location)</p>
 
                     <section id="overview" class="config-section">
                         <h3>Overview</h3>
@@ -88,7 +89,7 @@
                             <a href="#loader"><div class="api-index-name">FileLoader</div><div class="api-index-desc">Image / archive loader contract</div></a>
                             <a href="#host"><div class="api-index-name">host</div><div class="api-index-desc">Register, config, dialogs, actions</div></a>
                             <a href="#gettext"><div class="api-index-name">get_text</div><div class="api-index-desc">Localized strings</div></a>
-                            <a href="#root"><div class="api-index-name">root</div><div class="api-index-desc">Files inside the ZIP</div></a>
+                            <a href="#root"><div class="api-index-name">root</div><div class="api-index-desc">Files inside the plugin</div></a>
                         </div>
                     </section>
 
@@ -100,12 +101,12 @@
 │   └── loader.py
 ├── langs/               # optional ja.json / en.json
 └── resources/           # optional; root.read_bytes</pre>
-                        <p>Do not wrap the ZIP in an extra parent folder. A source folder is fine for editing; the host still reads the ZIP with the same name.</p>
+                        <p>Do not wrap the package in an extra parent folder. The same layout as a folder under <code>plugins/</code> loads without zipping.</p>
                     </section>
 
                     <section id="manifest" class="config-section">
                         <h3>manifest.json</h3>
-                        <p>Place this at the ZIP root. The host identifies the plugin from this file only.</p>
+                        <p>Place this at the ZIP or folder root. The host identifies the plugin from this file only.</p>
 
                         <div class="api-field">
                             <div class="api-field-head">
@@ -221,7 +222,7 @@ class _Entry:
                                 <table>
                                     <thead><tr><th>Arg</th><th>Meaning</th></tr></thead>
                                     <tbody>
-                                        <tr><td><code>root</code></td><td>Files in the ZIP: <code>read_bytes</code> / <code>exists</code></td></tr>
+                                        <tr><td><code>root</code></td><td>Files in the plugin: <code>read_bytes</code> / <code>exists</code></td></tr>
                                         <tr><td><code>get_text</code></td><td>Strings</td></tr>
                                         <tr><td><code>host</code></td><td>Register, config, state</td></tr>
                                     </tbody>
@@ -314,7 +315,7 @@ host.register_format(".xyz", "archive")</pre>
                         <article id="register-sidebar" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None) -&gt; None</code></div>
                             <div class="api-body">
-                                <p><code>QWidget</code> or <code>QLayout</code>. The host docks it and auto-registers <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code>. The dock title stays <code>title</code>; shortcut / gesture labels become <code>Show/Hide {title} Sidebar</code>. <code>aliases</code> are old shortcut ids. The host does not hard-code plugin-specific ids.</p>
+                                <p><code>QWidget</code> or <code>QLayout</code>. The host docks it and auto-registers <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code>. The dock title and sidebar menu use <code>title</code>; shortcut / gesture labels become <code>Show/Hide {title} Sidebar</code>. <code>aliases</code> are old shortcut ids. The host does not hard-code plugin-specific ids.</p>
 <pre class="api-example">widget = QWidget()
 host.register_sidebar("info", get_text("title"), widget)
 # Public id: plugin:com.example.sidebar:sidebar:info
@@ -421,6 +422,14 @@ page = host.get_current("page")</pre>
                             </div>
                         </article>
 
+                        <article id="reload-current" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.reload_current(page=None) -&gt; bool</code></div>
+                            <div class="api-body">
+                                <p>Reopens the current file and clears the image cache. <code>page</code> is 1-based. Omit it to keep the current page. Out-of-range values are clamped.</p>
+<pre class="api-example">host.reload_current(3)</pre>
+                            </div>
+                        </article>
+
                         <article id="on-off" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.on(event, callback) / host.off(event, callback=None)</code></div>
                             <div class="api-body">
@@ -499,7 +508,7 @@ status = get_text("status", count=3)</pre>
                         <article class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>root.read_bytes(relative_path: str) -&gt; bytes</code></div>
                             <div class="api-body">
-                                <p>Read a relative path in the ZIP. Missing entries raise <code>KeyError</code>.</p>
+                                <p>Read a relative path in the plugin. Missing entries raise <code>KeyError</code>.</p>
 <pre class="api-example">ui = root.read_bytes("resources/sidebar.ui")
 icon = root.read_bytes("resources/icon.png")</pre>
                             </div>
@@ -507,7 +516,7 @@ icon = root.read_bytes("resources/icon.png")</pre>
                         <article class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>root.exists(relative_path: str) -&gt; bool</code></div>
                             <div class="api-body">
-                                <p>Whether that relative path exists in the ZIP.</p>
+                                <p>Whether that relative path exists in the plugin.</p>
 <pre class="api-example">if root.exists("resources/sidebar.ui"):
     widget = host.load_ui(root.read_bytes("resources/sidebar.ui"))</pre>
                             </div>
@@ -545,7 +554,7 @@ host.on("config_changed", _on_config)</pre>
                             <li>Dock placement / floating is host-owned</li>
                             <li>Other plugins' settings are not readable (<code>plugin_id</code> is hashed)</li>
                             <li>DLL plugins are not supported</li>
-                            <li>Restart after adding a ZIP</li>
+                            <li>Restart after adding a ZIP or folder</li>
                         </ul>
                     </section>
 

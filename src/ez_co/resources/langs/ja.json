@@ -932,6 +932,7 @@
     "plugin_loaded": "プラグインを読み込みました: {name} {version} ({plugin_id}) {path}",
     "plugin_load_failed": "プラグインの読み込みに失敗しました: {path} {error}",
     "plugin_duplicate_provider": "同じ id と version のプラグインが既にあります: {provider_id} {path} (既存: {existing_path})",
+    "plugin_skip_zip_folder_preferred": "同じプラグインのフォルダがあるため ZIP を読み飛ばします: {provider_id} {path} (フォルダ: {existing_path})",
     "plugin_dll_unsupported": "DLLプラグインは未対応のためスキップします: {path}",
     "plugin_api_version_unsupported": "プラグインAPIバージョンが非対応です: {plugin_id} api={api_version} host={host_api_version}",
     "plugin_import_blocked": "プラグインから禁止された import です: {name} ({plugin_id})",

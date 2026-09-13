@@ -7,7 +7,7 @@ Test plugin. `setup()` always raises. Not for production.
 | ID | `com.ezco.error_setup` |
 | Version | `1.0.0` |
 | Kind | Sidebar (setup only) |
-| ZIP | `plugins/error_setup.zip` |
+| ZIP | `dist-sample-plugins/error_setup.zip` |
 | Entry | `plugin:ErrorSetupPlugin` |
 
 ## Usage
@@ -22,4 +22,4 @@ Disable the plugin when you are done.
 
 ## Development
 
-Source is `plugins/error_setup/`. The host reads the ZIP.
+Source is `plugins/error_setup/`. Put that folder in the data `plugins/` directory to load it. Packaged ZIP is in `dist-sample-plugins/`.

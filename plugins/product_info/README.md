@@ -7,7 +7,7 @@
 | ID | `com.ezco.product_info` |
 | バージョン | `1.0.0` |
 | 種別 | サイドバー |
-| ZIP | `plugins/product_info.zip` |
+| ZIP | `dist-sample-plugins/product_info.zip` |
 | 入口 | `plugin:ProductInfoPlugin` |
 
 ## 使い方
@@ -37,6 +37,6 @@
 
 ## 開発
 
-ソースは `plugins/product_info/` です。取得は標準ライブラリのみです。ホストが読むのは ZIP です。
+ソースは `plugins/product_info/` です。取得は標準ライブラリのみです。データフォルダの `plugins/` にこのフォルダを置けばそのまま読めます。配布 ZIP は `dist-sample-plugins/` です。
 
 ホスト API の一覧はユーザーマニュアルの [プラグインリファレンス](../../resources/UserManual/files/plugin-reference.html) と [docs/plugins.md](../../docs/plugins.md) を見てください。

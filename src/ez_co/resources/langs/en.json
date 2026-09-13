@@ -922,6 +922,7 @@
     "plugin_loaded": "Loaded plugin: {name} {version} ({plugin_id}) {path}",
     "plugin_load_failed": "Failed to load plugin: {path} {error}",
     "plugin_duplicate_provider": "A plugin with the same id and version already exists: {provider_id} {path} (existing: {existing_path})",
+    "plugin_skip_zip_folder_preferred": "Skipping ZIP because a folder plugin is already loaded: {provider_id} {path} (folder: {existing_path})",
     "plugin_dll_unsupported": "DLL plugins are not supported yet, skipped: {path}",
     "plugin_api_version_unsupported": "Unsupported plugin API version: {plugin_id} api={api_version} host={host_api_version}",
     "plugin_import_blocked": "Plugin import is not allowed: {name} ({plugin_id})",

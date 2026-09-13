@@ -304,6 +304,7 @@ class MainWindow(QMainWindow):
             db_manager=self.db_manager,
             run_action=self._run_plugin_action,
             get_current=self._plugin_get_current,
+            reload_current=self._plugin_reload_current,
             get_app_config=self._plugin_app_config,
             mount_sidebar=self._mount_plugin_sidebar,
             unmount_sidebar=self._unmount_plugin_sidebar,
@@ -343,9 +344,9 @@ class MainWindow(QMainWindow):
 
     def _mount_plugin_sidebar(self, plugin_id: str, sidebar_id: str, title: str, widget) -> None:
         from PySide6.QtWidgets import QDockWidget
-        from ez_co.plugins.host import make_sidebar_action_id, sidebar_toggle_label
+        from ez_co.plugins.host import make_sidebar_action_id, sidebar_title_stem
         key = (plugin_id, sidebar_id)
-        action_text = sidebar_toggle_label(title)
+        action_text = sidebar_title_stem(title) or str(title or "").strip() or sidebar_id
         existing = self._plugin_sidebars.get(key)
         if existing is not None:
             dock = existing["dock"]
@@ -3058,23 +3059,32 @@ class MainWindow(QMainWindow):
         else:
             self._reload_current_pane_files()
 
-    def _reload_current_pane_files(self):
+    def _plugin_reload_current(self, page=None):
+        return bool(self._reload_current_pane_files(page))
+
+    def _reload_current_pane_files(self, page=None):
         """現在のタブのファイルを再読み込みする。"""
         if not self.file_handler or not self.file_handler.current_files:
-            return
+            return False
         comic = self._get_current_comic_path()
         if comic is None:
-            return
-        page = self.file_handler.current_index + 1
+            return False
+        if page is not None:
+            try:
+                page = int(page)
+            except (TypeError, ValueError):
+                page = self.file_handler.current_index + 1
+        else:
+            page = self.file_handler.current_index + 1
         path = str(comic)
         if not self._check_file_exists(path):
-            return
+            return False
         # load_file は同一パスだとページ移動だけするので、強制的に開き直す
         self.current_file_path = None
         if comic.is_dir():
             self.open_files([path])
             if not self.file_handler or not self.file_handler.current_files:
-                return
+                return False
             target = min(max(page - 1, 0), len(self.file_handler.current_files) - 1)
             self.file_handler.current_index = target
             self.current_page = target + 1
@@ -3083,11 +3093,13 @@ class MainWindow(QMainWindow):
             self._update_image_list_dialog()
             self._update_image_slide_sidebar()
             self._sync_current_tab_title()
-            return
-        self.load_file(path, page)
+            self._notify_plugin_current_changed()
+            return True
+        self.load_file(path, page, restore_history=False)
         self._update_image_list_dialog()
         self._update_image_slide_sidebar()
         self._sync_current_tab_title()
+        return True
     def _resizeEvent_with_overlay(self, event):
         if hasattr(super(), 'resizeEvent'):
             super().resizeEvent(event)
@@ -3374,7 +3386,7 @@ class MainWindow(QMainWindow):
             return exists
         logger.warning(get_log_text("main_window_file_not_found_final", file_path=file_path))
         return False
-    def load_file(self, file_path: str, page_number: int = 1):
+    def load_file(self, file_path: str, page_number: int = 1, restore_history: bool = True):
         """ファイルを読み込み"""
         if is_session_file(file_path):
             self.restore_session(file_path)
@@ -3399,7 +3411,7 @@ class MainWindow(QMainWindow):
             self.save_current_file_history()
             
             # 履歴からページを復元（page_numberが1の場合のみ）
-            if page_number == 1:
+            if restore_history and page_number == 1:
                 page_number = self._restore_page_from_history(file_path)
             
             # 新しいファイルを読み込み

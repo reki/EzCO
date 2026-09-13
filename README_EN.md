@@ -94,12 +94,12 @@ Most of the code in this program was implemented with the assistance of AI (Clau
 - **CLI**: `--profile=name` / `-p name` uses that profile for the session only (if missing, the last profile is used; nothing is created)
 
 ### Plugins
-- Place `.zip` plugins in the `plugins/` folder next to the executable (or the repo root while developing)
+- Place a `.zip` or a folder with `manifest.json` in the `plugins/` folder next to the executable (or the repo root while developing)
 - In Plugin Settings, turn plugins on or off and choose built-in, plugin, or Don't load per extension. OK reloads the open files
 - The plugin list shows ID without version. Column widths and order can be changed and are saved
 - Built-in handlers win by default for known extensions
 - Enabled plugin extensions appear in the file dialog under "Supported Files" and "Plugin formats", and in folder scans
-- Samples: `plugins/example_png.zip`, `plugins/example_zip.zip`, `plugins/product_info.zip` (product info sidebar via `.ui` + `QUiLoader`)
+- Samples: sources in `plugins/`, packaged ZIPs in [`dist-sample-plugins/`](dist-sample-plugins/) (PNG, ZIP, text pages, product info sidebar)
 - Developer reference: [docs/plugins.md](docs/plugins.md), [Plugin Reference](resources/UserManual/files/plugin-reference-en.html) in the user manual, each plugin `README_EN.md`, [plugins/README.md](plugins/README.md)
 
 ## Development Environment Setup

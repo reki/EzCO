@@ -7,7 +7,7 @@
 | ID | `com.ezco.example.png` |
 | バージョン | `1.0.0` |
 | 種別 | ファイル（画像） |
-| ZIP | `plugins/example_png.zip` |
+| ZIP | `dist-sample-plugins/example_png.zip` |
 | 入口 | `loader:FileLoader` |
 
 ## 使い方
@@ -23,14 +23,14 @@
 
 ## 開発
 
-ソースは `plugins/example_png/` です。ホストが読むのは ZIP です。
+ソースは `plugins/example_png/` です。データフォルダの `plugins/` にこのフォルダを置けばそのまま読めます。配布 ZIP は `dist-sample-plugins/` です。
 
 ```python
 from pathlib import Path
 import zipfile
 
 src = Path("plugins/example_png")
-dst = Path("plugins/example_png.zip")
+dst = Path("dist-sample-plugins/example_png.zip")
 with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zf:
     for path in sorted(src.rglob("*")):
         if path.is_file() and "__pycache__" not in path.parts:

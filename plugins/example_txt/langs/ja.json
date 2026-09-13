@@ -1,0 +1,14 @@
+{
+  "title": "テキストの表示設定",
+  "font_family": "フォント",
+  "font_size": "文字サイズ",
+  "text_color": "文字色",
+  "bg_color": "背景色",
+  "page_width": "幅 (px)",
+  "page_height": "高さ (px)",
+  "margin": "余白 (px)",
+  "writing": "方向",
+  "writing_horizontal": "横読み",
+  "writing_vertical": "縦読み",
+  "refresh": "更新"
+}

@@ -7,7 +7,7 @@ Test plugin. The sidebar Error button raises in a callback. Not for production.
 | ID | `com.ezco.error_callback` |
 | Version | `1.0.0` |
 | Kind | Sidebar |
-| ZIP | `plugins/error_callback.zip` |
+| ZIP | `dist-sample-plugins/error_callback.zip` |
 | Entry | `plugin:ErrorCallbackPlugin` |
 
 ## Usage
@@ -22,4 +22,4 @@ The same exception is raised if you bind the Error action to a shortcut. Disable
 
 ## Development
 
-Source is `plugins/error_callback/`. The host reads the ZIP.
+Source is `plugins/error_callback/`. Put that folder in the data `plugins/` directory to load it. Packaged ZIP is in `dist-sample-plugins/`.

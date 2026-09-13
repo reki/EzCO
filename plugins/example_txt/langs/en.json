@@ -1,0 +1,14 @@
+{
+  "title": "Text display settings",
+  "font_family": "Font",
+  "font_size": "Font size",
+  "text_color": "Text color",
+  "bg_color": "Background",
+  "page_width": "Width (px)",
+  "page_height": "Height (px)",
+  "margin": "Margin (px)",
+  "writing": "Direction",
+  "writing_horizontal": "Horizontal",
+  "writing_vertical": "Vertical",
+  "refresh": "Refresh"
+}

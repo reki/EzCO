@@ -4,8 +4,8 @@
 
 - **API バージョン**: `1`（`manifest.json` の `api_version` と一致必須）
 - **配置場所**: データフォルダの `plugins/` のみ（設定の「データの置き場」。既定はこのユーザーのデータフォルダ）
-- **配布形式**: ZIP（`.zip`）。DLL は口だけあり、現状はスキップされる
-- **担当範囲**: ファイル読み込み、またはサイドバー UI。どちらも同じ ZIP + `__init__` 登録
+- **配布形式**: ZIP（`.zip`）または同じ構成の展開フォルダ。DLL は口だけあり、現状はスキップされる
+- **担当範囲**: ファイル読み込み、またはサイドバー UI。どちらも同じパッケージ + `__init__` 登録
 
 ---
 
@@ -35,21 +35,21 @@
 | `__init__` / `setup` で拡張子とサイドバーを登録する | 他プラグインのモジュールを import する |
 | `host.load_ui` で `.ui` を読む。PySide6 は import 可 | 他プラグインの設定を読む |
 | ホストのパスワードダイアログを呼ぶ | ドックの貼り付け／フローティングを自分で制御する |
-| プラグイン ZIP 内の `langs/` `resources/` を読む | DLL プラグイン（未実装） |
+| プラグイン内の `langs/` `resources/` を読む | DLL プラグイン（未実装） |
 | サードパーティ（`PIL`, `pyzipper` など本体依存）を import する | |
 
-`src/` が import ルートです。同じ ZIP 内の `from mark import mark_image` は許可されます。
+`src/` が import ルートです。同じパッケージ内の `from mark import mark_image` は許可されます。
 
-ホストは起動時に `plugins/` を掃引し、有効な ZIP を読み込みます。変更を反映するにはアプリの再起動が必要です。
+ホストは起動時に `plugins/` を掃引し、`.zip` と `manifest.json` 付きフォルダを読み込みます。変更を反映するにはアプリの再起動が必要です。
 
 ---
 
 ## 2. パッケージ構造
 
-ZIP のルート直下に次を置きます。余分な親フォルダを挟まないでください。
+ZIP または展開フォルダのルート直下に次を置きます。余分な親フォルダを挟まないでください。
 
 ```
-my_plugin.zip
+my_plugin.zip  または  my_plugin/
 ├── manifest.json          # 必須
 ├── src/                   # 必須。import ルート
 │   ├── loader.py          # entry で指定するモジュール
@@ -61,17 +61,17 @@ my_plugin.zip
 └── test/                  # 任意。ホストは読まない
 ```
 
-開発中は `plugins/example_zip/` のように展開フォルダを置いても構いません。ホストが読むのは **同名の `.zip`** です。変更後は ZIP を作り直してください。
+開発中は `plugins/example_zip/` のように展開フォルダを `plugins/` 直下に置けば、そのまま読み込まれます。配布用 ZIP は [`dist-sample-plugins/`](../dist-sample-plugins/) です。同じ `id` とバージョンのフォルダと ZIP があるときはフォルダを使います。
 
 ```python
 from pathlib import Path
 import zipfile
 
 src = Path("plugins/example_zip")
-dst = Path("plugins/example_zip.zip")
+dst = Path("dist-sample-plugins/example_zip.zip")
 with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zf:
     for path in sorted(src.rglob("*")):
-        if path.is_file():
+        if path.is_file() and "__pycache__" not in path.parts:
             zf.write(path, path.relative_to(src).as_posix())
 ```
 
@@ -81,16 +81,17 @@ with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zf:
 
 ### 3.1 掃引
 
-1. `plugins/` 直下のファイルだけを見る（サブフォルダは無視）
-2. 拡張子 `.zip` を Python バックエンドで読み込む
+1. `plugins/` 直下だけを見る（入れ子のサブフォルダは無視）
+2. 拡張子 `.zip`、およびルートに `manifest.json` があるフォルダを Python バックエンドで読み込む（フォルダを先に読む）
 3. 拡張子 `.dll` は未対応のためスキップしてログを出す
 4. `manifest.json` を解析し、`api_version` がホストと一致するものだけを実体化する
+5. 同じ `id` とバージョンならフォルダを残し、ZIP は読み飛ばす
 
 ### 3.2 拡張子の担当
 
 同じ拡張子をビルドインとプラグインの両方が宣言できます。既定は**ビルドイン優先**です。
 
-メニューのプラグイン設定で、プラグインの ON/OFF と、拡張子ごとの「ビルドイン」「`id(ver:version)`」「読み込まない」を選べます。OFF にしたプラグインは無いものとして扱います。OK すると開いているファイルを一律再読み込みし、サイドバーも付け直します。新規 ZIP の追加は再起動が必要です。
+メニューのプラグイン設定で、プラグインの ON/OFF と、拡張子ごとの「ビルドイン」「`id(ver:version)`」「読み込まない」を選べます。OFF にしたプラグインは無いものとして扱います。OK すると開いているファイルを一律再読み込みし、サイドバーも付け直します。新規 ZIP／フォルダの追加は再起動が必要です。
 
 ビルドインに無い拡張子（例: `.ezpack`）は、プラグインが宣言すればそのプラグインが担当します。読み込み済みプラグインの拡張子は、「ファイルを開く」ダイアログの「対応しているファイル」と「プラグイン形式」に入り、フォルダを開いたときのスキャン対象にも含まれます。
 
@@ -307,7 +308,7 @@ class _Entry:
 登録（`__init__` または `setup`）:
 
 - `host.register_format(extension, kind)` — `kind` は `"image"` / `"archive"`
-- `host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None)` — `QWidget` または `QLayout`。ドック化は本体。開閉アクションも自動登録され、ショートカット／ジェスチャーに出せる。表示名は `{title}サイドバー表示/非表示`。`aliases` は旧アクション ID など
+- `host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None)` — `QWidget` または `QLayout`。ドック化は本体。開閉アクションも自動登録され、ショートカット／ジェスチャーに出せる。メニューは `{title}`、ショートカット／ジェスチャーの表示名は `{title}サイドバー表示/非表示`。`aliases` は旧アクション ID など
 - `host.unregister_sidebar(sidebar_id)`
 - `host.register_action(action_id, label, callback, aliases=None)` — 独自アクション。ショートカット／ジェスチャーから呼ばれる
 - `host.unregister_action(action_id)`
@@ -317,6 +318,7 @@ class _Entry:
 状態:
 
 - `host.get_current(key)` — `"path"` / `"folder"` / `"page"`
+- `host.reload_current(page=None)` — 現在のファイルを開き直す（画像キャッシュも消える）。`page` は 1 始まり。省略時は今のページ
 - `host.on(event, callback)` / `host.off(event, callback)` — `"current_changed"` / `"config_changed"`
 - `host.get_app_config()` — `language` / `viewer` / `cache` / `ui_font` の読み取り専用
 
@@ -598,11 +600,12 @@ UI は「プラグイン設定」ダイアログです。ON/OFF と読み込み�
 
 | パス | 内容 |
 | --- | --- |
-| `plugins/example_png/` と `.zip` | `.png` を `image` として読む。色重ねは確認用 |
-| `plugins/example_zip/` と `.zip` | `.zip` を `archive` として読む。パスワードダイアログの呼び方も含む |
-| `plugins/product_info/` と `.zip` | 商品情報サイドバー。`resources/sidebar.ui` を `load_ui` で読む。`info.json` が無くフォルダ／ファイル名が DLsite / DMM 番号なら、標準ライブラリだけで非同期取得（ディスクには書かない。設定で OFF 可） |
+| `plugins/example_png/` | `.png` を `image` として読む。色重ねは確認用。ZIP は `dist-sample-plugins/` |
+| `plugins/example_zip/` | `.zip` を `archive` として読む。パスワードダイアログの呼び方も含む |
+| `plugins/example_txt/` | `.txt` を `archive` として読む。本文をページ画像にする。サイドバーで字体・色・縦読み／横読みを即時反映 |
+| `plugins/product_info/` | 商品情報サイドバー。`resources/sidebar.ui` を `load_ui` で読む。`info.json` が無くフォルダ／ファイル名が DLsite / DMM 番号なら、標準ライブラリだけで非同期取得（ディスクには書かない。設定で OFF 可） |
 
-ソースの `loader.py` 先頭にホスト契約のコメントがあります。確認するときはプラグイン設定で当該拡張子の読み込み方式をサンプル側にして OK してください。開いているファイルはすぐ再読み込みされます。新規に ZIP を置いた直後だけ再起動してください。
+ソースの `loader.py` 先頭にホスト契約のコメントがあります。確認するときはプラグイン設定で当該拡張子の読み込み方式をサンプル側にして OK してください。開いているファイルはすぐ再読み込みされます。新規に ZIP やフォルダを置いた直後だけ再起動してください。
 
 色と「プラグイン読み込み表示」はサンプル固有です。本番では画像バイトをそのまま返してください。
 
@@ -612,8 +615,8 @@ UI は「プラグイン設定」ダイアログです。ON/OFF と読み込み�
 
 | 症状 | 確認 |
 | --- | --- |
-| 一覧に出ない | `plugins/` 直下の `.zip` か。ZIP 内が `manifest.json` 始まりか。`api_version` が `1` か |
-| ビルドインのまま開く | プラグイン設定の読み込み方式と ON/OFF。OK したか。新規 ZIP なら再起動したか |
+| 一覧に出ない | `plugins/` 直下の `.zip` か、`manifest.json` 付きフォルダか。ZIP／フォルダのルートが `manifest.json` か。`api_version` が `1` か |
+| ビルドインのまま開く | プラグイン設定の読み込み方式と ON/OFF。OK したか。新規 ZIP／フォルダなら再起動したか |
 | `ImportError: ez_co` | プラグインから `ez_co` を import している |
 | パスワードが一致しない | AES なのに標準 `zipfile` を使っていないか。`verify` の例外をログで見る |
 | ダイアログが出ない | `list_entries` より前に暗号化判定して `self.host.ask_password` しているか |
