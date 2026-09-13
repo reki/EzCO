@@ -171,6 +171,7 @@ class Config:
             "extension_handlers": {},
             "dialog": {},
             "enabled": {},
+            "source_choice": {},
         }
         
         # 設定辞書をオーバーライド対応に変換
@@ -363,6 +364,31 @@ class Config:
             enabled = plugins_data.get("enabled", {})
             if not isinstance(enabled, dict):
                 enabled = {}
+            source_choice = plugins_data.get("source_choice", {})
+            if not isinstance(source_choice, dict):
+                source_choice = {}
+            normalized_choice = {}
+            for key, value in source_choice.items():
+                plugin_id = str(key).strip()
+                if not plugin_id:
+                    continue
+                if isinstance(value, str):
+                    source = value.strip()
+                    if source:
+                        normalized_choice[plugin_id] = {"source": source, "seen": []}
+                    continue
+                if not isinstance(value, dict):
+                    continue
+                source = str(value.get("source") or "").strip()
+                if not source:
+                    continue
+                seen = value.get("seen")
+                if not isinstance(seen, list):
+                    seen = []
+                normalized_choice[plugin_id] = {
+                    "source": source,
+                    "seen": [str(item) for item in seen],
+                }
             config.plugins.update({
                 "extension_handlers": {
                     normalize_extension(str(key)): str(value).strip()
@@ -375,6 +401,7 @@ class Config:
                     for key, value in enabled.items()
                     if str(key).strip()
                 },
+                "source_choice": normalized_choice,
             })
         
         # 設定辞書をオーバーライド対応に変換

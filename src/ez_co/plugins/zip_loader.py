@@ -183,6 +183,27 @@ def _unload_prefix(prefix: str) -> None:
     ]
 
 
+def peek_manifest(path: Path) -> dict[str, str]:
+    """実体化せず manifest.json から id / name / version だけ読む。"""
+    path = Path(path)
+    source = open_plugin_source(path)
+    try:
+        try:
+            raw = json.loads(source.read_bytes("manifest.json").decode("utf-8"))
+        except KeyError as exc:
+            raise ValueError("manifest.json is missing") from exc
+    finally:
+        source.close()
+    if not isinstance(raw, dict):
+        raise ValueError("manifest must be an object")
+    plugin_id = str(raw.get("id") or "").strip()
+    if not plugin_id:
+        raise ValueError("manifest.id is required")
+    name = str(raw.get("name") or "").strip() or path.name
+    version = str(raw.get("version") or "").strip()
+    return {"id": plugin_id, "name": name, "version": version}
+
+
 def _instantiate(module: ModuleType, class_name: str, root: PluginRoot, get_text, host) -> Any:
     exported = vars(module)
     if class_name not in exported:

@@ -299,6 +299,7 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "_plugin_sidebars"):
             self._plugin_sidebars = {}
         manager = get_plugin_manager()
+        self._resolve_plugin_conflicts(manager)
         manager.host.bind(
             parent=self,
             db_manager=self.db_manager,
@@ -313,6 +314,20 @@ class MainWindow(QMainWindow):
         manager.activate_ui(self.config)
         self._restore_dock_state()
         self._notify_plugin_current_changed()
+
+    def _resolve_plugin_conflicts(self, manager):
+        unresolved = manager.unresolved_groups(self.config)
+        if unresolved:
+            from ez_co.ui.plugin_conflict_dialog import PluginConflictDialog
+            dialog = PluginConflictDialog(unresolved, self)
+            dialog.exec()
+            manager.record_choices(dialog.choices(), self.config)
+            if self.db_manager:
+                self.db_manager.save_profile_config(
+                    self.db_manager.current_profile,
+                    self.config.to_dict(),
+                )
+        manager.load_selected(self.config)
 
     def _plugin_get_current(self, key: str):
         if key == "folder":
@@ -3028,20 +3043,29 @@ class MainWindow(QMainWindow):
         dialog.applied.connect(self._on_plugin_dialog_applied)
         result = dialog.exec()
         changed = False
+        reload_sources = False
         if result == QDialog.Accepted:
+            reload_sources = dialog.has_source_choice_changes()
             changed = dialog.has_changes() if hasattr(dialog, "has_changes") else dialog.has_handler_changes()
             dialog.apply_to_config()
         self.save_config()
         if result == QDialog.Accepted and changed:
-            self._reload_after_plugin_config()
+            self._reload_after_plugin_config(reload_sources=reload_sources)
 
     def _on_plugin_dialog_applied(self):
+        dialog = self.sender()
+        reload_sources = bool(getattr(dialog, "last_applied_source_changes", False))
         self.save_config()
-        self._reload_after_plugin_config()
+        self._reload_after_plugin_config(reload_sources=reload_sources)
 
-    def _reload_after_plugin_config(self):
+    def _reload_after_plugin_config(self, reload_sources=False):
         from ez_co.plugins.manager import get_plugin_manager
-        get_plugin_manager().activate_ui(self.config)
+        manager = get_plugin_manager()
+        if reload_sources:
+            manager.reload_selected(self.config)
+            self.rebuild_menu()
+            self.setup_shortcuts()
+        manager.activate_ui(self.config)
         self._reload_open_files_after_plugin_change()
         self._notify_plugin_current_changed()
 

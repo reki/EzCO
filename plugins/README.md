@@ -13,7 +13,7 @@
 5. 一覧の列はドラッグで幅変更・並べ替えできます。幅と列順は保存されます
 6. 有効なプラグインの拡張子は、「ファイルを開く」ダイアログの「対応しているファイル」と「プラグイン形式」に入ります。フォルダを開いたときのスキャン対象にも含まれます
 
-同じ `id` とバージョンのフォルダと ZIP が両方あるときは、フォルダを使います。DLL プラグインはまだ未対応です。
+同じ `id` のプラグインが複数あるときは、起動時にどれを読むか（または読まないか）を選びます。選んだ内容は保存され、新しい重複 `id` が出ない限り次回は聞きません。選び直すときはプラグイン設定の「重複プラグインの選択」です（OK / 適用で反映）。選ばれなかったものは一覧に理由付きで残ります。DLL プラグインはまだ未対応です。
 
 ## このフォルダのサンプル
 
@@ -54,4 +54,4 @@ my_plugin/   または my_plugin.zip
     └── en.json
 ```
 
-ファイルローダーは `supported_formats`（または `host.register_format`）と `read_entry` などを実装します。サイドバーは `setup` で `host.load_ui` / `host.register_sidebar` します。開閉は自動でアクション登録されます。旧ショートカット ID を残すときは `aliases` を渡します。独自処理は `host.register_action` です。コンストラクタは `Class(root, get_text, host)` です。`ez_co` は import できません。設定上の正体は `manifest.id(ver:version)` です。ダイアログの ID 列はバージョンなしの `id` だけです。同じ `id` の別バージョンは共存できます。詳細はマニュアルを見てください。
+ファイルローダーは `supported_formats`（または `host.register_format`）と `read_entry` などを実装します。サイドバーは `setup` で `host.load_ui` / `host.register_sidebar` します。開閉は自動でアクション登録されます。旧ショートカット ID を残すときは `aliases` を渡します。独自処理は `host.register_action` です。コンストラクタは `Class(root, get_text, host)` です。`ez_co` は import できません。設定上の正体は `manifest.id(ver:version)` です。ダイアログの ID 列はバージョンなしの `id` だけです。同じ `id` は同時に1つだけロードします。詳細はマニュアルを見てください。

@@ -53,6 +53,7 @@ Most of the code in this program was implemented with the assistance of AI (Clau
 ### Plugin Settings
 - **On/Off**: Enable or disable each plugin. Off removes it from extension handling and unmounts its sidebar
 - **Loading method**: Built-in, plugin, or Don't load per extension
+- **Duplicate ids**: Choose which source to load at startup. The choice is saved and the dialog does not return unless a new unresolved duplicate id appears. Change it later with Choose duplicate plugins in Plugin Settings (applies on OK / Apply)
 - **Don't load**: Skip files of that extension (replaces the old Archive Settings dialog)
 - **Settings export/import**: Save and restore the current profile as YAML from the main settings dialog
 
@@ -95,6 +96,7 @@ Most of the code in this program was implemented with the assistance of AI (Clau
 
 ### Plugins
 - Place a `.zip` or a folder with `manifest.json` in the `plugins/` folder next to the executable (or the repo root while developing)
+- If more than one plugin has the same id, choose which one to load at startup. The choice is saved and the dialog does not return unless a new unresolved duplicate id appears. Change it later with Choose duplicate plugins in Plugin Settings
 - In Plugin Settings, turn plugins on or off and choose built-in, plugin, or Don't load per extension. OK reloads the open files
 - The plugin list shows ID without version. Column widths and order can be changed and are saved
 - Built-in handlers win by default for known extensions
@@ -344,6 +346,7 @@ Application settings are stored per profile in `config.db` (SQLite). It is creat
 #### Plugin Settings
 - **On/Off**: `plugins.enabled`. Missing ids are enabled. Off also unmounts the sidebar
 - **Loading method**: Built-in, plugin, or Don't load per extension
+- **Duplicate ids**: `plugins.source_choice`. Choose one source at startup or later in Plugin Settings
 - **Don't load**: Files of that extension are not opened (archives and images)
 
 #### Language Settings

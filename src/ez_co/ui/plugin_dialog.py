@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
@@ -30,7 +31,7 @@ PLUGIN_DEFAULT_WIDTHS = {
     "version": 72,
     "kind": 90,
     "extensions": 90,
-    "status": 110,
+    "status": 220,
     "settings": 72,
 }
 EXT_COLUMNS = ("extension", "kind", "handler")
@@ -76,6 +77,9 @@ class PluginDialog(QDialog):
         self._ext_sort_column = 0
         self._ext_sort_asc = True
         self._combos = {}
+        self._source_choices = dict(self.plugin_manager.current_source_choices(self.config))
+        self._original_source_choices = dict(self._source_choices)
+        self.last_applied_source_changes = False
         self.setWindowTitle(get_text("ui.plugin_dialog_title"))
         self.setMinimumSize(760, 540)
         self._setup_ui()
@@ -87,7 +91,13 @@ class PluginDialog(QDialog):
     def _setup_ui(self):
         layout = QVBoxLayout()
 
-        layout.addWidget(QLabel(get_text("ui.plugin_list")))
+        list_header = QHBoxLayout()
+        list_header.addWidget(QLabel(get_text("ui.plugin_list")))
+        list_header.addStretch()
+        conflict_button = QPushButton(get_text("ui.plugin_conflict_open"))
+        conflict_button.clicked.connect(self._open_conflict_dialog)
+        list_header.addWidget(conflict_button)
+        layout.addLayout(list_header)
         self.plugin_table = QTableWidget(0, len(PLUGIN_COLUMNS))
         self.plugin_table.setHorizontalHeaderLabels([
             get_text("ui.plugin_enabled"),
@@ -142,11 +152,21 @@ class PluginDialog(QDialog):
     def _apply(self):
         if not self.has_changes():
             return
+        self.last_applied_source_changes = self.has_source_choice_changes()
         self.apply_to_config()
         self._original_enabled = dict(self._enabled)
         self._original_handlers = dict(self._handler_choices)
+        self._original_source_choices = dict(self._source_choices)
         self.apply_layout_to_config()
         self.applied.emit()
+        if self.last_applied_source_changes:
+            self._enabled = {
+                plugin.plugin_id: self.plugin_manager.is_enabled(plugin.plugin_id, self.config)
+                for plugin in self.plugin_manager.plugins
+            }
+            self._original_enabled = dict(self._enabled)
+            self._fill_plugin_table()
+            self._refresh_extension_rows()
 
     def _prepare_table(self, table: QTableWidget):
         header = table.horizontalHeader()
@@ -229,9 +249,10 @@ class PluginDialog(QDialog):
 
     def _fill_plugin_table(self):
         rows = list(self.plugin_manager.plugins)
+        skipped = list(self.plugin_manager.skipped)
         failed = list(self.plugin_manager.failed)
         self.plugin_table.setSortingEnabled(False)
-        self.plugin_table.setRowCount(len(rows) + len(failed))
+        self.plugin_table.setRowCount(len(rows) + len(skipped) + len(failed))
         for index, plugin in enumerate(rows):
             checkbox = QCheckBox()
             checkbox.setChecked(self._enabled.get(plugin.plugin_id, True))
@@ -257,8 +278,27 @@ class PluginDialog(QDialog):
             else:
                 self.plugin_table.setItem(index, 6, self._text_item(get_text("ui.plugin_status_ok")))
                 self._set_settings_cell(index, plugin)
-        for offset, (path, error) in enumerate(failed):
+        for offset, item in enumerate(skipped):
             index = len(rows) + offset
+            if item.reason == "duplicate":
+                status = get_text("ui.plugin_status_duplicate").format(
+                    selected=item.selected_name or "-"
+                )
+            else:
+                status = get_text("ui.plugin_status_not_selected")
+            display_name = item.name or item.path.name
+            if item.path.name and item.path.name != display_name:
+                display_name = f"{display_name} ({item.path.name})"
+            self.plugin_table.setItem(index, 0, self._text_item("-"))
+            self.plugin_table.setItem(index, 1, self._text_item(display_name))
+            self.plugin_table.setItem(index, 2, self._text_item(item.plugin_id or "-"))
+            self.plugin_table.setItem(index, 3, self._text_item(item.version or "-"))
+            self.plugin_table.setItem(index, 4, self._text_item("-"))
+            self.plugin_table.setItem(index, 5, self._text_item("-"))
+            self.plugin_table.setItem(index, 6, self._text_item(status))
+            self.plugin_table.setItem(index, 7, self._text_item("-"))
+        for offset, (path, error) in enumerate(failed):
+            index = len(rows) + len(skipped) + offset
             status = get_text("ui.plugin_status_error").format(error=error)
             self.plugin_table.setItem(index, 0, self._text_item("-"))
             self.plugin_table.setItem(index, 1, self._text_item(path.name))
@@ -429,8 +469,30 @@ class PluginDialog(QDialog):
     def has_enabled_changes(self) -> bool:
         return self._enabled != self._original_enabled
 
+    def has_source_choice_changes(self) -> bool:
+        return self._source_choices != self._original_source_choices
+
     def has_changes(self) -> bool:
-        return self.has_handler_changes() or self.has_enabled_changes()
+        return (
+            self.has_handler_changes()
+            or self.has_enabled_changes()
+            or self.has_source_choice_changes()
+        )
+
+    def _open_conflict_dialog(self):
+        groups = self.plugin_manager.conflict_groups()
+        if not groups:
+            QMessageBox.information(
+                self,
+                get_text("ui.plugin_conflict_title"),
+                get_text("ui.plugin_conflict_none"),
+            )
+            return
+        from ez_co.ui.plugin_conflict_dialog import PluginConflictDialog
+
+        dialog = PluginConflictDialog(groups, self, initial=self._source_choices)
+        dialog.exec()
+        self._source_choices.update(dialog.choices())
 
     def apply_to_config(self):
         handlers = {}
@@ -449,6 +511,8 @@ class PluginDialog(QDialog):
                     archive_enabled_by_key.setdefault(key, False)
         self.config.plugins["extension_handlers"] = handlers
         self.config.plugins["enabled"] = dict(self._enabled)
+        if self._source_choices:
+            self.plugin_manager.record_choices(self._source_choices, self.config)
         for key, enabled in archive_enabled_by_key.items():
             self.config.archive[key] = enabled
         if archive_enabled_by_key:

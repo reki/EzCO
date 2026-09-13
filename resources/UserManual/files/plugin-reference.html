@@ -101,7 +101,7 @@
 │   └── loader.py
 ├── langs/               # 任意 ja.json / en.json
 └── resources/           # 任意。root.read_bytes</pre>
-                        <p>余分な親フォルダを挟まないでください。同じ構成の展開フォルダを <code>plugins/</code> 直下に置けば、ZIP にしなくても読み込まれます。</p>
+                        <p>余分な親フォルダを挟まないでください。同じ構成の展開フォルダを <code>plugins/</code> 直下に置けば、ZIP にしなくても読み込まれます。同じ <code>id</code> が複数あるときは起動時に1つ選びます。選んだ内容は保存され、新しい重複 <code>id</code> が出ない限り次回は聞きません。選び直すときはプラグイン設定の「重複プラグインの選択」です。選ばれなかったものは一覧に理由付きで残ります。</p>
                     </section>
 
                     <section id="manifest" class="config-section">
@@ -114,7 +114,7 @@
                                 <span class="api-field-meta">string</span>
                                 <span class="api-field-meta">必須</span>
                             </div>
-                            <p>プラグイン ID。設定の保存キーは <code>id(ver:version)</code> です。プラグイン設定の ID 列にはバージョンを付けません。</p>
+                            <p>プラグイン ID。同じ <code>id</code> は同時に1つだけロードします。設定の保存キーは <code>id(ver:version)</code> です。プラグイン設定の ID 列にはバージョンを付けません。</p>
                         </div>
                         <div class="api-field">
                             <div class="api-field-head">
@@ -130,7 +130,7 @@
                                 <span class="api-field-meta">string</span>
                                 <span class="api-field-meta">必須</span>
                             </div>
-                            <p>パッケージ版です。上げると設定キーが変わり、以前の保存値は引き継ぎません。</p>
+                            <p>パッケージ版です。重複選択ダイアログでは新しい版を上に出します。上げると設定キーが変わり、以前の保存値は引き継ぎません。</p>
                         </div>
                         <div class="api-field">
                             <div class="api-field-head">
@@ -555,6 +555,7 @@ host.on("config_changed", _on_config)</pre>
                             <li>他プラグインの設定は読めない（<code>plugin_id</code> はハッシュ化）</li>
                             <li>DLL プラグインは未対応</li>
                             <li>ZIP またはフォルダを足したら再起動が必要</li>
+                            <li>同じ <code>id</code> が複数あるときは起動時に1つ選ぶ。選んだ内容は保存され、新しい重複 <code>id</code> が出ない限り次回は聞かない。選び直すときはプラグイン設定</li>
                         </ul>
                     </section>
 

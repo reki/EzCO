@@ -700,7 +700,7 @@ image_list:
                     <!-- プラグイン設定 -->
                     <section id="plugin-settings" class="config-section">
                         <h3>🔌 プラグイン設定 (plugins)</h3>
-                        <p>メニューの「プラグイン設定」で、プラグインの ON/OFF、拡張子ごとの読み込み方式、読み込み済みプラグインの一覧を扱います。ZIP または <code>manifest.json</code> 付きフォルダはデータフォルダ（設定の「データの置き場」）の <code>plugins/</code> に置きます。OFF にしたプラグインは無いものとして扱います。設定は現在のプロファイルに保存されます。旧アーカイブ設定の代替として、読み込み方式に「読み込まない」があります。有効なプラグインの拡張子は、「ファイルを開く」ダイアログの「対応しているファイル」と「プラグイン形式」に入り、フォルダを開いたときのスキャン対象にも含まれます。商品情報サイドバーは <code>product_info</code> プラグインです。ホスト API は <a href="plugin-reference.html">プラグインリファレンス</a> を見てください。</p>
+                        <p>メニューの「プラグイン設定」で、プラグインの ON/OFF、拡張子ごとの読み込み方式、読み込み済みプラグインの一覧を扱います。ZIP または <code>manifest.json</code> 付きフォルダはデータフォルダ（設定の「データの置き場」）の <code>plugins/</code> に置きます。同じ <code>id</code> が複数あるときは起動時に1つ選びます。選ばれなかったものは一覧に理由付きで残ります。OFF にしたプラグインは無いものとして扱います。設定は現在のプロファイルに保存されます。旧アーカイブ設定の代替として、読み込み方式に「読み込まない」があります。有効なプラグインの拡張子は、「ファイルを開く」ダイアログの「対応しているファイル」と「プラグイン形式」に入り、フォルダを開いたときのスキャン対象にも含まれます。商品情報サイドバーは <code>product_info</code> プラグインです。ホスト API は <a href="plugin-reference.html">プラグインリファレンス</a> を見てください。</p>
 
                         <div class="setting-item">
                             <div class="setting-header">
@@ -724,6 +724,15 @@ image_list:
 
                         <div class="setting-item">
                             <div class="setting-header">
+                                <span class="setting-name">重複プラグインの選択</span>
+                                <span class="setting-key">plugins.source_choice</span>
+                                <span class="setting-type">オブジェクト</span>
+                            </div>
+                            <p>同じ <code>id</code> が複数あるときの選択です。値は <code>source</code>（<code>plugins/</code> 直下の名前、または <code>none</code>）です。一度選んだ <code>id</code> は、選んだファイルが残っている限り起動時に再表示しません。新しい重複 <code>id</code> が出たとき、または選んだファイルが消えたときだけ聞きます。選び直すときはプラグイン設定の「重複プラグインの選択」です。反映は設定の OK / 適用と同じです。</p>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
                                 <span class="setting-name">ダイアログの列レイアウト</span>
                                 <span class="setting-key">plugins.dialog</span>
                                 <span class="setting-type">オブジェクト</span>
@@ -735,6 +744,10 @@ image_list:
 plugins:
   enabled:
     com.ezco.product_info: true
+  source_choice:
+    com.ezco.example.zip:
+      source: example_zip
+      seen: [example_zip, example_zip.zip]
   extension_handlers:
     .zip: com.ezco.example.zip(ver:1.1.0)
     .png: builtin

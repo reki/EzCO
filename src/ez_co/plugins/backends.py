@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from typing import Any, Optional, Protocol
 
-from ez_co.plugins.zip_loader import load_plugin
+from ez_co.plugins.zip_loader import load_plugin, peek_manifest
 from ez_co.utils.language_manager import get_log_text
 
 logger = logging.getLogger(__name__)
@@ -21,6 +21,9 @@ class ZipPythonBackend:
         if path.is_file():
             return path.suffix.lower() == ".zip"
         return path.is_dir() and (path / "manifest.json").is_file()
+
+    def peek(self, path: Path) -> dict:
+        return peek_manifest(path)
 
     def load(self, path: Path, host=None):
         return load_plugin(path, host=host)

@@ -61,7 +61,7 @@ my_plugin.zip  または  my_plugin/
 └── test/                  # 任意。ホストは読まない
 ```
 
-開発中は `plugins/example_zip/` のように展開フォルダを `plugins/` 直下に置けば、そのまま読み込まれます。配布用 ZIP は [`dist-sample-plugins/`](../dist-sample-plugins/) です。同じ `id` とバージョンのフォルダと ZIP があるときはフォルダを使います。
+開発中は `plugins/example_zip/` のように展開フォルダを `plugins/` 直下に置けば、そのまま読み込まれます。配布用 ZIP は [`dist-sample-plugins/`](../dist-sample-plugins/) です。同じ `id` が複数あるときは起動時にどれを読むか選びます。
 
 ```python
 from pathlib import Path
@@ -82,10 +82,10 @@ with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zf:
 ### 3.1 掃引
 
 1. `plugins/` 直下だけを見る（入れ子のサブフォルダは無視）
-2. 拡張子 `.zip`、およびルートに `manifest.json` があるフォルダを Python バックエンドで読み込む（フォルダを先に読む）
+2. 拡張子 `.zip`、およびルートに `manifest.json` があるフォルダの `manifest.json` だけを先に読む
 3. 拡張子 `.dll` は未対応のためスキップしてログを出す
-4. `manifest.json` を解析し、`api_version` がホストと一致するものだけを実体化する
-5. 同じ `id` とバージョンならフォルダを残し、ZIP は読み飛ばす
+4. 同じ `id` が1つなら、`api_version` がホストと一致するものだけを実体化する
+5. 同じ `id` が2つ以上あるときは、未解決のときだけ起動時ダイアログで1つ（または読み込まない）を選ぶ。選択はプロファイルに保存し、その `id` は選んだファイルが残っている限り次回は聞かない。新しい重複 `id` が出たとき、または選んだファイルが消えたときだけ再表示する。選び直すときはプラグイン設定の「重複プラグインの選択」。反映は設定の OK / 適用と同じタイミング。選ばれなかったものは実体化せず、一覧に理由付きで残る
 
 ### 3.2 拡張子の担当
 
@@ -107,7 +107,7 @@ with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zf:
 6. プラグインだけが知っている（先に掃引されたものが選ばれる）
 7. どれも知らない
 
-同じ `id` の別バージョンは共存できます。設定キーは `com.ezco.example.zip(ver:1.1.0)` です。完全一致が無いときは同じ `id` の新しいバージョンへ落ちます。`id` と `version` が両方同じ zip が二つあると、後から読んだ方が失敗します。
+同じ `id` を同時にロードできるのは1つだけです。設定キーは `com.ezco.example.zip(ver:1.1.0)` です。完全一致が無いときは同じ `id` の新しいバージョンへ落ちます。
 
 ---
 
@@ -119,9 +119,9 @@ with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zf:
 
 | 名前 | 型 | 必須 | 説明 |
 | --- | --- | --- | --- |
-| `id` | `string` | はい | プラグイン ID。設定キーと内部識別は `id(ver:version)`。一覧 UI の ID 列はバージョンなし。例: `com.ezco.example.zip` |
+| `id` | `string` | はい | プラグイン ID。同じ `id` は同時に1つだけロードする。設定キーと内部識別は `id(ver:version)`。一覧 UI の ID 列はバージョンなし。例: `com.ezco.example.zip` |
 | `name` | `string` | はい | 設定ダイアログに出す表示名 |
-| `version` | `string` | はい | パッケージ版。`id` 重複時の区別と、設定の `(ver:version)` に使う |
+| `version` | `string` | はい | パッケージ版。重複選択ダイアログの並びと、設定の `(ver:version)` に使う |
 | `api_version` | `int` | はい | ホスト API バージョン。現在は `1` のみ |
 | `entry` | `string` | はい | `モジュール:クラス`。モジュールは `src/` からのドットパス |
 | `description` | `string` | いいえ | 説明。ホストは現状ログ以外では使わない |
@@ -571,6 +571,10 @@ get_text("plugin.count", n=3)
 plugins:
   enabled:
     com.ezco.example.zip: true
+  source_choice:
+    com.ezco.example.zip:
+      source: example_zip
+      seen: [example_zip, example_zip.zip]
   extension_handlers:
     .zip: com.ezco.example.zip(ver:1.1.0)
     .png: builtin
@@ -586,8 +590,9 @@ plugins:
 
 | キー | 型 | 説明 |
 | --- | --- | --- |
-| `plugins.enabled` | `object` | `plugin_id` → 有効か。未記載は有効 |
+| `plugins.enabled` | `object` | `plugin_id` → 有効か。未記載は有効。ロード済みプラグインだけが対象 |
 | `plugins.extension_handlers` | `object` | 拡張子 → `"builtin"`、`id(ver:version)`、または `"none"`（読み込まない）。旧形式も読む |
+| `plugins.source_choice` | `object` | 重複 `id` → `{source, seen}`。`source` は `plugins/` 直下の名前、または `"none"`。選んだソースが残っている限り起動時は聞かない。切り替えるときはプラグイン設定の「重複プラグインの選択」 |
 | `plugins.dialog` | `object` | プラグイン設定ダイアログの列順と幅。OK / キャンセルどちらでも保存する |
 
 プラグイン固有の値は `plugin_settings` テーブルに、`plugin_id` のハッシュで保存します。プラグイン API に id 引数はありません。
@@ -615,7 +620,8 @@ UI は「プラグイン設定」ダイアログです。ON/OFF と読み込み�
 
 | 症状 | 確認 |
 | --- | --- |
-| 一覧に出ない | `plugins/` 直下の `.zip` か、`manifest.json` 付きフォルダか。ZIP／フォルダのルートが `manifest.json` か。`api_version` が `1` か |
+| 一覧に出ない | `plugins/` 直下の `.zip` か、`manifest.json` 付きフォルダか。ZIP／フォルダのルートが `manifest.json` か。`api_version` が `1` か。同じ `id` で「読み込まない」を選んでいないか |
+| 起動時に重複ダイアログが出る | 未解決の重複 `id` がある。すでに選んだ `id` は、選んだファイルが残っていれば再表示しない。選び直すときはプラグイン設定 |
 | ビルドインのまま開く | プラグイン設定の読み込み方式と ON/OFF。OK したか。新規 ZIP／フォルダなら再起動したか |
 | `ImportError: ez_co` | プラグインから `ez_co` を import している |
 | パスワードが一致しない | AES なのに標準 `zipfile` を使っていないか。`verify` の例外をログで見る |

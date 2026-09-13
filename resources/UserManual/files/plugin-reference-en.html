@@ -101,7 +101,7 @@
 │   └── loader.py
 ├── langs/               # optional ja.json / en.json
 └── resources/           # optional; root.read_bytes</pre>
-                        <p>Do not wrap the package in an extra parent folder. The same layout as a folder under <code>plugins/</code> loads without zipping.</p>
+                        <p>Do not wrap the package in an extra parent folder. The same layout as a folder under <code>plugins/</code> loads without zipping. If more than one plugin has the same <code>id</code>, choose one at startup. The choice is saved and is not asked again unless a new unresolved duplicate id appears. Change it later in Plugin Settings.</p>
                     </section>
 
                     <section id="manifest" class="config-section">
@@ -114,7 +114,7 @@
                                 <span class="api-field-meta">string</span>
                                 <span class="api-field-meta">required</span>
                             </div>
-                            <p>Plugin id. Stored settings use the key <code>id(ver:version)</code>. The ID column in Plugin Settings omits the version.</p>
+                            <p>Plugin id. Only one plugin with the same <code>id</code> is loaded at a time. Stored settings use the key <code>id(ver:version)</code>. The ID column in Plugin Settings omits the version.</p>
                         </div>
                         <div class="api-field">
                             <div class="api-field-head">
@@ -130,7 +130,7 @@
                                 <span class="api-field-meta">string</span>
                                 <span class="api-field-meta">required</span>
                             </div>
-                            <p>Package version. Bumping it changes the settings key; previous values are not carried over.</p>
+                            <p>Package version. Newer versions appear first in the duplicate-id dialog. Bumping it changes the settings key; previous values are not carried over.</p>
                         </div>
                         <div class="api-field">
                             <div class="api-field-head">
@@ -555,6 +555,7 @@ host.on("config_changed", _on_config)</pre>
                             <li>Other plugins' settings are not readable (<code>plugin_id</code> is hashed)</li>
                             <li>DLL plugins are not supported</li>
                             <li>Restart after adding a ZIP or folder</li>
+                            <li>If more than one plugin has the same <code>id</code>, choose one at startup. The choice is saved; change it later in Plugin Settings</li>
                         </ul>
                     </section>
 
