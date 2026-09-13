@@ -9,6 +9,7 @@ A general-purpose sample that opens `.txt` as image pages. The body is wrapped i
 | Kind | File (archive) |
 | ZIP | `dist-sample-plugins/example_txt.zip` |
 | Entry | `plugin:TextImagePlugin` |
+| LICENSE | Root `LICENSE.md` (Markdown display check) |
 
 ## Usage
 

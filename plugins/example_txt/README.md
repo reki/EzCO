@@ -9,6 +9,7 @@
 | 種別 | ファイル（アーカイブ） |
 | ZIP | `dist-sample-plugins/example_txt.zip` |
 | 入口 | `plugin:TextImagePlugin` |
+| LICENSE | ルートの `LICENSE.md`（Markdown 表示の確認用） |
 
 ## 使い方
 

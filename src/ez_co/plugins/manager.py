@@ -642,6 +642,11 @@ class PluginManager:
         return [rows[key] for key in sorted(rows)]
 
 
+def disclaimer_accepted(config=None) -> bool:
+    from ez_co.utils.data_location import plugin_consent_accepted
+    return plugin_consent_accepted()
+
+
 def get_plugin_manager() -> PluginManager:
     global _manager
     if _manager is None:

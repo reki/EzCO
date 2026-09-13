@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -23,7 +24,7 @@ from ez_co.plugins.api import BUILTIN_PROVIDER_ID, SKIP_PROVIDER_ID, FileKind
 from ez_co.plugins.manager import get_plugin_manager
 from ez_co.utils.language_manager import get_text
 
-PLUGIN_COLUMNS = ("enabled", "name", "id", "version", "kind", "extensions", "status", "settings")
+PLUGIN_COLUMNS = ("enabled", "name", "id", "version", "kind", "extensions", "status", "settings", "license")
 PLUGIN_DEFAULT_WIDTHS = {
     "enabled": 56,
     "name": 160,
@@ -32,7 +33,12 @@ PLUGIN_DEFAULT_WIDTHS = {
     "kind": 90,
     "extensions": 90,
     "status": 220,
-    "settings": 72,
+    "settings": 100,
+    "license": 110,
+}
+PLUGIN_MIN_WIDTHS = {
+    "settings": 88,
+    "license": 100,
 }
 EXT_COLUMNS = ("extension", "kind", "handler")
 EXT_DEFAULT_WIDTHS = {
@@ -108,6 +114,7 @@ class PluginDialog(QDialog):
             get_text("ui.plugin_supported_extensions"),
             get_text("ui.plugin_status"),
             get_text("ui.plugin_config"),
+            get_text("ui.plugin_license"),
         ])
         self._prepare_table(self.plugin_table)
         self.plugin_table.setSortingEnabled(True)
@@ -175,6 +182,8 @@ class PluginDialog(QDialog):
         header.setSectionsMovable(True)
         header.setStretchLastSection(False)
         header.setMinimumSectionSize(48)
+        table.verticalHeader().setDefaultSectionSize(36)
+        table.verticalHeader().setMinimumSectionSize(32)
         table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         table.setWordWrap(False)
@@ -196,7 +205,7 @@ class PluginDialog(QDialog):
             for key, value in saved_widths.items():
                 if key in default_widths:
                     try:
-                        widths[key] = max(48, int(value))
+                        widths[key] = max(PLUGIN_MIN_WIDTHS.get(key, 48), int(value))
                     except (TypeError, ValueError):
                         pass
         for logical, key in enumerate(keys):
@@ -274,10 +283,10 @@ class PluginDialog(QDialog):
             if plugin.error:
                 status = get_text("ui.plugin_status_error").format(error=plugin.error)
                 self.plugin_table.setItem(index, 6, self._text_item(status))
-                self.plugin_table.setItem(index, 7, self._text_item("-"))
+                self._set_dash_cells(index, "settings", "license")
             else:
                 self.plugin_table.setItem(index, 6, self._text_item(get_text("ui.plugin_status_ok")))
-                self._set_settings_cell(index, plugin)
+                self._set_action_cells(index, plugin)
         for offset, item in enumerate(skipped):
             index = len(rows) + offset
             if item.reason == "duplicate":
@@ -296,7 +305,7 @@ class PluginDialog(QDialog):
             self.plugin_table.setItem(index, 4, self._text_item("-"))
             self.plugin_table.setItem(index, 5, self._text_item("-"))
             self.plugin_table.setItem(index, 6, self._text_item(status))
-            self.plugin_table.setItem(index, 7, self._text_item("-"))
+            self._set_dash_cells(index, "settings", "license")
         for offset, (path, error) in enumerate(failed):
             index = len(rows) + len(skipped) + offset
             status = get_text("ui.plugin_status_error").format(error=error)
@@ -307,7 +316,7 @@ class PluginDialog(QDialog):
             self.plugin_table.setItem(index, 4, self._text_item("-"))
             self.plugin_table.setItem(index, 5, self._text_item("-"))
             self.plugin_table.setItem(index, 6, self._text_item(status))
-            self.plugin_table.setItem(index, 7, self._text_item("-"))
+            self._set_dash_cells(index, "settings", "license")
         if self.plugin_table.rowCount() == 0:
             self.plugin_table.setRowCount(1)
             empty = self._text_item(get_text("ui.plugin_no_plugins"))
@@ -315,20 +324,58 @@ class PluginDialog(QDialog):
             self.plugin_table.setSpan(0, 0, 1, len(PLUGIN_COLUMNS))
             self.plugin_table.setSortingEnabled(False)
             return
+        self.plugin_table.resizeRowsToContents()
         self.plugin_table.setSortingEnabled(True)
 
-    def _set_settings_cell(self, index: int, plugin):
+    def _column(self, key: str) -> int:
+        return PLUGIN_COLUMNS.index(key)
+
+    def _set_dash_cells(self, index: int, *keys: str):
+        for key in keys:
+            self.plugin_table.setItem(index, self._column(key), self._text_item("-"))
+
+    def _set_action_cells(self, index: int, plugin):
+        from ez_co.plugins.zip_loader import peek_license
+
         fields = self.plugin_manager.host.configs_for(plugin.plugin_id)
-        if not fields:
-            self.plugin_table.setItem(index, 7, self._text_item("-"))
-            return
-        button = QPushButton(get_text("ui.plugin_config"))
-        button.clicked.connect(lambda _=False, item=plugin: self._open_plugin_config(item))
+        license_info = peek_license(plugin.zip_path)
+        if fields:
+            button = QPushButton(get_text("ui.plugin_config"))
+            button.clicked.connect(lambda _=False, item=plugin: self._open_plugin_config(item))
+            self._set_button_cell(index, "settings", button)
+        else:
+            self._set_dash_cells(index, "settings")
+        if license_info:
+            license_button = QPushButton(get_text("ui.plugin_license"))
+            license_button.clicked.connect(
+                lambda _=False, item=plugin, info=license_info: self._open_plugin_license(item, info)
+            )
+            self._set_button_cell(index, "license", license_button)
+        else:
+            self._set_dash_cells(index, "license")
+
+    def _set_button_cell(self, index: int, key: str, button: QPushButton):
+        button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        hint = button.sizeHint()
+        button.setMinimumSize(hint)
+        button.setFixedHeight(hint.height())
         holder = QWidget()
         holder_layout = QHBoxLayout(holder)
-        holder_layout.setContentsMargins(4, 0, 4, 0)
+        holder_layout.setContentsMargins(4, 2, 4, 2)
         holder_layout.addWidget(button)
-        self.plugin_table.setCellWidget(index, 7, holder)
+        holder_layout.addStretch()
+        self.plugin_table.setCellWidget(index, self._column(key), holder)
+
+    def _open_plugin_license(self, plugin, info):
+        from ez_co.ui.plugin_license_dialog import PluginLicenseDialog
+
+        dialog = PluginLicenseDialog(
+            plugin.name,
+            info.get("kind") or "text",
+            info.get("text") or "",
+            self,
+        )
+        dialog.exec()
 
     def _open_plugin_config(self, plugin):
         from ez_co.ui.plugin_config_dialog import PluginConfigDialog

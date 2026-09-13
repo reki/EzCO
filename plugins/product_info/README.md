@@ -9,6 +9,7 @@
 | 種別 | サイドバー |
 | ZIP | `dist-sample-plugins/product_info.zip` |
 | 入口 | `plugin:ProductInfoPlugin` |
+| LICENSE | なし（設定のライセンスボタンは `-`） |
 
 ## 使い方
 

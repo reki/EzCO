@@ -315,19 +315,39 @@ class MainWindow(QMainWindow):
         self._restore_dock_state()
         self._notify_plugin_current_changed()
 
+    def _plugin_disclaimer_accepted(self) -> bool:
+        from ez_co.utils.data_location import plugin_consent_accepted
+        return plugin_consent_accepted()
+
+    def _save_plugin_profile_config(self):
+        if self.db_manager:
+            self.db_manager.save_profile_config(
+                self.db_manager.current_profile,
+                self.config.to_dict(),
+            )
+
     def _resolve_plugin_conflicts(self, manager):
+        just_accepted = False
+        if manager.candidates and not self._plugin_disclaimer_accepted():
+            from ez_co.ui.plugin_consent_dialog import PluginConsentDialog
+            dialog = PluginConsentDialog(self)
+            if dialog.exec() != QDialog.DialogCode.Accepted:
+                return
+            from ez_co.utils.data_location import accept_plugin_consent
+            accept_plugin_consent()
+            just_accepted = True
+        if not self._plugin_disclaimer_accepted():
+            return
         unresolved = manager.unresolved_groups(self.config)
         if unresolved:
             from ez_co.ui.plugin_conflict_dialog import PluginConflictDialog
             dialog = PluginConflictDialog(unresolved, self)
             dialog.exec()
             manager.record_choices(dialog.choices(), self.config)
-            if self.db_manager:
-                self.db_manager.save_profile_config(
-                    self.db_manager.current_profile,
-                    self.config.to_dict(),
-                )
+            self._save_plugin_profile_config()
         manager.load_selected(self.config)
+        if just_accepted:
+            self.rebuild_menu()
 
     def _plugin_get_current(self, key: str):
         if key == "folder":
@@ -808,9 +828,10 @@ class MainWindow(QMainWindow):
         self.settings_action = QAction(get_text("ui.settings"), self)
         self.settings_action.triggered.connect(self.show_settings_dialog)
         settings_menu.addAction(self.settings_action)
-        self.plugin_settings_action = QAction(get_text("ui.plugin_settings"), self)
-        self.plugin_settings_action.triggered.connect(self.show_plugin_dialog)
-        settings_menu.addAction(self.plugin_settings_action)
+        if self._plugin_disclaimer_accepted():
+            self.plugin_settings_action = QAction(get_text("ui.plugin_settings"), self)
+            self.plugin_settings_action.triggered.connect(self.show_plugin_dialog)
+            settings_menu.addAction(self.plugin_settings_action)
         self.shortcut_action = QAction(get_text("ui.shortcut_settings"), self)
         self.shortcut_action.triggered.connect(self.show_shortcut_dialog)
         settings_menu.addAction(self.shortcut_action)
@@ -1005,7 +1026,9 @@ class MainWindow(QMainWindow):
                 self.mouse_gesture.set_threshold(new_threshold)
 
         from ez_co.plugins.manager import get_plugin_manager
-        get_plugin_manager().activate_ui(self.config)
+        manager = get_plugin_manager()
+        if getattr(manager, "_loaded", False):
+            manager.activate_ui(self.config)
         self.rebuild_menu()
         self.setup_shortcuts()
         if hasattr(self, "bookmark_toolbar"):

@@ -9,6 +9,7 @@
 | 種別 | ファイル（アーカイブ） |
 | ZIP | `dist-sample-plugins/example_zip.zip` |
 | 入口 | `loader:FileLoader` |
+| LICENSE | ルートの `LICENSE.txt`（プレーンテキスト表示の確認用） |
 
 ## 使い方
 

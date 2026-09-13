@@ -1,9 +1,10 @@
-"""プロファイル横断のデータの置き場。場所の設定は常にユーザーフォルダの location.json。"""
+"""プロファイル横断のデータの置き場とユーザ設定。場所と同意はユーザーフォルダの user.json。"""
 from __future__ import annotations
 
 import json
 import os
 import shutil
+from importlib import resources
 from pathlib import Path
 from typing import Optional
 
@@ -13,11 +14,13 @@ LOCATION_USER = "user"
 LOCATION_EXE = "exe"
 LOCATION_CUSTOM = "custom"
 LOCATION_MODES = (LOCATION_USER, LOCATION_EXE, LOCATION_CUSTOM)
-LOCATION_FILENAME = "location.json"
+LOCATION_FILENAME = "user.json"
+PLUGIN_CONSENT_KEY = "plugin_consent_version"
 APP_FOLDER_NAME = "EzCo"
 USER_DATA_ITEMS = ("config.db", "plugins", "font", "langs")
 
 _data_root: Optional[Path] = None
+_consent_version_cache: Optional[str] = None
 
 
 def get_app_location_dir() -> Path:
@@ -43,30 +46,69 @@ def default_location_settings() -> dict:
     return {"data_location": LOCATION_USER, "custom_path": ""}
 
 
-def load_location_settings() -> Optional[dict]:
+def _load_user_payload() -> dict:
     path = location_file_path()
     if not path.is_file():
-        return None
+        return {}
     try:
         with open(path, encoding="utf-8") as f:
             data = json.load(f) or {}
     except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _parse_consent_version(value) -> Optional[tuple[int, int, int]]:
+    text = str(value or "").strip()
+    if not text:
         return None
+    parts = text.split(".")
+    if not 1 <= len(parts) <= 3:
+        return None
+    numbers = []
+    for part in parts:
+        if not part.isdigit():
+            return None
+        numbers.append(int(part))
+    while len(numbers) < 3:
+        numbers.append(0)
+    return numbers[0], numbers[1], numbers[2]
+
+
+def _consent_version(value) -> str:
+    parsed = _parse_consent_version(value)
+    if parsed is None:
+        return ""
+    return f"{parsed[0]}.{parsed[1]}.{parsed[2]}"
+
+
+def load_location_settings() -> Optional[dict]:
+    path = location_file_path()
+    if not path.is_file():
+        return None
+    data = _load_user_payload()
     mode = data.get("data_location", LOCATION_USER)
     if mode not in LOCATION_MODES:
         mode = LOCATION_USER
     custom = data.get("custom_path") or ""
-    return {"data_location": mode, "custom_path": str(custom)}
+    result = {"data_location": mode, "custom_path": str(custom)}
+    if PLUGIN_CONSENT_KEY in data:
+        result[PLUGIN_CONSENT_KEY] = _consent_version(data.get(PLUGIN_CONSENT_KEY))
+    return result
 
 
 def save_location_settings(settings: dict) -> Path:
-    mode = settings.get("data_location", LOCATION_USER)
+    payload = dict(_load_user_payload())
+    mode = settings.get("data_location", payload.get("data_location", LOCATION_USER))
     if mode not in LOCATION_MODES:
         mode = LOCATION_USER
-    payload = {
-        "data_location": mode,
-        "custom_path": str(settings.get("custom_path") or ""),
-    }
+    payload["data_location"] = mode
+    if "custom_path" in settings:
+        payload["custom_path"] = str(settings.get("custom_path") or "")
+    elif "custom_path" not in payload:
+        payload["custom_path"] = ""
+    if PLUGIN_CONSENT_KEY in settings:
+        payload[PLUGIN_CONSENT_KEY] = _consent_version(settings.get(PLUGIN_CONSENT_KEY))
     dest_dir = get_app_location_dir()
     dest_dir.mkdir(parents=True, exist_ok=True)
     path = dest_dir / LOCATION_FILENAME
@@ -76,6 +118,64 @@ def save_location_settings(settings: dict) -> Path:
         f.write("\n")
     tmp.replace(path)
     return path
+
+
+def plugin_consent_version() -> str:
+    global _consent_version_cache
+    if _consent_version_cache is not None:
+        return _consent_version_cache
+    try:
+        text = (
+            resources.files("ez_co.resources")
+            .joinpath("plugin_consent", "version.txt")
+            .read_text(encoding="utf-8")
+        )
+        line = (text or "").strip().splitlines()
+        _consent_version_cache = _consent_version(line[0] if line else "")
+    except (OSError, FileNotFoundError, AttributeError):
+        _consent_version_cache = ""
+    return _consent_version_cache
+
+
+def plugin_consent_markdown(lang_code: Optional[str] = None) -> str:
+    codes: list[str] = []
+    if lang_code:
+        codes.append(str(lang_code).split("_")[0].split("-")[0])
+    else:
+        from ez_co.utils.language_manager import language_manager
+        current = language_manager.get_current_language()
+        if current == "system":
+            info = language_manager.available_languages.get("system") or {}
+            current = str(info.get("code") or "ja")
+        codes.append(str(current).split("_")[0].split("-")[0])
+    for fallback in ("ja", "en"):
+        if fallback not in codes:
+            codes.append(fallback)
+    root = resources.files("ez_co.resources").joinpath("plugin_consent")
+    for code in codes:
+        path = root.joinpath(f"{code}.md")
+        try:
+            if path.is_file():
+                return path.read_text(encoding="utf-8")
+        except (OSError, FileNotFoundError, AttributeError):
+            continue
+    return ""
+
+
+def plugin_consent_accepted() -> bool:
+    current = plugin_consent_version()
+    stored = _consent_version(_load_user_payload().get(PLUGIN_CONSENT_KEY))
+    return bool(current) and stored == current
+
+
+def accept_plugin_consent() -> None:
+    payload = dict(_load_user_payload())
+    if payload.get("data_location") not in LOCATION_MODES:
+        payload["data_location"] = LOCATION_USER
+    if "custom_path" not in payload:
+        payload["custom_path"] = ""
+    payload[PLUGIN_CONSENT_KEY] = plugin_consent_version()
+    save_location_settings(payload)
 
 
 def resolve_data_root(settings: Optional[dict] = None) -> Path:

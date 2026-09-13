@@ -9,6 +9,7 @@
 | 種別 | サイドバー（setup のみ） |
 | ZIP | `dist-sample-plugins/error_setup.zip` |
 | 入口 | `plugin:ErrorSetupPlugin` |
+| LICENSE | `LICENSE.md` / `LICENSE.txt` / `LICENSE` を同梱。表示は `LICENSE.md` になること |
 
 ## 使い方
 

@@ -9,6 +9,7 @@ Test plugin. `setup()` always raises. Not for production.
 | Kind | Sidebar (setup only) |
 | ZIP | `dist-sample-plugins/error_setup.zip` |
 | Entry | `plugin:ErrorSetupPlugin` |
+| LICENSE | Ships `LICENSE.md`, `LICENSE.txt`, and `LICENSE`. The viewer must show `LICENSE.md` |
 
 ## Usage
 

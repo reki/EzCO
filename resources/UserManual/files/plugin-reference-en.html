@@ -84,7 +84,7 @@
 
                     <section id="overview" class="config-section">
                         <h3>Overview</h3>
-                        <p>The host constructs the plugin and calls it. The constructor is always <code>Class(root, get_text, host)</code>. <code>import ez_co</code> is not allowed. PySide6 and host third-party packages are allowed.</p>
+                        <p>The host constructs the plugin and calls it. The constructor is always <code>Class(root, get_text, host)</code>. <code>import ez_co</code> is not allowed (it prevents accidental coupling; it is not a sandbox). EzCo does not inspect plugin code. Placed code runs with the same privileges as the app. The EzCo developers are not responsible for damage from malicious or defective plugins. Responsibility lies with the publisher and the person who installs it. PySide6 and host third-party packages are allowed.</p>
                         <div class="api-index">
                             <a href="#loader"><div class="api-index-name">FileLoader</div><div class="api-index-desc">Image / archive loader contract</div></a>
                             <a href="#host"><div class="api-index-name">host</div><div class="api-index-desc">Register, config, dialogs, actions</div></a>
@@ -100,8 +100,9 @@
 ├── src/                 # import root
 │   └── loader.py
 ├── langs/               # optional ja.json / en.json
-└── resources/           # optional; root.read_bytes</pre>
-                        <p>Do not wrap the package in an extra parent folder. The same layout as a folder under <code>plugins/</code> loads without zipping. If more than one plugin has the same <code>id</code>, choose one at startup. The choice is saved and is not asked again unless a new unresolved duplicate id appears. Change it later in Plugin Settings.</p>
+├── resources/           # optional; root.read_bytes
+└── LICENSE.md           # optional. Settings → License. .md then .txt then bare</pre>
+                        <p>Do not wrap the package in an extra parent folder. The same layout as a folder under <code>plugins/</code> loads without zipping. If you have not accepted yet, a Yes / No dialog appears at startup. After Yes, if more than one plugin has the same <code>id</code>, choose one. The choice is saved and is not asked again unless a new unresolved duplicate id appears. Change it later in Plugin Settings. Root <code>LICENSE.md</code> / <code>LICENSE.txt</code> / <code>LICENSE</code> can be opened from Plugin Settings (that order; display is not a guarantee).</p>
                     </section>
 
                     <section id="manifest" class="config-section">
@@ -554,8 +555,9 @@ host.on("config_changed", _on_config)</pre>
                             <li>Dock placement / floating is host-owned</li>
                             <li>Other plugins' settings are not readable (<code>plugin_id</code> is hashed)</li>
                             <li>DLL plugins are not supported</li>
-                            <li>Restart after adding a ZIP or folder</li>
-                            <li>If more than one plugin has the same <code>id</code>, choose one at startup. The choice is saved; change it later in Plugin Settings</li>
+                            <li>Restart after adding or removing a ZIP or folder. On/off, handler choice, and changing a duplicate-id source apply on OK / Apply</li>
+                            <li>If not accepted, Yes / No. No skips loading and hides Plugin Settings. Consent is per user. The question returns next start and when the consent version is raised</li>
+                            <li>If more than one plugin has the same <code>id</code>, choose one after consent. The choice is saved; change it later in Plugin Settings (OK / Apply; no restart)</li>
                         </ul>
                     </section>
 

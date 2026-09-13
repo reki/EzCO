@@ -9,6 +9,7 @@ Sidebar plugin for the current folder. Shows `info.json` and `folder.jpg` when p
 | Kind | Sidebar |
 | ZIP | `dist-sample-plugins/product_info.zip` |
 | Entry | `plugin:ProductInfoPlugin` |
+| LICENSE | None (License button stays `-`) |
 
 ## Usage
 

@@ -9,6 +9,7 @@ Test plugin. The sidebar Error button raises in a callback. Not for production.
 | Kind | Sidebar |
 | ZIP | `dist-sample-plugins/error_callback.zip` |
 | Entry | `plugin:ErrorCallbackPlugin` |
+| LICENSE | Ships `LICENSE.txt` and `LICENSE` (no md). The viewer must show `LICENSE.txt` |
 
 ## Usage
 

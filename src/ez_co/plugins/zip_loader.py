@@ -183,6 +183,29 @@ def _unload_prefix(prefix: str) -> None:
     ]
 
 
+LICENSE_FILES = (
+    ("LICENSE.md", "markdown"),
+    ("LICENSE.txt", "text"),
+    ("LICENSE", "text"),
+)
+
+
+def peek_license(path: Path) -> dict[str, str] | None:
+    """ルート直下の LICENSE.md / LICENSE.txt / LICENSE を優先順で読む。"""
+    path = Path(path)
+    source = open_plugin_source(path)
+    try:
+        for name, kind in LICENSE_FILES:
+            if not source.exists(name):
+                continue
+            raw = source.read_bytes(name)
+            text = raw.decode("utf-8-sig", errors="replace")
+            return {"name": name, "kind": kind, "text": text}
+    finally:
+        source.close()
+    return None
+
+
 def peek_manifest(path: Path) -> dict[str, str]:
     """実体化せず manifest.json から id / name / version だけ読む。"""
     path = Path(path)

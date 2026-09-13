@@ -84,7 +84,7 @@
 
                     <section id="overview" class="config-section">
                         <h3>概要</h3>
-                        <p>プラグインはホストから生成され、コールバックされるだけです。コンストラクタは常に <code>Class(root, get_text, host)</code> です。<code>import ez_co</code> はできません。PySide6 と本体が入れているサードパーティは import できます。</p>
+                        <p>プラグインはホストから生成され、コールバックされるだけです。コンストラクタは常に <code>Class(root, get_text, host)</code> です。<code>import ez_co</code> はできません（結合事故防止であり、サンドボックスではありません）。本体は中身を検査しません。置いたコードはアプリと同じ権限で動きます。悪意のあるコードや欠陥による損害について、EzCo の開発者は責任を負いません。責任は配布者と、それを導入した使用者にあります。PySide6 と本体が入れているサードパーティは import できます。</p>
                         <div class="api-index">
                             <a href="#loader"><div class="api-index-name">FileLoader</div><div class="api-index-desc">画像／アーカイブの読み込み契約</div></a>
                             <a href="#host"><div class="api-index-name">host</div><div class="api-index-desc">登録・設定・ダイアログ・アクション</div></a>
@@ -100,8 +100,9 @@
 ├── src/                 # import ルート
 │   └── loader.py
 ├── langs/               # 任意 ja.json / en.json
-└── resources/           # 任意。root.read_bytes</pre>
-                        <p>余分な親フォルダを挟まないでください。同じ構成の展開フォルダを <code>plugins/</code> 直下に置けば、ZIP にしなくても読み込まれます。同じ <code>id</code> が複数あるときは起動時に1つ選びます。選んだ内容は保存され、新しい重複 <code>id</code> が出ない限り次回は聞きません。選び直すときはプラグイン設定の「重複プラグインの選択」です。選ばれなかったものは一覧に理由付きで残ります。</p>
+├── resources/           # 任意。root.read_bytes
+└── LICENSE.md           # 任意。設定のライセンス。.md → .txt → 無印</pre>
+                        <p>余分な親フォルダを挟まないでください。同じ構成の展開フォルダを <code>plugins/</code> 直下に置けば、ZIP にしなくても読み込まれます。未同意なら起動時にはい／いいえの確認が出ます。はいのあと、同じ <code>id</code> が複数あるときは1つ選びます。選んだ内容は保存され、新しい重複 <code>id</code> が出ない限り次回は聞きません。選び直すときはプラグイン設定の「重複プラグインの選択」です。選ばれなかったものは一覧に理由付きで残ります。ルートの <code>LICENSE.md</code> / <code>LICENSE.txt</code> / <code>LICENSE</code> は設定から読めます（優先順はこの順。表示は保証ではありません）。</p>
                     </section>
 
                     <section id="manifest" class="config-section">
@@ -554,8 +555,9 @@ host.on("config_changed", _on_config)</pre>
                             <li>ドックの貼り付け／フローティングは本体</li>
                             <li>他プラグインの設定は読めない（<code>plugin_id</code> はハッシュ化）</li>
                             <li>DLL プラグインは未対応</li>
-                            <li>ZIP またはフォルダを足したら再起動が必要</li>
-                            <li>同じ <code>id</code> が複数あるときは起動時に1つ選ぶ。選んだ内容は保存され、新しい重複 <code>id</code> が出ない限り次回は聞かない。選び直すときはプラグイン設定</li>
+                            <li>新しい ZIP／フォルダを置いた（または消した）あとは再起動が必要。ON/OFF、読み込み方式、重複の選び直しは OK / 適用で足りる</li>
+                            <li>未同意ならはい／いいえ。いいえならロードせず、プラグイン設定も出さない。同意はユーザー単位。バージョンが上がったときと次回起動でも聞く</li>
+                            <li>同じ <code>id</code> が複数あるときは、同意したあとの起動時に1つ選ぶ。選んだ内容は保存され、新しい重複 <code>id</code> が出ない限り次回は聞かない。選び直すときはプラグイン設定（OK / 適用。再起動は不要）</li>
                         </ul>
                     </section>
 

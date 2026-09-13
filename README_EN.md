@@ -51,9 +51,11 @@ Most of the code in this program was implemented with the assistance of AI (Clau
 - **Reopen last file**: Opens only the latest history item, not every tab
 
 ### Plugin Settings
-- **On/Off**: Enable or disable each plugin. Off removes it from extension handling and unmounts its sidebar
-- **Loading method**: Built-in, plugin, or Don't load per extension
-- **Duplicate ids**: Choose which source to load at startup. The choice is saved and the dialog does not return unless a new unresolved duplicate id appears. Change it later with Choose duplicate plugins in Plugin Settings (applies on OK / Apply)
+- **First-run consent**: Yes / No when plugins are present and not yet accepted. Yes stores this user's consent version, then the duplicate-id dialog if needed. No skips loading and hides Plugin Settings. The question returns next start, and again if the consent version is raised
+- **On/Off**: Enable or disable each plugin. Off removes it from extension handling and unmounts its sidebar. OK / Apply is enough; no restart
+- **Loading method**: Built-in, plugin, or Don't load per extension. OK / Apply reloads open files
+- **Duplicate ids**: After consent, choose which source to load at startup. The choice is saved and the dialog does not return unless a new unresolved duplicate id appears. Change it later with Choose duplicate plugins in Plugin Settings (applies on OK / Apply; no restart)
+- **License**: Plugin Settings can open root `LICENSE.md` / `LICENSE.txt` / `LICENSE` (that order). Display is not a guarantee
 - **Don't load**: Skip files of that extension (replaces the old Archive Settings dialog)
 - **Settings export/import**: Save and restore the current profile as YAML from the main settings dialog
 
@@ -95,14 +97,17 @@ Most of the code in this program was implemented with the assistance of AI (Clau
 - **CLI**: `--profile=name` / `-p name` uses that profile for the session only (if missing, the last profile is used; nothing is created)
 
 ### Plugins
-- Place a `.zip` or a folder with `manifest.json` in the `plugins/` folder next to the executable (or the repo root while developing)
-- If more than one plugin has the same id, choose which one to load at startup. The choice is saved and the dialog does not return unless a new unresolved duplicate id appears. Change it later with Choose duplicate plugins in Plugin Settings
-- In Plugin Settings, turn plugins on or off and choose built-in, plugin, or Don't load per extension. OK reloads the open files
+- Place a `.zip` or a folder with `manifest.json` in the `plugins/` folder next to the executable (or the repo root while developing). Restart only after adding or removing a ZIP or folder
+- Notice: EzCo does not inspect plugin code. Placed code runs with the same privileges as the app. Responsibility lies with the publisher and the person who installs it. See [plugins/README_EN.md](plugins/README_EN.md)
+- First-run consent: Yes / No if plugins exist and you have not accepted. No skips loading and hides Plugin Settings. Per user; the question returns next start and when the consent version is raised
+- After consent, if more than one plugin has the same id, choose which one to load at startup. The choice is saved and the dialog does not return unless a new unresolved duplicate id appears. Change it later with Choose duplicate plugins in Plugin Settings (OK / Apply; no restart)
+- Plugin Settings can open root `LICENSE.md` / `LICENSE.txt` / `LICENSE` (that order). Display is not a guarantee
+- In Plugin Settings, turn plugins on or off and choose built-in, plugin, or Don't load per extension. OK / Apply reloads the open files (no restart)
 - The plugin list shows ID without version. Column widths and order can be changed and are saved
 - Built-in handlers win by default for known extensions
 - Enabled plugin extensions appear in the file dialog under "Supported Files" and "Plugin formats", and in folder scans
 - Samples: sources in `plugins/`, packaged ZIPs in [`dist-sample-plugins/`](dist-sample-plugins/) (PNG, ZIP, text pages, product info sidebar)
-- Developer reference: [docs/plugins.md](docs/plugins.md), [Plugin Reference](resources/UserManual/files/plugin-reference-en.html) in the user manual, each plugin `README_EN.md`, [plugins/README.md](plugins/README.md)
+- Developer reference: [docs/plugins.md](docs/plugins.md), [Plugin Reference](resources/UserManual/files/plugin-reference-en.html) in the user manual, each plugin `README_EN.md`, [plugins/README_EN.md](plugins/README_EN.md)
 
 ## Development Environment Setup
 
@@ -344,10 +349,12 @@ Application settings are stored per profile in `config.db` (SQLite). It is creat
 - **Prefetch pages**: Number of pages to prefetch around current page (1-50 pages)
 
 #### Plugin Settings
-- **On/Off**: `plugins.enabled`. Missing ids are enabled. Off also unmounts the sidebar
-- **Loading method**: Built-in, plugin, or Don't load per extension
-- **Duplicate ids**: `plugins.source_choice`. Choose one source at startup or later in Plugin Settings
+- **Consent**: `plugin_consent_version` in this user's `user.json`. Set on Yes. Until then plugins are not loaded and Plugin Settings is hidden
+- **On/Off**: `plugins.enabled`. Missing ids are enabled. Off also unmounts the sidebar. OK / Apply; no restart
+- **Loading method**: Built-in, plugin, or Don't load per extension. OK / Apply reloads open files
+- **Duplicate ids**: `plugins.source_choice`. Choose one source at startup or later in Plugin Settings (OK / Apply; no restart)
 - **Don't load**: Files of that extension are not opened (archives and images)
+- **Restart**: only after adding or removing a ZIP or folder under `plugins/`
 
 #### Language Settings
 - **Language code**: Language setting (system, ja, en)
@@ -429,13 +436,13 @@ EzCo.exe
 ## About Plugin Settings
 
 ### Overview
-EzCo lets you choose a loading method per extension. Use **Don't load** when a format is unused or folder scans are slow. This replaces the old Archive Settings dialog.
+EzCo lets you choose a loading method per extension. Use **Don't load** when a format is unused or folder scans are slow. This replaces the old Archive Settings dialog. EzCo does not inspect plugin code; see [plugins/README_EN.md](plugins/README_EN.md).
 
 ### How to Configure
 1. Start the application
 2. Open Settings → Plugin Settings
 3. Toggle plugins and choose Built-in, a plugin, or Don't load for each extension
-4. Press OK (open files are reloaded; disabled sidebars are removed)
+4. Press OK / Apply (open files are reloaded; disabled sidebars are removed). No restart is needed for these changes. Restart only after adding or removing a ZIP or folder under `plugins/`
 
 ### Effects of Settings
 

@@ -71,7 +71,7 @@ poetry run pytest
 4. **「Python: EzCo」** で手動確認する。自動テストは **「▶ テスト」** またはタスク **「EzCo: テスト」**。配布物を見るときだけ **「▶ ビルド」** または **「▶ ビルド (--safe-mode)」**
 5. [Pull Request](../../compare) で変更内容を説明する
 
-プラグインを触る場合は [docs/plugins.md](docs/plugins.md) と [plugins/README.md](plugins/README.md) を見てください。開発中は `plugins/` のフォルダがそのまま読めます。配布するときだけ [`dist-sample-plugins/`](dist-sample-plugins/) の `.zip` を作り直します。
+プラグインを触る場合は [docs/plugins.md](docs/plugins.md) と [plugins/README.md](plugins/README.md) を見てください。開発中は `plugins/` のフォルダがそのまま読めます。配布するときだけ [`dist-sample-plugins/`](dist-sample-plugins/) の `.zip` を作り直します。新しい ZIP／フォルダを置いたあとは再起動、ON/OFF や読み込み方式はプラグイン設定の OK / 適用で足ります。本体は中身を検査しません。
 
 ## コードスタイル
 

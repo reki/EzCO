@@ -9,6 +9,7 @@
 | 種別 | ファイル（画像） |
 | ZIP | `dist-sample-plugins/example_png.zip` |
 | 入口 | `loader:FileLoader` |
+| LICENSE | ルートの `LICENSE`（拡張子なし・プレーンテキスト表示の確認用） |
 
 ## 使い方
 
