@@ -36,7 +36,22 @@ class LoadedPlugin:
     zip_path: Path
     formats: list[FormatSpec]
     error: Optional[str] = None
+    ui_active: bool = False
     _archive: object = field(default=None, repr=False)
+
+    @property
+    def has_formats(self) -> bool:
+        return bool(self.formats)
+
+    @property
+    def has_sidebar(self) -> bool:
+        setup = getattr(self.instance, "setup", None)
+        if callable(setup):
+            return True
+        host = getattr(self.instance, "host", None)
+        if host is not None and hasattr(host, "has_pending_sidebars"):
+            return bool(host.has_pending_sidebars())
+        return False
 
     @property
     def plugin_id(self) -> str:
@@ -174,8 +189,10 @@ class PluginManager:
                 manifest, instance, _root, archive = loaded
                 formats = list(getattr(instance, "_ezco_formats", []))
                 if not formats:
-                    from ez_co.plugins.api import normalize_formats
-                    formats = normalize_formats(instance.supported_formats())
+                    supported = getattr(instance, "supported_formats", None)
+                    if callable(supported):
+                        from ez_co.plugins.api import normalize_formats
+                        formats = normalize_formats(supported())
                 plugin = LoadedPlugin(
                     manifest=manifest,
                     instance=instance,
@@ -209,6 +226,17 @@ class PluginManager:
                 logger.warning(get_log_text("plugin_load_failed", path=path, error=exc))
         self._scanned = True
 
+    def is_enabled(self, plugin_id: str, config=None) -> bool:
+        if config is None:
+            return True
+        enabled = dict(getattr(config, "plugins", {}).get("enabled") or {})
+        if plugin_id not in enabled:
+            return True
+        return bool(enabled[plugin_id])
+
+    def enabled_plugins(self, config=None) -> list[LoadedPlugin]:
+        return [plugin for plugin in self.plugins if self.is_enabled(plugin.plugin_id, config)]
+
     def get_plugin(self, plugin_id: str) -> Optional[LoadedPlugin]:
         """provider キー（id(ver:version)）または旧形式の id だけで探す。"""
         return self._match_plugin(plugin_id, exact_version=False)
@@ -230,15 +258,15 @@ class PluginManager:
             return max(matches, key=lambda item: version_sort_key(item.version))
         return None
 
-    def knows_extension(self, extension: str) -> bool:
+    def knows_extension(self, extension: str, config=None) -> bool:
         ext = normalize_extension(extension)
         if builtin_kind_for_extension(ext) is not None:
             return True
-        return any(plugin.offers(ext) is not None for plugin in self.plugins)
+        return any(plugin.offers(ext) is not None for plugin in self.enabled_plugins(config))
 
-    def plugin_extensions(self) -> set[str]:
+    def plugin_extensions(self, config=None) -> set[str]:
         exts: set[str] = set()
-        for plugin in self.plugins:
+        for plugin in self.enabled_plugins(config):
             for spec in plugin.formats:
                 exts.add(spec.extension)
         return exts
@@ -260,7 +288,8 @@ class PluginManager:
     def resolve_extension(self, extension: str, config=None) -> HandlerDecision:
         ext = normalize_extension(extension)
         builtin_kind = builtin_kind_for_extension(ext)
-        plugin_offers = [(plugin, plugin.offers(ext)) for plugin in self.plugins if plugin.offers(ext) is not None]
+        active = self.enabled_plugins(config)
+        plugin_offers = [(plugin, plugin.offers(ext)) for plugin in active if plugin.offers(ext) is not None]
         configured = self.configured_provider(config, ext)
 
         if configured == SKIP_PROVIDER_ID:
@@ -270,6 +299,8 @@ class PluginManager:
 
         if configured and configured != BUILTIN_PROVIDER_ID:
             plugin = self.get_plugin(configured)
+            if plugin is not None and not self.is_enabled(plugin.plugin_id, config):
+                plugin = None
             kind = plugin.offers(ext) if plugin else None
             if plugin is not None and kind is not None:
                 return HandlerDecision(plugin.provider_id, kind, plugin)
@@ -286,7 +317,36 @@ class PluginManager:
 
         return HandlerDecision(BUILTIN_PROVIDER_ID, None, None)
 
-    def extension_rows(self, config=None) -> list[ExtensionProviderRow]:
+    def activate_ui(self, config=None) -> None:
+        for plugin in self.plugins:
+            if self.is_enabled(plugin.plugin_id, config):
+                self._activate_plugin(plugin)
+            else:
+                self._deactivate_plugin(plugin)
+
+    def _activate_plugin(self, plugin: LoadedPlugin) -> None:
+        if plugin.ui_active:
+            return
+        setup = getattr(plugin.instance, "setup", None)
+        if callable(setup):
+            try:
+                setup()
+            except Exception as exc:
+                logger.warning(get_log_text("plugin_setup_failed", plugin_id=plugin.plugin_id, error=exc))
+                return
+        plugin.ui_active = True
+
+    def _deactivate_plugin(self, plugin: LoadedPlugin) -> None:
+        teardown = getattr(plugin.instance, "teardown", None)
+        if callable(teardown):
+            try:
+                teardown()
+            except Exception as exc:
+                logger.debug(get_log_text("plugin_teardown_failed", plugin_id=plugin.plugin_id, error=exc))
+        self.host.clear_plugin(plugin.plugin_id)
+        plugin.ui_active = False
+
+    def extension_rows(self, config=None, enabled_ids=None) -> list[ExtensionProviderRow]:
         rows: dict[str, ExtensionProviderRow] = {}
         for ext in sorted(ImageInfo.get_all_extensions()):
             kind = FileKind.IMAGE
@@ -305,7 +365,12 @@ class PluginManager:
                 providers=[(BUILTIN_PROVIDER_ID, "")],
                 selected=BUILTIN_PROVIDER_ID,
             )
-        for plugin in self.plugins:
+        if enabled_ids is None:
+            active = self.enabled_plugins(config)
+        else:
+            allowed = {str(item) for item in enabled_ids}
+            active = [plugin for plugin in self.plugins if plugin.plugin_id in allowed]
+        for plugin in active:
             for spec in plugin.formats:
                 row = rows.get(spec.extension)
                 if row is None:

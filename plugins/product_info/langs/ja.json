@@ -1,0 +1,13 @@
+{
+  "title": "商品情報",
+  "empty": "商品情報がありません",
+  "load_failed": "商品情報の読み込みに失敗しました: {error}",
+  "open_page": "商品ページを開く",
+  "pid": "PID",
+  "brand": "ブランド名",
+  "file_format": "ファイル形式",
+  "work_format": "作品形式",
+  "genre": "ジャンル",
+  "overview": "概要",
+  "unknown_title": "タイトル不明"
+}

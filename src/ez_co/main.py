@@ -364,6 +364,7 @@ def main():
                     error_logger.log_error(get_log_text("main_open_last_file_on_startup_error", error=e), e)
         return app.exec()
     except Exception as e:
+        logger.exception(get_log_text("main_app_startup_fatal_error", error=e))
         error_logger = get_error_logger()
         error_logger.log_error(get_log_text("main_app_startup_fatal_error", error=e), e)
         return 1

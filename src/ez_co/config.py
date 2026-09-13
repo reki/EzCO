@@ -169,6 +169,7 @@ class Config:
         self.plugins = {
             "extension_handlers": {},
             "dialog": {},
+            "enabled": {},
         }
         
         # 設定辞書をオーバーライド対応に変換
@@ -357,6 +358,9 @@ class Config:
             dialog = plugins_data.get("dialog", {})
             if not isinstance(dialog, dict):
                 dialog = {}
+            enabled = plugins_data.get("enabled", {})
+            if not isinstance(enabled, dict):
+                enabled = {}
             config.plugins.update({
                 "extension_handlers": {
                     normalize_extension(str(key)): str(value).strip()
@@ -364,6 +368,11 @@ class Config:
                     if str(key).strip() and str(value).strip()
                 },
                 "dialog": dialog,
+                "enabled": {
+                    str(key).strip(): bool(value)
+                    for key, value in enabled.items()
+                    if str(key).strip()
+                },
             })
         
         # 設定辞書をオーバーライド対応に変換

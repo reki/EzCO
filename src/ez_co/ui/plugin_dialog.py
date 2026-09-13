@@ -1,8 +1,9 @@
-"""ファイル設定（プラグイン一覧と拡張子ごとの読み込み方式）。"""
+"""プラグイン設定（一覧、ON/OFF、拡張子ごとの読み込み方式）。"""
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractScrollArea,
     QApplication,
+    QCheckBox,
     QComboBox,
     QDialog,
     QHBoxLayout,
@@ -13,6 +14,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
+    QWidget,
 )
 
 from ez_co.enums.archives import ArchiveInfo
@@ -20,11 +22,13 @@ from ez_co.plugins.api import BUILTIN_PROVIDER_ID, SKIP_PROVIDER_ID, FileKind
 from ez_co.plugins.manager import get_plugin_manager
 from ez_co.utils.language_manager import get_text
 
-PLUGIN_COLUMNS = ("name", "id", "version", "extensions", "status")
+PLUGIN_COLUMNS = ("enabled", "name", "id", "version", "kind", "extensions", "status")
 PLUGIN_DEFAULT_WIDTHS = {
-    "name": 180,
-    "id": 220,
-    "version": 80,
+    "enabled": 56,
+    "name": 160,
+    "id": 200,
+    "version": 72,
+    "kind": 90,
     "extensions": 90,
     "status": 110,
 }
@@ -57,15 +61,25 @@ class PluginDialog(QDialog):
         super().__init__(parent)
         self.config = config
         self.plugin_manager = get_plugin_manager()
-        self._ext_rows = self.plugin_manager.extension_rows(self.config)
+        self._enabled = {
+            plugin.plugin_id: self.plugin_manager.is_enabled(plugin.plugin_id, self.config)
+            for plugin in self.plugin_manager.plugins
+        }
+        self._original_enabled = dict(self._enabled)
+        self._handler_stash = {}
+        self._ext_rows = self.plugin_manager.extension_rows(self.config, enabled_ids=self._enabled_ids())
         self._handler_choices = {row.extension: row.selected for row in self._ext_rows}
+        self._original_handlers = dict(self._handler_choices)
         self._ext_sort_column = 0
         self._ext_sort_asc = True
         self._combos = {}
         self.setWindowTitle(get_text("ui.plugin_dialog_title"))
-        self.setMinimumSize(720, 520)
+        self.setMinimumSize(760, 540)
         self._setup_ui()
         self.finished.connect(self.apply_layout_to_config)
+
+    def _enabled_ids(self):
+        return {plugin_id for plugin_id, enabled in self._enabled.items() if enabled}
 
     def _setup_ui(self):
         layout = QVBoxLayout()
@@ -73,9 +87,11 @@ class PluginDialog(QDialog):
         layout.addWidget(QLabel(get_text("ui.plugin_list")))
         self.plugin_table = QTableWidget(0, len(PLUGIN_COLUMNS))
         self.plugin_table.setHorizontalHeaderLabels([
+            get_text("ui.plugin_enabled"),
             get_text("ui.plugin_name"),
             get_text("ui.plugin_id"),
             get_text("ui.plugin_version"),
+            get_text("ui.plugin_kind"),
             get_text("ui.plugin_supported_extensions"),
             get_text("ui.plugin_status"),
         ])
@@ -186,34 +202,90 @@ class PluginDialog(QDialog):
         item.setToolTip(text)
         return item
 
+    def _plugin_kind_label(self, plugin) -> str:
+        has_file = bool(plugin.formats)
+        has_sidebar = plugin.has_sidebar
+        if has_file and has_sidebar:
+            return get_text("ui.plugin_kind_both")
+        if has_sidebar:
+            return get_text("ui.plugin_kind_sidebar")
+        return get_text("ui.plugin_kind_file")
+
     def _fill_plugin_table(self):
         rows = list(self.plugin_manager.plugins)
         failed = list(self.plugin_manager.failed)
         self.plugin_table.setSortingEnabled(False)
         self.plugin_table.setRowCount(len(rows) + len(failed))
         for index, plugin in enumerate(rows):
+            checkbox = QCheckBox()
+            checkbox.setChecked(self._enabled.get(plugin.plugin_id, True))
+            checkbox.toggled.connect(
+                lambda checked, plugin_id=plugin.plugin_id: self._on_enabled_changed(plugin_id, checked)
+            )
+            holder = QWidget()
+            holder_layout = QHBoxLayout(holder)
+            holder_layout.setContentsMargins(0, 0, 0, 0)
+            holder_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            holder_layout.addWidget(checkbox)
+            self.plugin_table.setCellWidget(index, 0, holder)
             extensions = ", ".join(spec.extension for spec in plugin.formats)
-            self.plugin_table.setItem(index, 0, self._text_item(plugin.name))
-            self.plugin_table.setItem(index, 1, self._text_item(plugin.plugin_id))
-            self.plugin_table.setItem(index, 2, self._text_item(plugin.manifest.version))
-            self.plugin_table.setItem(index, 3, self._text_item(extensions))
-            self.plugin_table.setItem(index, 4, self._text_item(get_text("ui.plugin_status_ok")))
+            self.plugin_table.setItem(index, 1, self._text_item(plugin.name))
+            self.plugin_table.setItem(index, 2, self._text_item(plugin.plugin_id))
+            self.plugin_table.setItem(index, 3, self._text_item(plugin.manifest.version))
+            self.plugin_table.setItem(index, 4, self._text_item(self._plugin_kind_label(plugin)))
+            self.plugin_table.setItem(index, 5, self._text_item(extensions))
+            self.plugin_table.setItem(index, 6, self._text_item(get_text("ui.plugin_status_ok")))
         for offset, (path, error) in enumerate(failed):
             index = len(rows) + offset
             status = get_text("ui.plugin_status_error").format(error=error)
-            self.plugin_table.setItem(index, 0, self._text_item(path.name))
-            self.plugin_table.setItem(index, 1, self._text_item("-"))
+            self.plugin_table.setItem(index, 0, self._text_item("-"))
+            self.plugin_table.setItem(index, 1, self._text_item(path.name))
             self.plugin_table.setItem(index, 2, self._text_item("-"))
             self.plugin_table.setItem(index, 3, self._text_item("-"))
-            self.plugin_table.setItem(index, 4, self._text_item(status))
+            self.plugin_table.setItem(index, 4, self._text_item("-"))
+            self.plugin_table.setItem(index, 5, self._text_item("-"))
+            self.plugin_table.setItem(index, 6, self._text_item(status))
         if self.plugin_table.rowCount() == 0:
             self.plugin_table.setRowCount(1)
             empty = self._text_item(get_text("ui.plugin_no_plugins"))
             self.plugin_table.setItem(0, 0, empty)
-            self.plugin_table.setSpan(0, 0, 1, 5)
+            self.plugin_table.setSpan(0, 0, 1, len(PLUGIN_COLUMNS))
             self.plugin_table.setSortingEnabled(False)
             return
         self.plugin_table.setSortingEnabled(True)
+
+    def _on_enabled_changed(self, plugin_id: str, checked: bool):
+        self._enabled[plugin_id] = bool(checked)
+        self._refresh_extension_rows()
+
+    def _fallback_provider(self, row) -> str:
+        valid = [provider_id for provider_id, _name in row.providers]
+        if BUILTIN_PROVIDER_ID in valid:
+            return BUILTIN_PROVIDER_ID
+        for provider_id in valid:
+            if provider_id != SKIP_PROVIDER_ID:
+                return provider_id
+        if SKIP_PROVIDER_ID in valid:
+            return SKIP_PROVIDER_ID
+        return valid[0] if valid else SKIP_PROVIDER_ID
+
+    def _refresh_extension_rows(self):
+        new_rows = self.plugin_manager.extension_rows(self.config, enabled_ids=self._enabled_ids())
+        new_exts = {row.extension for row in new_rows}
+        old_exts = {row.extension for row in self._ext_rows}
+        for extension in old_exts - new_exts:
+            if extension in self._handler_choices:
+                self._handler_stash[extension] = self._handler_choices.pop(extension)
+        for row in new_rows:
+            selected = self._handler_choices.get(row.extension)
+            if selected is None and row.extension in self._handler_stash:
+                selected = self._handler_stash.pop(row.extension)
+            valid = {provider_id for provider_id, _name in row.providers}
+            if selected not in valid:
+                selected = self._fallback_provider(row)
+            self._handler_choices[row.extension] = selected
+        self._ext_rows = new_rows
+        self._render_extension_table()
 
     def _kind_label(self, kind: FileKind) -> str:
         if kind == FileKind.IMAGE:
@@ -270,6 +342,7 @@ class PluginDialog(QDialog):
         rows = self._visible_ext_rows()
         self._combos.clear()
         self.ext_table.clearContents()
+        self.ext_table.clearSpans()
         self.ext_table.setRowCount(len(rows))
         if not rows:
             self.ext_table.setRowCount(1)
@@ -277,7 +350,6 @@ class PluginDialog(QDialog):
             self.ext_table.setItem(0, 0, empty)
             self.ext_table.setSpan(0, 0, 1, 3)
             return
-        self.ext_table.setSpan(0, 0, 1, 1)
         for index, row in enumerate(rows):
             kind = self._kind_label(row.kind)
             self.ext_table.setItem(index, 0, self._text_item(row.extension))
@@ -305,8 +377,13 @@ class PluginDialog(QDialog):
             self._handler_choices[extension] = provider_id
 
     def has_handler_changes(self) -> bool:
-        original = {row.extension: row.selected for row in self._ext_rows}
-        return self._handler_choices != original
+        return self._handler_choices != self._original_handlers
+
+    def has_enabled_changes(self) -> bool:
+        return self._enabled != self._original_enabled
+
+    def has_changes(self) -> bool:
+        return self.has_handler_changes() or self.has_enabled_changes()
 
     def apply_to_config(self):
         handlers = {}
@@ -324,6 +401,7 @@ class PluginDialog(QDialog):
                 else:
                     archive_enabled_by_key.setdefault(key, False)
         self.config.plugins["extension_handlers"] = handlers
+        self.config.plugins["enabled"] = dict(self._enabled)
         for key, enabled in archive_enabled_by_key.items():
             self.config.archive[key] = enabled
         if archive_enabled_by_key:

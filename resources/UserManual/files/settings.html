@@ -448,7 +448,7 @@ debug:
                     <!-- アーカイブ設定 -->
                     <section id="archive-settings" class="config-section">
                         <h3>📦 アーカイブ設定 (archive)</h3>
-                        <p>互換用の内部キーです。画面からの操作はメニューの「ファイル設定」で、拡張子の読み込み方式を「読み込まない」にします。ファイル設定を保存すると、こちらのキーも同期されます。</p>
+                        <p>互換用の内部キーです。画面からの操作はメニューの「プラグイン設定」で、拡張子の読み込み方式を「読み込まない」にします。プラグイン設定を保存すると、こちらのキーも同期されます。</p>
 
                         <div class="setting-item">
                             <div class="setting-header">
@@ -631,7 +631,7 @@ image_list:
                                 <span class="setting-key">viewer.open_archives_in_own_tab</span>
                                 <span class="setting-type">真偽値</span>
                             </div>
-                            <p>true ならアーカイブは1ファイル1タブ。false なら画像などと同じタブのページ列に含めます。種別はファイル設定に従います。</p>
+                            <p>true ならアーカイブは1ファイル1タブ。false なら画像などと同じタブのページ列に含めます。種別はプラグイン設定に従います。</p>
                             <div class="setting-value">デフォルト: true</div>
                         </div>
                         <div class="setting-item">
@@ -655,10 +655,20 @@ image_list:
                         <p>タブバーの幅は固定です。長い名前は省略し、マウスを乗せると全文が出ます。ショートカット設定にあるキーボード割り当ては、対応するメニュー項目の右側に表示されます。</p>
                     </section>
 
-                    <!-- ファイル設定 -->
+                    <!-- プラグイン設定 -->
                     <section id="plugin-settings" class="config-section">
-                        <h3>🔌 ファイル設定 (plugins)</h3>
-                        <p>メニューの「ファイル設定」で、拡張子ごとの読み込み方式と、読み込み済みプラグインの一覧を扱います。設定は現在のプロファイルに保存されます。旧アーカイブ設定の代替として、読み込み方式に「読み込まない」があります。読み込み済みプラグインの拡張子は、「ファイルを開く」ダイアログの「対応しているファイル」と「プラグイン形式」に入り、フォルダを開いたときのスキャン対象にも含まれます。</p>
+                        <h3>🔌 プラグイン設定 (plugins)</h3>
+                        <p>メニューの「プラグイン設定」で、プラグインの ON/OFF、拡張子ごとの読み込み方式、読み込み済みプラグインの一覧を扱います。OFF にしたプラグインは無いものとして扱います。設定は現在のプロファイルに保存されます。旧アーカイブ設定の代替として、読み込み方式に「読み込まない」があります。有効なプラグインの拡張子は、「ファイルを開く」ダイアログの「対応しているファイル」と「プラグイン形式」に入り、フォルダを開いたときのスキャン対象にも含まれます。商品情報サイドバーは <code>product_info.zip</code> プラグインです。</p>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">プラグインの有効／無効</span>
+                                <span class="setting-key">plugins.enabled</span>
+                                <span class="setting-type">オブジェクト</span>
+                            </div>
+                            <p>プラグイン ID ごとの ON/OFF です。未記載は有効です。OFF にすると拡張子の担当から外れ、サイドバーも消えます。</p>
+                            <div class="setting-value">デフォルト: 空（すべて有効）</div>
+                        </div>
 
                         <div class="setting-item">
                             <div class="setting-header">
@@ -681,6 +691,8 @@ image_list:
 
                         <div class="yaml-example">
 plugins:
+  enabled:
+    com.ezco.product_info: true
   extension_handlers:
     .zip: com.ezco.example.zip(ver:1.1.0)
     .png: builtin

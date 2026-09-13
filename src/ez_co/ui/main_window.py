@@ -38,9 +38,7 @@ from ez_co.ui.history_toolbar import HistoryToolbar
 from ez_co.ui.tab_list_toolbar import TabListToolbar
 from ez_co.ui.bookmark_dialog import BookmarkDialog
 from ez_co.ui.image_slide_sidebar import ImageSlideSidebar
-from ez_co.ui.product_info_dialog import ProductInfoDialog
 from ez_co.ui.pdf_password_dialog import CLOSE_APP_RESULT, ArchivePasswordDialog
-from ez_co.ui.product_info_toolbar import ProductInfoToolbar
 from ez_co.utils.path_utils import get_project_root, is_nuitka
 from ez_co.enums.actions import get_action_display_name, Actions
 from ez_co.enums.mouse_buttons import MouseButtons, MOUSE_BUTTON_VALUES
@@ -278,6 +276,8 @@ class MainWindow(QMainWindow):
         self._closing = False
         self._window_was_maximized = bool(config.window.get("maximized", False))
         self._pending_maximize = False
+        self._plugin_sidebars = {}
+        self.product_info_action = None
         # マウスロック関連
         self.mouse_locked = False
         self.mouse_lock_center = None
@@ -297,11 +297,105 @@ class MainWindow(QMainWindow):
 
     def _bind_plugin_host(self):
         from ez_co.plugins.manager import get_plugin_manager
-        get_plugin_manager().host.bind(
+        if not hasattr(self, "_plugin_sidebars"):
+            self._plugin_sidebars = {}
+        manager = get_plugin_manager()
+        manager.host.bind(
             parent=self,
             db_manager=self.db_manager,
             run_action=self._run_plugin_action,
+            get_current=self._plugin_get_current,
+            get_app_config=self._plugin_app_config,
+            mount_sidebar=self._mount_plugin_sidebar,
+            unmount_sidebar=self._unmount_plugin_sidebar,
         )
+        manager.activate_ui(self.config)
+        self._restore_dock_state()
+        self._notify_plugin_current_changed()
+
+    def _plugin_get_current(self, key: str):
+        if key == "folder":
+            return self.get_current_folder_path()
+        if key == "path":
+            if self.file_handler and self.file_handler.current_files:
+                current = self.file_handler.current_files[self.file_handler.current_index]
+                return str(current)
+            return None
+        if key == "page":
+            return getattr(self, "current_page", None)
+        return None
+
+    def _plugin_app_config(self):
+        return self.config.to_dict()
+
+    def _notify_plugin_current_changed(self):
+        from ez_co.plugins.manager import get_plugin_manager
+        get_plugin_manager().host.emit("current_changed", {
+            "path": self._plugin_get_current("path"),
+            "folder": self._plugin_get_current("folder"),
+            "page": self._plugin_get_current("page"),
+        })
+
+    def _plugin_sidebar_object_name(self, plugin_id: str, sidebar_id: str) -> str:
+        from ez_co.plugins.settings_key import hash_plugin_id
+        safe_id = "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in str(sidebar_id or "main"))
+        return f"plugin_sidebar_{hash_plugin_id(plugin_id)[:16]}_{safe_id}"
+
+    def _mount_plugin_sidebar(self, plugin_id: str, sidebar_id: str, title: str, widget) -> None:
+        from PySide6.QtWidgets import QDockWidget
+        key = (plugin_id, sidebar_id)
+        existing = self._plugin_sidebars.get(key)
+        if existing is not None:
+            dock = existing["dock"]
+            dock.setWindowTitle(title)
+            if dock.widget() is not widget:
+                dock.setWidget(widget)
+            return
+        dock = QDockWidget(title, self)
+        dock.setObjectName(self._plugin_sidebar_object_name(plugin_id, sidebar_id))
+        dock.setWidget(widget)
+        dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+        dock.setFeatures(
+            QDockWidget.DockWidgetFeature.DockWidgetClosable
+            | QDockWidget.DockWidgetFeature.DockWidgetMovable
+            | QDockWidget.DockWidgetFeature.DockWidgetFloatable
+        )
+        self.addDockWidget(Qt.RightDockWidgetArea, dock)
+        dock.hide()
+        action = QAction(title, self)
+        action.setCheckable(True)
+        action.triggered.connect(lambda checked, target=dock: target.setVisible(bool(checked)))
+        dock.visibilityChanged.connect(lambda visible, item=action: item.setChecked(bool(visible)))
+        if sidebar_id == "product_info":
+            self._apply_action_shortcut(action, Actions.TOGGLE_PRODUCT_INFO_DOCK.value)
+            self.product_info_action = action
+        if hasattr(self, "sidebar_submenu"):
+            self.sidebar_submenu.addAction(action)
+        self._plugin_sidebars[key] = {"dock": dock, "action": action, "title": title}
+
+    def _unmount_plugin_sidebar(self, plugin_id: str, sidebar_id: str) -> None:
+        record = self._plugin_sidebars.pop((plugin_id, sidebar_id), None)
+        if record is None:
+            return
+        dock = record["dock"]
+        action = record["action"]
+        if hasattr(self, "sidebar_submenu"):
+            self.sidebar_submenu.removeAction(action)
+        if getattr(self, "product_info_action", None) is action:
+            self.product_info_action = None
+        self.removeDockWidget(dock)
+        dock.deleteLater()
+
+    def _readd_plugin_sidebar_actions(self):
+        if not hasattr(self, "sidebar_submenu"):
+            return
+        for record in getattr(self, "_plugin_sidebars", {}).values():
+            action = record["action"]
+            if action not in self.sidebar_submenu.actions():
+                self.sidebar_submenu.addAction(action)
+            action.setChecked(record["dock"].isVisible())
+            if action is getattr(self, "product_info_action", None):
+                self._apply_action_shortcut(action, Actions.TOGGLE_PRODUCT_INFO_DOCK.value)
 
     def _run_plugin_action(self, action_id: str, kwargs: dict) -> bool:
         logger.info(get_log_text("plugin_action_unsupported", action_id=action_id))
@@ -432,7 +526,9 @@ class MainWindow(QMainWindow):
         # ダイアログの参照
         self.page_slider_dialog = None
         self.image_list_dialog = None
-        self.product_info_dialog = None
+        self.product_info_action = None
+        if not hasattr(self, "_plugin_sidebars"):
+            self._plugin_sidebars = {}
     def _first_keyboard_shortcut(self, action_name: str):
         for shortcut in self.config.shortcuts.get(action_name, []) or []:
             if shortcut and shortcut not in MOUSE_BUTTON_VALUES:
@@ -639,12 +735,7 @@ class MainWindow(QMainWindow):
         self._apply_action_shortcut(self.image_slide_action, Actions.IMAGE_SLIDE_SIDEBAR.value)
         self.sidebar_submenu.addAction(self.image_slide_action)
         
-        # 商品情報サイドバー表示/非表示
-        self.product_info_action = QAction(get_text("ui.product_info"), self)
-        self.product_info_action.setCheckable(True)
-        self.product_info_action.triggered.connect(self.toggle_product_info_dock)
-        self._apply_action_shortcut(self.product_info_action, Actions.TOGGLE_PRODUCT_INFO_DOCK.value)
-        self.sidebar_submenu.addAction(self.product_info_action)
+        self._readd_plugin_sidebar_actions()
         
         # セパレータ
         extensions_menu.addSeparator()
@@ -699,7 +790,7 @@ class MainWindow(QMainWindow):
             self.history_action.setChecked(self.history_dock.isVisible())
             self.tab_list_action.setChecked(self.tab_list_dock.isVisible())
             self.image_slide_action.setChecked(self.image_slide_dock.isVisible())
-            self.product_info_action.setChecked(self.product_info_dock.isVisible())
+            self._readd_plugin_sidebar_actions()
 
     def apply_runtime_overrides_to_menu(self):
         """ランタイムオーバーライドが適用されている設定項目に対応するメニューアクションを非活性化"""
@@ -868,6 +959,8 @@ class MainWindow(QMainWindow):
             if hasattr(self.mouse_gesture, "set_threshold"):
                 self.mouse_gesture.set_threshold(new_threshold)
 
+        from ez_co.plugins.manager import get_plugin_manager
+        get_plugin_manager().activate_ui(self.config)
         self.rebuild_menu()
         self.setup_shortcuts()
         if hasattr(self, "bookmark_toolbar"):
@@ -920,33 +1013,22 @@ class MainWindow(QMainWindow):
         image_slide_dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
         self.addDockWidget(Qt.RightDockWidgetArea, image_slide_dock)
         
-        # 商品情報ツールバー
-        self.product_info_toolbar = ProductInfoToolbar()
-        product_info_dock = QDockWidget(get_text("ui.product_info"), self)
-        product_info_dock.setObjectName("product_info_dock")
-        product_info_dock.setWidget(self.product_info_toolbar)
-        product_info_dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-        self.addDockWidget(Qt.RightDockWidgetArea, product_info_dock)
-        
         # デフォルトでは非表示
         bookmark_dock.hide()
         history_dock.hide()
         tab_list_dock.hide()
         image_slide_dock.hide()
-        product_info_dock.hide()
         # メニューに表示/非表示のアクションを追加
         self.bookmark_dock = bookmark_dock
         self.history_dock = history_dock
         self.tab_list_dock = tab_list_dock
         self.image_slide_dock = image_slide_dock
-        self.product_info_dock = product_info_dock
         
         # ドックウィジェットの表示/非表示状態とメニューアクションの同期
         bookmark_dock.visibilityChanged.connect(lambda visible: self.bookmark_action.setChecked(visible))
         history_dock.visibilityChanged.connect(lambda visible: self.history_action.setChecked(visible))
         tab_list_dock.visibilityChanged.connect(lambda visible: self.tab_list_action.setChecked(visible))
         image_slide_dock.visibilityChanged.connect(self.on_image_slide_dock_visibility_changed)
-        product_info_dock.visibilityChanged.connect(lambda visible: self.product_info_action.setChecked(visible))
         self._restore_dock_state()
         self._refresh_tab_list()
     def setup_status_bar(self):
@@ -1376,11 +1458,10 @@ class MainWindow(QMainWindow):
             self.history_action.setChecked(self.history_dock.isVisible())
             self.tab_list_action.setChecked(self.tab_list_dock.isVisible())
             self.image_slide_action.setChecked(self.image_slide_dock.isVisible())
-            self.product_info_action.setChecked(self.product_info_dock.isVisible())
+            self._readd_plugin_sidebar_actions()
         if self.image_slide_dock.isVisible():
             self._update_image_slide_sidebar_on_show()
-        if self.product_info_dock.isVisible():
-            self._update_product_info_toolbar()
+        self._notify_plugin_current_changed()
 
     def save_config(self):
         """現在のプロファイルの設定をDBに保存"""
@@ -1542,7 +1623,7 @@ class MainWindow(QMainWindow):
             self._update_page_slider_dialog()
             self._update_image_list_dialog()
             self._update_image_slide_sidebar()
-            self._update_product_info_toolbar()
+            self._notify_plugin_current_changed()
             comic = self._get_current_comic_path()
             if comic is not None and hasattr(self, "bookmark_toolbar"):
                 self.set_current_file(str(comic), self.current_page)
@@ -1726,6 +1807,7 @@ class MainWindow(QMainWindow):
             Actions.SHOW_TAB_8.value: lambda: self.goto_tab(7),
             Actions.SHOW_TAB_9.value: lambda: self.goto_tab(8),
             Actions.TOGGLE_TAB_LIST_DOCK.value: self.toggle_tab_list_dock,
+            Actions.TOGGLE_PRODUCT_INFO_DOCK.value: self.toggle_product_info_dock,
         }
         handler = handlers.get(action_name)
         if handler is None:
@@ -1776,7 +1858,7 @@ class MainWindow(QMainWindow):
         archive_exts = []
         for archive_type in ArchiveInfo.get_all_archive_types():
             archive_exts.extend(ArchiveInfo.EXTENSIONS[archive_type])
-        plugin_exts = sorted(get_plugin_manager().plugin_extensions())
+        plugin_exts = sorted(get_plugin_manager().plugin_extensions(self.config))
         all_exts = [*image_exts, *archive_exts, *plugin_exts, SESSION_SUFFIX]
         parts = [
             f"{get_text('ui.all_supported_files')} ({self._glob_exts(all_exts)})",
@@ -2093,15 +2175,9 @@ class MainWindow(QMainWindow):
                 # 拡張メニューの状態を更新
                 self.update_extensions_menu_actions()
                 
-                # 商品情報ツールバーを更新
-                self._update_product_info_toolbar()
+                self._notify_plugin_current_changed()
                 
                 self._sync_current_tab_title()
-                # 商品情報ダイアログが開いている場合は内容を更新
-                if self.product_info_dialog and self.product_info_dialog.isVisible():
-                    folder_path = self.get_current_folder_path()
-                    if folder_path:
-                        self.product_info_dialog.update_info(folder_path)
                 
                 logger.info(get_log_text("debug_ui_updated", file=self.current_file_path, page=self.current_page, total_pages=self.total_pages))
         except Exception as e:
@@ -2195,7 +2271,7 @@ class MainWindow(QMainWindow):
                 current_file = self.file_handler.current_files[self.file_handler.current_index]
                 self.set_current_file(str(current_file), current_page)
             # 商品情報ツールバーを更新
-            self._update_product_info_toolbar()
+            self._notify_plugin_current_changed()
             # 拡張メニューの状態を更新
             self.update_extensions_menu_actions()
         except Exception as e:
@@ -2294,7 +2370,7 @@ class MainWindow(QMainWindow):
             self._update_page_slider_dialog()
             self._update_image_list_dialog()
             self._update_image_slide_sidebar()
-            self._update_product_info_toolbar()
+            self._notify_plugin_current_changed()
         else:
             logger.info(get_log_text("main_window_already_at_last_page"))
             logger.info(get_log_text("debug_next_page_failed", current_index=self.file_handler.current_index, total_files=len(self.file_handler.current_files)))
@@ -2321,7 +2397,7 @@ class MainWindow(QMainWindow):
             self._update_page_slider_dialog()
             self._update_image_list_dialog()
             self._update_image_slide_sidebar()
-            self._update_product_info_toolbar()
+            self._notify_plugin_current_changed()
         else:
             logger.info(get_log_text("main_window_already_at_first_page"))
             # 改ページが失敗した場合は読み込みフラグをリセット
@@ -2387,7 +2463,7 @@ class MainWindow(QMainWindow):
             self.update_image()
             self._update_page_slider_dialog()
             self._update_image_list_dialog()
-            self._update_product_info_toolbar()
+            self._notify_plugin_current_changed()
             logger.info(get_log_text("main_window_moved_to_first_page"))
 
     def last_page(self):
@@ -2403,7 +2479,7 @@ class MainWindow(QMainWindow):
             self.update_image()
             self._update_page_slider_dialog()
             self._update_image_list_dialog()
-            self._update_product_info_toolbar()
+            self._notify_plugin_current_changed()
             logger.info(get_log_text("main_window_moved_to_last_page"))
 
     def show_page_slider_dialog(self):
@@ -2460,25 +2536,6 @@ class MainWindow(QMainWindow):
                 self.image_slide_sidebar.update_file_list(self.file_handler)
                 self.image_slide_sidebar.set_current_page(self.file_handler.current_index)
     
-    def _update_product_info_toolbar(self):
-        """商品情報ツールバーを更新"""
-        try:
-            logger.info(get_log_text("debug_product_info_toolbar_update_called"))
-            if hasattr(self, 'product_info_toolbar') and self.product_info_toolbar:
-                folder_path = self.get_current_folder_path()
-                logger.info(get_log_text("debug_product_info_toolbar_current_folder", folder_path=folder_path))
-                if folder_path:
-                    self.product_info_toolbar.update_info(folder_path)
-                else:
-                    logger.info(get_log_text("debug_product_info_toolbar_no_info"))
-                    self.product_info_toolbar.show_no_info()
-            else:
-                logger.warning(get_log_text("product_info_toolbar_load_error", error="ProductInfoToolbar not available"))
-        except Exception as e:
-            logger.error(get_log_text("product_info_toolbar_load_error", error=e))
-            import traceback
-            traceback.print_exc()
-
     def set_page_number(self, page_number: int):
         """指定されたページ番号に移動"""
         if not self.file_handler or not self.file_handler.current_files:
@@ -2493,7 +2550,7 @@ class MainWindow(QMainWindow):
             self.update_image()
             self._update_page_slider_dialog()
             self._update_image_list_dialog()
-            self._update_product_info_toolbar()
+            self._notify_plugin_current_changed()
             logger.info(get_log_text("main_window_page_set_to", page_number=page_number, target_index=target_index))
         else:
             # 指定されたページが存在しない場合は1ページ目に移動
@@ -2503,7 +2560,7 @@ class MainWindow(QMainWindow):
                 self.update_image()
                 self._update_page_slider_dialog()
                 self._update_image_list_dialog()
-                self._update_product_info_toolbar()
+                self._notify_plugin_current_changed()
                 logger.info(get_log_text("main_window_page_not_found_moved_to_1", page_number=page_number))
             else:
                 QMessageBox.warning(self, get_text("dialogs.error"), get_text("ui.page_not_exists").format(page_number=page_number))
@@ -2573,9 +2630,11 @@ class MainWindow(QMainWindow):
             self.image_slide_dock.hide()
             self.image_slide_action.setChecked(False)
         
-        if hasattr(self, 'product_info_dock') and self.product_info_dock.isVisible():
-            self.product_info_dock.hide()
-            self.product_info_action.setChecked(False)
+        for record in getattr(self, "_plugin_sidebars", {}).values():
+            dock = record["dock"]
+            if dock.isVisible():
+                dock.hide()
+                record["action"].setChecked(False)
 
     def mousePressEvent(self, event):
         shortcuts = self.config.shortcuts
@@ -2933,15 +2992,18 @@ class MainWindow(QMainWindow):
             )
     
     def show_plugin_dialog(self):
+        from ez_co.plugins.manager import get_plugin_manager
         dialog = PluginDialog(self.config, self)
         result = dialog.exec()
         changed = False
         if result == QDialog.Accepted:
-            changed = dialog.has_handler_changes()
+            changed = dialog.has_changes() if hasattr(dialog, "has_changes") else dialog.has_handler_changes()
             dialog.apply_to_config()
         self.save_config()
         if result == QDialog.Accepted and changed:
+            get_plugin_manager().activate_ui(self.config)
             self._reload_open_files_after_plugin_change()
+            self._notify_plugin_current_changed()
 
     def _reload_open_files_after_plugin_change(self):
         """プラグイン優先度の変更後、開いているタブを再読み込みする。"""
@@ -3141,14 +3203,22 @@ class MainWindow(QMainWindow):
     
     def toggle_product_info_dock(self):
         """商品情報ドックの表示/非表示を切り替え"""
-        if self.product_info_dock.isVisible():
-            self.product_info_dock.hide()
-            self.product_info_action.setChecked(False)
+        record = None
+        for key, item in getattr(self, "_plugin_sidebars", {}).items():
+            if key[1] == "product_info":
+                record = item
+                break
+        if record is None:
+            return
+        dock = record["dock"]
+        action = record["action"]
+        if dock.isVisible():
+            dock.hide()
+            action.setChecked(False)
         else:
-            self.product_info_dock.show()
-            self.product_info_action.setChecked(True)
-            # サイドバーを表示した時に初回の商品情報を読み込み
-            self._update_product_info_toolbar()
+            dock.show()
+            action.setChecked(True)
+            self._notify_plugin_current_changed()
     
     def on_image_slide_page_selected(self, page_index):
         """画像スライドサイドバーでページが選択された時の処理"""

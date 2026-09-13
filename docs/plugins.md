@@ -5,7 +5,7 @@
 - **API バージョン**: `1`（`manifest.json` の `api_version` と一致必須）
 - **配置場所**: 実行ファイル（またはプロジェクトルート）旁の `plugins/` のみ
 - **配布形式**: ZIP（`.zip`）。DLL は口だけあり、現状はスキップされる
-- **担当範囲**: 独自形式を解いて、Qt / PIL が読める**画像バイト**を返す。描画はホスト側
+- **担当範囲**: ファイル読み込み、またはサイドバー UI。どちらも同じ ZIP + `__init__` 登録
 
 ---
 
@@ -32,9 +32,11 @@
 | できること | できないこと |
 | --- | --- |
 | 画像／アーカイブを独自に展開して画像バイトを返す | `import ez_co` / `import ez_co.*` |
-| ホストのパスワードダイアログを呼ぶ | 他プラグインのモジュールを import する |
-| プラグイン ZIP 内の `langs/` `resources/` を読む | 本体ウィンドウを直接操作する（アクションは将来用） |
-| サードパーティ（`PIL`, `pyzipper` など本体依存）を import する | DLL プラグイン（未実装） |
+| `__init__` / `setup` で拡張子とサイドバーを登録する | 他プラグインのモジュールを import する |
+| `host.load_ui` で `.ui` を読む。PySide6 は import 可 | 他プラグインの設定を読む |
+| ホストのパスワードダイアログを呼ぶ | ドックの貼り付け／フローティングを自分で制御する |
+| プラグイン ZIP 内の `langs/` `resources/` を読む | DLL プラグイン（未実装） |
+| サードパーティ（`PIL`, `pyzipper` など本体依存）を import する | |
 
 `src/` が import ルートです。同じ ZIP 内の `from mark import mark_image` は許可されます。
 
@@ -88,7 +90,7 @@ with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zf:
 
 同じ拡張子をビルドインとプラグインの両方が宣言できます。既定は**ビルドイン優先**です。
 
-メニューのファイル設定で、拡張子ごとに「ビルドイン」「`id(ver:version)`」「読み込まない」を選べます。OK すると開いているファイルを一律再読み込みします（拡張子の照合はしません。ページ数が足りなければ末尾に寄せます）。新規 ZIP の追加は再起動が必要です。
+メニューのプラグイン設定で、プラグインの ON/OFF と、拡張子ごとの「ビルドイン」「`id(ver:version)`」「読み込まない」を選べます。OFF にしたプラグインは無いものとして扱います。OK すると開いているファイルを一律再読み込みし、サイドバーも付け直します。新規 ZIP の追加は再起動が必要です。
 
 ビルドインに無い拡張子（例: `.ezpack`）は、プラグインが宣言すればそのプラグインが担当します。読み込み済みプラグインの拡張子は、「ファイルを開く」ダイアログの「対応しているファイル」と「プラグイン形式」に入り、フォルダを開いたときのスキャン対象にも含まれます。
 
@@ -158,8 +160,7 @@ pkg.mod:MyLoader      →  src/pkg/mod.py の MyLoader
 | `entry` が `モジュール:クラス` でない | 読み込み失敗 |
 | `src/` に entry モジュールが無い | 読み込み失敗 |
 | 指定クラスがモジュールに無い | 読み込み失敗 |
-| クラスに `supported_formats` が無い | 読み込み失敗 |
-| 対応形式が空 | 読み込み失敗 |
+| 対応形式もサイドバーも `setup` も無い | 読み込み失敗 |
 
 ---
 
@@ -189,13 +190,13 @@ class FileLoader:
 | --- | --- |
 | `root` | プラグイン ZIP 内のファイル。`read_bytes` / `exists` |
 | `get_text` | 文言。`get_text("plugin.watermark")` |
-| `host` | ダイアログとアクション。`host.ask_password(...)` |
+| `host` | 登録・設定・状態参照。`host.register_format` / `register_sidebar` / `get_config` |
 
 ---
 
 ### `supported_formats()`
 
-ホストが掃引直後に一度呼び、対応拡張子と種別を登録します。
+互換用です。新規は `__init__` で `host.register_format(extension, kind)` してください。ホストは掃引直後に `register_format` の結果を集め、無ければこのメソッドを呼びます。
 
 **戻り値:** 次のいずれかのシーケンス
 
@@ -282,7 +283,7 @@ class _Entry:
 
 | 操作 | 呼ばれるメソッド |
 | --- | --- |
-| プラグイン読み込み | `supported_formats` |
+| プラグイン読み込み | `register_format` または `supported_formats`。UI はあとで `setup` |
 | 画像ファイルを開く | `read_entry(path, 0)` |
 | アーカイブを開く | `list_entries` → 仮想パスを作る |
 | ページ表示／プリフェッチ | `list_entries` のあと `read_entry(path, index)` |
@@ -302,6 +303,27 @@ class _Entry:
 | `root` | `self.root.read_bytes("resources/icon.png")` |
 
 同じ名前はモジュールの組み込みとしても渡します。モジュール先頭の関数から `get_text(...)` や `host.ask_password(...)` と書けます。`root` や組み込みから別経路を探さないでください。
+
+登録（`__init__` または `setup`）:
+
+- `host.register_format(extension, kind)` — `kind` は `"image"` / `"archive"`
+- `host.register_sidebar(sidebar_id, title, widget_or_layout)` — `QWidget` または `QLayout`。ドック化は本体
+- `host.unregister_sidebar(sidebar_id)`
+- `host.load_ui(bytes_or_path)` — Designer の `.ui` を `QUiLoader` で読む
+
+状態:
+
+- `host.get_current(key)` — `"path"` / `"folder"` / `"page"`
+- `host.on(event, callback)` / `host.off(event, callback)` — `"current_changed"`
+- `host.get_app_config()` — `language` / `viewer` / `cache` / `ui_font` の読み取り専用
+
+自プラグイン設定（DB の `plugin_id` はハッシュ化。他プラグインの行は読めない）:
+
+- `host.get_config(key, default=None)`
+- `host.set_config(key, value)`
+- `host.delete_config(key)`
+
+UI の再接続用に任意の `setup()` / `teardown()` を実装できます。無効化すると本体はサイドバーを外します。
 
 ---
 
@@ -514,14 +536,16 @@ get_text("plugin.count", n=3)
 
 ```yaml
 plugins:
+  enabled:
+    com.ezco.example.zip: true
   extension_handlers:
     .zip: com.ezco.example.zip(ver:1.1.0)
     .png: builtin
     .7z: none
   dialog:
     plugin_table:
-      order: [name, id, version, extensions, status]
-      widths: {name: 180, id: 220, version: 80, extensions: 90, status: 110}
+      order: [enabled, name, id, version, kind, extensions, status]
+      widths: {enabled: 56, name: 160, id: 200, version: 72, kind: 90, extensions: 90, status: 110}
     ext_table:
       order: [extension, kind, handler]
       widths: {extension: 100, kind: 110, handler: 280}
@@ -529,10 +553,13 @@ plugins:
 
 | キー | 型 | 説明 |
 | --- | --- | --- |
+| `plugins.enabled` | `object` | `plugin_id` → 有効か。未記載は有効 |
 | `plugins.extension_handlers` | `object` | 拡張子 → `"builtin"`、`id(ver:version)`、または `"none"`（読み込まない）。旧形式も読む |
-| `plugins.dialog` | `object` | ファイル設定ダイアログの列順と幅。OK / キャンセルどちらでも保存する |
+| `plugins.dialog` | `object` | プラグイン設定ダイアログの列順と幅。OK / キャンセルどちらでも保存する |
 
-UI は「ファイル設定」ダイアログです。読み込み方式に「読み込まない」があり、旧アーカイブ設定の代替です。読み込み済み一覧の初期列順は「名前 / ID / バージョン / 対応拡張子 / 状態」で、ID に `(ver:)` は付けません。ヘッダーのドラッグで列幅と列順を変えられ、はみ出した分は横スクロールします。
+プラグイン固有の値は `plugin_settings` テーブルに、`plugin_id` のハッシュで保存します。プラグイン API に id 引数はありません。
+
+UI は「プラグイン設定」ダイアログです。ON/OFF と読み込み方式を扱います。OFF にしたプラグインが担当していた拡張子は、ビルドイン → 他プラグイン → 行削除の順で付け替えます。ID に `(ver:)` は付けません。
 
 ---
 
@@ -542,8 +569,9 @@ UI は「ファイル設定」ダイアログです。読み込み方式に「�
 | --- | --- |
 | `plugins/example_png/` と `.zip` | `.png` を `image` として読む。色重ねは確認用 |
 | `plugins/example_zip/` と `.zip` | `.zip` を `archive` として読む。パスワードダイアログの呼び方も含む |
+| `plugins/product_info/` と `.zip` | 商品情報サイドバー。`resources/sidebar.ui` を `load_ui` で読む |
 
-ソースの `loader.py` 先頭にホスト契約のコメントがあります。確認するときはファイル設定で当該拡張子の読み込み方式をサンプル側にして OK してください。開いているファイルはすぐ再読み込みされます。新規に ZIP を置いた直後だけ再起動してください。
+ソースの `loader.py` 先頭にホスト契約のコメントがあります。確認するときはプラグイン設定で当該拡張子の読み込み方式をサンプル側にして OK してください。開いているファイルはすぐ再読み込みされます。新規に ZIP を置いた直後だけ再起動してください。
 
 色と「プラグイン読み込み表示」はサンプル固有です。本番では画像バイトをそのまま返してください。
 
@@ -554,7 +582,7 @@ UI は「ファイル設定」ダイアログです。読み込み方式に「�
 | 症状 | 確認 |
 | --- | --- |
 | 一覧に出ない | `plugins/` 直下の `.zip` か。ZIP 内が `manifest.json` 始まりか。`api_version` が `1` か |
-| ビルドインのまま開く | ファイル設定の読み込み方式。OK したか。新規 ZIP なら再起動したか |
+| ビルドインのまま開く | プラグイン設定の読み込み方式と ON/OFF。OK したか。新規 ZIP なら再起動したか |
 | `ImportError: ez_co` | プラグインから `ez_co` を import している |
 | パスワードが一致しない | AES なのに標準 `zipfile` を使っていないか。`verify` の例外をログで見る |
 | ダイアログが出ない | `list_entries` より前に暗号化判定して `self.host.ask_password` しているか |

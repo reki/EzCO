@@ -216,14 +216,20 @@ def load_zip_plugin(zip_path: Path, host=None) -> tuple[PluginManifest, Any, Zip
             raise ValueError(f"entry module not found in src/: {manifest.entry_module}")
         prefix = safe_module_prefix(f"{manifest.plugin_id}_{manifest.version}")
         _unload_prefix(prefix)
-        from ez_co.plugins.host import PluginHost
+        from ez_co.plugins.host import PluginHost, ScopedPluginHost
         from ez_co.plugins.i18n import make_plugin_get_text
-        host = host or PluginHost()
-        root = ZipPluginRoot(zip_path, archive, get_text=lambda key, **kwargs: key, host=host)
+        shared = host or PluginHost()
+        if isinstance(shared, ScopedPluginHost):
+            scoped = shared
+        elif hasattr(shared, "scoped"):
+            scoped = shared.scoped(manifest.plugin_id)
+        else:
+            scoped = shared
+        root = ZipPluginRoot(zip_path, archive, get_text=lambda key, **kwargs: key, host=scoped)
         get_text_fn = make_plugin_get_text(root)
         root.get_text = get_text_fn
         finder = PluginSrcFinder(
-            manifest.plugin_id, prefix, zip_path, archive, src_map, get_text=get_text_fn, host=host
+            manifest.plugin_id, prefix, zip_path, archive, src_map, get_text=get_text_fn, host=scoped
         )
         sys.meta_path.insert(0, finder)
         if prefix not in sys.modules:
@@ -232,12 +238,17 @@ def load_zip_plugin(zip_path: Path, host=None) -> tuple[PluginManifest, Any, Zip
             pkg.__package__ = prefix
             sys.modules[prefix] = pkg
         module = importlib.import_module(f"{prefix}.{manifest.entry_module}")
-        instance = _instantiate(module, manifest.entry_class, root, get_text_fn, host)
-        try:
-            formats = normalize_formats(instance.supported_formats())
-        except AttributeError as exc:
-            raise ValueError("plugin has no supported_formats") from exc
+        instance = _instantiate(module, manifest.entry_class, root, get_text_fn, scoped)
+        formats = []
+        if hasattr(scoped, "registered_formats"):
+            formats = list(scoped.registered_formats())
         if not formats:
+            supported = getattr(instance, "supported_formats", None)
+            if callable(supported):
+                formats = normalize_formats(supported())
+        has_sidebar = bool(getattr(scoped, "has_pending_sidebars", lambda: False)())
+        has_setup = callable(getattr(instance, "setup", None))
+        if not formats and not has_sidebar and not has_setup:
             raise ValueError(get_log_text("plugin_no_formats", plugin_id=manifest.plugin_id))
         instance._ezco_formats = formats
         return manifest, instance, root, archive

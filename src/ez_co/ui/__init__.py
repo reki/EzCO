@@ -9,7 +9,6 @@ from .history_toolbar import HistoryToolbar
 from .tab_list_toolbar import TabListToolbar
 from .bookmark_dialog import BookmarkDialog
 from .mouse_gesture import MouseGesture
-from .product_info_dialog import ProductInfoDialog
 __all__ = [
     'MainWindow',
     'ImageView',
@@ -22,6 +21,5 @@ __all__ = [
     'TabListToolbar',
     'BookmarkDialog',
     'MouseGesture',
-    'ProductInfoDialog'
 ]
 # ... existing code ... 

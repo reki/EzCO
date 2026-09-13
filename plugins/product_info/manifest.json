@@ -1,0 +1,9 @@
+{
+  "id": "com.ezco.product_info",
+  "name": "Product Info Sidebar",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "plugin:ProductInfoPlugin",
+  "description": "Shows info.json / folder.jpg for the current folder in a sidebar.",
+  "author": "EzCo"
+}

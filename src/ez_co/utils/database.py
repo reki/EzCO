@@ -234,6 +234,20 @@ class DatabaseManager:
                 CREATE INDEX IF NOT EXISTS idx_profile_settings_profile
                 ON profile_settings(profile_name)
             ''')
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS plugin_settings (
+                    profile_name TEXT NOT NULL,
+                    plugin_key TEXT NOT NULL,
+                    key TEXT NOT NULL,
+                    value TEXT,
+                    PRIMARY KEY (profile_name, plugin_key, key),
+                    FOREIGN KEY (profile_name) REFERENCES profiles (name) ON DELETE CASCADE
+                )
+            ''')
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_plugin_settings_plugin
+                ON plugin_settings(profile_name, plugin_key)
+            ''')
 
             cursor.execute("PRAGMA table_info(profiles)")
             profile_columns = [column[1] for column in cursor.fetchall()]
@@ -379,6 +393,93 @@ class DatabaseManager:
             logger.error(get_log_text("database_profile_settings_save_failed", profile_name=profile_name, error=e))
             return False
 
+    def _plugin_key(self, plugin_id: str) -> str:
+        from ez_co.plugins.settings_key import hash_plugin_id
+        return hash_plugin_id(plugin_id)
+
+    def get_plugin_setting(self, plugin_id: str, key: str, default: Any = None) -> Any:
+        profile_name = self.current_profile
+        plugin_key = self._plugin_key(plugin_id)
+        try:
+            with self._connect() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    '''
+                    SELECT value FROM plugin_settings
+                    WHERE profile_name = ? AND plugin_key = ? AND key = ?
+                    ''',
+                    (profile_name, plugin_key, str(key or "")),
+                )
+                row = cursor.fetchone()
+            if row is None:
+                return default
+            try:
+                return json.loads(row[0]) if row[0] is not None else default
+            except (TypeError, json.JSONDecodeError):
+                return row[0]
+        except Exception as e:
+            logger.error(get_log_text("database_plugin_setting_get_failed", error=e))
+            return default
+
+    def set_plugin_setting(self, plugin_id: str, key: str, value: Any) -> bool:
+        profile_name = self.current_profile
+        plugin_key = self._plugin_key(plugin_id)
+        try:
+            with self._connect() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    '''
+                    INSERT INTO plugin_settings (profile_name, plugin_key, key, value)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(profile_name, plugin_key, key) DO UPDATE SET value = excluded.value
+                    ''',
+                    (profile_name, plugin_key, str(key or ""), json.dumps(value, ensure_ascii=False)),
+                )
+                conn.commit()
+            return True
+        except Exception as e:
+            logger.error(get_log_text("database_plugin_setting_save_failed", error=e))
+            return False
+
+    def delete_plugin_setting(self, plugin_id: str, key: str) -> bool:
+        profile_name = self.current_profile
+        plugin_key = self._plugin_key(plugin_id)
+        try:
+            with self._connect() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    '''
+                    DELETE FROM plugin_settings
+                    WHERE profile_name = ? AND plugin_key = ? AND key = ?
+                    ''',
+                    (profile_name, plugin_key, str(key or "")),
+                )
+                conn.commit()
+            return True
+        except Exception as e:
+            logger.error(get_log_text("database_plugin_setting_delete_failed", error=e))
+            return False
+
+    def copy_plugin_settings(self, source_profile: str, dest_profile: str) -> bool:
+        if not source_profile or not dest_profile or source_profile == dest_profile:
+            return False
+        try:
+            with self._connect() as conn:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM plugin_settings WHERE profile_name = ?', (dest_profile,))
+                cursor.execute(
+                    '''
+                    INSERT INTO plugin_settings (profile_name, plugin_key, key, value)
+                    SELECT ?, plugin_key, key, value FROM plugin_settings WHERE profile_name = ?
+                    ''',
+                    (dest_profile, source_profile),
+                )
+                conn.commit()
+            return True
+        except Exception as e:
+            logger.error(get_log_text("database_plugin_settings_copy_failed", error=e))
+            return False
+
     def load_profile_config(self, profile_name: str) -> Dict[str, Any]:
         """プロファイル単位の設定を読み込む"""
         result: Dict[str, Any] = {}
@@ -415,6 +516,9 @@ class DatabaseManager:
             from ez_co.config import Config
             config_dict = settings if settings is not None else Config().to_dict()
             self.save_profile_config(profile_name, config_dict)
+            source = self.current_profile
+            if source and source != profile_name:
+                self.copy_plugin_settings(source, profile_name)
             logger.info(get_log_text("profile_created", profile_name=profile_name))
             return True
         except sqlite3.IntegrityError:
@@ -447,6 +551,7 @@ class DatabaseManager:
             with self._connect() as conn:
                 cursor = conn.cursor()
                 cursor.execute('DELETE FROM profile_settings WHERE profile_name = ?', (profile_name,))
+                cursor.execute('DELETE FROM plugin_settings WHERE profile_name = ?', (profile_name,))
                 cursor.execute('DELETE FROM bookmarks WHERE profile_name = ?', (profile_name,))
                 cursor.execute('DELETE FROM bookmark_folders WHERE profile_name = ?', (profile_name,))
                 cursor.execute('DELETE FROM history WHERE profile_name = ?', (profile_name,))
@@ -471,7 +576,7 @@ class DatabaseManager:
                 cursor.execute('UPDATE profiles SET name = ? WHERE name = ?', (new_name, old_name))
                 if cursor.rowcount == 0:
                     return False
-                for table in ("profile_settings", "bookmarks", "bookmark_folders", "history"):
+                for table in ("profile_settings", "plugin_settings", "bookmarks", "bookmark_folders", "history"):
                     cursor.execute(
                         f'UPDATE {table} SET profile_name = ? WHERE profile_name = ?',
                         (new_name, old_name)

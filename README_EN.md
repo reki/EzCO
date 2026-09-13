@@ -50,7 +50,8 @@ Most of the code in this program was implemented with the assistance of AI (Clau
 - **History and bookmarks**: Click opens in the current tab; Ctrl+click or middle-click opens a new tab. Right-click can choose either
 - **Reopen last file**: Opens only the latest history item, not every tab
 
-### File Settings
+### Plugin Settings
+- **On/Off**: Enable or disable each plugin. Off removes it from extension handling and unmounts its sidebar
 - **Loading method**: Built-in, plugin, or Don't load per extension
 - **Don't load**: Skip files of that extension (replaces the old Archive Settings dialog)
 - **Settings export/import**: Save and restore the current profile as YAML from the main settings dialog
@@ -94,11 +95,11 @@ Most of the code in this program was implemented with the assistance of AI (Clau
 
 ### Plugins
 - Place `.zip` plugins in the `plugins/` folder next to the executable (or the repo root while developing)
-- Choose built-in, plugin, or Don't load per extension in File Settings. OK reloads the open files
+- In Plugin Settings, turn plugins on or off and choose built-in, plugin, or Don't load per extension. OK reloads the open files
 - The plugin list shows ID without version. Column widths and order can be changed and are saved
 - Built-in handlers win by default for known extensions
-- Loaded plugin extensions appear in the file dialog under "Supported Files" and "Plugin formats", and in folder scans
-- Samples: `plugins/example_png.zip`, `plugins/example_zip.zip`
+- Enabled plugin extensions appear in the file dialog under "Supported Files" and "Plugin formats", and in folder scans
+- Samples: `plugins/example_png.zip`, `plugins/example_zip.zip`, `plugins/product_info.zip` (product info sidebar via `.ui` + `QUiLoader`)
 - Developer reference (Japanese): [docs/plugins.md](docs/plugins.md), [plugins/README.md](plugins/README.md)
 
 ## Development Environment Setup
@@ -340,7 +341,8 @@ Application settings are stored per profile in `config.db` (SQLite). It is creat
 - **Memory cache size**: Image memory cache size (e.g., 256MB, 1GB, 2.5GB)
 - **Prefetch pages**: Number of pages to prefetch around current page (1-50 pages)
 
-#### File Settings
+#### Plugin Settings
+- **On/Off**: `plugins.enabled`. Missing ids are enabled. Off also unmounts the sidebar
 - **Loading method**: Built-in, plugin, or Don't load per extension
 - **Don't load**: Files of that extension are not opened (archives and images)
 
@@ -421,16 +423,16 @@ EzCo.exe
 - **Filename**: `error_log_YYYYMMDD.txt` (with date)
 - **Content**: Detailed information when errors occur
 
-## About File Settings
+## About Plugin Settings
 
 ### Overview
 EzCo lets you choose a loading method per extension. Use **Don't load** when a format is unused or folder scans are slow. This replaces the old Archive Settings dialog.
 
 ### How to Configure
 1. Start the application
-2. Open Settings → File Settings
-3. Choose Built-in, a plugin, or Don't load for each extension
-4. Press OK (open files are reloaded)
+2. Open Settings → Plugin Settings
+3. Toggle plugins and choose Built-in, a plugin, or Don't load for each extension
+4. Press OK (open files are reloaded; disabled sidebars are removed)
 
 ### Effects of Settings
 
@@ -447,7 +449,7 @@ EzCo lets you choose a loading method per extension. Use **Don't load** when a f
 
 #### Example 1: Skip 7Z files
 - Folders with many 7Z files load slowly
-- In File Settings, set `.7z` to Don't load
+- In Plugin Settings, set `.7z` to Don't load
 
 #### Example 2: Skip all archives
 - You only want image files
@@ -464,7 +466,7 @@ EzCo lets you choose a loading method per extension. Use **Don't load** when a f
 ### Important Notes
 - OK reloads the files that are currently open
 - Extensions set to Don't load are skipped during folder scans
-- Older profiles that disabled archives show Don't load when you open File Settings
+- Older profiles that disabled archives show Don't load when you open Plugin Settings
 
 ### Supported Archive Formats
 - **ZIP**: .zip
