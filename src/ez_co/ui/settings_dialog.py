@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QPalette
+import html
 import yaml
 import logging
 import humanfriendly
@@ -20,8 +21,65 @@ class SettingsDialog(QDialog):
     def __init__(self, config, parent=None):
         super().__init__(parent)
         self.config = config
+        self._setting_tip_widgets = {}
         self.setup_ui()
         self.apply_runtime_overrides()
+
+    def _setting_tip_text(self, key):
+        """設定項目の詳細説明を取得（tip → description の順）"""
+        tip_key = f"settings.{key}_tip"
+        tip = get_text(tip_key)
+        if tip != tip_key:
+            return tip
+        desc_key = f"settings.{key}_description"
+        desc = get_text(desc_key)
+        if desc != desc_key:
+            return desc
+        return ""
+
+    def _format_tooltip(self, text):
+        if not text:
+            return ""
+        escaped = html.escape(text).replace("\n", "<br>")
+        return f"<p style='white-space:pre-wrap; max-width:380px;'>{escaped}</p>"
+
+    def _apply_setting_tip(self, key, *widgets, extra_text=""):
+        text = self._setting_tip_text(key)
+        if extra_text:
+            text = f"{text}\n\n{extra_text}" if text else extra_text
+        formatted = self._format_tooltip(text)
+        if not formatted:
+            return
+        registered = self._setting_tip_widgets.setdefault(key, [])
+        for widget in widgets:
+            if widget is None:
+                continue
+            widget.setToolTip(formatted)
+            widget.setToolTipDuration(15000)
+            if widget not in registered:
+                registered.append(widget)
+
+    def _form_label(self, key, suffix=":"):
+        label = QLabel(get_text(f"settings.{key}") + suffix)
+        self._apply_setting_tip(key, label)
+        return label
+
+    def _disable_if_overridden(self, config_key, tip_key, *widgets):
+        if not self.config.is_runtime_overridden(config_key):
+            return
+        override = get_text("settings.runtime_override_tooltip")
+        all_widgets = list(widgets) + list(self._setting_tip_widgets.get(tip_key, []))
+        unique = []
+        seen = set()
+        for widget in all_widgets:
+            if widget is None or id(widget) in seen:
+                continue
+            seen.add(id(widget))
+            unique.append(widget)
+        for widget in unique:
+            if not isinstance(widget, QLabel):
+                widget.setEnabled(False)
+        self._apply_setting_tip(tip_key, *unique, extra_text=override)
 
     def setup_ui(self):
         """UIの初期化"""
@@ -79,142 +137,54 @@ class SettingsDialog(QDialog):
 
     def apply_runtime_overrides(self):
         """ランタイムオーバーライドが適用されている設定項目を非活性化"""
-        # 言語設定
-        if self.config.is_runtime_overridden("language.code"):
-            self.language_combo.setEnabled(False)
-            self.language_combo.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        # ウィンドウ設定
-        if self.config.is_runtime_overridden("window.auto_resize"):
-            self.auto_resize_checkbox.setEnabled(False)
-            self.auto_resize_checkbox.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("window.save_window_state"):
-            self.save_window_state_checkbox.setEnabled(False)
-            self.save_window_state_checkbox.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("window.maximize_on_startup"):
-            self.maximize_on_startup_checkbox.setEnabled(False)
-            self.maximize_on_startup_checkbox.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        # ビューア設定
-        if self.config.is_runtime_overridden("viewer.background_color"):
-            self.bg_color_button.setEnabled(False)
-            self.bg_color_button.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("viewer.fit_to_window"):
-            self.fit_to_window_checkbox.setEnabled(False)
-            self.fit_to_window_checkbox.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("viewer.fit_to_window_minimum"):
-            self.fit_to_window_min_checkbox.setEnabled(False)
-            self.fit_to_window_min_checkbox.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("viewer.spread_selected_as_axis"):
-            self.spread_selected_as_axis_checkbox.setEnabled(False)
-            self.spread_selected_as_axis_checkbox.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("viewer.spread_toggle_preference"):
-            self.spread_toggle_preference_combo.setEnabled(False)
-            self.spread_toggle_preference_combo.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("viewer.image_move_sensitivity"):
-            self.sensitivity_slider.setEnabled(False)
-            self.sensitivity_input.setEnabled(False)
-            self.sensitivity_slider.setToolTip(get_text("settings.runtime_override_tooltip"))
-            self.sensitivity_input.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("viewer.gesture_threshold"):
-            self.gesture_threshold_slider.setEnabled(False)
-            self.gesture_threshold_input.setEnabled(False)
-            self.gesture_threshold_slider.setToolTip(get_text("settings.runtime_override_tooltip"))
-            self.gesture_threshold_input.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("viewer.mouse_repeat_initial_delay"):
-            self.mouse_repeat_initial_delay_slider.setEnabled(False)
-            self.mouse_repeat_initial_delay_input.setEnabled(False)
-            self.mouse_repeat_initial_delay_slider.setToolTip(get_text("settings.runtime_override_tooltip"))
-            self.mouse_repeat_initial_delay_input.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("viewer.mouse_repeat_acceleration_start"):
-            self.mouse_repeat_acceleration_start_slider.setEnabled(False)
-            self.mouse_repeat_acceleration_start_input.setEnabled(False)
-            self.mouse_repeat_acceleration_start_slider.setToolTip(get_text("settings.runtime_override_tooltip"))
-            self.mouse_repeat_acceleration_start_input.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("viewer.mouse_repeat_min_interval"):
-            self.mouse_repeat_min_interval_slider.setEnabled(False)
-            self.mouse_repeat_min_interval_input.setEnabled(False)
-            self.mouse_repeat_min_interval_slider.setToolTip(get_text("settings.runtime_override_tooltip"))
-            self.mouse_repeat_min_interval_input.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        # UI フォント設定
-        if self.config.is_runtime_overridden("ui_font.font_family"):
-            self.ui_font_family.setEnabled(False)
-            self.ui_font_family.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("ui_font.font_size"):
-            self.ui_font_size.setEnabled(False)
-            self.ui_font_size.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("ui_font.font_color"):
-            self.ui_font_color_btn.setEnabled(False)
-            self.ui_font_color_btn.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("ui_font.bg_color"):
-            self.ui_bg_color_btn.setEnabled(False)
-            self.ui_bg_color_btn.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("ui_font.alpha"):
-            self.ui_alpha.setEnabled(False)
-            self.ui_alpha.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        # 履歴設定
-        if self.config.is_runtime_overridden("history.max_count"):
-            self.history_max_count_spin.setEnabled(False)
-            self.history_max_count_spin.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("history.restore_page_on_reopen"):
-            self.restore_page_checkbox.setEnabled(False)
-            self.restore_page_checkbox.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("history.open_last_file_on_startup"):
-            self.open_last_file_checkbox.setEnabled(False)
-            self.open_last_file_checkbox.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        # キャッシュ設定
-        if self.config.is_runtime_overridden("cache.memory_limit"):
-            self.cache_memory_limit.setEnabled(False)
-            self.cache_memory_limit.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("cache.prefetch_pages"):
-            self.cache_prefetch_pages.setEnabled(False)
-            self.cache_prefetch_pages.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("cache.optimize_large_images"):
-            self.optimize_large_images_checkbox.setEnabled(False)
-            self.optimize_large_images_checkbox.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("cache.optimize_threshold"):
-            self.optimize_threshold.setEnabled(False)
-            self.optimize_threshold.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("cache.optimize_max_resolution"):
-            self.optimize_max_resolution.setEnabled(False)
-            self.optimize_max_resolution.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        # デバッグ設定
-        if self.config.is_runtime_overridden("debug.enabled"):
-            self.debug_mode_checkbox.setEnabled(False)
-            self.debug_mode_checkbox.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("debug.keep_archive_handles"):
-            self.keep_archive_handles_checkbox.setEnabled(False)
-            self.keep_archive_handles_checkbox.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
-        if self.config.is_runtime_overridden("debug.cache_archive_metadata"):
-            self.cache_archive_metadata_checkbox.setEnabled(False)
-            self.cache_archive_metadata_checkbox.setToolTip(get_text("settings.runtime_override_tooltip"))
+        self._disable_if_overridden("language.code", "language", self.language_combo)
+        self._disable_if_overridden("window.auto_resize", "auto_resize", self.auto_resize_checkbox)
+        self._disable_if_overridden("window.save_window_state", "save_window_state", self.save_window_state_checkbox)
+        self._disable_if_overridden("window.maximize_on_startup", "maximize_on_startup", self.maximize_on_startup_checkbox)
+        self._disable_if_overridden("viewer.background_color", "background_color", self.bg_color_button)
+        self._disable_if_overridden("viewer.fit_to_window", "fit_to_window", self.fit_to_window_checkbox)
+        self._disable_if_overridden("viewer.fit_to_window_minimum", "fit_to_window_minimum", self.fit_to_window_min_checkbox)
+        self._disable_if_overridden("viewer.spread_selected_as_axis", "spread_selected_as_axis", self.spread_selected_as_axis_checkbox)
+        self._disable_if_overridden("viewer.spread_toggle_preference", "spread_toggle_preference", self.spread_toggle_preference_combo)
+        self._disable_if_overridden(
+            "viewer.image_move_sensitivity", "image_move_sensitivity",
+            self.sensitivity_slider, self.sensitivity_input
+        )
+        self._disable_if_overridden(
+            "viewer.gesture_threshold", "gesture_threshold",
+            self.gesture_threshold_slider, self.gesture_threshold_input
+        )
+        self._disable_if_overridden(
+            "viewer.mouse_repeat_initial_delay", "mouse_repeat_initial_delay",
+            self.mouse_repeat_initial_delay_slider, self.mouse_repeat_initial_delay_input
+        )
+        self._disable_if_overridden(
+            "viewer.mouse_repeat_acceleration_start", "mouse_repeat_acceleration_start",
+            self.mouse_repeat_acceleration_start_slider, self.mouse_repeat_acceleration_start_input
+        )
+        self._disable_if_overridden(
+            "viewer.mouse_repeat_min_interval", "mouse_repeat_min_interval",
+            self.mouse_repeat_min_interval_slider, self.mouse_repeat_min_interval_input
+        )
+        self._disable_if_overridden("ui_font.font_family", "font_family", self.ui_font_family)
+        self._disable_if_overridden("ui_font.font_size", "font_size", self.ui_font_size)
+        self._disable_if_overridden("ui_font.font_color", "font_color", self.ui_font_color_btn)
+        self._disable_if_overridden("ui_font.bg_color", "background_color_popup", self.ui_bg_color_btn)
+        self._disable_if_overridden("ui_font.alpha", "transparency", self.ui_alpha)
+        self._disable_if_overridden("history.max_count", "max_history_count", self.history_max_count_spin)
+        self._disable_if_overridden("history.restore_page_on_reopen", "restore_page_on_reopen", self.restore_page_checkbox)
+        self._disable_if_overridden("history.open_last_file_on_startup", "open_last_file_on_startup", self.open_last_file_checkbox)
+        self._disable_if_overridden("viewer.drop_opens_new_tab", "drop_opens_new_tab", self.drop_opens_combo)
+        self._disable_if_overridden("viewer.open_archives_in_own_tab", "open_archives_in_own_tab", self.open_archives_own_tab_checkbox)
+        self._disable_if_overridden("viewer.open_folders_in_own_tab", "open_folders_in_own_tab", self.open_folders_own_tab_checkbox)
+        self._disable_if_overridden("cache.memory_limit", "cache_memory_limit", self.cache_memory_limit)
+        self._disable_if_overridden("cache.prefetch_pages", "cache_prefetch_pages", self.cache_prefetch_pages)
+        self._disable_if_overridden("cache.optimize_large_images", "optimize_large_images", self.optimize_large_images_checkbox)
+        self._disable_if_overridden("cache.optimize_threshold", "optimize_threshold", self.optimize_threshold)
+        self._disable_if_overridden("cache.optimize_max_resolution", "optimize_max_resolution", self.optimize_max_resolution)
+        self._disable_if_overridden("debug.enabled", "debug_mode", self.debug_mode_checkbox)
+        self._disable_if_overridden("debug.keep_archive_handles", "keep_archive_handles", self.keep_archive_handles_checkbox)
+        self._disable_if_overridden("debug.cache_archive_metadata", "cache_archive_metadata", self.cache_archive_metadata_checkbox)
 
     def create_general_tab(self):
         """全般タブを作成"""
@@ -239,7 +209,8 @@ class SettingsDialog(QDialog):
             if lang_code == current_language:
                 self.language_combo.setCurrentText(lang_info["name"])
         
-        language_layout.addRow(get_text("settings.language") + ":", self.language_combo)
+        language_layout.addRow(self._form_label("language"), self.language_combo)
+        self._apply_setting_tip("language", self.language_combo)
         language_group.setLayout(language_layout)
         layout.addWidget(language_group)
         
@@ -250,16 +221,19 @@ class SettingsDialog(QDialog):
         # ウィンドウサイズの自動調整
         self.auto_resize_checkbox = QCheckBox(get_text("settings.auto_resize"))
         self.auto_resize_checkbox.setChecked(self.config.window["auto_resize"])
+        self._apply_setting_tip("auto_resize", self.auto_resize_checkbox)
         window_layout.addRow(self.auto_resize_checkbox)
         
         # ウィンドウサイズを保存
         self.save_window_state_checkbox = QCheckBox(get_text("settings.save_window_state"))
         self.save_window_state_checkbox.setChecked(self.config.window.get("save_window_state", True))
+        self._apply_setting_tip("save_window_state", self.save_window_state_checkbox)
         window_layout.addRow(self.save_window_state_checkbox)
         
         # 起動時に最大化
         self.maximize_on_startup_checkbox = QCheckBox(get_text("settings.maximize_on_startup"))
         self.maximize_on_startup_checkbox.setChecked(self.config.window.get("maximize_on_startup", False))
+        self._apply_setting_tip("maximize_on_startup", self.maximize_on_startup_checkbox)
         window_layout.addRow(self.maximize_on_startup_checkbox)
         
         window_group.setLayout(window_layout)
@@ -290,21 +264,25 @@ class SettingsDialog(QDialog):
             "min-width: 100px; max-width: 150px; min-height: 20px;"
         )
         self.bg_color_button.clicked.connect(self.select_background_color)
-        viewer_layout.addRow(get_text("settings.background_color") + ":", self.bg_color_button)
+        viewer_layout.addRow(self._form_label("background_color"), self.bg_color_button)
+        self._apply_setting_tip("background_color", self.bg_color_button)
         
         # 画像をウィンドウに合わせる
         self.fit_to_window_checkbox = QCheckBox(get_text("settings.fit_to_window"))
         self.fit_to_window_checkbox.setChecked(self.config.viewer["fit_to_window"])
+        self._apply_setting_tip("fit_to_window", self.fit_to_window_checkbox)
         viewer_layout.addRow(self.fit_to_window_checkbox)
         
         # 画像の最小縮小率を全画面までに制限
         self.fit_to_window_min_checkbox = QCheckBox(get_text("settings.fit_to_window_minimum"))
         self.fit_to_window_min_checkbox.setChecked(self.config.viewer.get("fit_to_window_minimum", True))
+        self._apply_setting_tip("fit_to_window_minimum", self.fit_to_window_min_checkbox)
         viewer_layout.addRow(self.fit_to_window_min_checkbox)
 
         # 両開きは選択ページを軸にする
         self.spread_selected_as_axis_checkbox = QCheckBox(get_text("settings.spread_selected_as_axis"))
         self.spread_selected_as_axis_checkbox.setChecked(self.config.viewer.get("spread_selected_as_axis", False))
+        self._apply_setting_tip("spread_selected_as_axis", self.spread_selected_as_axis_checkbox)
         viewer_layout.addRow(self.spread_selected_as_axis_checkbox)
 
         # 両開き／単ページ切替時の両開き
@@ -322,7 +300,8 @@ class SettingsDialog(QDialog):
         current_spread_pref = self.config.viewer.get("spread_toggle_preference", "keep_previous")
         pref_index = self.spread_toggle_preference_combo.findData(current_spread_pref)
         self.spread_toggle_preference_combo.setCurrentIndex(pref_index if pref_index >= 0 else 0)
-        viewer_layout.addRow(get_text("settings.spread_toggle_preference") + ":", self.spread_toggle_preference_combo)
+        viewer_layout.addRow(self._form_label("spread_toggle_preference"), self.spread_toggle_preference_combo)
+        self._apply_setting_tip("spread_toggle_preference", self.spread_toggle_preference_combo)
         
         # 画像移動感度
         sensitivity_layout = QHBoxLayout()
@@ -343,7 +322,8 @@ class SettingsDialog(QDialog):
         
         sensitivity_layout.addWidget(self.sensitivity_slider)
         sensitivity_layout.addWidget(self.sensitivity_input)
-        viewer_layout.addRow(get_text("settings.image_move_sensitivity") + ":", sensitivity_layout)
+        viewer_layout.addRow(self._form_label("image_move_sensitivity"), sensitivity_layout)
+        self._apply_setting_tip("image_move_sensitivity", self.sensitivity_slider, self.sensitivity_input)
         
         # マウスジェスチャー判定距離
         gesture_layout = QHBoxLayout()
@@ -364,7 +344,8 @@ class SettingsDialog(QDialog):
         
         gesture_layout.addWidget(self.gesture_threshold_slider)
         gesture_layout.addWidget(self.gesture_threshold_input)
-        viewer_layout.addRow(get_text("settings.gesture_threshold") + ":", gesture_layout)
+        viewer_layout.addRow(self._form_label("gesture_threshold"), gesture_layout)
+        self._apply_setting_tip("gesture_threshold", self.gesture_threshold_slider, self.gesture_threshold_input)
         
         # マウスリピート初期間隔
         mouse_repeat_initial_delay_layout = QHBoxLayout()
@@ -384,7 +365,11 @@ class SettingsDialog(QDialog):
         
         mouse_repeat_initial_delay_layout.addWidget(self.mouse_repeat_initial_delay_slider)
         mouse_repeat_initial_delay_layout.addWidget(self.mouse_repeat_initial_delay_input)
-        viewer_layout.addRow(get_text("settings.mouse_repeat_initial_delay") + ":", mouse_repeat_initial_delay_layout)
+        viewer_layout.addRow(self._form_label("mouse_repeat_initial_delay"), mouse_repeat_initial_delay_layout)
+        self._apply_setting_tip(
+            "mouse_repeat_initial_delay",
+            self.mouse_repeat_initial_delay_slider, self.mouse_repeat_initial_delay_input
+        )
         
         # マウスリピート加速開始時刻
         mouse_repeat_acceleration_start_layout = QHBoxLayout()
@@ -404,7 +389,11 @@ class SettingsDialog(QDialog):
         
         mouse_repeat_acceleration_start_layout.addWidget(self.mouse_repeat_acceleration_start_slider)
         mouse_repeat_acceleration_start_layout.addWidget(self.mouse_repeat_acceleration_start_input)
-        viewer_layout.addRow(get_text("settings.mouse_repeat_acceleration_start") + ":", mouse_repeat_acceleration_start_layout)
+        viewer_layout.addRow(self._form_label("mouse_repeat_acceleration_start"), mouse_repeat_acceleration_start_layout)
+        self._apply_setting_tip(
+            "mouse_repeat_acceleration_start",
+            self.mouse_repeat_acceleration_start_slider, self.mouse_repeat_acceleration_start_input
+        )
         
         # マウスリピート最小間隔
         mouse_repeat_min_interval_layout = QHBoxLayout()
@@ -424,7 +413,11 @@ class SettingsDialog(QDialog):
         
         mouse_repeat_min_interval_layout.addWidget(self.mouse_repeat_min_interval_slider)
         mouse_repeat_min_interval_layout.addWidget(self.mouse_repeat_min_interval_input)
-        viewer_layout.addRow(get_text("settings.mouse_repeat_min_interval") + ":", mouse_repeat_min_interval_layout)
+        viewer_layout.addRow(self._form_label("mouse_repeat_min_interval"), mouse_repeat_min_interval_layout)
+        self._apply_setting_tip(
+            "mouse_repeat_min_interval",
+            self.mouse_repeat_min_interval_slider, self.mouse_repeat_min_interval_input
+        )
         
         viewer_group.setLayout(viewer_layout)
         layout.addWidget(viewer_group)
@@ -505,12 +498,18 @@ class SettingsDialog(QDialog):
         self.ui_alpha.setRange(0, 255)
         self.ui_alpha.setValue(self.config.ui_font.get('alpha', 170))
         
-        ui_font_layout.addRow(get_text("settings.font_family"), self.ui_font_family)
-        ui_font_layout.addRow(get_text("settings.font_style"), self.ui_font_variant)
-        ui_font_layout.addRow(get_text("settings.font_size"), self.ui_font_size)
-        ui_font_layout.addRow(get_text("settings.font_color"), self.ui_font_color_btn)
-        ui_font_layout.addRow(get_text("settings.background_color_popup"), self.ui_bg_color_btn)
-        ui_font_layout.addRow(get_text("settings.transparency"), self.ui_alpha)
+        ui_font_layout.addRow(self._form_label("font_family", suffix=""), self.ui_font_family)
+        ui_font_layout.addRow(self._form_label("font_style", suffix=""), self.ui_font_variant)
+        ui_font_layout.addRow(self._form_label("font_size", suffix=""), self.ui_font_size)
+        ui_font_layout.addRow(self._form_label("font_color", suffix=""), self.ui_font_color_btn)
+        ui_font_layout.addRow(self._form_label("background_color_popup", suffix=""), self.ui_bg_color_btn)
+        ui_font_layout.addRow(self._form_label("transparency", suffix=""), self.ui_alpha)
+        self._apply_setting_tip("font_family", self.ui_font_family)
+        self._apply_setting_tip("font_style", self.ui_font_variant)
+        self._apply_setting_tip("font_size", self.ui_font_size)
+        self._apply_setting_tip("font_color", self.ui_font_color_btn)
+        self._apply_setting_tip("background_color_popup", self.ui_bg_color_btn)
+        self._apply_setting_tip("transparency", self.ui_alpha)
         
         ui_font_group.setLayout(ui_font_layout)
         layout.addWidget(ui_font_group)
@@ -538,16 +537,19 @@ class SettingsDialog(QDialog):
         self.history_max_count_spin.setMaximumWidth(100)  # 最大幅を制限
         self.history_max_count_spin.setRange(1, 99)
         self.history_max_count_spin.setValue(self.config.history.get("max_count", 20))
-        history_layout.addRow(get_text("settings.max_history_count") + ":", self.history_max_count_spin)
+        history_layout.addRow(self._form_label("max_history_count"), self.history_max_count_spin)
+        self._apply_setting_tip("max_history_count", self.history_max_count_spin)
         
         # 履歴ページ復元オプション
         self.restore_page_checkbox = QCheckBox(get_text("settings.restore_page_on_reopen"))
         self.restore_page_checkbox.setChecked(self.config.history.get("restore_page_on_reopen", False))
+        self._apply_setting_tip("restore_page_on_reopen", self.restore_page_checkbox)
         history_layout.addRow(self.restore_page_checkbox)
         
         # 起動時最後のファイル復元オプション
         self.open_last_file_checkbox = QCheckBox(get_text("settings.open_last_file_on_startup"))
         self.open_last_file_checkbox.setChecked(self.config.history.get("open_last_file_on_startup", False))
+        self._apply_setting_tip("open_last_file_on_startup", self.open_last_file_checkbox)
         history_layout.addRow(self.open_last_file_checkbox)
         
         history_group.setLayout(history_layout)
@@ -561,12 +563,15 @@ class SettingsDialog(QDialog):
         self.drop_opens_combo.addItem(get_text("settings.drop_open_new"), True)
         drop_index = 1 if self.config.viewer.get("drop_opens_new_tab", False) else 0
         self.drop_opens_combo.setCurrentIndex(drop_index)
-        tab_layout.addRow(get_text("settings.drop_opens_new_tab") + ":", self.drop_opens_combo)
+        tab_layout.addRow(self._form_label("drop_opens_new_tab"), self.drop_opens_combo)
+        self._apply_setting_tip("drop_opens_new_tab", self.drop_opens_combo)
         self.open_archives_own_tab_checkbox = QCheckBox(get_text("settings.open_archives_in_own_tab"))
         self.open_archives_own_tab_checkbox.setChecked(self.config.viewer.get("open_archives_in_own_tab", True))
+        self._apply_setting_tip("open_archives_in_own_tab", self.open_archives_own_tab_checkbox)
         tab_layout.addRow(self.open_archives_own_tab_checkbox)
         self.open_folders_own_tab_checkbox = QCheckBox(get_text("settings.open_folders_in_own_tab"))
         self.open_folders_own_tab_checkbox.setChecked(self.config.viewer.get("open_folders_in_own_tab", False))
+        self._apply_setting_tip("open_folders_in_own_tab", self.open_folders_own_tab_checkbox)
         tab_layout.addRow(self.open_folders_own_tab_checkbox)
         tab_group.setLayout(tab_layout)
         layout.addWidget(tab_group)
@@ -580,12 +585,14 @@ class SettingsDialog(QDialog):
         self.cache_memory_limit.setMaximumWidth(200)
         self.cache_memory_limit.setText(self.config.cache.get("memory_limit", "256MB"))
         self.cache_memory_limit.setPlaceholderText("256MB, 1GB, 2.5GB など")
-        cache_layout.addRow(get_text("settings.cache_memory_limit") + ":", self.cache_memory_limit)
+        cache_layout.addRow(self._form_label("cache_memory_limit"), self.cache_memory_limit)
+        self._apply_setting_tip("cache_memory_limit", self.cache_memory_limit)
         
         # キャッシュサイズの説明
         cache_description = QLabel(get_text("settings.cache_memory_limit_description"))
         cache_description.setStyleSheet("color: #666; font-size: 10px;")
         cache_description.setWordWrap(True)
+        self._apply_setting_tip("cache_memory_limit", cache_description)
         cache_layout.addRow(cache_description)
         
         # プリフェッチページ数
@@ -593,17 +600,20 @@ class SettingsDialog(QDialog):
         self.cache_prefetch_pages.setMaximumWidth(100)
         self.cache_prefetch_pages.setRange(1, 50)
         self.cache_prefetch_pages.setValue(self.config.cache.get("prefetch_pages", 15))
-        cache_layout.addRow(get_text("settings.cache_prefetch_pages") + ":", self.cache_prefetch_pages)
+        cache_layout.addRow(self._form_label("cache_prefetch_pages"), self.cache_prefetch_pages)
+        self._apply_setting_tip("cache_prefetch_pages", self.cache_prefetch_pages)
         
         # プリフェッチページ数の説明
         prefetch_description = QLabel(get_text("settings.cache_prefetch_pages_description"))
         prefetch_description.setStyleSheet("color: #666; font-size: 10px;")
         prefetch_description.setWordWrap(True)
+        self._apply_setting_tip("cache_prefetch_pages", prefetch_description)
         cache_layout.addRow(prefetch_description)
         
         # 大きな画像の最適化
         self.optimize_large_images_checkbox = QCheckBox(get_text("settings.optimize_large_images"))
         self.optimize_large_images_checkbox.setChecked(self.config.cache.get("optimize_large_images", True))
+        self._apply_setting_tip("optimize_large_images", self.optimize_large_images_checkbox)
         cache_layout.addRow(self.optimize_large_images_checkbox)
         
         # 最適化閾値
@@ -611,12 +621,14 @@ class SettingsDialog(QDialog):
         self.optimize_threshold.setMaximumWidth(200)
         self.optimize_threshold.setText(self.config.cache.get("optimize_threshold", "50MB"))
         self.optimize_threshold.setPlaceholderText("50MB, 100MB など")
-        cache_layout.addRow(get_text("settings.optimize_threshold") + ":", self.optimize_threshold)
+        cache_layout.addRow(self._form_label("optimize_threshold"), self.optimize_threshold)
+        self._apply_setting_tip("optimize_threshold", self.optimize_threshold)
         
         # 最適化閾値の説明
         optimize_threshold_description = QLabel(get_text("settings.optimize_threshold_description"))
         optimize_threshold_description.setStyleSheet("color: #666; font-size: 10px;")
         optimize_threshold_description.setWordWrap(True)
+        self._apply_setting_tip("optimize_threshold", optimize_threshold_description)
         cache_layout.addRow(optimize_threshold_description)
         
         # 最大解像度
@@ -624,12 +636,14 @@ class SettingsDialog(QDialog):
         self.optimize_max_resolution.setMaximumWidth(100)
         self.optimize_max_resolution.setRange(1000, 10000)
         self.optimize_max_resolution.setValue(self.config.cache.get("optimize_max_resolution", 4000))
-        cache_layout.addRow(get_text("settings.optimize_max_resolution") + ":", self.optimize_max_resolution)
+        cache_layout.addRow(self._form_label("optimize_max_resolution"), self.optimize_max_resolution)
+        self._apply_setting_tip("optimize_max_resolution", self.optimize_max_resolution)
         
         # 最大解像度の説明
         optimize_max_resolution_description = QLabel(get_text("settings.optimize_max_resolution_description"))
         optimize_max_resolution_description.setStyleSheet("color: #666; font-size: 10px;")
         optimize_max_resolution_description.setWordWrap(True)
+        self._apply_setting_tip("optimize_max_resolution", optimize_max_resolution_description)
         cache_layout.addRow(optimize_max_resolution_description)
         
         cache_group.setLayout(cache_layout)
@@ -656,33 +670,39 @@ class SettingsDialog(QDialog):
         # デバッグモード
         self.debug_mode_checkbox = QCheckBox(get_text("settings.debug_mode"))
         self.debug_mode_checkbox.setChecked(self.config.debug.get("enabled", False))
+        self._apply_setting_tip("debug_mode", self.debug_mode_checkbox)
         debug_layout.addRow(self.debug_mode_checkbox)
         
         # デバッグモードの説明
         debug_description = QLabel(get_text("settings.debug_mode_description"))
         debug_description.setStyleSheet("color: #666; font-size: 10px;")
+        self._apply_setting_tip("debug_mode", debug_description)
         debug_layout.addRow(debug_description)
         
         # ファイルハンドル管理設定
         self.keep_archive_handles_checkbox = QCheckBox(get_text("settings.keep_archive_handles"))
         self.keep_archive_handles_checkbox.setChecked(self.config.debug.get("keep_archive_handles", False))
+        self._apply_setting_tip("keep_archive_handles", self.keep_archive_handles_checkbox)
         debug_layout.addRow(self.keep_archive_handles_checkbox)
         
         # ファイルハンドル管理の警告説明
         handle_warning = QLabel(get_text("settings.keep_archive_handles_description"))
         handle_warning.setStyleSheet("color: #d63031; font-size: 10px; font-weight: bold;")
         handle_warning.setWordWrap(True)
+        self._apply_setting_tip("keep_archive_handles", handle_warning)
         debug_layout.addRow(handle_warning)
         
         # アーカイブメタデータキャッシュ設定
         self.cache_archive_metadata_checkbox = QCheckBox(get_text("settings.cache_archive_metadata"))
         self.cache_archive_metadata_checkbox.setChecked(self.config.debug.get("cache_archive_metadata", True))
+        self._apply_setting_tip("cache_archive_metadata", self.cache_archive_metadata_checkbox)
         debug_layout.addRow(self.cache_archive_metadata_checkbox)
         
         # アーカイブメタデータキャッシュの説明
         metadata_description = QLabel(get_text("settings.cache_archive_metadata_description"))
         metadata_description.setStyleSheet("color: #666; font-size: 10px;")
         metadata_description.setWordWrap(True)
+        self._apply_setting_tip("cache_archive_metadata", metadata_description)
         debug_layout.addRow(metadata_description)
         
         debug_group.setLayout(debug_layout)
