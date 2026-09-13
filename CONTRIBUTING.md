@@ -38,6 +38,7 @@ EzCoへの貢献をありがとうございます。開発・実行・ビルド�
 | ▶ 頒布用zip (poetry run collect) | 頒布用 zip 作成 |
 | ▶ インストーラ (poetry run installer) | Inno Setup インストーラ作成（PATH に ISCC） |
 | ▶ 初期化 (poetry run init-env) | 環境初期化 |
+| ▶ テスト (poetry run pytest) | テスト実行 |
 | py-spy: top / record … | プロファイラ |
 
 ターミナルから同じことをする場合の例（通常は不要）:
@@ -49,6 +50,7 @@ poetry run build
 poetry run build -- --safe-mode
 poetry run collect
 poetry run installer
+poetry run pytest
 ```
 
 ## 貢献の方法
@@ -66,7 +68,7 @@ poetry run installer
 1. 既存 Issue を確認するか、新しく作る
 2. ブランチを切る: `git checkout -b feature/your-feature-name`
 3. 本体の書き方に合わせ、必要なところだけコメントする
-4. **「Python: EzCo」** で手動確認する。配布物を見るときだけ **「▶ ビルド」** または **「▶ ビルド (--safe-mode)」**
+4. **「Python: EzCo」** で手動確認する。自動テストは **「▶ テスト」** またはタスク **「EzCo: テスト」**。配布物を見るときだけ **「▶ ビルド」** または **「▶ ビルド (--safe-mode)」**
 5. [Pull Request](../../compare) で変更内容を説明する
 
 プラグインを触る場合は [docs/plugins.md](docs/plugins.md) と [plugins/README.md](plugins/README.md) を見てください。開発中は `plugins/` のフォルダがそのまま読めます。配布するときだけ [`dist-sample-plugins/`](dist-sample-plugins/) の `.zip` を作り直します。
@@ -122,6 +124,7 @@ Requires Windows, Python 3.10+ (3.12 recommended), and [Poetry](https://python-p
 | ▶ 頒布用zip (poetry run collect) | Distribution zip |
 | ▶ インストーラ (poetry run installer) | Inno Setup installer (ISCC on PATH) |
 | ▶ 初期化 (poetry run init-env) | Environment setup |
+| ▶ テスト (poetry run pytest) | Run tests |
 | py-spy: top / record … | Profiler |
 
 CLI equivalents (optional):
@@ -133,6 +136,7 @@ poetry run build
 poetry run build -- --safe-mode
 poetry run collect
 poetry run installer
+poetry run pytest
 ```
 
 ## How to Contribute
@@ -148,7 +152,7 @@ Use [Feature Request Issue](../../issues/new?template=feature_request.md). Expla
 1. Check or open an Issue.
 2. `git checkout -b feature/your-feature-name`
 3. Match existing style. Comment only where it helps.
-4. Verify with **“Python: EzCo”**. Use **“▶ ビルド”** or **“▶ ビルド (--safe-mode)”** only when you need a packaged build.
+4. Verify with **“Python: EzCo”**. Run tests with **“▶ テスト”** or the **“EzCo: テスト”** task. Use **“▶ ビルド”** or **“▶ ビルド (--safe-mode)”** only when you need a packaged build.
 5. Open a [Pull Request](../../compare) and describe the change.
 
 For plugins, see [docs/plugins.md](docs/plugins.md) and [plugins/README.md](plugins/README.md). Folders under `plugins/` load as-is while developing. Rebuild the `.zip` in [`dist-sample-plugins/`](dist-sample-plugins/) only when distributing.

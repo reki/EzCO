@@ -120,6 +120,18 @@
             "preLaunchTask": "EzCo: 初期化"
         },
         {
+            "name": "▶ テスト (poetry run pytest)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tooling/noop.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "preLaunchTask": "EzCo: テスト"
+        },
+        {
             "name": "py-spy: top (EzCo)",
             "type": "node-terminal",
             "request": "launch",
@@ -148,16 +160,6 @@
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/src"
             }
-        }
-    ],
-    "compounds": [
-        {
-            "name": "ビルド → Python: EzCo",
-            "configurations": [
-                "Python: EzCo"
-            ],
-            "preLaunchTask": "EzCo: ビルド",
-            "stopAll": true
         }
     ]
 }

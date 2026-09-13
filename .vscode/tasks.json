@@ -101,6 +101,29 @@
                 "clear": false
             },
             "problemMatcher": []
+        },
+        {
+            "label": "EzCo: テスト",
+            "type": "shell",
+            "command": "poetry",
+            "args": [
+                "run",
+                "pytest"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false,
+                "clear": false
+            },
+            "problemMatcher": []
         }
     ]
 }
