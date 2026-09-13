@@ -1,0 +1,9 @@
+{
+  "id": "com.ezco.error_callback",
+  "name": "Error Callback Probe",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "plugin:ErrorCallbackPlugin",
+  "description": "Test plugin with a sidebar Error button that raises. Not for production.",
+  "author": "EzCo"
+}

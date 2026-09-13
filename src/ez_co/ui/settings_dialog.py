@@ -185,6 +185,7 @@ class SettingsDialog(QDialog):
         self._disable_if_overridden("debug.enabled", "debug_mode", self.debug_mode_checkbox)
         self._disable_if_overridden("debug.keep_archive_handles", "keep_archive_handles", self.keep_archive_handles_checkbox)
         self._disable_if_overridden("debug.cache_archive_metadata", "cache_archive_metadata", self.cache_archive_metadata_checkbox)
+        self._disable_if_overridden("debug.show_error_log", "show_error_log", self.show_error_log_checkbox)
 
     def create_general_tab(self):
         """全般タブを作成"""
@@ -704,6 +705,17 @@ class SettingsDialog(QDialog):
         metadata_description.setWordWrap(True)
         self._apply_setting_tip("cache_archive_metadata", metadata_description)
         debug_layout.addRow(metadata_description)
+
+        self.show_error_log_checkbox = QCheckBox(get_text("settings.show_error_log"))
+        self.show_error_log_checkbox.setChecked(self.config.debug.get("show_error_log", False))
+        self._apply_setting_tip("show_error_log", self.show_error_log_checkbox)
+        debug_layout.addRow(self.show_error_log_checkbox)
+
+        error_log_description = QLabel(get_text("settings.show_error_log_description"))
+        error_log_description.setStyleSheet("color: #666; font-size: 10px;")
+        error_log_description.setWordWrap(True)
+        self._apply_setting_tip("show_error_log", error_log_description)
+        debug_layout.addRow(error_log_description)
         
         debug_group.setLayout(debug_layout)
         layout.addWidget(debug_group)
@@ -1052,6 +1064,7 @@ class SettingsDialog(QDialog):
             self.debug_mode_checkbox.setChecked(config_dict["debug"].get("enabled", False))
             self.keep_archive_handles_checkbox.setChecked(config_dict["debug"].get("keep_archive_handles", False))
             self.cache_archive_metadata_checkbox.setChecked(config_dict["debug"].get("cache_archive_metadata", True))
+            self.show_error_log_checkbox.setChecked(config_dict["debug"].get("show_error_log", False))
         
         # キャッシュ設定
         if "cache" in config_dict:
@@ -1265,6 +1278,7 @@ class SettingsDialog(QDialog):
         self.config.debug["enabled"] = self.debug_mode_checkbox.isChecked()
         self.config.debug["keep_archive_handles"] = self.keep_archive_handles_checkbox.isChecked()
         self.config.debug["cache_archive_metadata"] = self.cache_archive_metadata_checkbox.isChecked()
+        self.config.debug["show_error_log"] = self.show_error_log_checkbox.isChecked()
         
         # キャッシュ設定
         # キャッシュサイズの入力値を検証

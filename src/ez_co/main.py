@@ -14,7 +14,14 @@ from ez_co.config import Config
 from ez_co.handlers.file_handler import FileHandler
 from ez_co.utils.path_utils import get_project_root
 from ez_co.utils.language_manager import language_manager, set_language, get_log_text, get_text
-from ez_co.utils.error_logger import initialize_error_logger, setup_exception_handler, setup_qt_exception_handler, get_error_logger
+from ez_co.utils.error_logger import (
+    initialize_error_logger,
+    setup_exception_handler,
+    setup_qt_exception_handler,
+    get_error_logger,
+    set_error_log_enabled,
+    create_application,
+)
 from ez_co.utils.database import DatabaseManager
 
 # ロギングの設定
@@ -281,7 +288,7 @@ def main():
         # エラーログ機能を初期化
         initialize_error_logger()
         setup_exception_handler()
-        app = QApplication(sys.argv)
+        app = create_application(sys.argv)
         app.setApplicationName(get_text("application_name"))
         # Qtアプリケーションの例外ハンドラーを設定
         setup_qt_exception_handler(app)
@@ -329,6 +336,7 @@ def main():
             error_logger.log_error(get_log_text("main_app_font_set_error", error=e), e)
         # デバッグログの初期化
         initialize_debug_logging(config)
+        set_error_log_enabled(lambda: bool(config.debug.get("show_error_log", False)))
         # メインウィンドウの作成
         window = MainWindow(config, db_manager=db_manager)
         

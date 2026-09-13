@@ -1,10 +1,10 @@
 import sys
-import os
+import threading
 import traceback
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Callable
 class ErrorLogger:
     """エラーログを管理するクラス"""
     def __init__(self, log_dir: Optional[Path] = None):
@@ -97,6 +97,114 @@ class ErrorLogger:
             pass
 # グローバルなエラーロガーインスタンス
 error_logger = None
+_error_log_enabled: Optional[Callable[[], bool]] = None
+_error_dialog_queue = None
+_dialog_open = False
+
+
+def set_error_log_enabled(getter: Optional[Callable[[], bool]]) -> None:
+    global _error_log_enabled
+    _error_log_enabled = getter
+
+
+def _is_error_log_enabled() -> bool:
+    if _error_log_enabled is None:
+        return False
+    try:
+        return bool(_error_log_enabled())
+    except Exception:
+        return False
+
+
+def _should_ignore(exc_type) -> bool:
+    return exc_type is not None and issubclass(exc_type, (KeyboardInterrupt, SystemExit, GeneratorExit))
+
+
+def _format_error_text(exc=None, exc_info=None) -> str:
+    if exc_info is not None:
+        return "".join(traceback.format_exception(*exc_info))
+    if exc is not None:
+        return "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    return ""
+
+
+def _ensure_dialog_queue():
+    global _error_dialog_queue
+    if _error_dialog_queue is not None:
+        return _error_dialog_queue
+    try:
+        from PySide6.QtCore import QObject, Qt, Signal
+        from PySide6.QtWidgets import QApplication
+    except ImportError:
+        return None
+    app = QApplication.instance()
+    if app is None:
+        return None
+
+    class _Emitter(QObject):
+        requested = Signal(str, str)
+
+        def __init__(self):
+            super().__init__()
+            self.requested.connect(self._show, Qt.QueuedConnection)
+
+        def _show(self, where, text):
+            _open_error_dialog(where, text)
+
+    emitter = _Emitter()
+    emitter.moveToThread(app.thread())
+    _error_dialog_queue = emitter
+    return _error_dialog_queue
+
+
+def _open_error_dialog(where: str, text: str) -> None:
+    global _dialog_open
+    if _dialog_open:
+        return
+    _dialog_open = True
+    try:
+        from PySide6.QtWidgets import QApplication
+        from ez_co.ui.error_log_dialog import ErrorLogDialog
+
+        app = QApplication.instance()
+        if app is None:
+            return
+        dialog = ErrorLogDialog(where, text, app.activeWindow())
+        dialog.exec()
+    except Exception:
+        pass
+    finally:
+        _dialog_open = False
+
+
+def _enqueue_error_dialog(where: str, text: str) -> None:
+    queue = _ensure_dialog_queue()
+    if queue is None:
+        return
+    queue.requested.emit(where, text)
+
+
+def report_error(where, exc=None, plugin_id=None, exc_info=None) -> None:
+    if exc_info is not None and _should_ignore(exc_info[0]):
+        return
+    if exc is not None and _should_ignore(type(exc)):
+        return
+    text = _format_error_text(exc=exc, exc_info=exc_info)
+    if not text and exc is not None:
+        text = f"{type(exc).__name__}: {exc}"
+    if not text:
+        return
+    location = str(where or "error")
+    if plugin_id:
+        location = f"{plugin_id} / {location}"
+    try:
+        get_error_logger().logger.error("%s\n%s", location, text)
+    except Exception:
+        logging.getLogger("EzCo_Error").error("%s\n%s", location, text)
+    if _is_error_log_enabled():
+        _enqueue_error_dialog(location, text)
+
+
 def initialize_error_logger(log_dir: Optional[Path] = None) -> ErrorLogger:
     """
     エラーロガーを初期化
@@ -121,41 +229,48 @@ def get_error_logger() -> ErrorLogger:
 def setup_exception_handler():
     """未処理例外のハンドラーを設定"""
     def handle_exception(exc_type, exc_value, exc_traceback):
-        """未処理例外をハンドリング"""
-        logger = get_error_logger()
-        logger.log_exception(exc_type, exc_value, exc_traceback)
-        # 元のsys.excepthookを呼び出して標準的な処理も行う
+        if _should_ignore(exc_type):
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+        report_error("unhandled", exc_value, exc_info=(exc_type, exc_value, exc_traceback))
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
-    # 未処理例外のハンドラーを設定
+
     sys.excepthook = handle_exception
+
+    def handle_thread(args):
+        if _should_ignore(args.exc_type):
+            return
+        report_error(
+            "thread",
+            args.exc_value,
+            exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
+        )
+
+    threading.excepthook = handle_thread
+
+
+class ErrorReportingApplication:
+    """QApplication の notify を包み、スロット例外で落とさない。"""
+
+    def notify(self, receiver, event):
+        try:
+            return super().notify(receiver, event)
+        except Exception as exc:
+            report_error("qt", exc)
+            return False
+
+
+def create_application(argv):
+    from PySide6.QtWidgets import QApplication
+
+    class _App(ErrorReportingApplication, QApplication):
+        pass
+
+    return _App(argv)
+
+
 def setup_qt_exception_handler(app):
-    """
-    Qtアプリケーションのイベントループ内での例外をキャッチするハンドラーを設定
-    Args:
-        app: QApplicationインスタンス
-    """
-    def qt_exception_handler(exc_type, exc_value, exc_traceback):
-        """Qtイベントループ内での例外をハンドリング"""
-        logger = get_error_logger()
-        logger.log_exception(exc_type, exc_value, exc_traceback)
-        # 元のsys.excepthookを呼び出して標準的な処理も行う
-        sys.__excepthook__(exc_type, exc_value, exc_traceback)
-    # Qtアプリケーションのイベントループ内での例外をキャッチ
-    try:
-        from PySide6.QtCore import QTimer
-        from PySide6.QtWidgets import QApplication
-        def check_exceptions():
-            """定期的に例外をチェック"""
-            if hasattr(sys, 'last_type') and sys.last_type is not None:
-                qt_exception_handler(sys.last_type, sys.last_value, sys.last_traceback)
-                # クリア
-                sys.last_type = None
-                sys.last_value = None
-                sys.last_traceback = None
-        # タイマーを設定して定期的に例外をチェック
-        timer = QTimer()
-        timer.timeout.connect(check_exceptions)
-        timer.start(1000)  # 1秒ごとにチェック
-    except ImportError:
-        # PySide6が利用できない場合
-        pass 
+    """ダイアログ用キューを用意する。notify の捕捉は create_application 側。"""
+    if app is None:
+        return
+    _ensure_dialog_queue() 

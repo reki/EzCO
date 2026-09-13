@@ -86,7 +86,8 @@ class Config:
         self.debug = {
             "enabled": False,
             "keep_archive_handles": False,
-            "cache_archive_metadata": True
+            "cache_archive_metadata": True,
+            "show_error_log": False,
         }
         # アーカイブ設定をenumから初期化
         self.archive = {"enabled": True}
@@ -321,7 +322,8 @@ class Config:
             config.debug.update({
                 "enabled": debug_data.get("enabled", False),
                 "keep_archive_handles": debug_data.get("keep_archive_handles", False),
-                "cache_archive_metadata": debug_data.get("cache_archive_metadata", True)
+                "cache_archive_metadata": debug_data.get("cache_archive_metadata", True),
+                "show_error_log": debug_data.get("show_error_log", False),
             })
         if "archive" in merged_data:
             archive_data = merged_data["archive"]

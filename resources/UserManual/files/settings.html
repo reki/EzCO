@@ -428,6 +428,16 @@ language:
                             <div class="setting-value">デフォルト: true</div>
                         </div>
 
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">エラー時にエラーログを表示する</span>
+                                <span class="setting-key">debug.show_error_log</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>プラグインの setup／コールバック／読み込み失敗と、本体の未処理例外でスタックトレースを表示し、コピーできます。通常はオフです。</p>
+                            <div class="setting-value">デフォルト: false</div>
+                        </div>
+
                         <div class="warning-box">
                             <h3>🔧 ファイルハンドル管理の使い分け</h3>
                             <ul>
@@ -442,6 +452,7 @@ debug:
   enabled: true                      # デバッグログを有効にする
   keep_archive_handles: false       # ファイルハンドル保持（推奨: false）
   cache_archive_metadata: true      # アーカイブメタデータキャッシュ
+  show_error_log: false              # エラー時にスタックトレースを表示する
                         </div>
                     </section>
 

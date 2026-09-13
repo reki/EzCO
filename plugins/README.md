@@ -22,6 +22,8 @@ DLL プラグインはまだ未対応です。
 | `example_png.zip` | `.png` をプラグイン経由で開く確認用。色とラベルを重ねます。[README](example_png/README.md) |
 | `example_zip.zip` | `.zip` をプラグイン経由で開く確認用。パスワードダイアログの呼び出しも含みます。[README](example_zip/README.md) |
 | `product_info.zip` | 商品情報サイドバー。`info.json` と `folder.jpg` を表示。無いときはフォルダ／ファイル名の DLsite / DMM 番号から Web 取得（設定で OFF 可。フォルダには書かない）。[README](product_info/README.md) |
+| `error_setup.zip` | 確認用。`setup()` で例外を出す。[README](error_setup/README.md) |
+| `error_callback.zip` | 確認用。サイドバーの「エラー」ボタンでコールバック例外を出す。[README](error_callback/README.md) |
 
 `example_png/`、`example_zip/`、`product_info/` はソースです。ホストが読むのは `.zip` の方なので、ソースを直したら ZIP を作り直してください。
 

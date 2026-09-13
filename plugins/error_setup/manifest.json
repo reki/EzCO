@@ -1,0 +1,9 @@
+{
+  "id": "com.ezco.error_setup",
+  "name": "Error Setup Probe",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "plugin:ErrorSetupPlugin",
+  "description": "Test plugin that raises in setup(). Not for production.",
+  "author": "EzCo"
+}

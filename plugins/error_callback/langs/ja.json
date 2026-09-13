@@ -1,0 +1,5 @@
+{
+  "title": "エラー検証",
+  "error_button": "エラー",
+  "callback_error": "error_callback: コールバックで意図的に例外を出しています"
+}

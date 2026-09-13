@@ -257,6 +257,10 @@ class PluginHost:
     def load_ui(self, data_or_path):
         return self._call_on_ui(lambda: self._load_ui(data_or_path))
 
+    def report_error(self, where, exc, plugin_id: Optional[str] = None) -> None:
+        from ez_co.utils.error_logger import report_error
+        report_error(where, exc, plugin_id=plugin_id)
+
     def emit(self, event: str, payload=None, plugin_id: Optional[str] = None) -> None:
         name = str(event or "").strip()
         if not name:
@@ -271,9 +275,9 @@ class PluginHost:
                 try:
                     callback()
                 except Exception as exc:
-                    logger.debug(get_log_text("plugin_event_failed", event=name, error=exc))
+                    self.report_error(name, exc, plugin_id=owner)
             except Exception as exc:
-                logger.debug(get_log_text("plugin_event_failed", event=name, error=exc))
+                self.report_error(name, exc, plugin_id=owner)
 
     def configs_for(self, plugin_id: str) -> list[ConfigField]:
         return list(self._config_fields.get(plugin_id, []))
@@ -318,10 +322,10 @@ class PluginHost:
                 record.callback()
                 return True
             except Exception as exc:
-                logger.debug(get_log_text("plugin_event_failed", event=action_id, error=exc))
+                self.report_error(action_id, exc, plugin_id=record.plugin_id)
                 return False
         except Exception as exc:
-            logger.debug(get_log_text("plugin_event_failed", event=action_id, error=exc))
+            self.report_error(action_id, exc, plugin_id=record.plugin_id)
             return False
         return True if result is None else bool(result)
 
@@ -661,6 +665,9 @@ class ScopedPluginHost:
 
     def run_action(self, action_id: str, **kwargs) -> bool:
         return self._host.run_action(action_id, **kwargs)
+
+    def report_error(self, where, exc) -> None:
+        self._host.report_error(where, exc, plugin_id=self._plugin_id)
 
     def registered_formats(self) -> list[FormatSpec]:
         return self._host.formats_for(self._plugin_id)

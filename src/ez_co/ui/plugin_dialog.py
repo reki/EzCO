@@ -250,8 +250,13 @@ class PluginDialog(QDialog):
             self.plugin_table.setItem(index, 3, self._text_item(plugin.manifest.version))
             self.plugin_table.setItem(index, 4, self._text_item(self._plugin_kind_label(plugin)))
             self.plugin_table.setItem(index, 5, self._text_item(extensions))
-            self.plugin_table.setItem(index, 6, self._text_item(get_text("ui.plugin_status_ok")))
-            self._set_settings_cell(index, plugin)
+            if plugin.error:
+                status = get_text("ui.plugin_status_error").format(error=plugin.error)
+                self.plugin_table.setItem(index, 6, self._text_item(status))
+                self.plugin_table.setItem(index, 7, self._text_item("-"))
+            else:
+                self.plugin_table.setItem(index, 6, self._text_item(get_text("ui.plugin_status_ok")))
+                self._set_settings_cell(index, plugin)
         for offset, (path, error) in enumerate(failed):
             index = len(rows) + offset
             status = get_text("ui.plugin_status_error").format(error=error)

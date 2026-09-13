@@ -21,6 +21,7 @@ from ez_co.plugins.api import (
 from ez_co.plugins.backends import DllBackend, ZipPythonBackend
 from ez_co.plugins.host import PluginHost
 from ez_co.plugins.manifest import PluginManifest
+from ez_co.utils.error_logger import report_error
 from ez_co.utils.language_manager import get_log_text
 from ez_co.utils.path_utils import get_project_root
 
@@ -77,14 +78,26 @@ class LoadedPlugin:
         return None
 
     def get_file_count(self, file_path: str) -> int:
-        return int(self.instance.get_file_count(file_path))
+        try:
+            return int(self.instance.get_file_count(file_path))
+        except Exception as exc:
+            report_error("get_file_count", exc, plugin_id=self.plugin_id)
+            return 0
 
     def list_entries(self, file_path: str) -> list[str]:
-        names = self.instance.list_entries(file_path)
-        return [str(name) for name in names]
+        try:
+            names = self.instance.list_entries(file_path)
+            return [str(name) for name in names]
+        except Exception as exc:
+            report_error("list_entries", exc, plugin_id=self.plugin_id)
+            return []
 
     def read_entry(self, file_path: str, index: int):
-        return self.instance.read_entry(file_path, index)
+        try:
+            return self.instance.read_entry(file_path, index)
+        except Exception as exc:
+            report_error("read_entry", exc, plugin_id=self.plugin_id)
+            return None
 
 
 @dataclass(frozen=True)
@@ -224,6 +237,7 @@ class PluginManager:
                 message = str(exc)
                 self.failed.append((path, message))
                 logger.warning(get_log_text("plugin_load_failed", path=path, error=exc))
+                report_error("load", exc, plugin_id=str(path.name))
         self._scanned = True
 
     def is_enabled(self, plugin_id: str, config=None) -> bool:
@@ -235,7 +249,11 @@ class PluginManager:
         return bool(enabled[plugin_id])
 
     def enabled_plugins(self, config=None) -> list[LoadedPlugin]:
-        return [plugin for plugin in self.plugins if self.is_enabled(plugin.plugin_id, config)]
+        return [
+            plugin
+            for plugin in self.plugins
+            if self.is_enabled(plugin.plugin_id, config) and not plugin.error
+        ]
 
     def get_plugin(self, plugin_id: str) -> Optional[LoadedPlugin]:
         """provider キー（id(ver:version)）または旧形式の id だけで探す。"""
@@ -327,12 +345,17 @@ class PluginManager:
     def _activate_plugin(self, plugin: LoadedPlugin) -> None:
         if plugin.ui_active:
             return
+        plugin.error = None
         setup = getattr(plugin.instance, "setup", None)
         if callable(setup):
             try:
                 setup()
             except Exception as exc:
+                plugin.error = str(exc)
+                plugin.ui_active = False
+                self.host.clear_plugin(plugin.plugin_id)
                 logger.warning(get_log_text("plugin_setup_failed", plugin_id=plugin.plugin_id, error=exc))
+                report_error("setup", exc, plugin_id=plugin.plugin_id)
                 return
         plugin.ui_active = True
 
@@ -343,6 +366,7 @@ class PluginManager:
                 teardown()
             except Exception as exc:
                 logger.debug(get_log_text("plugin_teardown_failed", plugin_id=plugin.plugin_id, error=exc))
+                report_error("teardown", exc, plugin_id=plugin.plugin_id)
         self.host.clear_plugin(plugin.plugin_id)
         plugin.ui_active = False
 

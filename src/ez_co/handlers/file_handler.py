@@ -285,6 +285,8 @@ class FileHandler:
             if not (decision.plugin and decision.is_image):
                 return None
             entry = decision.plugin.read_entry(str(file_path), 0)
+            if entry is None:
+                return None
             data = entry.data if hasattr(entry, "data") else entry[1]
             return self._image_from_bytes(data)
         except Exception as exc:
@@ -325,6 +327,8 @@ class FileHandler:
                 self._notify_error("file_not_in_archive", error_msg, archive_path_str)
                 return None
             entry = plugin.read_entry(archive_path_str, target_index)
+            if entry is None:
+                return None
             data = entry.data if hasattr(entry, "data") else entry[1]
             return self._image_from_bytes(data)
         except Exception as exc:
