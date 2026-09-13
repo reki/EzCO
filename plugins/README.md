@@ -37,6 +37,7 @@
 | `product_info/` | 商品情報サイドバー。`info.json` と `folder.jpg` を表示。無いときはフォルダ／ファイル名の DLsite / DMM 番号から Web 取得（設定で OFF 可。フォルダには書かない）。[README](product_info/README.md) |
 | `error_setup/` | 確認用。`setup()` で例外を出す。[README](error_setup/README.md) |
 | `error_callback/` | 確認用。サイドバーの「エラー」ボタンでコールバック例外を出す。[README](error_callback/README.md) |
+| `config_types/` | 確認用。設定種別（bool / string / int / float / color / date / datetime / choice / font）を全部登録する。[README](config_types/README.md) |
 
 ```python
 from pathlib import Path

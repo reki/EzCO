@@ -39,6 +39,7 @@ _DEFAULTS = {
     "writing": HORIZONTAL,
 }
 _INT_KEYS = ("font_size", "page_width", "page_height", "margin")
+_COLOR_KEYS = ("text_color", "bg_color")
 _DEBOUNCE_MS = 150
 
 
@@ -58,12 +59,28 @@ class TextImagePlugin:
         self._last_txt = None
         self.host.register_format(".txt", "archive")
         for key, default in _DEFAULTS.items():
-            value_type = "int" if key in _INT_KEYS else "string"
+            if key in _INT_KEYS:
+                value_type = "int"
+            elif key in _COLOR_KEYS:
+                value_type = "color"
+            elif key == "font_family":
+                value_type = "font"
+            elif key == "writing":
+                value_type = "choice"
+            else:
+                value_type = "string"
+            kwargs = {}
+            if key == "writing":
+                kwargs["choices"] = [
+                    (HORIZONTAL, self.get_text("writing_horizontal")),
+                    (VERTICAL, self.get_text("writing_vertical")),
+                ]
             self.host.register_config(
                 key,
                 value_type,
                 default,
                 label=self.get_text(key),
+                **kwargs,
             )
 
     def supported_formats(self):

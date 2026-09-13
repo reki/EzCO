@@ -1,0 +1,9 @@
+{
+  "id": "com.ezco.config_types",
+  "name": "Config Types Probe",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "plugin:ConfigTypesPlugin",
+  "description": "Test plugin that registers every host config type. Not for production.",
+  "author": "EzCo"
+}

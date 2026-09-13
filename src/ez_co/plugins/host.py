@@ -9,6 +9,7 @@ import copy
 import logging
 import threading
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from types import MappingProxyType
 from typing import Any, Callable, Optional
 
@@ -18,7 +19,8 @@ from ez_co.utils.language_manager import get_log_text, get_text
 logger = logging.getLogger(__name__)
 
 _APP_CONFIG_ALLOW = ("language", "viewer", "cache", "ui_font")
-_CONFIG_TYPES = ("bool", "string", "int")
+_CONFIG_TYPES = ("bool", "string", "int", "float", "color", "date", "datetime", "choice", "font")
+_COLOR_FALLBACK = "#000000"
 
 
 def make_plugin_action_id(plugin_id: str, action_id: str) -> str:
@@ -92,6 +94,7 @@ class ConfigField:
     default: Any = None
     label: str = ""
     description: str = ""
+    choices: tuple[tuple[str, str], ...] = ()
 
 
 def normalize_config_type(value_type) -> str:
@@ -100,11 +103,98 @@ def normalize_config_type(value_type) -> str:
         return "bool"
     if name in ("int", "integer"):
         return "int"
+    if name in ("float", "double", "number"):
+        return "float"
+    if name in ("color", "colour"):
+        return "color"
+    if name == "date":
+        return "date"
+    if name in ("datetime", "timestamp"):
+        return "datetime"
+    if name in ("choice", "enum", "select"):
+        return "choice"
+    if name in ("font", "font_family"):
+        return "font"
     return "string"
 
 
-def coerce_config_value(value_type: str, value, default=None):
+def normalize_config_choices(choices) -> tuple[tuple[str, str], ...]:
+    if not choices:
+        return ()
+    rows = []
+    seen = set()
+    for item in choices:
+        if isinstance(item, (list, tuple)) and item:
+            value = str(item[0])
+            label = str(item[1]) if len(item) > 1 else value
+        else:
+            value = str(item)
+            label = value
+        if value in seen:
+            continue
+        seen.add(value)
+        rows.append((value, label))
+    return tuple(rows)
+
+
+def _parse_hex_color(value) -> str:
+    text = str(value or "").strip()
+    if text.startswith("#"):
+        text = text[1:]
+    if len(text) == 3 and all(ch in "0123456789abcdefABCDEF" for ch in text):
+        return "#" + "".join(ch.lower() * 2 for ch in text)
+    if len(text) == 6 and all(ch in "0123456789abcdefABCDEF" for ch in text):
+        return "#" + text.lower()
+    return ""
+
+
+def _unix_seconds(value) -> Optional[int]:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, datetime):
+        moment = value
+        if moment.tzinfo is None:
+            moment = moment.replace(tzinfo=timezone.utc)
+        else:
+            moment = moment.astimezone(timezone.utc)
+        return int(moment.timestamp())
+    if isinstance(value, (int, float)):
+        return int(value)
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return int(float(text))
+    except (TypeError, ValueError):
+        pass
+    try:
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        if "T" in text or " " in text:
+            moment = datetime.fromisoformat(text.replace(" ", "T", 1))
+        else:
+            moment = datetime.fromisoformat(text)
+        if moment.tzinfo is None:
+            moment = moment.replace(tzinfo=timezone.utc)
+        else:
+            moment = moment.astimezone(timezone.utc)
+        return int(moment.timestamp())
+    except ValueError:
+        return None
+
+
+def _date_seconds(value) -> Optional[int]:
+    parsed = _unix_seconds(value)
+    if parsed is None:
+        return None
+    moment = datetime.fromtimestamp(parsed, tz=timezone.utc)
+    midnight = datetime(moment.year, moment.month, moment.day, tzinfo=timezone.utc)
+    return int(midnight.timestamp())
+
+
+def coerce_config_value(value_type: str, value, default=None, choices=None):
     kind = normalize_config_type(value_type)
+    options = normalize_config_choices(choices)
     if kind == "bool":
         if isinstance(value, bool):
             return value
@@ -125,6 +215,41 @@ def coerce_config_value(value_type: str, value, default=None):
                 return int(default)
             except (TypeError, ValueError):
                 return 0
+    if kind == "float":
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            try:
+                return float(default)
+            except (TypeError, ValueError):
+                return 0.0
+    if kind == "color":
+        return _parse_hex_color(value) or _parse_hex_color(default) or _COLOR_FALLBACK
+    if kind == "date":
+        parsed = _date_seconds(value)
+        if parsed is not None:
+            return parsed
+        parsed = _date_seconds(default)
+        return 0 if parsed is None else parsed
+    if kind == "datetime":
+        parsed = _unix_seconds(value)
+        if parsed is not None:
+            return parsed
+        parsed = _unix_seconds(default)
+        return 0 if parsed is None else parsed
+    if kind == "choice" and options:
+        text = "" if value is None else str(value)
+        allowed = {item[0] for item in options}
+        if text in allowed:
+            return text
+        fallback = "" if default is None else str(default)
+        if fallback in allowed:
+            return fallback
+        return options[0][0]
+    if kind == "font":
+        if value is None:
+            return "" if default is None else str(default)
+        return str(value)
     if value is None:
         return "" if default is None else str(default)
     return str(value)
@@ -460,7 +585,16 @@ class PluginHost:
         handle.close()
         return widget
 
-    def _register_config(self, plugin_id: str, key: str, value_type, default=None, label=None, description=None) -> None:
+    def _register_config(
+        self,
+        plugin_id: str,
+        key: str,
+        value_type,
+        default=None,
+        label=None,
+        description=None,
+        choices=None,
+    ) -> None:
         field_key = str(key or "").strip()
         if not field_key:
             return
@@ -470,6 +604,7 @@ class PluginHost:
             default=default,
             label=str(label or ""),
             description=str(description or ""),
+            choices=normalize_config_choices(choices),
         )
         rows = [item for item in self._config_fields.get(plugin_id, []) if item.key != field_key]
         rows.append(field)
@@ -490,12 +625,16 @@ class PluginHost:
         else:
             value = self._db.get_plugin_setting(plugin_id, key, default)
         if field is not None:
-            return coerce_config_value(field.value_type, value, field.default)
+            return coerce_config_value(field.value_type, value, field.default, field.choices)
         return value
 
     def _set_plugin_config(self, plugin_id: str, key: str, value, notify: bool = True) -> bool:
         field = self._field_for(plugin_id, key)
-        stored = coerce_config_value(field.value_type, value, field.default) if field is not None else value
+        stored = (
+            coerce_config_value(field.value_type, value, field.default, field.choices)
+            if field is not None
+            else value
+        )
         if self._db is None:
             ok = False
         else:
@@ -654,8 +793,24 @@ class ScopedPluginHost:
     def load_ui(self, data_or_path):
         return self._host.load_ui(data_or_path)
 
-    def register_config(self, key: str, value_type, default=None, label=None, description=None) -> None:
-        self._host._register_config(self._plugin_id, key, value_type, default, label, description)
+    def register_config(
+        self,
+        key: str,
+        value_type,
+        default=None,
+        label=None,
+        description=None,
+        choices=None,
+    ) -> None:
+        self._host._register_config(
+            self._plugin_id,
+            key,
+            value_type,
+            default,
+            label,
+            description,
+            choices,
+        )
 
     def get_config(self, key: str, default: Any = None):
         return self._host._get_plugin_config(self._plugin_id, key, default)

@@ -14,5 +14,6 @@ For development, use the unpacked folders under `plugins/` in the repo. Point th
 | `product_info.zip` | Product info sidebar. No LICENSE |
 | `error_setup.zip` | Raises in `setup()`. All three LICENSE files; viewer shows md |
 | `error_callback.zip` | Raises from a callback. txt and bare LICENSE; viewer shows txt |
+| `config_types.zip` | Registers every config type (bool / string / int / float / color / date / datetime / choice / font) |
 
 See [README.md](README.md) for a zip-from-source snippet.

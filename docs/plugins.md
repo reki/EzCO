@@ -318,7 +318,7 @@ class _Entry:
 - `host.register_action(action_id, label, callback, aliases=None)` — 独自アクション。ショートカット／ジェスチャーから呼ばれる
 - `host.unregister_action(action_id)`
 - `host.load_ui(bytes_or_path)` — Designer の `.ui` を `QUiLoader` で読む
-- `host.register_config(key, value_type, default=None, label=None, description=None)` — プラグイン設定ダイアログ用。`value_type` は `"bool"` / `"string"` / `"int"`。無効化してもスキーマは残るので `__init__` で登録してよい
+- `host.register_config(key, value_type, default=None, label=None, description=None, choices=None)` — プラグイン設定ダイアログ用。`value_type` は `"bool"` / `"string"` / `"int"` / `"float"` / `"color"` / `"date"` / `"datetime"` / `"choice"` / `"font"`。`choice` は `choices`（値の列、または `(value, label)`）。`color` は `#RRGGBB` 文字列。`date` / `datetime` は UTC の Unix 秒（int。`date` はその日 00:00:00）。無効化してもスキーマは残るので `__init__` で登録してよい
 
 状態:
 
@@ -329,7 +329,7 @@ class _Entry:
 
 自プラグイン設定（DB の `plugin_id` はハッシュ化。他プラグインの行は読めない）:
 
-- `host.get_config(key, default=None)` — 未保存ならスキーマの `default`
+- `host.get_config(key, default=None)` — 未保存ならスキーマの `default`。`date` / `datetime` は Unix 秒の int、`color` は `#RRGGBB`
 - `host.set_config(key, value)` — 型を正規化して保存し、そのプラグインへ `"config_changed"`（`{key, value}`）
 - `host.delete_config(key)`
 
@@ -615,6 +615,7 @@ UI は「プラグイン設定」ダイアログです。ON/OFF と読み込み�
 | `plugins/example_zip/` | `.zip` を `archive` として読む。パスワードダイアログの呼び方も含む |
 | `plugins/example_txt/` | `.txt` を `archive` として読む。本文をページ画像にする。サイドバーで字体・色・縦読み／横読みを即時反映 |
 | `plugins/product_info/` | 商品情報サイドバー。`resources/sidebar.ui` を `load_ui` で読む。`info.json` が無くフォルダ／ファイル名が DLsite / DMM 番号なら、標準ライブラリだけで非同期取得（ディスクには書かない。設定で OFF 可） |
+| `plugins/config_types/` | 確認用。設定種別を全部登録し、保存値をサイドバーに出す |
 
 ソースの `loader.py` 先頭にホスト契約のコメントがあります。確認するときはプラグイン設定で当該拡張子の読み込み方式をサンプル側にして OK / 適用してください。開いているファイルはすぐ再読み込みされます。新しく ZIP やフォルダを置いた直後だけ再起動してください。
 

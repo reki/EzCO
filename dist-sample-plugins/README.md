@@ -14,6 +14,7 @@
 | `product_info.zip` | 商品情報サイドバー。LICENSE なし |
 | `error_setup.zip` | `setup()` で例外を出す確認用。LICENSE 3種あり、表示は md |
 | `error_callback.zip` | コールバック例外の確認用。txt と無印あり、表示は txt |
+| `config_types.zip` | 設定種別の確認用。bool / string / int / float / color / date / datetime / choice / font |
 
 ソースから ZIP を作る例:
 
