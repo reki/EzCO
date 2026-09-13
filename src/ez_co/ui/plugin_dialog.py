@@ -1,5 +1,5 @@
 """プラグイン設定（一覧、ON/OFF、拡張子ごとの読み込み方式）。"""
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractScrollArea,
     QApplication,
@@ -22,7 +22,7 @@ from ez_co.plugins.api import BUILTIN_PROVIDER_ID, SKIP_PROVIDER_ID, FileKind
 from ez_co.plugins.manager import get_plugin_manager
 from ez_co.utils.language_manager import get_text
 
-PLUGIN_COLUMNS = ("enabled", "name", "id", "version", "kind", "extensions", "status")
+PLUGIN_COLUMNS = ("enabled", "name", "id", "version", "kind", "extensions", "status", "settings")
 PLUGIN_DEFAULT_WIDTHS = {
     "enabled": 56,
     "name": 160,
@@ -31,6 +31,7 @@ PLUGIN_DEFAULT_WIDTHS = {
     "kind": 90,
     "extensions": 90,
     "status": 110,
+    "settings": 72,
 }
 EXT_COLUMNS = ("extension", "kind", "handler")
 EXT_DEFAULT_WIDTHS = {
@@ -57,6 +58,8 @@ class NoWheelComboBox(QComboBox):
 
 
 class PluginDialog(QDialog):
+    applied = Signal()
+
     def __init__(self, config, parent=None):
         super().__init__(parent)
         self.config = config
@@ -94,6 +97,7 @@ class PluginDialog(QDialog):
             get_text("ui.plugin_kind"),
             get_text("ui.plugin_supported_extensions"),
             get_text("ui.plugin_status"),
+            get_text("ui.plugin_config"),
         ])
         self._prepare_table(self.plugin_table)
         self.plugin_table.setSortingEnabled(True)
@@ -123,14 +127,26 @@ class PluginDialog(QDialog):
 
         buttons = QHBoxLayout()
         buttons.addStretch()
+        apply_button = QPushButton(get_text("ui.apply"))
+        apply_button.clicked.connect(self._apply)
         ok_button = QPushButton(get_text("ui.ok"))
         ok_button.clicked.connect(self.accept)
         cancel_button = QPushButton(get_text("ui.cancel"))
         cancel_button.clicked.connect(self.reject)
+        buttons.addWidget(apply_button)
         buttons.addWidget(ok_button)
         buttons.addWidget(cancel_button)
         layout.addLayout(buttons)
         self.setLayout(layout)
+
+    def _apply(self):
+        if not self.has_changes():
+            return
+        self.apply_to_config()
+        self._original_enabled = dict(self._enabled)
+        self._original_handlers = dict(self._handler_choices)
+        self.apply_layout_to_config()
+        self.applied.emit()
 
     def _prepare_table(self, table: QTableWidget):
         header = table.horizontalHeader()
@@ -235,6 +251,7 @@ class PluginDialog(QDialog):
             self.plugin_table.setItem(index, 4, self._text_item(self._plugin_kind_label(plugin)))
             self.plugin_table.setItem(index, 5, self._text_item(extensions))
             self.plugin_table.setItem(index, 6, self._text_item(get_text("ui.plugin_status_ok")))
+            self._set_settings_cell(index, plugin)
         for offset, (path, error) in enumerate(failed):
             index = len(rows) + offset
             status = get_text("ui.plugin_status_error").format(error=error)
@@ -245,6 +262,7 @@ class PluginDialog(QDialog):
             self.plugin_table.setItem(index, 4, self._text_item("-"))
             self.plugin_table.setItem(index, 5, self._text_item("-"))
             self.plugin_table.setItem(index, 6, self._text_item(status))
+            self.plugin_table.setItem(index, 7, self._text_item("-"))
         if self.plugin_table.rowCount() == 0:
             self.plugin_table.setRowCount(1)
             empty = self._text_item(get_text("ui.plugin_no_plugins"))
@@ -253,6 +271,30 @@ class PluginDialog(QDialog):
             self.plugin_table.setSortingEnabled(False)
             return
         self.plugin_table.setSortingEnabled(True)
+
+    def _set_settings_cell(self, index: int, plugin):
+        fields = self.plugin_manager.host.configs_for(plugin.plugin_id)
+        if not fields:
+            self.plugin_table.setItem(index, 7, self._text_item("-"))
+            return
+        button = QPushButton(get_text("ui.plugin_config"))
+        button.clicked.connect(lambda _=False, item=plugin: self._open_plugin_config(item))
+        holder = QWidget()
+        holder_layout = QHBoxLayout(holder)
+        holder_layout.setContentsMargins(4, 0, 4, 0)
+        holder_layout.addWidget(button)
+        self.plugin_table.setCellWidget(index, 7, holder)
+
+    def _open_plugin_config(self, plugin):
+        from ez_co.ui.plugin_config_dialog import PluginConfigDialog
+
+        dialog = PluginConfigDialog(
+            self.plugin_manager.host,
+            plugin.plugin_id,
+            plugin.name,
+            self,
+        )
+        dialog.exec()
 
     def _on_enabled_changed(self, plugin_id: str, checked: bool):
         self._enabled[plugin_id] = bool(checked)

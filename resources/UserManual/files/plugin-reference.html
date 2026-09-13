@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>プラグインリファレンス - EzCo ユーザーマニュアル</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/settings.css">
+    <link rel="stylesheet" href="../css/plugin-reference.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1><img src="icon_32x32.png" alt="EzCo" class="logo-icon"> EzCo ユーザーマニュアル</h1>
+                <div class="language-switch">
+                    <a href="plugin-reference.html" class="active">日本語</a>
+                    <a href="plugin-reference-en.html">English</a>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="searchBox" placeholder="検索..." />
+                    <button id="searchBtn">🔍</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-container api-layout">
+            <nav class="sidebar api-sidebar">
+                <div class="toc">
+                    <h3>API 索引</h3>
+                    <ul class="toc-list">
+                        <li><a href="#overview" class="toc-link">概要</a></li>
+                        <li><a href="#package" class="toc-link">パッケージ構造</a></li>
+                        <li><a href="#manifest" class="toc-link">manifest.json</a></li>
+                        <li><a href="#loader" class="toc-link">FileLoader</a>
+                            <ul class="toc-sublist">
+                                <li><a href="#loader-init" class="toc-link">__init__</a></li>
+                                <li><a href="#supported-formats" class="toc-link">supported_formats</a></li>
+                                <li><a href="#get-file-count" class="toc-link">get_file_count</a></li>
+                                <li><a href="#list-entries" class="toc-link">list_entries</a></li>
+                                <li><a href="#read-entry" class="toc-link">read_entry</a></li>
+                                <li><a href="#setup-teardown" class="toc-link">setup / teardown</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="#host" class="toc-link">host</a>
+                            <ul class="toc-sublist">
+                                <li><a href="#register-format" class="toc-link">register_format</a></li>
+                                <li><a href="#register-sidebar" class="toc-link">register_sidebar</a></li>
+                                <li><a href="#unregister-sidebar" class="toc-link">unregister_sidebar</a></li>
+                                <li><a href="#register-action" class="toc-link">register_action</a></li>
+                                <li><a href="#unregister-action" class="toc-link">unregister_action</a></li>
+                                <li><a href="#register-config" class="toc-link">register_config</a></li>
+                                <li><a href="#get-config" class="toc-link">get_config</a></li>
+                                <li><a href="#set-config" class="toc-link">set_config</a></li>
+                                <li><a href="#delete-config" class="toc-link">delete_config</a></li>
+                                <li><a href="#load-ui" class="toc-link">load_ui</a></li>
+                                <li><a href="#get-current" class="toc-link">get_current</a></li>
+                                <li><a href="#on-off" class="toc-link">on / off</a></li>
+                                <li><a href="#get-app-config" class="toc-link">get_app_config</a></li>
+                                <li><a href="#ask-password" class="toc-link">ask_password</a></li>
+                                <li><a href="#show-dialog" class="toc-link">show_dialog</a></li>
+                                <li><a href="#run-action" class="toc-link">run_action</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="#gettext" class="toc-link">get_text</a></li>
+                        <li><a href="#root" class="toc-link">root</a></li>
+                        <li><a href="#events" class="toc-link">イベント</a></li>
+                        <li><a href="#limits" class="toc-link">制約</a></li>
+                    </ul>
+                </div>
+            </nav>
+
+            <main class="content api-main">
+                <div class="content-wrapper">
+                    <div class="breadcrumb">
+                        <a href="../Manual(JP).html">ホーム</a> &gt; プラグインリファレンス
+                    </div>
+
+                    <h1>🔌 プラグインリファレンス</h1>
+                    <p>本体がプラグインに渡す契約です。JavaDoc のように型と引数を並べています。ユーザー向けの配置手順は <a href="settings.html#plugin-settings">プラグイン設定</a> を、開発者向けの長文はリポジトリの <code>docs/plugins.md</code> を見てください。</p>
+                    <p><strong>API バージョン:</strong> <code>1</code>　／　<strong>配置:</strong> 実行ファイル旁 <code>plugins/</code> の ZIP のみ</p>
+
+                    <section id="overview" class="config-section">
+                        <h3>概要</h3>
+                        <p>プラグインはホストから生成され、コールバックされるだけです。コンストラクタは常に <code>Class(root, get_text, host)</code> です。<code>import ez_co</code> はできません。PySide6 と本体が入れているサードパーティは import できます。</p>
+                        <div class="api-index">
+                            <a href="#loader"><div class="api-index-name">FileLoader</div><div class="api-index-desc">画像／アーカイブの読み込み契約</div></a>
+                            <a href="#host"><div class="api-index-name">host</div><div class="api-index-desc">登録・設定・ダイアログ・アクション</div></a>
+                            <a href="#gettext"><div class="api-index-name">get_text</div><div class="api-index-desc">多言語文言</div></a>
+                            <a href="#root"><div class="api-index-name">root</div><div class="api-index-desc">ZIP 内リソース</div></a>
+                        </div>
+                    </section>
+
+                    <section id="package" class="config-section">
+                        <h3>パッケージ構造</h3>
+<pre class="api-example">my_plugin.zip
+├── manifest.json
+├── src/                 # import ルート
+│   └── loader.py
+├── langs/               # 任意 ja.json / en.json
+└── resources/           # 任意。root.read_bytes</pre>
+                        <p>余分な親フォルダを挟まないでください。開発フォルダを置いても、ホストが読むのは同名の ZIP です。</p>
+                    </section>
+
+                    <section id="manifest" class="config-section">
+                        <h3>manifest.json</h3>
+                        <p>ZIP の直下に置きます。ホストはこのファイルだけを見てプラグインを識別します。</p>
+
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">id</span>
+                                <span class="api-field-meta">string</span>
+                                <span class="api-field-meta">必須</span>
+                            </div>
+                            <p>プラグイン ID。設定の保存キーは <code>id(ver:version)</code> です。プラグイン設定の ID 列にはバージョンを付けません。</p>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">name</span>
+                                <span class="api-field-meta">string</span>
+                                <span class="api-field-meta">必須</span>
+                            </div>
+                            <p>一覧に出す表示名です。</p>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">version</span>
+                                <span class="api-field-meta">string</span>
+                                <span class="api-field-meta">必須</span>
+                            </div>
+                            <p>パッケージ版です。上げると設定キーが変わり、以前の保存値は引き継ぎません。</p>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">api_version</span>
+                                <span class="api-field-meta">int</span>
+                                <span class="api-field-meta">必須</span>
+                            </div>
+                            <p>ホスト契約の版です。現在は <code>1</code> だけが有効です。</p>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">entry</span>
+                                <span class="api-field-meta">string</span>
+                                <span class="api-field-meta">必須</span>
+                            </div>
+                            <p><code>モジュール:クラス</code> です。<code>src/</code> を import ルートとして読みます。例: <code>loader:FileLoader</code> は <code>src/loader.py</code> の <code>FileLoader</code>。</p>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">description</span>
+                                <span class="api-field-meta">string</span>
+                                <span class="api-field-meta">任意</span>
+                            </div>
+                            <p>プラグイン設定に出す短い説明です。</p>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">author</span>
+                                <span class="api-field-meta">string</span>
+                                <span class="api-field-meta">任意</span>
+                            </div>
+                            <p>作者名です。</p>
+                        </div>
+
+                        <p class="api-caption">サンプル（画像ローダー）</p>
+<pre class="api-example">{
+  "id": "com.example.png_loader",
+  "name": "Example PNG Loader",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "loader:FileLoader",
+  "description": "Sample .png loader.",
+  "author": "Example"
+}</pre>
+                        <p class="api-caption">サンプル（サイドバー）</p>
+<pre class="api-example">{
+  "id": "com.example.sidebar",
+  "name": "My Sidebar",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "plugin:MyPlugin",
+  "description": "Shows info for the current folder.",
+  "author": "Example"
+}</pre>
+                    </section>
+
+                    <section id="loader" class="config-section">
+                        <h3>FileLoader</h3>
+                        <p>ホストが <code>manifest.entry</code> のクラスを生成し、決まった名前のメソッドを呼びます。<code>ez_co.plugins.api</code> は import しません。サイドバーだけのプラグインでも同じコンストラクタです。</p>
+                        <p class="api-caption">画像ローダーの最小例（<code>src/loader.py</code>）</p>
+<pre class="api-example">class FileLoader:
+    def __init__(self, root, get_text, host):
+        self.root = root
+        self.get_text = get_text
+        self.host = host
+        host.register_format(".png", "image")
+
+    def get_file_count(self, file_path):
+        return 1
+
+    def list_entries(self, file_path):
+        return [file_path.replace("\\", "/").split("/")[-1]]
+
+    def read_entry(self, file_path, index):
+        with open(file_path, "rb") as handle:
+            data = handle.read()
+        return _Entry(self.list_entries(file_path)[index], data)
+
+
+class _Entry:
+    def __init__(self, name, data):
+        self.name = name
+        self.data = data</pre>
+
+                        <article id="loader-init" class="api-member">
+                            <div class="api-sig"><span class="api-kind">ctor</span><code>Class(root, get_text, host)</code></div>
+                            <div class="api-body">
+                                <p>唯一の生成経路です。使わない引数も受け取って保持します。</p>
+                                <table>
+                                    <thead><tr><th>引数</th><th>説明</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><code>root</code></td><td>ZIP 内ファイル。<code>read_bytes</code> / <code>exists</code></td></tr>
+                                        <tr><td><code>get_text</code></td><td>文言</td></tr>
+                                        <tr><td><code>host</code></td><td>登録・設定・状態</td></tr>
+                                    </tbody>
+                                </table>
+<pre class="api-example">def __init__(self, root, get_text, host):
+    self.root = root
+    self.get_text = get_text
+    self.host = host
+    host.register_format(".zip", "archive")
+    host.register_config("strict", "bool", default=True, label="Strict")</pre>
+                            </div>
+                        </article>
+
+                        <article id="supported-formats" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>supported_formats() -&gt; sequence</code></div>
+                            <div class="api-body">
+                                <p>互換用。新規は <code>host.register_format</code> を使います。ホストは掃引直後に登録結果を集め、無ければこのメソッドを呼びます。</p>
+                                <p><code>image</code> は1枚、<code>archive</code> は中身をページにします。</p>
+<pre class="api-example">def supported_formats(self):
+    return [(".png", "image")]
+    # または [{"extension": ".zip", "kind": "archive"}]</pre>
+                            </div>
+                        </article>
+
+                        <article id="get-file-count" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>get_file_count(file_path: str) -&gt; int</code></div>
+                            <div class="api-body">
+                                <p>画像エントリ数。アーカイブなら <code>len(list_entries(...))</code>、画像なら通常 <code>1</code>。</p>
+<pre class="api-example">def get_file_count(self, file_path):
+    return len(self.list_entries(file_path))</pre>
+                            </div>
+                        </article>
+
+                        <article id="list-entries" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>list_entries(file_path: str) -&gt; sequence[str]</code></div>
+                            <div class="api-body">
+                                <p>エントリ名の列。ディレクトリは返さない。返した順がページ順です。暗号化アーカイブはここでパスワードを取らないと件数 0 になります。</p>
+<pre class="api-example">def list_entries(self, file_path):
+    names = []
+    with ZipFile(file_path) as archive:
+        for name in archive.namelist():
+            if name.endswith("/"):
+                continue
+            if name.lower().endswith((".png", ".jpg", ".webp")):
+                names.append(name)
+    return names</pre>
+                            </div>
+                        </article>
+
+                        <article id="read-entry" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>read_entry(file_path: str, index: int) -&gt; object</code></div>
+                            <div class="api-body">
+                                <p><code>name</code>（str）と <code>data</code>（bytes、PIL が開ける画像）を持つオブジェクトを返します。ワーカーから呼ばれることがあります。UI はホスト API 経由。</p>
+<pre class="api-example">def read_entry(self, file_path, index):
+    name = self.list_entries(file_path)[index]
+    with ZipFile(file_path) as archive:
+        data = archive.read(name)
+    return _Entry(name, data)</pre>
+                            </div>
+                        </article>
+
+                        <article id="setup-teardown" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>setup() / teardown()</code></div>
+                            <div class="api-body">
+                                <p>任意。有効化で <code>setup</code>、無効化で <code>teardown</code> のあとホストがサイドバーとアクションを外します。設定スキーマは残ります。</p>
+<pre class="api-example">def setup(self):
+    widget = self.host.load_ui(self.root.read_bytes("resources/sidebar.ui"))
+    self.host.register_sidebar("info", self.get_text("title"), widget)
+    self.host.on("current_changed", self._on_current)
+
+def teardown(self):
+    self.host.off("current_changed")</pre>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section id="host" class="config-section">
+                        <h3>host</h3>
+                        <p>コンストラクタ第 3 引数。同じ名前はモジュール組み込みにも渡ります。プラグインから <code>bind</code> は呼びません。</p>
+
+                        <article id="register-format" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_format(extension, kind) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p><code>kind</code> は <code>"image"</code> / <code>"archive"</code>。<code>__init__</code> で登録してよい。</p>
+<pre class="api-example">host.register_format(".png", "image")
+host.register_format(".xyz", "archive")</pre>
+                            </div>
+                        </article>
+
+                        <article id="register-sidebar" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p><code>QWidget</code> または <code>QLayout</code>。ドック化は本体。開閉アクション <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code> を自動登録します。ドックの題名は <code>title</code> のまま、ショートカット／ジェスチャーの表示は本体が <code>{title}サイドバー表示/非表示</code> にします。<code>aliases</code> は旧ショートカット ID など。本体は特定プラグインの ID を知りません。</p>
+<pre class="api-example">widget = QWidget()
+host.register_sidebar("info", get_text("title"), widget)
+# 公開 ID: plugin:com.example.sidebar:sidebar:info
+
+host.register_sidebar(
+    "info",
+    get_text("title"),
+    widget,
+    aliases=("toggle_my_dock",),
+)</pre>
+                            </div>
+                        </article>
+
+                        <article id="unregister-sidebar" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.unregister_sidebar(sidebar_id) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p>サイドバーと自動登録した開閉アクションを外します。</p>
+<pre class="api-example">host.unregister_sidebar("info")</pre>
+                            </div>
+                        </article>
+
+                        <article id="register-action" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_action(action_id, label, callback, aliases=None) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p>独自アクション。公開 ID は <code>plugin:{plugin_id}:{action_id}</code>。<code>action_id</code> に <code>sidebar</code> と <code>:</code> は使えません。ショートカット／ジェスチャーの候補に出ます。既定キーは付きません。</p>
+<pre class="api-example">def _reload():
+    self._refresh(host.get_current("folder"))
+
+host.register_action("reload", get_text("reload"), _reload)
+# 公開 ID: plugin:com.example.sidebar:reload</pre>
+                            </div>
+                        </article>
+
+                        <article id="unregister-action" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.unregister_action(action_id) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p>独自アクションを外します。ユーザーの割り当ては設定に残ります。</p>
+<pre class="api-example">host.unregister_action("reload")</pre>
+                            </div>
+                        </article>
+
+                        <article id="register-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_config(key, value_type, default=None, label=None, description=None) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p><code>value_type</code> は <code>"bool"</code> / <code>"string"</code> / <code>"int"</code>。無効化してもスキーマは残るので <code>__init__</code> で登録してよい。一覧に「設定」ボタンが出ます。</p>
+<pre class="api-example">host.register_config(
+    "fetch_web",
+    "bool",
+    default=True,
+    label=get_text("config.fetch_web"),
+    description=get_text("config.fetch_web.desc"),
+)</pre>
+                            </div>
+                        </article>
+
+                        <article id="get-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.get_config(key, default=None) -&gt; Any</code></div>
+                            <div class="api-body">
+                                <p>自プラグインの保存値。未保存ならスキーマの default。他プラグインの行は読めません。</p>
+<pre class="api-example">if host.get_config("fetch_web", True):
+    self._fetch(folder)</pre>
+                            </div>
+                        </article>
+
+                        <article id="set-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.set_config(key, value) -&gt; bool</code></div>
+                            <div class="api-body">
+                                <p>型を正規化して保存し、そのプラグインへ <code>config_changed</code>（<code>{key, value}</code>）を送ります。</p>
+<pre class="api-example">host.set_config("fetch_web", False)</pre>
+                            </div>
+                        </article>
+
+                        <article id="delete-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.delete_config(key) -&gt; bool</code></div>
+                            <div class="api-body">
+                                <p>保存値を消します。スキーマは残ります。</p>
+<pre class="api-example">host.delete_config("fetch_web")</pre>
+                            </div>
+                        </article>
+
+                        <article id="load-ui" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.load_ui(bytes_or_path) -&gt; QWidget</code></div>
+                            <div class="api-body">
+                                <p>Designer の <code>.ui</code> を <code>QUiLoader</code> で読みます。</p>
+<pre class="api-example">widget = host.load_ui(self.root.read_bytes("resources/sidebar.ui"))
+title = widget.findChild(QLabel, "titleLabel")</pre>
+                            </div>
+                        </article>
+
+                        <article id="get-current" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.get_current(key) -&gt; Any</code></div>
+                            <div class="api-body">
+                                <table>
+                                    <thead><tr><th>key</th><th>内容</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><code>path</code></td><td>現在ページのファイルパス</td></tr>
+                                        <tr><td><code>folder</code></td><td>現在フォルダ</td></tr>
+                                        <tr><td><code>page</code></td><td>ページ番号</td></tr>
+                                    </tbody>
+                                </table>
+<pre class="api-example">folder = host.get_current("folder")
+path = host.get_current("path")
+page = host.get_current("page")</pre>
+                            </div>
+                        </article>
+
+                        <article id="on-off" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.on(event, callback) / host.off(event, callback=None)</code></div>
+                            <div class="api-body">
+                                <p><code>current_changed</code> と <code>config_changed</code>。<code>off</code> で callback を省略するとそのイベントの自プラグイン分を全部外します。</p>
+<pre class="api-example">def _on_current(payload):
+    self._refresh(payload.get("folder"))
+
+def _on_config(payload):
+    if payload.get("key") == "fetch_web":
+        self._refresh(host.get_current("folder"))
+
+host.on("current_changed", _on_current)
+host.on("config_changed", _on_config)
+host.off("current_changed")</pre>
+                            </div>
+                        </article>
+
+                        <article id="get-app-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.get_app_config() -&gt; Mapping</code></div>
+                            <div class="api-body">
+                                <p>読み取り専用。<code>language</code> / <code>viewer</code> / <code>cache</code> / <code>ui_font</code> だけです。</p>
+<pre class="api-example">lang = host.get_app_config().get("language")</pre>
+                            </div>
+                        </article>
+
+                        <article id="ask-password" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.ask_password(file_path, mismatch=False, verify=None) -&gt; str | None</code></div>
+                            <div class="api-body">
+                                <p>本体のパスワードダイアログ。セッションと履歴も見ます。ワーカーから呼んでも UI スレッドで動きます。<code>None</code> はキャンセルまたはアプリ終了です。</p>
+<pre class="api-example">password = host.ask_password(
+    file_path,
+    verify=lambda pwd: self._can_open(file_path, pwd),
+)
+if password is None:
+    raise RuntimeError("password cancelled")</pre>
+                            </div>
+                        </article>
+
+                        <article id="show-dialog" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.show_dialog(name, **kwargs) -&gt; Any</code></div>
+                            <div class="api-body">
+                                <p><code>password</code> / <code>archive_password</code> / <code>ask_password</code> は <code>ask_password</code> と同じ。それ以外は警告して <code>None</code>。</p>
+<pre class="api-example">password = host.show_dialog("ask_password", file_path=file_path)</pre>
+                            </div>
+                        </article>
+
+                        <article id="run-action" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.run_action(action_id, **kwargs) -&gt; bool</code></div>
+                            <div class="api-body">
+                                <p>本体アクション（例 <code>new_tab</code>）または登録済みプラグインアクションを呼びます。未対応なら <code>False</code>。</p>
+<pre class="api-example">host.run_action("new_tab")</pre>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section id="gettext" class="config-section">
+                        <h3>get_text</h3>
+                        <article class="api-member">
+                            <div class="api-sig"><span class="api-kind">func</span><code>get_text(key: str, **kwargs) -&gt; str</code></div>
+                            <div class="api-body">
+                                <p>探索順: プラグイン <code>langs/{言語}.json</code> → プラグイン ja/en → 本体。同じキーはプラグインが勝ちます。<code>str.format(**kwargs)</code> を使えます。</p>
+                                <p class="api-caption"><code>langs/ja.json</code></p>
+<pre class="api-example">{
+  "title": "商品情報",
+  "reload": "再読み込み",
+  "status": "{count} 件"
+}</pre>
+<pre class="api-example">title = get_text("title")
+status = get_text("status", count=3)</pre>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section id="root" class="config-section">
+                        <h3>root</h3>
+                        <article class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>root.read_bytes(relative_path: str) -&gt; bytes</code></div>
+                            <div class="api-body">
+                                <p>ZIP 内の相対パス。無ければ <code>KeyError</code>。</p>
+<pre class="api-example">ui = root.read_bytes("resources/sidebar.ui")
+icon = root.read_bytes("resources/icon.png")</pre>
+                            </div>
+                        </article>
+                        <article class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>root.exists(relative_path: str) -&gt; bool</code></div>
+                            <div class="api-body">
+                                <p>ZIP 内にあるか。</p>
+<pre class="api-example">if root.exists("resources/sidebar.ui"):
+    widget = host.load_ui(root.read_bytes("resources/sidebar.ui"))</pre>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section id="events" class="config-section">
+                        <h3>イベント</h3>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">current_changed</span>
+                            </div>
+                            <p>表示中のファイルが変わったとき。payload は <code>{path, folder, page}</code> です。</p>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">config_changed</span>
+                            </div>
+                            <p>自プラグインの <code>set_config</code> のあと。payload は <code>{key, value}</code> です。他プラグインの変更は来ません。</p>
+                        </div>
+<pre class="api-example">def _on_current(payload):
+    print(payload["folder"], payload["page"])
+
+def _on_config(payload):
+    print(payload["key"], payload["value"])
+
+host.on("current_changed", _on_current)
+host.on("config_changed", _on_config)</pre>
+                    </section>
+
+                    <section id="limits" class="config-section">
+                        <h3>制約</h3>
+                        <ul>
+                            <li><code>import ez_co</code> / 他プラグインの import は不可</li>
+                            <li>ドックの貼り付け／フローティングは本体</li>
+                            <li>他プラグインの設定は読めない（<code>plugin_id</code> はハッシュ化）</li>
+                            <li>DLL プラグインは未対応</li>
+                            <li>ZIP を足したら再起動が必要</li>
+                        </ul>
+                    </section>
+
+                    <div class="pagination">
+                        <a href="settings.html#plugin-settings" class="page-link">← プラグイン設定</a>
+                        <a href="../Manual(JP).html" class="page-link">ホーム →</a>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="../js/main.js"></script>
+    <script src="../js/search.js"></script>
+</body>
+</html>

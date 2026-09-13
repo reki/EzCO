@@ -9,5 +9,7 @@
   "work_format": "Work format",
   "genre": "Genre",
   "overview": "Overview",
-  "unknown_title": "Unknown title"
+  "unknown_title": "Unknown title",
+  "fetch_web": "Fetch product info from the web",
+  "fetch_web_help": "When info.json is missing, fetch from a DLsite / DMM id in the folder or file name. Nothing is written to the folder."
 }

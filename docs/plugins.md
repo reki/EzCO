@@ -1,6 +1,6 @@
 # EzCo プラグインマニュアル
 
-ファイル読み込みプラグインの開発者向けリファレンスです。エンドユーザー向けの配置手順は [plugins/README.md](../plugins/README.md) を参照してください。
+ファイル読み込みプラグインの開発者向けリファレンスです。エンドユーザー向けの配置手順は [plugins/README.md](../plugins/README.md) を参照してください。ブラウザ向けの API 一覧はユーザーマニュアルの [プラグインリファレンス](../resources/UserManual/files/plugin-reference.html) です。同梱プラグインごとの説明は各フォルダの `README.md` にあります。
 
 - **API バージョン**: `1`（`manifest.json` の `api_version` と一致必須）
 - **配置場所**: 実行ファイル（またはプロジェクトルート）旁の `plugins/` のみ
@@ -190,7 +190,7 @@ class FileLoader:
 | --- | --- |
 | `root` | プラグイン ZIP 内のファイル。`read_bytes` / `exists` |
 | `get_text` | 文言。`get_text("plugin.watermark")` |
-| `host` | 登録・設定・状態参照。`host.register_format` / `register_sidebar` / `get_config` |
+| `host` | 登録・設定・状態参照。`host.register_format` / `register_sidebar` / `register_action` / `get_config` |
 
 ---
 
@@ -307,23 +307,28 @@ class _Entry:
 登録（`__init__` または `setup`）:
 
 - `host.register_format(extension, kind)` — `kind` は `"image"` / `"archive"`
-- `host.register_sidebar(sidebar_id, title, widget_or_layout)` — `QWidget` または `QLayout`。ドック化は本体
+- `host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None)` — `QWidget` または `QLayout`。ドック化は本体。開閉アクションも自動登録され、ショートカット／ジェスチャーに出せる。表示名は `{title}サイドバー表示/非表示`。`aliases` は旧アクション ID など
 - `host.unregister_sidebar(sidebar_id)`
+- `host.register_action(action_id, label, callback, aliases=None)` — 独自アクション。ショートカット／ジェスチャーから呼ばれる
+- `host.unregister_action(action_id)`
 - `host.load_ui(bytes_or_path)` — Designer の `.ui` を `QUiLoader` で読む
+- `host.register_config(key, value_type, default=None, label=None, description=None)` — プラグイン設定ダイアログ用。`value_type` は `"bool"` / `"string"` / `"int"`。無効化してもスキーマは残るので `__init__` で登録してよい
 
 状態:
 
 - `host.get_current(key)` — `"path"` / `"folder"` / `"page"`
-- `host.on(event, callback)` / `host.off(event, callback)` — `"current_changed"`
+- `host.on(event, callback)` / `host.off(event, callback)` — `"current_changed"` / `"config_changed"`
 - `host.get_app_config()` — `language` / `viewer` / `cache` / `ui_font` の読み取り専用
 
 自プラグイン設定（DB の `plugin_id` はハッシュ化。他プラグインの行は読めない）:
 
-- `host.get_config(key, default=None)`
-- `host.set_config(key, value)`
+- `host.get_config(key, default=None)` — 未保存ならスキーマの `default`
+- `host.set_config(key, value)` — 型を正規化して保存し、そのプラグインへ `"config_changed"`（`{key, value}`）
 - `host.delete_config(key)`
 
-UI の再接続用に任意の `setup()` / `teardown()` を実装できます。無効化すると本体はサイドバーを外します。
+プラグイン設定の一覧にスキーマがある行は「設定」ボタンが出ます。そこでパネルを開き OK すると、本体ダイアログの OK を待たずに DB へ保存して通知します。
+
+UI の再接続用に任意の `setup()` / `teardown()` を実装できます。無効化すると本体はサイドバーと登録アクションを外します。
 
 ---
 
@@ -461,22 +466,48 @@ password = show_dialog("password", file_path=file_path, verify=fn)
 
 ---
 
+### `register_action`
+
+```text
+register_action(action_id: str, label: str, callback, aliases=None) -> None
+```
+
+プラグイン独自のアクションを登録する。ショートカット設定とジェスチャー設定の候補に出る。無効化すると登録は外れる。割り当て自体は設定に残る。
+
+**引数**
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| `action_id` | `str` | プラグイン内で一意。`sidebar` と `:` は使えない |
+| `label` | `str` | ダイアログに出す表示名 |
+| `callback` | callable | UI スレッドで呼ばれる |
+| `aliases` | 文字列または列 | 旧 ID など。本体はプラグイン固有の ID を持たない |
+
+公開 ID は `plugin:{plugin_id}:{action_id}`。`register_sidebar` の開閉は `plugin:{plugin_id}:sidebar:{sidebar_id}`。既定ショートカットは付かない。既存のショートカット ID を残したいときはプラグイン側で `aliases` を渡す。
+
+```python
+self.host.register_sidebar("main", self.get_text("title"), self.widget, aliases=("old_toggle_id",))
+self.host.register_action("refresh", self.get_text("refresh"), self.refresh)
+```
+
+---
+
 ### `run_action`
 
 ```text
 run_action(action_id: str, **kwargs) -> bool
 ```
 
-本体アクションを呼ぶ将来用の口。
+本体または登録済みプラグインのアクションを呼ぶ。
 
 **引数**
 
 | 名前 | 型 | 説明 |
 | --- | --- | --- |
-| `action_id` | `str` | 将来 `Actions` の値（例: `next_page`） |
+| `action_id` | `str` | 本体の `Actions` の値（例: `new_tab`）またはプラグインの公開 ID |
 | `**kwargs` | | 未使用 |
 
-**戻り値:** 成功なら `True`。現状は未配線のため常に `False`。
+**戻り値:** 実行できれば `True`。未対応の本体アクションは `False`。
 
 ---
 
@@ -544,7 +575,7 @@ plugins:
     .7z: none
   dialog:
     plugin_table:
-      order: [enabled, name, id, version, kind, extensions, status]
+      order: [enabled, name, id, version, kind, extensions, status, settings]
       widths: {enabled: 56, name: 160, id: 200, version: 72, kind: 90, extensions: 90, status: 110}
     ext_table:
       order: [extension, kind, handler]
@@ -569,7 +600,7 @@ UI は「プラグイン設定」ダイアログです。ON/OFF と読み込み�
 | --- | --- |
 | `plugins/example_png/` と `.zip` | `.png` を `image` として読む。色重ねは確認用 |
 | `plugins/example_zip/` と `.zip` | `.zip` を `archive` として読む。パスワードダイアログの呼び方も含む |
-| `plugins/product_info/` と `.zip` | 商品情報サイドバー。`resources/sidebar.ui` を `load_ui` で読む |
+| `plugins/product_info/` と `.zip` | 商品情報サイドバー。`resources/sidebar.ui` を `load_ui` で読む。`info.json` が無くフォルダ／ファイル名が DLsite / DMM 番号なら、標準ライブラリだけで非同期取得（ディスクには書かない。設定で OFF 可） |
 
 ソースの `loader.py` 先頭にホスト契約のコメントがあります。確認するときはプラグイン設定で当該拡張子の読み込み方式をサンプル側にして OK してください。開いているファイルはすぐ再読み込みされます。新規に ZIP を置いた直後だけ再起動してください。
 

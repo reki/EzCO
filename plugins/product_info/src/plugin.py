@@ -3,8 +3,10 @@ import logging
 import re
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import QObject, QThread, Qt, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QPixmap
+
+from fetch import fetch_product, match_product
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +34,24 @@ _WORK_STYLES = {
 }
 
 
+class _FetchWorker(QObject):
+    finished = Signal(str, object)
+
+    def __init__(self, folder, kind, product_id):
+        super().__init__()
+        self.folder = folder
+        self.kind = kind
+        self.product_id = product_id
+
+    def run(self):
+        data = None
+        try:
+            data = fetch_product(self.kind, self.product_id)
+        except Exception:
+            data = None
+        self.finished.emit(self.folder, data)
+
+
 def _alive(widget):
     if widget is None:
         return False
@@ -51,6 +71,17 @@ class ProductInfoPlugin:
         self._url = ""
         self._listening = False
         self._folder = None
+        self._cache = {}
+        self._fetch_token = 0
+        self._thread = None
+        self._worker = None
+        self.host.register_config(
+            "fetch_web",
+            "bool",
+            True,
+            label=self.get_text("fetch_web"),
+            description=self.get_text("fetch_web_help"),
+        )
 
     def setup(self):
         if not _alive(self.widget):
@@ -58,13 +89,21 @@ class ProductInfoPlugin:
             self._wire()
         if not self._listening:
             self.host.on("current_changed", self._on_current)
+            self.host.on("config_changed", self._on_config)
             self._listening = True
-        self.host.register_sidebar("product_info", self.get_text("title"), self.widget)
+        self.host.register_sidebar(
+            "product_info",
+            self.get_text("title"),
+            self.widget,
+            aliases=("toggle_product_info_dock",),
+        )
         self.refresh(self.host.get_current("folder"))
 
     def teardown(self):
+        self._stop_fetch()
         if self._listening:
             self.host.off("current_changed", self._on_current)
+            self.host.off("config_changed", self._on_config)
             self._listening = False
         self.host.unregister_sidebar("product_info")
         self.widget = None
@@ -111,24 +150,89 @@ class ProductInfoPlugin:
             folder = self.host.get_current("folder")
         self.refresh(folder)
 
+    def _on_config(self, payload=None):
+        if isinstance(payload, dict) and payload.get("key") not in (None, "fetch_web"):
+            return
+        if not self.host.get_config("fetch_web", True):
+            self._stop_fetch()
+            if self._folder and not (Path(self._folder) / "info.json").exists():
+                self._cache.pop(self._folder, None)
+                if _alive(self.widget):
+                    self._show_empty()
+            return
+        self.refresh(self._folder or self.host.get_current("folder"))
+
+    def _fetch_enabled(self) -> bool:
+        return bool(self.host.get_config("fetch_web", True))
+
     def refresh(self, folder_path):
         if not _alive(self.widget):
             return
         self._folder = folder_path
         if not folder_path:
+            self._stop_fetch()
             self._show_empty()
             return
         info_path = Path(folder_path) / "info.json"
-        if not info_path.exists():
-            self._show_empty()
+        if info_path.exists():
+            self._stop_fetch()
+            try:
+                with open(info_path, "r", encoding="utf-8") as handle:
+                    data = json.load(handle)
+            except Exception as exc:
+                self._show_error(self.get_text("load_failed", error=str(exc)))
+                return
+            self._show_info(data, folder_path)
             return
-        try:
-            with open(info_path, "r", encoding="utf-8") as handle:
-                data = json.load(handle)
-        except Exception as exc:
-            self._show_error(self.get_text("load_failed", error=str(exc)))
+        cached = self._cache.get(folder_path)
+        if cached is not None:
+            self._show_info(cached[0], folder_path, cached[1])
             return
-        self._show_info(data, folder_path)
+        self._show_empty()
+        if not self._fetch_enabled():
+            self._stop_fetch()
+            return
+        matched = match_product(Path(folder_path).name)
+        if matched is None:
+            current = self.host.get_current("path")
+            if current:
+                matched = match_product(Path(str(current)).name)
+        if matched is None:
+            self._stop_fetch()
+            return
+        self._start_fetch(folder_path, matched[0], matched[1])
+
+    def _start_fetch(self, folder_path, kind, product_id):
+        self._stop_fetch()
+        self._fetch_token += 1
+        worker = _FetchWorker(folder_path, kind, product_id)
+        thread = QThread()
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(self._on_fetched)
+        worker.finished.connect(thread.quit)
+        thread.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        self._worker = worker
+        self._thread = thread
+        thread.start()
+
+    def _stop_fetch(self):
+        self._fetch_token += 1
+        thread = self._thread
+        self._thread = None
+        self._worker = None
+        if thread is not None and thread.isRunning():
+            thread.quit()
+
+    def _on_fetched(self, folder_path, data):
+        if folder_path != self._folder or not _alive(self.widget):
+            return
+        if not data:
+            return
+        cover = data.pop("_cover", None)
+        self._cache[folder_path] = (data, cover)
+        self._show_info(data, folder_path, cover)
 
     def _set_visible(self, widget, visible):
         if widget is not None:
@@ -155,7 +259,7 @@ class ProductInfoPlugin:
             self.errorLabel.setText(message)
         self._set_visible(self.errorLabel, True)
 
-    def _show_info(self, data, folder_path):
+    def _show_info(self, data, folder_path, cover_bytes=None):
         self._set_visible(self.emptyLabel, False)
         self._set_visible(self.errorLabel, False)
         title = data.get("タイトル") or self.get_text("unknown_title")
@@ -174,13 +278,17 @@ class ProductInfoPlugin:
         self._url = str(data.get("URL") or "")
         self._set_visible(self.urlButton, bool(self._url))
 
-        cover = Path(folder_path) / "folder.jpg"
         shown_cover = False
-        if self.coverLabel is not None and cover.exists():
-            pixmap = QPixmap(str(cover))
-            if not pixmap.isNull():
-                self.coverLabel.setPixmap(pixmap.scaled(180, 180, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-                shown_cover = True
+        pixmap = QPixmap()
+        if cover_bytes:
+            pixmap.loadFromData(cover_bytes)
+        else:
+            cover = Path(folder_path) / "folder.jpg"
+            if cover.exists():
+                pixmap = QPixmap(str(cover))
+        if self.coverLabel is not None and not pixmap.isNull():
+            self.coverLabel.setPixmap(pixmap.scaled(180, 180, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            shown_cover = True
         if self.coverLabel is not None and not shown_cover:
             self.coverLabel.clear()
         self._set_visible(self.coverLabel, shown_cover)

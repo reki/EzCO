@@ -4,7 +4,7 @@ from PySide6.QtGui import QMouseEvent
 from ez_co.enums.arrows import Arrow
 import math
 from enum import Enum
-from ez_co.enums.actions import ACTIONS
+from ez_co.enums.actions import get_action_display_name
 from ez_co.utils.language_manager import get_text, get_log_text
 
 logger = logging.getLogger(__name__)
@@ -188,7 +188,7 @@ class MouseGesture:
             else:
                 display_gesture = gesture_str
             if action:
-                return f"{ACTIONS.get(action, action)}：{display_gesture}"
+                return f"{get_action_display_name(action)}：{display_gesture}"
             else:
                 return f"{get_text('ui.unassigned')}：{display_gesture}"
         # fallback: 方向列挙

@@ -1,6 +1,6 @@
 {
   "id": "com.ezco.product_info",
-  "name": "Product Info Sidebar",
+  "name": "DLSite/DMM 商品情報",
   "version": "1.0.0",
   "api_version": 1,
   "entry": "plugin:ProductInfoPlugin",

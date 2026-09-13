@@ -5,7 +5,13 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 import json
 import logging
-from ez_co.enums.actions import ACTION_LIST, get_action_display_name
+from ez_co.enums.actions import (
+    find_action_by_display_name,
+    get_action_display_name,
+    is_known_action,
+    list_assignable_actions,
+    list_bound_actions,
+)
 from ez_co.ui.mouse_gesture import MouseGesture
 from PySide6.QtGui import QColor
 from ez_co.utils.path_utils import get_project_root
@@ -46,7 +52,8 @@ class AddGestureDialog(QDialog):
         self.action_combo.setInsertPolicy(QComboBox.NoInsert)
         # 全てのアクションを順序通りに表示
         action_names = []
-        for key in ACTION_LIST:
+        actions = list_assignable_actions()
+        for key in actions:
             display_name = get_action_display_name(key)
             self.action_combo.addItem(display_name, key)
             action_names.append(display_name)
@@ -56,7 +63,7 @@ class AddGestureDialog(QDialog):
         completer.setFilterMode(Qt.MatchContains)
         self.action_combo.setCompleter(completer)
         # 最初のアクションを選択
-        if ACTION_LIST:
+        if actions:
             self.action_combo.setCurrentIndex(0)
         layout.addWidget(self.action_combo)
         btns = QHBoxLayout()
@@ -93,13 +100,7 @@ class AddGestureDialog(QDialog):
         # アクションの検証 - currentData()がNoneの場合は現在のテキストから検索
         action = self.action_combo.currentData()
         if action is None:
-            # テキストが入力されている場合、対応するアクションを検索
-            current_text = self.action_combo.currentText()
-            action = None
-            for act in ACTION_LIST:
-                if get_action_display_name(act) == current_text:
-                    action = act
-                    break
+            action = find_action_by_display_name(self.action_combo.currentText())
             if action is None:
                 QMessageBox.warning(self, get_text("dialogs.error"), get_text("ui.invalid_action"))
                 return
@@ -151,9 +152,8 @@ class GestureDialog(QDialog):
         layout.addLayout(ok_cancel)
     def load_gestures(self):
         self.table.setRowCount(0)
-        # ACTION_LISTの順序でアクションをソートして表示
         sorted_gestures = []
-        for action in ACTION_LIST:
+        for action in list_bound_actions(self.gesture_map.values()):
             for gesture, gesture_action in self.gesture_map.items():
                 if gesture_action == action:
                     sorted_gestures.append((gesture, gesture_action))
@@ -162,6 +162,7 @@ class GestureDialog(QDialog):
             row = self.table.rowCount()
             self.table.insertRow(row)
             item_action = QTableWidgetItem(get_action_display_name(action))
+            item_action.setData(Qt.ItemDataRole.UserRole, action)
             item_action.setFlags(item_action.flags() & ~Qt.ItemIsEditable)
             item_gesture = QTableWidgetItem(gesture)
             item_gesture.setFlags(item_gesture.flags() & ~Qt.ItemIsEditable)
@@ -175,7 +176,7 @@ class GestureDialog(QDialog):
             action = dlg.action
             if not gesture or not action:
                 return
-            if action not in ACTION_LIST:
+            if not is_known_action(action):
                 QMessageBox.warning(self, get_text("dialogs.error"), get_text("ui.invalid_action"))
                 return
             if gesture in self.gesture_map:
@@ -221,7 +222,7 @@ class GestureDialog(QDialog):
             if not isinstance(data, dict):
                 raise ValueError
             # バリデーション: アクションが存在するもののみ
-            valid = {g: a for g, a in data.items() if a in ACTION_LIST and isinstance(g, str)}
+            valid = {g: a for g, a in data.items() if is_known_action(a) and isinstance(g, str)}
             if not valid:
                 logger.warning(get_log_text("gesture_validation_failed"))
                 QMessageBox.warning(self, get_text("dialogs.error"), get_text("ui.no_valid_gestures"))
@@ -250,12 +251,7 @@ class GestureDialog(QDialog):
         gesture = gesture_item.text()
         
         # 現在のアクションを特定
-        current_action = None
-        for act in ACTION_LIST:
-            if get_action_display_name(act) == current_action_name:
-                current_action = act
-                break
-        
+        current_action = item.data(Qt.ItemDataRole.UserRole) or find_action_by_display_name(current_action_name)
         if not current_action:
             return
         
@@ -266,7 +262,7 @@ class GestureDialog(QDialog):
         
         # 全アクションを追加
         action_names = []
-        for action in ACTION_LIST:
+        for action in list_assignable_actions():
             display_name = get_action_display_name(action)
             combo.addItem(display_name, action)
             action_names.append(display_name)
@@ -291,13 +287,7 @@ class GestureDialog(QDialog):
         def on_action_changed():
             new_action = combo.currentData()
             if new_action is None:
-                # テキストが入力されている場合、対応するアクションを検索
-                current_text = combo.currentText()
-                new_action = None
-                for act in ACTION_LIST:
-                    if get_action_display_name(act) == current_text:
-                        new_action = act
-                        break
+                new_action = find_action_by_display_name(combo.currentText())
             
             if new_action and new_action != current_action:
                 # 古いジェスチャーを削除

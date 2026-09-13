@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plugin Reference - EzCo User Manual</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/settings.css">
+    <link rel="stylesheet" href="../css/plugin-reference.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1><img src="icon_32x32.png" alt="EzCo" class="logo-icon"> EzCo User Manual</h1>
+                <div class="language-switch">
+                    <a href="plugin-reference.html">日本語</a>
+                    <a href="plugin-reference-en.html" class="active">English</a>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="searchBox" placeholder="Search..." />
+                    <button id="searchBtn">🔍</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-container api-layout">
+            <nav class="sidebar api-sidebar">
+                <div class="toc">
+                    <h3>API Index</h3>
+                    <ul class="toc-list">
+                        <li><a href="#overview" class="toc-link">Overview</a></li>
+                        <li><a href="#package" class="toc-link">Package layout</a></li>
+                        <li><a href="#manifest" class="toc-link">manifest.json</a></li>
+                        <li><a href="#loader" class="toc-link">FileLoader</a>
+                            <ul class="toc-sublist">
+                                <li><a href="#loader-init" class="toc-link">__init__</a></li>
+                                <li><a href="#supported-formats" class="toc-link">supported_formats</a></li>
+                                <li><a href="#get-file-count" class="toc-link">get_file_count</a></li>
+                                <li><a href="#list-entries" class="toc-link">list_entries</a></li>
+                                <li><a href="#read-entry" class="toc-link">read_entry</a></li>
+                                <li><a href="#setup-teardown" class="toc-link">setup / teardown</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="#host" class="toc-link">host</a>
+                            <ul class="toc-sublist">
+                                <li><a href="#register-format" class="toc-link">register_format</a></li>
+                                <li><a href="#register-sidebar" class="toc-link">register_sidebar</a></li>
+                                <li><a href="#unregister-sidebar" class="toc-link">unregister_sidebar</a></li>
+                                <li><a href="#register-action" class="toc-link">register_action</a></li>
+                                <li><a href="#unregister-action" class="toc-link">unregister_action</a></li>
+                                <li><a href="#register-config" class="toc-link">register_config</a></li>
+                                <li><a href="#get-config" class="toc-link">get_config</a></li>
+                                <li><a href="#set-config" class="toc-link">set_config</a></li>
+                                <li><a href="#delete-config" class="toc-link">delete_config</a></li>
+                                <li><a href="#load-ui" class="toc-link">load_ui</a></li>
+                                <li><a href="#get-current" class="toc-link">get_current</a></li>
+                                <li><a href="#on-off" class="toc-link">on / off</a></li>
+                                <li><a href="#get-app-config" class="toc-link">get_app_config</a></li>
+                                <li><a href="#ask-password" class="toc-link">ask_password</a></li>
+                                <li><a href="#show-dialog" class="toc-link">show_dialog</a></li>
+                                <li><a href="#run-action" class="toc-link">run_action</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="#gettext" class="toc-link">get_text</a></li>
+                        <li><a href="#root" class="toc-link">root</a></li>
+                        <li><a href="#events" class="toc-link">Events</a></li>
+                        <li><a href="#limits" class="toc-link">Limits</a></li>
+                    </ul>
+                </div>
+            </nav>
+
+            <main class="content api-main">
+                <div class="content-wrapper">
+                    <div class="breadcrumb">
+                        <a href="../Manual(EN).html">Home</a> &gt; Plugin Reference
+                    </div>
+
+                    <h1>🔌 Plugin Reference</h1>
+                    <p>Contract the host gives to plugins, listed like Javadoc. For end-user install steps see <a href="settings-en.html#plugin-settings">Plugin Settings</a>. Longer developer notes live in <code>docs/plugins.md</code>.</p>
+                    <p><strong>API version:</strong> <code>1</code>　／　<strong>Location:</strong> ZIP files in <code>plugins/</code> next to the executable</p>
+
+                    <section id="overview" class="config-section">
+                        <h3>Overview</h3>
+                        <p>The host constructs the plugin and calls it. The constructor is always <code>Class(root, get_text, host)</code>. <code>import ez_co</code> is not allowed. PySide6 and host third-party packages are allowed.</p>
+                        <div class="api-index">
+                            <a href="#loader"><div class="api-index-name">FileLoader</div><div class="api-index-desc">Image / archive loader contract</div></a>
+                            <a href="#host"><div class="api-index-name">host</div><div class="api-index-desc">Register, config, dialogs, actions</div></a>
+                            <a href="#gettext"><div class="api-index-name">get_text</div><div class="api-index-desc">Localized strings</div></a>
+                            <a href="#root"><div class="api-index-name">root</div><div class="api-index-desc">Files inside the ZIP</div></a>
+                        </div>
+                    </section>
+
+                    <section id="package" class="config-section">
+                        <h3>Package layout</h3>
+<pre class="api-example">my_plugin.zip
+├── manifest.json
+├── src/                 # import root
+│   └── loader.py
+├── langs/               # optional ja.json / en.json
+└── resources/           # optional; root.read_bytes</pre>
+                        <p>Do not wrap the ZIP in an extra parent folder. A source folder is fine for editing; the host still reads the ZIP with the same name.</p>
+                    </section>
+
+                    <section id="manifest" class="config-section">
+                        <h3>manifest.json</h3>
+                        <p>Place this at the ZIP root. The host identifies the plugin from this file only.</p>
+
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">id</span>
+                                <span class="api-field-meta">string</span>
+                                <span class="api-field-meta">required</span>
+                            </div>
+                            <p>Plugin id. Stored settings use the key <code>id(ver:version)</code>. The ID column in Plugin Settings omits the version.</p>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">name</span>
+                                <span class="api-field-meta">string</span>
+                                <span class="api-field-meta">required</span>
+                            </div>
+                            <p>Display name shown in the plugin list.</p>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">version</span>
+                                <span class="api-field-meta">string</span>
+                                <span class="api-field-meta">required</span>
+                            </div>
+                            <p>Package version. Bumping it changes the settings key; previous values are not carried over.</p>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">api_version</span>
+                                <span class="api-field-meta">int</span>
+                                <span class="api-field-meta">required</span>
+                            </div>
+                            <p>Host contract version. Only <code>1</code> is valid today.</p>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">entry</span>
+                                <span class="api-field-meta">string</span>
+                                <span class="api-field-meta">required</span>
+                            </div>
+                            <p><code>module:Class</code>. <code>src/</code> is the import root. Example: <code>loader:FileLoader</code> loads <code>FileLoader</code> from <code>src/loader.py</code>.</p>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">description</span>
+                                <span class="api-field-meta">string</span>
+                                <span class="api-field-meta">optional</span>
+                            </div>
+                            <p>Short text shown in Plugin Settings.</p>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">author</span>
+                                <span class="api-field-meta">string</span>
+                                <span class="api-field-meta">optional</span>
+                            </div>
+                            <p>Author name.</p>
+                        </div>
+
+                        <p class="api-caption">Sample (image loader)</p>
+<pre class="api-example">{
+  "id": "com.example.png_loader",
+  "name": "Example PNG Loader",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "loader:FileLoader",
+  "description": "Sample .png loader.",
+  "author": "Example"
+}</pre>
+                        <p class="api-caption">Sample (sidebar)</p>
+<pre class="api-example">{
+  "id": "com.example.sidebar",
+  "name": "My Sidebar",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "plugin:MyPlugin",
+  "description": "Shows info for the current folder.",
+  "author": "Example"
+}</pre>
+                    </section>
+
+                    <section id="loader" class="config-section">
+                        <h3>FileLoader</h3>
+                        <p>The host constructs the class from <code>manifest.entry</code> and calls fixed method names. Do not import <code>ez_co.plugins.api</code>. Sidebar-only plugins use the same constructor.</p>
+                        <p class="api-caption">Minimal image loader (<code>src/loader.py</code>)</p>
+<pre class="api-example">class FileLoader:
+    def __init__(self, root, get_text, host):
+        self.root = root
+        self.get_text = get_text
+        self.host = host
+        host.register_format(".png", "image")
+
+    def get_file_count(self, file_path):
+        return 1
+
+    def list_entries(self, file_path):
+        return [file_path.replace("\\", "/").split("/")[-1]]
+
+    def read_entry(self, file_path, index):
+        with open(file_path, "rb") as handle:
+            data = handle.read()
+        return _Entry(self.list_entries(file_path)[index], data)
+
+
+class _Entry:
+    def __init__(self, name, data):
+        self.name = name
+        self.data = data</pre>
+
+                        <article id="loader-init" class="api-member">
+                            <div class="api-sig"><span class="api-kind">ctor</span><code>Class(root, get_text, host)</code></div>
+                            <div class="api-body">
+                                <p>The only constructor. Keep unused arguments.</p>
+                                <table>
+                                    <thead><tr><th>Arg</th><th>Meaning</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><code>root</code></td><td>Files in the ZIP: <code>read_bytes</code> / <code>exists</code></td></tr>
+                                        <tr><td><code>get_text</code></td><td>Strings</td></tr>
+                                        <tr><td><code>host</code></td><td>Register, config, state</td></tr>
+                                    </tbody>
+                                </table>
+<pre class="api-example">def __init__(self, root, get_text, host):
+    self.root = root
+    self.get_text = get_text
+    self.host = host
+    host.register_format(".zip", "archive")
+    host.register_config("strict", "bool", default=True, label="Strict")</pre>
+                            </div>
+                        </article>
+
+                        <article id="supported-formats" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>supported_formats() -&gt; sequence</code></div>
+                            <div class="api-body">
+                                <p>Legacy. New plugins should call <code>host.register_format</code>. The host collects registrations first, then this method.</p>
+                                <p><code>image</code> is one page; <code>archive</code> lists inner images.</p>
+<pre class="api-example">def supported_formats(self):
+    return [(".png", "image")]
+    # or [{"extension": ".zip", "kind": "archive"}]</pre>
+                            </div>
+                        </article>
+
+                        <article id="get-file-count" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>get_file_count(file_path: str) -&gt; int</code></div>
+                            <div class="api-body">
+                                <p>Entry count. Archives: <code>len(list_entries(...))</code>. Images: usually <code>1</code>.</p>
+<pre class="api-example">def get_file_count(self, file_path):
+    return len(self.list_entries(file_path))</pre>
+                            </div>
+                        </article>
+
+                        <article id="list-entries" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>list_entries(file_path: str) -&gt; sequence[str]</code></div>
+                            <div class="api-body">
+                                <p>Entry names, not directories. Order is page order. Encrypted archives need a password here or the count is 0.</p>
+<pre class="api-example">def list_entries(self, file_path):
+    names = []
+    with ZipFile(file_path) as archive:
+        for name in archive.namelist():
+            if name.endswith("/"):
+                continue
+            if name.lower().endswith((".png", ".jpg", ".webp")):
+                names.append(name)
+    return names</pre>
+                            </div>
+                        </article>
+
+                        <article id="read-entry" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>read_entry(file_path: str, index: int) -&gt; object</code></div>
+                            <div class="api-body">
+                                <p>Return an object with <code>name</code> (str) and <code>data</code> (bytes PIL can open). May run on a worker. Use host APIs for UI.</p>
+<pre class="api-example">def read_entry(self, file_path, index):
+    name = self.list_entries(file_path)[index]
+    with ZipFile(file_path) as archive:
+        data = archive.read(name)
+    return _Entry(name, data)</pre>
+                            </div>
+                        </article>
+
+                        <article id="setup-teardown" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>setup() / teardown()</code></div>
+                            <div class="api-body">
+                                <p>Optional. Called on enable / disable. After teardown the host removes sidebars and actions. Config schemas stay.</p>
+<pre class="api-example">def setup(self):
+    widget = self.host.load_ui(self.root.read_bytes("resources/sidebar.ui"))
+    self.host.register_sidebar("info", self.get_text("title"), widget)
+    self.host.on("current_changed", self._on_current)
+
+def teardown(self):
+    self.host.off("current_changed")</pre>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section id="host" class="config-section">
+                        <h3>host</h3>
+                        <p>Third constructor argument. The same names are also injected as builtins. Plugins do not call <code>bind</code>.</p>
+
+                        <article id="register-format" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_format(extension, kind) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p><code>kind</code> is <code>"image"</code> / <code>"archive"</code>. Safe in <code>__init__</code>.</p>
+<pre class="api-example">host.register_format(".png", "image")
+host.register_format(".xyz", "archive")</pre>
+                            </div>
+                        </article>
+
+                        <article id="register-sidebar" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p><code>QWidget</code> or <code>QLayout</code>. The host docks it and auto-registers <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code>. The dock title stays <code>title</code>; shortcut / gesture labels become <code>Show/Hide {title} Sidebar</code>. <code>aliases</code> are old shortcut ids. The host does not hard-code plugin-specific ids.</p>
+<pre class="api-example">widget = QWidget()
+host.register_sidebar("info", get_text("title"), widget)
+# Public id: plugin:com.example.sidebar:sidebar:info
+
+host.register_sidebar(
+    "info",
+    get_text("title"),
+    widget,
+    aliases=("toggle_my_dock",),
+)</pre>
+                            </div>
+                        </article>
+
+                        <article id="unregister-sidebar" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.unregister_sidebar(sidebar_id) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p>Removes the sidebar and its toggle action.</p>
+<pre class="api-example">host.unregister_sidebar("info")</pre>
+                            </div>
+                        </article>
+
+                        <article id="register-action" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_action(action_id, label, callback, aliases=None) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p>Custom action. Public id is <code>plugin:{plugin_id}:{action_id}</code>. <code>action_id</code> cannot be <code>sidebar</code> or contain <code>:</code>. Appears in shortcut / gesture lists. No default key.</p>
+<pre class="api-example">def _reload():
+    self._refresh(host.get_current("folder"))
+
+host.register_action("reload", get_text("reload"), _reload)
+# Public id: plugin:com.example.sidebar:reload</pre>
+                            </div>
+                        </article>
+
+                        <article id="unregister-action" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.unregister_action(action_id) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p>Drops the action. User bindings stay in config.</p>
+<pre class="api-example">host.unregister_action("reload")</pre>
+                            </div>
+                        </article>
+
+                        <article id="register-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_config(key, value_type, default=None, label=None, description=None) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p><code>value_type</code> is <code>"bool"</code> / <code>"string"</code> / <code>"int"</code>. Schema survives disable, so <code>__init__</code> is fine. Adds a Settings button on the plugin row.</p>
+<pre class="api-example">host.register_config(
+    "fetch_web",
+    "bool",
+    default=True,
+    label=get_text("config.fetch_web"),
+    description=get_text("config.fetch_web.desc"),
+)</pre>
+                            </div>
+                        </article>
+
+                        <article id="get-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.get_config(key, default=None) -&gt; Any</code></div>
+                            <div class="api-body">
+                                <p>This plugin's stored value, or the schema default. Other plugins' rows are not readable.</p>
+<pre class="api-example">if host.get_config("fetch_web", True):
+    self._fetch(folder)</pre>
+                            </div>
+                        </article>
+
+                        <article id="set-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.set_config(key, value) -&gt; bool</code></div>
+                            <div class="api-body">
+                                <p>Coerces, stores, and emits <code>config_changed</code> (<code>{key, value}</code>) to this plugin only.</p>
+<pre class="api-example">host.set_config("fetch_web", False)</pre>
+                            </div>
+                        </article>
+
+                        <article id="delete-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.delete_config(key) -&gt; bool</code></div>
+                            <div class="api-body">
+                                <p>Deletes the stored value. The schema remains.</p>
+<pre class="api-example">host.delete_config("fetch_web")</pre>
+                            </div>
+                        </article>
+
+                        <article id="load-ui" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.load_ui(bytes_or_path) -&gt; QWidget</code></div>
+                            <div class="api-body">
+                                <p>Loads a Designer <code>.ui</code> with <code>QUiLoader</code>.</p>
+<pre class="api-example">widget = host.load_ui(self.root.read_bytes("resources/sidebar.ui"))
+title = widget.findChild(QLabel, "titleLabel")</pre>
+                            </div>
+                        </article>
+
+                        <article id="get-current" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.get_current(key) -&gt; Any</code></div>
+                            <div class="api-body">
+                                <table>
+                                    <thead><tr><th>key</th><th>Value</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><code>path</code></td><td>Current page file path</td></tr>
+                                        <tr><td><code>folder</code></td><td>Current folder</td></tr>
+                                        <tr><td><code>page</code></td><td>Page number</td></tr>
+                                    </tbody>
+                                </table>
+<pre class="api-example">folder = host.get_current("folder")
+path = host.get_current("path")
+page = host.get_current("page")</pre>
+                            </div>
+                        </article>
+
+                        <article id="on-off" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.on(event, callback) / host.off(event, callback=None)</code></div>
+                            <div class="api-body">
+                                <p><code>current_changed</code> and <code>config_changed</code>. Omitting <code>callback</code> on <code>off</code> removes all of this plugin's handlers for that event.</p>
+<pre class="api-example">def _on_current(payload):
+    self._refresh(payload.get("folder"))
+
+def _on_config(payload):
+    if payload.get("key") == "fetch_web":
+        self._refresh(host.get_current("folder"))
+
+host.on("current_changed", _on_current)
+host.on("config_changed", _on_config)
+host.off("current_changed")</pre>
+                            </div>
+                        </article>
+
+                        <article id="get-app-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.get_app_config() -&gt; Mapping</code></div>
+                            <div class="api-body">
+                                <p>Read-only: <code>language</code> / <code>viewer</code> / <code>cache</code> / <code>ui_font</code>.</p>
+<pre class="api-example">lang = host.get_app_config().get("language")</pre>
+                            </div>
+                        </article>
+
+                        <article id="ask-password" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.ask_password(file_path, mismatch=False, verify=None) -&gt; str | None</code></div>
+                            <div class="api-body">
+                                <p>Host password dialog, plus session and stored passwords. Safe from worker threads. <code>None</code> means cancel or app exit.</p>
+<pre class="api-example">password = host.ask_password(
+    file_path,
+    verify=lambda pwd: self._can_open(file_path, pwd),
+)
+if password is None:
+    raise RuntimeError("password cancelled")</pre>
+                            </div>
+                        </article>
+
+                        <article id="show-dialog" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.show_dialog(name, **kwargs) -&gt; Any</code></div>
+                            <div class="api-body">
+                                <p><code>password</code> / <code>archive_password</code> / <code>ask_password</code> map to <code>ask_password</code>. Anything else logs a warning and returns <code>None</code>.</p>
+<pre class="api-example">password = host.show_dialog("ask_password", file_path=file_path)</pre>
+                            </div>
+                        </article>
+
+                        <article id="run-action" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.run_action(action_id, **kwargs) -&gt; bool</code></div>
+                            <div class="api-body">
+                                <p>Runs a host action (e.g. <code>new_tab</code>) or a registered plugin action. Returns <code>False</code> if unsupported.</p>
+<pre class="api-example">host.run_action("new_tab")</pre>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section id="gettext" class="config-section">
+                        <h3>get_text</h3>
+                        <article class="api-member">
+                            <div class="api-sig"><span class="api-kind">func</span><code>get_text(key: str, **kwargs) -&gt; str</code></div>
+                            <div class="api-body">
+                                <p>Lookup: plugin <code>langs/{lang}.json</code> → plugin ja/en → host. Plugin keys win. Supports <code>str.format(**kwargs)</code>.</p>
+                                <p class="api-caption"><code>langs/en.json</code></p>
+<pre class="api-example">{
+  "title": "Product info",
+  "reload": "Reload",
+  "status": "{count} items"
+}</pre>
+<pre class="api-example">title = get_text("title")
+status = get_text("status", count=3)</pre>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section id="root" class="config-section">
+                        <h3>root</h3>
+                        <article class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>root.read_bytes(relative_path: str) -&gt; bytes</code></div>
+                            <div class="api-body">
+                                <p>Read a relative path in the ZIP. Missing entries raise <code>KeyError</code>.</p>
+<pre class="api-example">ui = root.read_bytes("resources/sidebar.ui")
+icon = root.read_bytes("resources/icon.png")</pre>
+                            </div>
+                        </article>
+                        <article class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>root.exists(relative_path: str) -&gt; bool</code></div>
+                            <div class="api-body">
+                                <p>Whether that relative path exists in the ZIP.</p>
+<pre class="api-example">if root.exists("resources/sidebar.ui"):
+    widget = host.load_ui(root.read_bytes("resources/sidebar.ui"))</pre>
+                            </div>
+                        </article>
+                    </section>
+
+                    <section id="events" class="config-section">
+                        <h3>Events</h3>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">current_changed</span>
+                            </div>
+                            <p>Fired when the current file changes. Payload is <code>{path, folder, page}</code>.</p>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">config_changed</span>
+                            </div>
+                            <p>Fired after this plugin's <code>set_config</code>. Payload is <code>{key, value}</code>. Other plugins' changes are not delivered.</p>
+                        </div>
+<pre class="api-example">def _on_current(payload):
+    print(payload["folder"], payload["page"])
+
+def _on_config(payload):
+    print(payload["key"], payload["value"])
+
+host.on("current_changed", _on_current)
+host.on("config_changed", _on_config)</pre>
+                    </section>
+
+                    <section id="limits" class="config-section">
+                        <h3>Limits</h3>
+                        <ul>
+                            <li>No <code>import ez_co</code> and no imports from other plugins</li>
+                            <li>Dock placement / floating is host-owned</li>
+                            <li>Other plugins' settings are not readable (<code>plugin_id</code> is hashed)</li>
+                            <li>DLL plugins are not supported</li>
+                            <li>Restart after adding a ZIP</li>
+                        </ul>
+                    </section>
+
+                    <div class="pagination">
+                        <a href="settings-en.html#plugin-settings" class="page-link">← Plugin Settings</a>
+                        <a href="../Manual(EN).html" class="page-link">Home →</a>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="../js/main.js"></script>
+    <script src="../js/search.js"></script>
+</body>
+</html>

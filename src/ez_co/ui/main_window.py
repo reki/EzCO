@@ -277,7 +277,6 @@ class MainWindow(QMainWindow):
         self._window_was_maximized = bool(config.window.get("maximized", False))
         self._pending_maximize = False
         self._plugin_sidebars = {}
-        self.product_info_action = None
         # マウスロック関連
         self.mouse_locked = False
         self.mouse_lock_center = None
@@ -308,6 +307,7 @@ class MainWindow(QMainWindow):
             get_app_config=self._plugin_app_config,
             mount_sidebar=self._mount_plugin_sidebar,
             unmount_sidebar=self._unmount_plugin_sidebar,
+            toggle_sidebar=self._toggle_plugin_sidebar,
         )
         manager.activate_ui(self.config)
         self._restore_dock_state()
@@ -343,11 +343,15 @@ class MainWindow(QMainWindow):
 
     def _mount_plugin_sidebar(self, plugin_id: str, sidebar_id: str, title: str, widget) -> None:
         from PySide6.QtWidgets import QDockWidget
+        from ez_co.plugins.host import make_sidebar_action_id, sidebar_toggle_label
         key = (plugin_id, sidebar_id)
+        action_text = sidebar_toggle_label(title)
         existing = self._plugin_sidebars.get(key)
         if existing is not None:
             dock = existing["dock"]
             dock.setWindowTitle(title)
+            existing["action"].setText(action_text)
+            existing["title"] = title
             if dock.widget() is not widget:
                 dock.setWidget(widget)
             return
@@ -362,16 +366,20 @@ class MainWindow(QMainWindow):
         )
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
         dock.hide()
-        action = QAction(title, self)
+        action = QAction(action_text, self)
         action.setCheckable(True)
         action.triggered.connect(lambda checked, target=dock: target.setVisible(bool(checked)))
         dock.visibilityChanged.connect(lambda visible, item=action: item.setChecked(bool(visible)))
-        if sidebar_id == "product_info":
-            self._apply_action_shortcut(action, Actions.TOGGLE_PRODUCT_INFO_DOCK.value)
-            self.product_info_action = action
+        action_id = make_sidebar_action_id(plugin_id, sidebar_id)
+        self._apply_plugin_action_shortcut(action, action_id)
         if hasattr(self, "sidebar_submenu"):
             self.sidebar_submenu.addAction(action)
-        self._plugin_sidebars[key] = {"dock": dock, "action": action, "title": title}
+        self._plugin_sidebars[key] = {
+            "dock": dock,
+            "action": action,
+            "title": title,
+            "action_id": action_id,
+        }
 
     def _unmount_plugin_sidebar(self, plugin_id: str, sidebar_id: str) -> None:
         record = self._plugin_sidebars.pop((plugin_id, sidebar_id), None)
@@ -381,10 +389,21 @@ class MainWindow(QMainWindow):
         action = record["action"]
         if hasattr(self, "sidebar_submenu"):
             self.sidebar_submenu.removeAction(action)
-        if getattr(self, "product_info_action", None) is action:
-            self.product_info_action = None
         self.removeDockWidget(dock)
         dock.deleteLater()
+
+    def _toggle_plugin_sidebar(self, plugin_id: str, sidebar_id: str) -> bool:
+        record = getattr(self, "_plugin_sidebars", {}).get((plugin_id, sidebar_id))
+        if record is None:
+            return False
+        dock = record["dock"]
+        action = record["action"]
+        visible = not dock.isVisible()
+        dock.setVisible(visible)
+        action.setChecked(visible)
+        if visible:
+            self._notify_plugin_current_changed()
+        return True
 
     def _readd_plugin_sidebar_actions(self):
         if not hasattr(self, "sidebar_submenu"):
@@ -394,12 +413,12 @@ class MainWindow(QMainWindow):
             if action not in self.sidebar_submenu.actions():
                 self.sidebar_submenu.addAction(action)
             action.setChecked(record["dock"].isVisible())
-            if action is getattr(self, "product_info_action", None):
-                self._apply_action_shortcut(action, Actions.TOGGLE_PRODUCT_INFO_DOCK.value)
+            action_id = record.get("action_id")
+            if action_id:
+                self._apply_plugin_action_shortcut(action, action_id)
 
     def _run_plugin_action(self, action_id: str, kwargs: dict) -> bool:
-        logger.info(get_log_text("plugin_action_unsupported", action_id=action_id))
-        return False
+        return self.run_window_action(action_id)
 
     @property
     def current_pane(self) -> Optional[ViewerPane]:
@@ -526,7 +545,6 @@ class MainWindow(QMainWindow):
         # ダイアログの参照
         self.page_slider_dialog = None
         self.image_list_dialog = None
-        self.product_info_action = None
         if not hasattr(self, "_plugin_sidebars"):
             self._plugin_sidebars = {}
     def _first_keyboard_shortcut(self, action_name: str):
@@ -541,6 +559,17 @@ class MainWindow(QMainWindow):
             return
         action.setShortcut(QKeySequence(shortcut))
         action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)
+
+    def _apply_plugin_action_shortcut(self, action: QAction, action_id: str):
+        from ez_co.plugins.manager import get_plugin_manager
+        names = get_plugin_manager().host.action_ids_for(action_id) or [action_id]
+        for name in names:
+            shortcut = self._first_keyboard_shortcut(name)
+            if shortcut:
+                action.setShortcut(QKeySequence(shortcut))
+                action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)
+                return
+        action.setShortcut(QKeySequence())
 
     def setup_menu(self):
         """メニューバーの設定"""
@@ -1786,6 +1815,9 @@ class MainWindow(QMainWindow):
         self._sync_current_tab_title()
 
     def run_window_action(self, action_name: str) -> bool:
+        from ez_co.plugins.manager import get_plugin_manager
+        if get_plugin_manager().host.invoke_registered(action_name):
+            return True
         handlers = {
             Actions.NEW_TAB.value: self.new_tab,
             Actions.CLOSE_TAB.value: self.close_current_tab,
@@ -1807,7 +1839,6 @@ class MainWindow(QMainWindow):
             Actions.SHOW_TAB_8.value: lambda: self.goto_tab(7),
             Actions.SHOW_TAB_9.value: lambda: self.goto_tab(8),
             Actions.TOGGLE_TAB_LIST_DOCK.value: self.toggle_tab_list_dock,
-            Actions.TOGGLE_PRODUCT_INFO_DOCK.value: self.toggle_product_info_dock,
         }
         handler = handlers.get(action_name)
         if handler is None:
@@ -2992,8 +3023,8 @@ class MainWindow(QMainWindow):
             )
     
     def show_plugin_dialog(self):
-        from ez_co.plugins.manager import get_plugin_manager
         dialog = PluginDialog(self.config, self)
+        dialog.applied.connect(self._on_plugin_dialog_applied)
         result = dialog.exec()
         changed = False
         if result == QDialog.Accepted:
@@ -3001,9 +3032,17 @@ class MainWindow(QMainWindow):
             dialog.apply_to_config()
         self.save_config()
         if result == QDialog.Accepted and changed:
-            get_plugin_manager().activate_ui(self.config)
-            self._reload_open_files_after_plugin_change()
-            self._notify_plugin_current_changed()
+            self._reload_after_plugin_config()
+
+    def _on_plugin_dialog_applied(self):
+        self.save_config()
+        self._reload_after_plugin_config()
+
+    def _reload_after_plugin_config(self):
+        from ez_co.plugins.manager import get_plugin_manager
+        get_plugin_manager().activate_ui(self.config)
+        self._reload_open_files_after_plugin_change()
+        self._notify_plugin_current_changed()
 
     def _reload_open_files_after_plugin_change(self):
         """プラグイン優先度の変更後、開いているタブを再読み込みする。"""
@@ -3200,25 +3239,6 @@ class MainWindow(QMainWindow):
             self.image_slide_action.setChecked(True)
             # サイドバーが表示された時に初期ロードを実行
             self._update_image_slide_sidebar_on_show()
-    
-    def toggle_product_info_dock(self):
-        """商品情報ドックの表示/非表示を切り替え"""
-        record = None
-        for key, item in getattr(self, "_plugin_sidebars", {}).items():
-            if key[1] == "product_info":
-                record = item
-                break
-        if record is None:
-            return
-        dock = record["dock"]
-        action = record["action"]
-        if dock.isVisible():
-            dock.hide()
-            action.setChecked(False)
-        else:
-            dock.show()
-            action.setChecked(True)
-            self._notify_plugin_current_changed()
     
     def on_image_slide_page_selected(self, page_index):
         """画像スライドサイドバーでページが選択された時の処理"""

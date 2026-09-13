@@ -46,7 +46,6 @@ class Actions(Enum):
     TOGGLE_BOOKMARK_DOCK = "toggle_bookmark_dock"
     TOGGLE_HISTORY_DOCK = "toggle_history_dock"
     TOGGLE_IMAGE_SLIDE_DOCK = "toggle_image_slide_dock"
-    TOGGLE_PRODUCT_INFO_DOCK = "toggle_product_info_dock"
     TOGGLE_TAB_LIST_DOCK = "toggle_tab_list_dock"
     TOGGLE_MOUSE_LOCK = "toggle_mouse_lock"
     PAGE_SLIDER_DIALOG = "page_slider_dialog"
@@ -57,16 +56,68 @@ class Actions(Enum):
     TOGGLE_SPREAD = "toggle_spread"
 
 
+ACTION_LIST = [action.value for action in Actions]
+
+
+def _plugin_host():
+    try:
+        from ez_co.plugins.manager import get_plugin_manager
+        return get_plugin_manager().host
+    except Exception:
+        return None
+
+
+def list_assignable_actions() -> list:
+    """ショートカット／ジェスチャーに出せる本体 + 有効プラグインのアクション。"""
+    host = _plugin_host()
+    plugin_ids = []
+    aliased = set()
+    if host is not None:
+        for item in host.list_actions():
+            plugin_ids.append(item.public_id)
+            aliased.update(item.aliases)
+    builtin = [action for action in ACTION_LIST if action not in aliased]
+    return builtin + plugin_ids
+
+
+def find_action_by_display_name(text: str):
+    for action in list_assignable_actions():
+        if get_action_display_name(action) == text:
+            return action
+    return None
+
+
+def is_known_action(action_name: str) -> bool:
+    name = str(action_name or "")
+    if not name:
+        return False
+    if name in ACTION_LIST or name in list_assignable_actions():
+        return True
+    host = _plugin_host()
+    return host is not None and host.resolve_action(name) is not None
+
+
+def list_bound_actions(assigned_ids) -> list:
+    """割り当て済みを、候補順のあと未登録分を付けて返す。"""
+    known = list_assignable_actions()
+    seen = set(known)
+    extra = [action for action in assigned_ids if action not in seen]
+    return known + extra
+
+
 def get_action_display_name(action_name: str) -> str:
     """アクションの表示名を取得"""
+    host = _plugin_host()
+    if host is not None:
+        label = host.action_label(action_name)
+        if label:
+            return label
     return get_text(f"actions.{action_name}")
 
-# アクション名リスト（後方互換性のため）
-ACTION_LIST = [action.value for action in Actions]
 
 # 後方互換性のための辞書（非推奨）
 def get_actions_dict():
     """後方互換性のための辞書を取得（非推奨）"""
-    return {action: get_action_display_name(action) for action in ACTION_LIST}
+    return {action: get_action_display_name(action) for action in list_assignable_actions()}
 
-ACTIONS = get_actions_dict() 
+ACTIONS = {action: get_text(f"actions.{action}") for action in ACTION_LIST} 

@@ -100,7 +100,7 @@ Most of the code in this program was implemented with the assistance of AI (Clau
 - Built-in handlers win by default for known extensions
 - Enabled plugin extensions appear in the file dialog under "Supported Files" and "Plugin formats", and in folder scans
 - Samples: `plugins/example_png.zip`, `plugins/example_zip.zip`, `plugins/product_info.zip` (product info sidebar via `.ui` + `QUiLoader`)
-- Developer reference (Japanese): [docs/plugins.md](docs/plugins.md), [plugins/README.md](plugins/README.md)
+- Developer reference: [docs/plugins.md](docs/plugins.md), [Plugin Reference](resources/UserManual/files/plugin-reference-en.html) in the user manual, each plugin `README_EN.md`, [plugins/README.md](plugins/README.md)
 
 ## Development Environment Setup
 

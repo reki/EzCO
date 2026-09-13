@@ -7,7 +7,12 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal, QStringListModel
 from PySide6.QtGui import QKeySequence, QKeyEvent
-from ez_co.enums.actions import ACTION_LIST, get_action_display_name, get_actions_dict
+from ez_co.enums.actions import (
+    find_action_by_display_name,
+    get_action_display_name,
+    list_assignable_actions,
+    list_bound_actions,
+)
 from ez_co.enums.mouse_buttons import MouseButtons
 from ez_co.enums.keyboard_keys import key_to_string
 from ez_co.config import Config
@@ -86,8 +91,7 @@ class ShortcutDialog(QDialog):
         self.table.clearContents()
         # 1ショートカット1行で展開
         rows = []
-        # ACTION_LISTの順序で表示するように変更
-        for action in ACTION_LIST:
+        for action in list_bound_actions(self.shortcuts):
             if action in self.shortcuts:
                 for shortcut in self.shortcuts[action]:
                     rows.append((action, shortcut))
@@ -97,6 +101,7 @@ class ShortcutDialog(QDialog):
             action_name = get_action_display_name(action)
             item = QTableWidgetItem(action_name)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            item.setData(Qt.ItemDataRole.UserRole, action)
             self.table.setItem(row, 0, item)
             # ショートカット表示（編集不可）
             shortcut_item = QTableWidgetItem(shortcut)
@@ -109,13 +114,7 @@ class ShortcutDialog(QDialog):
             # アクションの検証 - currentData()がNoneの場合は現在のテキストから検索
             action = dialog.action_combo.currentData()
             if action is None:
-                # テキストが入力されている場合、対応するアクションを検索
-                current_text = dialog.action_combo.currentText()
-                action = None
-                for act in ACTION_LIST:
-                    if get_action_display_name(act) == current_text:
-                        action = act
-                        break
+                action = find_action_by_display_name(dialog.action_combo.currentText())
                 if action is None:
                     QMessageBox.warning(self, get_text("dialogs.warning"), get_text("ui.invalid_action"))
                     return
@@ -152,11 +151,7 @@ class ShortcutDialog(QDialog):
             col_action = self.table.item(current_row, 0)
             col_shortcut = self.table.item(current_row, 1)
             if col_action and col_shortcut:
-                action = None
-                for act, name in get_actions_dict().items():
-                    if name == col_action.text():
-                        action = act
-                        break
+                action = col_action.data(Qt.ItemDataRole.UserRole) or find_action_by_display_name(col_action.text())
                 shortcut = col_shortcut.text()
                 if action and shortcut and shortcut in self.shortcuts[action]:
                     self.shortcuts[action].remove(shortcut)
@@ -223,12 +218,7 @@ class ShortcutDialog(QDialog):
         shortcut = shortcut_item.text()
         
         # 現在のアクションを特定
-        current_action = None
-        for act in ACTION_LIST:
-            if get_action_display_name(act) == current_action_name:
-                current_action = act
-                break
-        
+        current_action = item.data(Qt.ItemDataRole.UserRole) or find_action_by_display_name(current_action_name)
         if not current_action:
             return
         
@@ -239,7 +229,7 @@ class ShortcutDialog(QDialog):
         
         # 全アクションを追加
         action_names = []
-        for action in ACTION_LIST:
+        for action in list_assignable_actions():
             display_name = get_action_display_name(action)
             combo.addItem(display_name, action)
             action_names.append(display_name)
@@ -264,13 +254,7 @@ class ShortcutDialog(QDialog):
         def on_action_changed():
             new_action = combo.currentData()
             if new_action is None:
-                # テキストが入力されている場合、対応するアクションを検索
-                current_text = combo.currentText()
-                new_action = None
-                for act in ACTION_LIST:
-                    if get_action_display_name(act) == current_text:
-                        new_action = act
-                        break
+                new_action = find_action_by_display_name(combo.currentText())
             
             if new_action and new_action != current_action:
                 # 古いアクションからショートカットを削除
@@ -309,7 +293,8 @@ class AddShortcutDialog(QDialog):
         self.action_combo.setInsertPolicy(QComboBox.NoInsert)
         # 全てのアクションを順序通りに表示
         action_names = []
-        for action in ACTION_LIST:
+        actions = list_assignable_actions()
+        for action in actions:
             display_name = get_action_display_name(action)
             self.action_combo.addItem(display_name, action)
             action_names.append(display_name)
@@ -319,7 +304,7 @@ class AddShortcutDialog(QDialog):
         completer.setFilterMode(Qt.MatchContains)
         self.action_combo.setCompleter(completer)
         # 最初のアクションを選択
-        if ACTION_LIST:
+        if actions:
             self.action_combo.setCurrentIndex(0)
         layout.addRow(get_text("ui.action_colon"), self.action_combo)
         # ショートカットタイプ選択

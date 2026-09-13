@@ -101,7 +101,7 @@
 - **既定**: ビルドインが知っている拡張子はビルドイン優先。プラグイン専用拡張子はそのプラグインが担当
 - **ファイルダイアログ**: 有効なプラグインの拡張子は「対応しているファイル」と「プラグイン形式」に入る。フォルダを開いたときのスキャン対象にも含まれる
 - **サンプル**: `plugins/example_png.zip`（PNG）、`plugins/example_zip.zip`（ZIP・パスワードダイアログ付き）、`plugins/product_info.zip`（商品情報サイドバー。`.ui` + `QUiLoader`）
-- **開発者向け**: [プラグインマニュアル](docs/plugins.md)（API リファレンス）、[plugins/README.md](plugins/README.md)
+- **開発者向け**: [プラグインマニュアル](docs/plugins.md)、ユーザーマニュアルの [プラグインリファレンス](resources/UserManual/files/plugin-reference.html)、各プラグインの `README.md`、[plugins/README.md](plugins/README.md)
 
 ## 開発環境のセットアップ
 
