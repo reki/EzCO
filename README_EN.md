@@ -41,11 +41,12 @@ Most of the code in this program was implemented with the assistance of AI (Clau
 - **Tab switching**: Default shortcuts are Ctrl+1–9 for the 1st–9th tabs, and Ctrl+0 / Ctrl+End for the last tab
 - **Tab bar**: Fixed width. Long names are elided; hover shows the full name. Middle-click closes that tab
 - **Menus**: Assigned keyboard shortcuts appear on the right of matching menu items
-- **Open**: "Open File" uses the current tab; "Open File in New Tab" opens new tabs; "Open Folder" picks a folder. Multiple selections become one tab each
+- **Open**: "Open File" uses the current tab; "Open File in New Tab" opens new tabs; "Open Folder" picks a folder
+- **Multiple paths**: Images open as pages in one tab. Whether archives and folders get their own tabs is a setting (archives do by default). Tab order follows the drop or selection order
 - **File dialog**: The first "Supported Files" filter includes images, archives, plugin extensions, and state files
 - **Save state**: "Save State As..." (Ctrl+S on first profile) writes every tab's file and page to a `.ezs` file
 - **Restore state**: Open or drop a `.ezs`. If files are already open, choose Close All, Add to Open Tabs, Open in New Window, or Cancel
-- **Drag and drop**: Follows Settings (current tab or new tab). Extra paths open as new tabs
+- **Drag and drop**: Follows Settings (current tab or new tab). After the first group, archives or folders set to own-tab open as extra tabs
 - **History and bookmarks**: Click opens in the current tab; Ctrl+click or middle-click opens a new tab. Right-click can choose either
 - **Reopen last file**: Opens only the latest history item, not every tab
 

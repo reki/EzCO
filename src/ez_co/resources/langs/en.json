@@ -336,6 +336,8 @@
     "drop_opens_new_tab": "Drop files into",
     "drop_open_current": "Current tab",
     "drop_open_new": "New tab",
+    "open_archives_in_own_tab": "Open each archive in its own tab",
+    "open_folders_in_own_tab": "Open each folder in its own tab",
     "debug_settings": "Debug Settings",
     "popup_settings": "Popup Display Settings",
     "language_settings": "Language Settings",

@@ -364,7 +364,9 @@
                         <h2>🗂️ Tabs</h2>
                         <p>File menu Open uses the current tab. Open in New Tab opens new tabs. History and bookmarks: click = current tab, Ctrl+click or middle-click = new tab, or choose from the right-click menu. Middle-click a tab to close it. Closing the last tab closes the window.</p>
                         <ul>
-                            <li><strong>viewer.drop_opens_new_tab:</strong> false = drop into the current tab, true = drop into a new tab. Extra paths always open as new tabs. Default: false</li>
+                            <li><strong>viewer.drop_opens_new_tab:</strong> false = drop into the current tab, true = drop into a new tab. After the first group, archives or folders set to own-tab open as extra tabs. Default: false</li>
+                            <li><strong>viewer.open_archives_in_own_tab:</strong> true = each archive is its own tab; false = include archives as pages with images. Kind follows File Settings. Default: true</li>
+                            <li><strong>viewer.open_folders_in_own_tab:</strong> true = each folder is its own tab; false = include folders as pages with images. Default: false</li>
                             <li><strong>viewer.show_tabs_in_fullscreen:</strong> View menu checkbox. false hides the tab bar in fullscreen. The tab bar is also hidden when only one tab is open. Default: false</li>
                             <li>Tab width is fixed. Long names are elided; hover shows the full name. Assigned keyboard shortcuts appear on the right of matching menu items</li>
                         </ul>

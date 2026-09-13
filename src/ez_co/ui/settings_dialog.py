@@ -562,6 +562,12 @@ class SettingsDialog(QDialog):
         drop_index = 1 if self.config.viewer.get("drop_opens_new_tab", False) else 0
         self.drop_opens_combo.setCurrentIndex(drop_index)
         tab_layout.addRow(get_text("settings.drop_opens_new_tab") + ":", self.drop_opens_combo)
+        self.open_archives_own_tab_checkbox = QCheckBox(get_text("settings.open_archives_in_own_tab"))
+        self.open_archives_own_tab_checkbox.setChecked(self.config.viewer.get("open_archives_in_own_tab", True))
+        tab_layout.addRow(self.open_archives_own_tab_checkbox)
+        self.open_folders_own_tab_checkbox = QCheckBox(get_text("settings.open_folders_in_own_tab"))
+        self.open_folders_own_tab_checkbox.setChecked(self.config.viewer.get("open_folders_in_own_tab", False))
+        tab_layout.addRow(self.open_folders_own_tab_checkbox)
         tab_group.setLayout(tab_layout)
         layout.addWidget(tab_group)
         
@@ -1012,6 +1018,14 @@ class SettingsDialog(QDialog):
         if "viewer" in config_dict and hasattr(self, "drop_opens_combo"):
             drop_index = 1 if config_dict["viewer"].get("drop_opens_new_tab", False) else 0
             self.drop_opens_combo.setCurrentIndex(drop_index)
+            if hasattr(self, "open_archives_own_tab_checkbox"):
+                self.open_archives_own_tab_checkbox.setChecked(
+                    config_dict["viewer"].get("open_archives_in_own_tab", True)
+                )
+            if hasattr(self, "open_folders_own_tab_checkbox"):
+                self.open_folders_own_tab_checkbox.setChecked(
+                    config_dict["viewer"].get("open_folders_in_own_tab", False)
+                )
 
         # デバッグ設定
         if "debug" in config_dict:
@@ -1176,6 +1190,8 @@ class SettingsDialog(QDialog):
             spread_pref = "keep_previous"
         self.config.viewer["spread_toggle_preference"] = spread_pref
         self.config.viewer["drop_opens_new_tab"] = bool(self.drop_opens_combo.currentData())
+        self.config.viewer["open_archives_in_own_tab"] = self.open_archives_own_tab_checkbox.isChecked()
+        self.config.viewer["open_folders_in_own_tab"] = self.open_folders_own_tab_checkbox.isChecked()
         try:
             sensitivity_value = float(self.sensitivity_input.text())
             # 範囲チェック

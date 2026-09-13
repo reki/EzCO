@@ -622,7 +622,25 @@ image_list:
                                 <span class="setting-key">viewer.drop_opens_new_tab</span>
                                 <span class="setting-type">真偽値</span>
                             </div>
-                            <p>false なら既存タブ、true なら新しいタブ。複数パスの残りは常に新規タブです。最後のタブを閉じるとウィンドウも閉じます。</p>
+                            <p>false なら既存タブ、true なら新しいタブ。先頭グループのあと、別タブ指定のアーカイブ／フォルダなどは追加タブになります。最後のタブを閉じるとウィンドウも閉じます。</p>
+                            <div class="setting-value">デフォルト: false</div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">アーカイブは別タブで開く</span>
+                                <span class="setting-key">viewer.open_archives_in_own_tab</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>true ならアーカイブは1ファイル1タブ。false なら画像などと同じタブのページ列に含めます。種別はファイル設定に従います。</p>
+                            <div class="setting-value">デフォルト: true</div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">フォルダは別タブで開く</span>
+                                <span class="setting-key">viewer.open_folders_in_own_tab</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>true ならフォルダは1つ1タブ。false なら画像などと同じタブのページ列に含めます。</p>
                             <div class="setting-value">デフォルト: false</div>
                         </div>
                         <div class="setting-item">

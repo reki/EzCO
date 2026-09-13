@@ -62,6 +62,8 @@ class Config:
             "spread_toggle_preference": "keep_previous",  # keep_previous / prefer_right / prefer_left
             "last_spread_mode": "spread_right",  # 両開き／単ページ切替用の前回両開き方向
             "drop_opens_new_tab": False,
+            "open_archives_in_own_tab": True,
+            "open_folders_in_own_tab": False,
             "show_tabs_in_fullscreen": False,
         }
         self.cache = {
@@ -287,6 +289,8 @@ class Config:
                 ),
                 "last_spread_mode": cls._resolve_last_spread_mode(data, viewer_data),
                 "drop_opens_new_tab": bool(viewer_data.get("drop_opens_new_tab", False)),
+                "open_archives_in_own_tab": bool(viewer_data.get("open_archives_in_own_tab", True)),
+                "open_folders_in_own_tab": bool(viewer_data.get("open_folders_in_own_tab", False)),
                 "show_tabs_in_fullscreen": bool(viewer_data.get("show_tabs_in_fullscreen", False)),
             })
         if "cache" in merged_data:

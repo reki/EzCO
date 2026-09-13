@@ -336,6 +336,8 @@
     "drop_opens_new_tab": "ファイルのドロップ先",
     "drop_open_current": "既存のタブで開く",
     "drop_open_new": "新しいタブで開く",
+    "open_archives_in_own_tab": "アーカイブは別タブで開く",
+    "open_folders_in_own_tab": "フォルダは別タブで開く",
     "debug_settings": "デバッグ設定",
     "popup_settings": "ポップアップ表示設定",
     "ui_font_settings": "UIフォント設定",

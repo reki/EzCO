@@ -1613,6 +1613,65 @@ class MainWindow(QMainWindow):
         if count > 0:
             self.tab_widget.setCurrentIndex(count - 1)
 
+    def _path_open_kind(self, path: str) -> str:
+        if is_session_file(path):
+            return "session"
+        file_path = Path(path)
+        if file_path.is_dir():
+            return "folder"
+        from ez_co.plugins.manager import get_plugin_manager
+        decision = get_plugin_manager().resolve(path, self.config)
+        if decision.is_skipped:
+            return "skip"
+        if decision.is_image:
+            return "image"
+        if decision.is_archive:
+            return "archive"
+        return "other"
+
+    def _grouped_open_items(self, paths: List[str]) -> list[tuple[str, list[str]]]:
+        archive_own = bool(self.config.viewer.get("open_archives_in_own_tab", True))
+        folder_own = bool(self.config.viewer.get("open_folders_in_own_tab", False))
+        items: list[tuple[str, list[str]]] = []
+        bundle: list[str] = []
+        bundle_inserted = False
+        for path in paths:
+            kind = self._path_open_kind(path)
+            if kind == "skip":
+                continue
+            own_tab = (
+                (kind == "archive" and archive_own)
+                or (kind == "folder" and folder_own)
+                or kind not in ("image", "folder", "archive")
+            )
+            if own_tab:
+                items.append(("single", [path]))
+            else:
+                bundle.append(path)
+                if not bundle_inserted:
+                    items.append(("bundle", bundle))
+                    bundle_inserted = True
+        return items
+
+    def _open_path_groups(self, paths: List[str], *, new_tab: bool = False):
+        groups = self._grouped_open_items(paths)
+        if not groups:
+            if new_tab:
+                self._ensure_tab_for_new_open()
+            self.show_unsupported_file_message()
+            return
+        for index, (kind, group_paths) in enumerate(groups):
+            if index == 0:
+                if new_tab:
+                    self._ensure_tab_for_new_open()
+            else:
+                self._add_tab(switch=True)
+            if kind == "bundle" and len(group_paths) > 1:
+                self.open_files(group_paths)
+                self._sync_current_tab_title()
+            else:
+                self._open_single_path(group_paths[0])
+
     def open_paths(self, file_paths: List[str], *, new_tab: bool = False):
         paths = [path for path in file_paths if path]
         if not paths:
@@ -1623,17 +1682,10 @@ class MainWindow(QMainWindow):
             target = self.restore_session(sessions[0])
             if target is None:
                 return
-            for path in others:
-                target._add_tab(switch=True)
-                target._open_single_path(path)
+            if others:
+                target._open_path_groups(others, new_tab=True)
             return
-        first, *rest = paths
-        if new_tab:
-            self._ensure_tab_for_new_open()
-        self._open_single_path(first)
-        for path in rest:
-            self._add_tab(switch=True)
-            self._open_single_path(path)
+        self._open_path_groups(paths, new_tab=new_tab)
 
     def _open_single_path(self, file_path: str, page_number: int = 1):
         if is_session_file(file_path):
