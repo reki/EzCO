@@ -259,6 +259,20 @@ body {
     color: #64748b;
 }
 
+.section ul,
+.section ol,
+.content-wrapper ul,
+.content-wrapper ol {
+    margin: 0 0 1rem 1.5rem;
+    padding-left: 0.4rem;
+}
+
+.section li,
+.content-wrapper li {
+    margin-bottom: 0.45rem;
+    color: #4b5563;
+}
+
 /* Feature Grid */
 .feature-grid {
     display: grid;

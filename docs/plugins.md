@@ -333,7 +333,7 @@ class _Entry:
 - `host.set_config(key, value)` — 型を正規化して保存し、そのプラグインへ `"config_changed"`（`{key, value}`）
 - `host.delete_config(key)`
 
-プラグイン設定の一覧にスキーマがある行は「設定」ボタンが出ます。そこでパネルを開き OK すると、本体ダイアログの OK を待たずに DB へ保存して通知します。
+プラグイン設定の一覧にスキーマがある行は「設定」ボタンが出ます。そこでパネルを開き OK / 適用すると、本体ダイアログの OK を待たずに DB へ保存して通知します。ユーザーマニュアルの [プラグインリファレンス（コンフィグ）](../resources/UserManual/files/plugin-reference.html#plugin-config) に、スキーマ・保存場所・ダイアログの扱いをまとめています。
 
 UI の再接続用に任意の `setup()` / `teardown()` を実装できます。無効化すると本体はサイドバーと登録アクションを外します。
 
@@ -601,7 +601,7 @@ plugins:
 | `plugins.source_choice` | `object` | 重複 `id` → `{source, seen}`。`source` は `plugins/` 直下の名前、または `"none"`。選んだソースが残っている限り起動時は聞かない。切り替えるときはプラグイン設定の「重複プラグインの選択」 |
 | `plugins.dialog` | `object` | プラグイン設定ダイアログの列順と幅。OK / キャンセルどちらでも保存する |
 
-プラグイン固有の値は `plugin_settings` テーブルに、`plugin_id` のハッシュで保存します。プラグイン API に id 引数はありません。
+プラグイン固有の値は `plugin_settings` テーブルに、`plugin_id` のハッシュで保存します。プラグイン API に id 引数はありません。`manifest.json` の `version` を上げても `id` が同じなら同じ行です。本体設定の YAML エクスポートには出ません。詳細はユーザーマニュアルのプラグインリファレンス「プラグイン設定（コンフィグ）」です。
 
 UI は「プラグイン設定」ダイアログです。ON/OFF と読み込み方式を扱います。OFF にしたプラグインが担当していた拡張子は、ビルドイン → 他プラグイン → 行削除の順で付け替えます。ID に `(ver:)` は付けません。
 

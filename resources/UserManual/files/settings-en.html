@@ -380,7 +380,12 @@
 
                     <section id="tab-settings" class="section">
                         <h2>🗂️ Tabs</h2>
-                        <p>File menu Open uses the current tab. Open in New Tab opens new tabs. History and bookmarks: click = current tab, Ctrl+click or middle-click = new tab, or choose from the right-click menu. Middle-click a tab to close it. Closing the last tab closes the window.</p>
+                        <p>Where files open depends on the command and the click.</p>
+                        <ul>
+                            <li>File menu Open uses the current tab. Open in New Tab opens new tabs.</li>
+                            <li>History and bookmarks: click = current tab, Ctrl+click or middle-click = new tab, or choose from the right-click menu.</li>
+                            <li>Middle-click a tab to close it. Closing the last tab closes the window.</li>
+                        </ul>
                         <ul>
                             <li><strong>viewer.drop_opens_new_tab:</strong> false = drop into the current tab, true = drop into a new tab. After the first group, archives or folders set to own-tab open as extra tabs. Default: false</li>
                             <li><strong>viewer.open_archives_in_own_tab:</strong> true = each archive is its own tab; false = include archives as pages with images. Kind follows Plugin Settings. Default: true</li>
@@ -393,7 +398,33 @@
                     <!-- Plugin Settings -->
                     <section id="plugin-settings" class="section">
                         <h2>🔌 Plugin Settings</h2>
-                        <p>Use <code>Plugin Settings</code> to turn plugins on or off, choose a handler per extension, and inspect loaded plugins. Put a ZIP or a folder with <code>manifest.json</code> in the data folder <code>plugins/</code> (Settings → Data location). If plugins are present and you have not accepted, a Yes / No dialog appears at startup. Yes writes the consent version to this user's <code>user.json</code>, then the duplicate-id dialog if needed. No does not load plugins and hides this menu item. The question returns next start, and again if the host raises the consent version. Restart after adding or removing a ZIP or folder. On/off, handler choice, and changing a duplicate-id source apply on OK / Apply; no restart. EzCo does not inspect plugin code. Placed code runs with the same privileges as the app. The EzCo developers are not responsible for damage from malicious or defective plugins. Responsibility lies with the publisher and the person who installs it. Root <code>LICENSE.md</code> / <code>LICENSE.txt</code> / <code>LICENSE</code> can be opened from License (that order; display is not a guarantee). If more than one plugin has the same <code>id</code>, choose one after consent. Unselected plugins stay in the list with a reason. A disabled plugin is treated as missing. These values are stored in the current profile. <code>Don't load</code> replaces the old Archive Settings dialog. Enabled plugin extensions appear in the file dialog under Supported Files and Plugin formats, and in folder scans. The product info sidebar is the <code>product_info</code> plugin. Host APIs are in the <a href="plugin-reference-en.html">Plugin Reference</a>.</p>
+                        <p>Use <code>Plugin Settings</code> to turn plugins on or off, choose a handler per extension, and inspect loaded plugins.</p>
+                        <p>Put a ZIP or a folder with <code>manifest.json</code> directly under the data folder <code>plugins/</code> (Settings → Data location).</p>
+                        <h3>Consent and restart</h3>
+                        <ul>
+                            <li>If plugins are present and you have not accepted, a Yes / No dialog appears at startup.</li>
+                            <li>Yes writes the consent version to this user's <code>user.json</code>, then the duplicate-id dialog if needed.</li>
+                            <li>No does not load plugins and hides this menu item. The question returns next start.</li>
+                            <li>The dialog appears again if the host raises the consent version.</li>
+                            <li>Restart after adding or removing a ZIP or folder.</li>
+                            <li>On/off, handler choice, and changing a duplicate-id source apply on OK / Apply; no restart.</li>
+                        </ul>
+                        <h3>List and license</h3>
+                        <ul>
+                            <li>If more than one plugin has the same <code>id</code>, choose one after consent. Unselected plugins stay in the list with a reason.</li>
+                            <li>A disabled plugin is treated as missing.</li>
+                            <li>Root <code>LICENSE.md</code> / <code>LICENSE.txt</code> / <code>LICENSE</code> can be opened from the License column (that order; display is not a guarantee).</li>
+                            <li>If a plugin registered fields, the Settings column opens its own values. Storage is explained in the <a href="plugin-reference-en.html#plugin-config">Plugin Reference</a>.</li>
+                        </ul>
+                        <h3>Notes</h3>
+                        <ul>
+                            <li>EzCo does not inspect plugin code. Placed code runs with the same privileges as the app.</li>
+                            <li>The EzCo developers are not responsible for damage from malicious or defective plugins. Responsibility lies with the publisher and the person who installs it.</li>
+                            <li>On/off and handlers are stored in the current profile.</li>
+                            <li><code>Don't load</code> replaces the old Archive Settings dialog.</li>
+                            <li>Enabled plugin extensions appear in the file dialog under Supported Files and Plugin formats, and in folder scans.</li>
+                            <li>The product info sidebar is the <code>product_info</code> plugin. Host APIs are in the <a href="plugin-reference-en.html">Plugin Reference</a>.</li>
+                        </ul>
                         <ul>
                             <li><strong>plugin_consent_version:</strong> string such as <code>1.0.0</code> in this user's <code>user.json</code>, not the profile. On Yes it copies <code>src/ez_co/resources/plugin_consent/version.txt</code>. Missing, invalid, or different from the file means not accepted. No does not write it. After changing the Markdown notice, raise <code>version.txt</code>. Plugins are not loaded and this menu item is hidden until you accept</li>
                             <li><strong>plugins.enabled:</strong> plugin id → on/off. Missing ids are enabled. Off removes the plugin from extension handling and unmounts its sidebar</li>

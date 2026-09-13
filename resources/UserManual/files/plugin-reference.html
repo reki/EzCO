@@ -64,6 +64,7 @@
                                 <li><a href="#run-action" class="toc-link">run_action</a></li>
                             </ul>
                         </li>
+                        <li><a href="#plugin-config" class="toc-link">プラグイン設定（コンフィグ）</a></li>
                         <li><a href="#gettext" class="toc-link">get_text</a></li>
                         <li><a href="#root" class="toc-link">root</a></li>
                         <li><a href="#events" class="toc-link">イベント</a></li>
@@ -84,7 +85,13 @@
 
                     <section id="overview" class="config-section">
                         <h3>概要</h3>
-                        <p>プラグインはホストから生成され、コールバックされるだけです。コンストラクタは常に <code>Class(root, get_text, host)</code> です。<code>import ez_co</code> はできません（結合事故防止であり、サンドボックスではありません）。本体は中身を検査しません。置いたコードはアプリと同じ権限で動きます。悪意のあるコードや欠陥による損害について、EzCo の開発者は責任を負いません。責任は配布者と、それを導入した使用者にあります。PySide6 と本体が入れているサードパーティは import できます。</p>
+                        <p>プラグインはホストから生成され、コールバックされるだけです。コンストラクタは常に <code>Class(root, get_text, host)</code> です。</p>
+                        <ul>
+                            <li><code>import ez_co</code> はできません（結合事故防止であり、サンドボックスではありません）。</li>
+                            <li>本体は中身を検査しません。置いたコードはアプリと同じ権限で動きます。</li>
+                            <li>悪意のあるコードや欠陥による損害について、EzCo の開発者は責任を負いません。責任は配布者と、それを導入した使用者にあります。</li>
+                            <li>PySide6 と本体が入れているサードパーティは import できます。</li>
+                        </ul>
                         <div class="api-index">
                             <a href="#loader"><div class="api-index-name">FileLoader</div><div class="api-index-desc">画像／アーカイブの読み込み契約</div></a>
                             <a href="#host"><div class="api-index-name">host</div><div class="api-index-desc">登録・設定・ダイアログ・アクション</div></a>
@@ -102,7 +109,14 @@
 ├── langs/               # 任意 ja.json / en.json
 ├── resources/           # 任意。root.read_bytes
 └── LICENSE.md           # 任意。設定のライセンス。.md → .txt → 無印</pre>
-                        <p>余分な親フォルダを挟まないでください。同じ構成の展開フォルダを <code>plugins/</code> 直下に置けば、ZIP にしなくても読み込まれます。未同意なら起動時にはい／いいえの確認が出ます。はいのあと、同じ <code>id</code> が複数あるときは1つ選びます。選んだ内容は保存され、新しい重複 <code>id</code> が出ない限り次回は聞きません。選び直すときはプラグイン設定の「重複プラグインの選択」です。選ばれなかったものは一覧に理由付きで残ります。ルートの <code>LICENSE.md</code> / <code>LICENSE.txt</code> / <code>LICENSE</code> は設定から読めます（優先順はこの順。表示は保証ではありません）。</p>
+                        <ul>
+                            <li>余分な親フォルダを挟まないでください。</li>
+                            <li>同じ構成の展開フォルダを <code>plugins/</code> 直下に置けば、ZIP にしなくても読み込まれます。</li>
+                            <li>未同意なら起動時にはい／いいえの確認が出ます。</li>
+                            <li>はいのあと、同じ <code>id</code> が複数あるときは1つ選びます。選んだ内容は保存され、新しい重複 <code>id</code> が出ない限り次回は聞きません。</li>
+                            <li>選び直すときはプラグイン設定の「重複プラグインの選択」です。選ばれなかったものは一覧に理由付きで残ります。</li>
+                            <li>ルートの <code>LICENSE.md</code> / <code>LICENSE.txt</code> / <code>LICENSE</code> はライセンス列から読めます（優先順はこの順。表示は保証ではありません）。</li>
+                        </ul>
                     </section>
 
                     <section id="manifest" class="config-section">
@@ -361,7 +375,7 @@ host.register_action("reload", get_text("reload"), _reload)
                         <article id="register-config" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.register_config(key, value_type, default=None, label=None, description=None) -&gt; None</code></div>
                             <div class="api-body">
-                                <p><code>value_type</code> は <code>"bool"</code> / <code>"string"</code> / <code>"int"</code>。無効化してもスキーマは残るので <code>__init__</code> で登録してよい。一覧に「設定」ボタンが出ます。</p>
+                                <p><code>value_type</code> は <code>"bool"</code> / <code>"string"</code> / <code>"int"</code>。無効化してもスキーマは残るので <code>__init__</code> で登録してよい。一覧に「設定」ボタンが出ます。保存とプロファイルの扱いの全体は <a href="#plugin-config">プラグイン設定（コンフィグ）</a> です。</p>
 <pre class="api-example">host.register_config(
     "fetch_web",
     "bool",
@@ -484,6 +498,62 @@ if password is None:
 <pre class="api-example">host.run_action("new_tab")</pre>
                             </div>
                         </article>
+                    </section>
+
+                    <section id="plugin-config" class="config-section">
+                        <h3>プラグイン設定（コンフィグ）</h3>
+                        <p>本体の「プラグイン設定」ダイアログ（ON/OFF や拡張子の担当）と、各プラグインが持つ値は別物です。ここで扱うのは後者です。メソッドの型は <a href="#register-config">register_config</a> / <a href="#get-config">get_config</a> / <a href="#set-config">set_config</a> / <a href="#delete-config">delete_config</a> を見てください。</p>
+
+                        <h4>スキーマ</h4>
+                        <ul>
+                            <li><code>__init__</code> で <code>host.register_config(key, value_type, default, label, description)</code> を呼びます。無効化してもスキーマは残るので、ここで登録してかまいません。</li>
+                            <li><code>value_type</code> は <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> だけです。ほかの型はありません。</li>
+                            <li><code>label</code> は設定ダイアログの項目名、<code>description</code> はツールチップです。省略するとキー名だけが出ます。</li>
+                            <li>1つでも登録すると、プラグイン設定の一覧の設定列に「設定」ボタンが出ます。無い行は <code>-</code> です。</li>
+                        </ul>
+
+                        <h4>読み書き</h4>
+                        <ul>
+                            <li><code>get_config(key, default)</code> は保存値を返します。未保存ならスキーマの <code>default</code>、それも無ければ引数の <code>default</code> です。型はスキーマに合わせて正規化します。</li>
+                            <li><code>set_config(key, value)</code> は型を揃えて保存し、そのプラグインだけへ <code>config_changed</code>（<code>{key, value}</code>）を送ります。他プラグインには来ません。</li>
+                            <li><code>delete_config(key)</code> は保存値だけ消します。スキーマは残るので、次の <code>get_config</code> は default に戻ります。</li>
+                            <li>プラグイン API に <code>plugin_id</code> 引数はありません。渡された <code>host</code> は、そのプラグインの行だけを見ます。</li>
+                            <li><code>host.get_app_config()</code> は本体の <code>language</code> / <code>viewer</code> / <code>cache</code> / <code>ui_font</code> の読み取り専用です。プラグインの値ではありません。</li>
+                        </ul>
+
+                        <h4>保存場所</h4>
+                        <ul>
+                            <li>現在のプロファイルの <code>plugin_settings</code> テーブルです。プロファイルを追加するとコピーされ、削除すると消えます。</li>
+                            <li>行の識別は <code>plugin_id</code> のハッシュです。他プラグインの行は読めません。</li>
+                            <li>キーはプラグインが決めた短い名前（例 <code>fetch_web</code>）です。<code>manifest.json</code> の <code>version</code> を上げても、<code>id</code> が同じなら同じ行を読みます。</li>
+                            <li>拡張子の担当に使う <code>id(ver:version)</code> とは別です。あちらは本体の <code>plugins.extension_handlers</code> です。</li>
+                            <li>YAML エクスポートには出ません。本体設定のエクスポート／インポートではコピーされません。</li>
+                        </ul>
+
+                        <h4>設定ダイアログ</h4>
+                        <ul>
+                            <li>一覧の「設定」を開くと、登録した項目だけの小さなダイアログが出ます。</li>
+                            <li>そのダイアログの OK / 適用は、すぐ DB へ書きます。本体のプラグイン設定ダイアログの OK を待ちません。</li>
+                            <li>キャンセルは、そのダイアログでまだ保存していない変更だけ捨てます。</li>
+                            <li>値を変えたあとは <code>config_changed</code> を聞いて、サイドバーなどを更新してください。</li>
+                        </ul>
+<pre class="api-example">def __init__(self, root, get_text, host):
+    host.register_config(
+        "fetch_web",
+        "bool",
+        default=True,
+        label=get_text("config.fetch_web"),
+        description=get_text("config.fetch_web.desc"),
+    )
+    host.on("config_changed", self._on_config)
+
+def _on_config(self, payload):
+    if payload.get("key") == "fetch_web":
+        self._apply(payload.get("value"))
+
+# あとから読む
+if host.get_config("fetch_web"):
+    self._fetch(host.get_current("folder"))</pre>
                     </section>
 
                     <section id="gettext" class="config-section">

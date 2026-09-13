@@ -64,6 +64,7 @@
                                 <li><a href="#run-action" class="toc-link">run_action</a></li>
                             </ul>
                         </li>
+                        <li><a href="#plugin-config" class="toc-link">Plugin config</a></li>
                         <li><a href="#gettext" class="toc-link">get_text</a></li>
                         <li><a href="#root" class="toc-link">root</a></li>
                         <li><a href="#events" class="toc-link">Events</a></li>
@@ -84,7 +85,13 @@
 
                     <section id="overview" class="config-section">
                         <h3>Overview</h3>
-                        <p>The host constructs the plugin and calls it. The constructor is always <code>Class(root, get_text, host)</code>. <code>import ez_co</code> is not allowed (it prevents accidental coupling; it is not a sandbox). EzCo does not inspect plugin code. Placed code runs with the same privileges as the app. The EzCo developers are not responsible for damage from malicious or defective plugins. Responsibility lies with the publisher and the person who installs it. PySide6 and host third-party packages are allowed.</p>
+                        <p>The host constructs the plugin and calls it. The constructor is always <code>Class(root, get_text, host)</code>.</p>
+                        <ul>
+                            <li><code>import ez_co</code> is not allowed (it prevents accidental coupling; it is not a sandbox).</li>
+                            <li>EzCo does not inspect plugin code. Placed code runs with the same privileges as the app.</li>
+                            <li>The EzCo developers are not responsible for damage from malicious or defective plugins. Responsibility lies with the publisher and the person who installs it.</li>
+                            <li>PySide6 and host third-party packages are allowed.</li>
+                        </ul>
                         <div class="api-index">
                             <a href="#loader"><div class="api-index-name">FileLoader</div><div class="api-index-desc">Image / archive loader contract</div></a>
                             <a href="#host"><div class="api-index-name">host</div><div class="api-index-desc">Register, config, dialogs, actions</div></a>
@@ -102,7 +109,14 @@
 ├── langs/               # optional ja.json / en.json
 ├── resources/           # optional; root.read_bytes
 └── LICENSE.md           # optional. Settings → License. .md then .txt then bare</pre>
-                        <p>Do not wrap the package in an extra parent folder. The same layout as a folder under <code>plugins/</code> loads without zipping. If you have not accepted yet, a Yes / No dialog appears at startup. After Yes, if more than one plugin has the same <code>id</code>, choose one. The choice is saved and is not asked again unless a new unresolved duplicate id appears. Change it later in Plugin Settings. Root <code>LICENSE.md</code> / <code>LICENSE.txt</code> / <code>LICENSE</code> can be opened from Plugin Settings (that order; display is not a guarantee).</p>
+                        <ul>
+                            <li>Do not wrap the package in an extra parent folder.</li>
+                            <li>The same layout as a folder under <code>plugins/</code> loads without zipping.</li>
+                            <li>If you have not accepted yet, a Yes / No dialog appears at startup.</li>
+                            <li>After Yes, if more than one plugin has the same <code>id</code>, choose one. The choice is saved and is not asked again unless a new unresolved duplicate id appears.</li>
+                            <li>Change it later in Plugin Settings. Unselected plugins stay in the list with a reason.</li>
+                            <li>Root <code>LICENSE.md</code> / <code>LICENSE.txt</code> / <code>LICENSE</code> can be opened from the License column (that order; display is not a guarantee).</li>
+                        </ul>
                     </section>
 
                     <section id="manifest" class="config-section">
@@ -361,7 +375,7 @@ host.register_action("reload", get_text("reload"), _reload)
                         <article id="register-config" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.register_config(key, value_type, default=None, label=None, description=None) -&gt; None</code></div>
                             <div class="api-body">
-                                <p><code>value_type</code> is <code>"bool"</code> / <code>"string"</code> / <code>"int"</code>. Schema survives disable, so <code>__init__</code> is fine. Adds a Settings button on the plugin row.</p>
+                                <p><code>value_type</code> is <code>"bool"</code> / <code>"string"</code> / <code>"int"</code>. Schema survives disable, so <code>__init__</code> is fine. Adds a Settings button on the plugin row. Storage and profile rules are in <a href="#plugin-config">Plugin config</a>.</p>
 <pre class="api-example">host.register_config(
     "fetch_web",
     "bool",
@@ -484,6 +498,62 @@ if password is None:
 <pre class="api-example">host.run_action("new_tab")</pre>
                             </div>
                         </article>
+                    </section>
+
+                    <section id="plugin-config" class="config-section">
+                        <h3>Plugin config</h3>
+                        <p>The host Plugin Settings dialog (on/off and extension handlers) is not the same as a plugin's own values. This section is the latter. Signatures are under <a href="#register-config">register_config</a> / <a href="#get-config">get_config</a> / <a href="#set-config">set_config</a> / <a href="#delete-config">delete_config</a>.</p>
+
+                        <h4>Schema</h4>
+                        <ul>
+                            <li>Call <code>host.register_config(key, value_type, default, label, description)</code> in <code>__init__</code>. Schema survives disable, so that is the right place.</li>
+                            <li><code>value_type</code> is only <code>"bool"</code> / <code>"string"</code> / <code>"int"</code>.</li>
+                            <li><code>label</code> is the row name in the settings dialog; <code>description</code> is the tooltip. If omitted, the key is shown.</li>
+                            <li>Registering at least one field adds a Settings button on the plugin row. Otherwise the cell is <code>-</code>.</li>
+                        </ul>
+
+                        <h4>Read and write</h4>
+                        <ul>
+                            <li><code>get_config(key, default)</code> returns the stored value. If none is stored, it uses the schema <code>default</code>, then the argument <code>default</code>. The value is coerced to the schema type.</li>
+                            <li><code>set_config(key, value)</code> coerces, stores, and emits <code>config_changed</code> (<code>{key, value}</code>) to this plugin only.</li>
+                            <li><code>delete_config(key)</code> deletes the stored value. The schema stays, so the next <code>get_config</code> returns the default.</li>
+                            <li>The plugin API has no <code>plugin_id</code> argument. The <code>host</code> you receive only sees this plugin's rows.</li>
+                            <li><code>host.get_app_config()</code> is a read-only snapshot of host <code>language</code> / <code>viewer</code> / <code>cache</code> / <code>ui_font</code>. It is not plugin config.</li>
+                        </ul>
+
+                        <h4>Storage</h4>
+                        <ul>
+                            <li>Values live in the current profile's <code>plugin_settings</code> table. They are copied when you add a profile and removed when you delete it.</li>
+                            <li>The row key is a hash of <code>plugin_id</code>. Other plugins cannot read these rows.</li>
+                            <li>Keys are short names you choose (for example <code>fetch_web</code>). Bumping <code>manifest.json</code> <code>version</code> does not change the row if <code>id</code> stays the same.</li>
+                            <li>That is separate from <code>id(ver:version)</code> used in <code>plugins.extension_handlers</code>.</li>
+                            <li>They are not written to the YAML export of host settings. Import / export of host config does not copy them.</li>
+                        </ul>
+
+                        <h4>Settings dialog</h4>
+                        <ul>
+                            <li>Settings on the plugin row opens a small dialog with only the registered fields.</li>
+                            <li>OK / Apply on that dialog writes to the database immediately. It does not wait for OK on the host Plugin Settings dialog.</li>
+                            <li>Cancel drops only unsaved edits in that dialog.</li>
+                            <li>Listen for <code>config_changed</code> and update the sidebar or other UI.</li>
+                        </ul>
+<pre class="api-example">def __init__(self, root, get_text, host):
+    host.register_config(
+        "fetch_web",
+        "bool",
+        default=True,
+        label=get_text("config.fetch_web"),
+        description=get_text("config.fetch_web.desc"),
+    )
+    host.on("config_changed", self._on_config)
+
+def _on_config(self, payload):
+    if payload.get("key") == "fetch_web":
+        self._apply(payload.get("value"))
+
+# later
+if host.get_config("fetch_web"):
+    self._fetch(host.get_current("folder"))</pre>
                     </section>
 
                     <section id="gettext" class="config-section">

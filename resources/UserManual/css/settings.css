@@ -72,6 +72,33 @@
     margin-bottom: 20px;
 }
 
+.config-section h4 {
+    color: var(--primary-600);
+    font-size: 1.05rem;
+    margin: 1.4rem 0 0.6rem;
+}
+
+.content-wrapper p,
+.config-section p,
+.api-body p {
+    margin-bottom: 0.85rem;
+}
+
+.content-wrapper ul,
+.content-wrapper ol,
+.config-section ul,
+.config-section ol,
+.api-body ul {
+    margin: 0 0 1rem 1.5rem;
+    padding-left: 0.4rem;
+}
+
+.content-wrapper li,
+.config-section li,
+.api-body li {
+    margin-bottom: 0.45rem;
+}
+
 .yaml-example {
     background: var(--background-primary);
     border: 1px solid var(--border-color);
