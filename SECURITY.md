@@ -6,7 +6,7 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
+| 1.1.x   | :white_check_mark: |
 
 ## セキュリティ脆弱性の報告 / Reporting Security Vulnerabilities
 
