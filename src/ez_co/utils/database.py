@@ -4,7 +4,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 import os
-from ez_co.utils.path_utils import get_project_root
+from ez_co.utils.data_location import get_data_root
 from ez_co.enums.entry_types import EntryType
 from ez_co.enums.archives import ArchiveInfo
 from ez_co.utils.language_manager import get_log_text, get_text
@@ -21,7 +21,7 @@ def get_default_profile_name() -> str:
 
 def resolve_database_path() -> Path:
     """config.db のパスを返す。旧 bookmarks.db があればリネームする。"""
-    root = get_project_root()
+    root = get_data_root()
     config_db = root / CONFIG_DB_NAME
     legacy_db = root / LEGACY_DB_NAME
     if legacy_db.exists() and not config_db.exists():

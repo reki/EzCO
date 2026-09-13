@@ -13,7 +13,24 @@ from ez_co.ui.main_window import MainWindow
 from ez_co.config import Config
 from ez_co.handlers.file_handler import FileHandler
 from ez_co.utils.path_utils import get_project_root
-from ez_co.utils.language_manager import language_manager, set_language, get_log_text, get_text
+from ez_co.utils.data_location import (
+    LOCATION_EXE,
+    LOCATION_USER,
+    apply_data_location,
+    default_location_settings,
+    exe_config_db_path,
+    get_data_root,
+    has_location_file,
+    load_location_settings,
+    set_data_root,
+)
+from ez_co.utils.language_manager import (
+    language_manager,
+    set_language,
+    get_log_text,
+    get_text,
+    reload_external_languages,
+)
 from ez_co.utils.error_logger import (
     initialize_error_logger,
     setup_exception_handler,
@@ -113,10 +130,38 @@ def parse_config_value(value_str: str) -> Any:
     # 文字列として返す
     return value_str
 
+def ensure_data_location() -> bool:
+    """場所の設定が無ければ初回ダイアログを出す。キャンセル／閉じるは起動しない。"""
+    if has_location_file():
+        settings = load_location_settings() or default_location_settings()
+        set_data_root(apply_data_location(settings))
+        return True
+    from ez_co.ui.data_location_dialog import DataLocationDialog
+
+    dialog = DataLocationDialog(exe_config_db_path().is_file())
+    if dialog.exec() != QDialog.Accepted:
+        return False
+    choice = dialog.choice()
+    if choice == DataLocationDialog.CHOICE_EXE:
+        apply_data_location({"data_location": LOCATION_EXE, "custom_path": ""})
+    elif choice == DataLocationDialog.CHOICE_USER_COPY:
+        apply_data_location(
+            {"data_location": LOCATION_USER, "custom_path": ""},
+            copy_from_exe=True,
+        )
+    else:
+        apply_data_location({"data_location": LOCATION_USER, "custom_path": ""})
+    return True
+
+
 def maybe_import_legacy_yaml(db_manager: DatabaseManager):
     """残っている config.yaml があれば取り込み確認を出す"""
-    config_path = get_project_root() / Path("config.yaml")
-    if not config_path.exists():
+    config_path = None
+    for candidate in (get_data_root() / "config.yaml", get_project_root() / "config.yaml"):
+        if candidate.exists():
+            config_path = candidate
+            break
+    if config_path is None:
         return
     try:
         from ez_co.ui.yaml_import_dialog import YamlImportDialog
@@ -187,7 +232,7 @@ def initialize_debug_logging(config: Config):
     try:
         if config.debug.get("enabled", False):
             # logsフォルダを作成
-            logs_dir = Path.cwd() / "logs"
+            logs_dir = get_data_root() / "logs"
             logs_dir.mkdir(exist_ok=True)
             # タイムスタンプ付きのログファイル名を生成
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -301,6 +346,10 @@ def main():
             error_logger.log_error(get_log_text("main_icon_set_error", error=e), e)
         # 言語の初期化（DB読み込み前はシステム既定）
         initialize_language(Config())
+        if not ensure_data_location():
+            return 0
+        initialize_error_logger(get_data_root())
+        reload_external_languages()
 
         db_manager = DatabaseManager()
         maybe_import_legacy_yaml(db_manager)

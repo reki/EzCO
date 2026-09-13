@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QLabel, QLineEdit,
     QSpinBox, QCheckBox, QPushButton, QDialogButtonBox, QColorDialog,
     QComboBox, QGroupBox, QSlider, QTabWidget, QWidget, QGridLayout,
-    QFileDialog, QMessageBox, QScrollArea, QCompleter
+    QFileDialog, QMessageBox, QScrollArea, QCompleter, QRadioButton, QButtonGroup
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QPalette
@@ -13,6 +13,16 @@ import humanfriendly
 from ez_co.enums.fonts import FontInfo, FontFamilyManager
 from ez_co.config import Config
 from ez_co.utils.language_manager import get_text, get_available_languages, set_language, get_log_text
+from ez_co.utils.data_location import (
+    LOCATION_CUSTOM,
+    LOCATION_EXE,
+    LOCATION_USER,
+    default_location_settings,
+    is_writable_dir,
+    load_location_settings,
+    resolve_data_root,
+    save_location_settings,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +94,7 @@ class SettingsDialog(QDialog):
     def setup_ui(self):
         """UIの初期化"""
         self.setWindowTitle(get_text("settings.title"))
-        self.setFixedSize(550, 450)  # 固定サイズに変更
+        self.setFixedSize(550, 560)
         
         layout = QVBoxLayout()
         
@@ -195,7 +205,50 @@ class SettingsDialog(QDialog):
         scroll_area.setWidget(general_widget)
         
         layout = QVBoxLayout()
-        
+
+        location_group = QGroupBox(get_text("settings.data_location_settings"))
+        location_layout = QVBoxLayout()
+        current = load_location_settings() or default_location_settings()
+        self._location_group = QButtonGroup(self)
+        self.location_user_radio = QRadioButton(get_text("settings.data_location_user"))
+        self.location_exe_radio = QRadioButton(get_text("settings.data_location_exe"))
+        self.location_custom_radio = QRadioButton(get_text("settings.data_location_custom"))
+        self._location_group.addButton(self.location_user_radio)
+        self._location_group.addButton(self.location_exe_radio)
+        self._location_group.addButton(self.location_custom_radio)
+        location_layout.addWidget(self.location_user_radio)
+        location_layout.addWidget(self.location_exe_radio)
+        self.location_exe_warning = QLabel(get_text("settings.data_location_exe_warning"))
+        self.location_exe_warning.setWordWrap(True)
+        self.location_exe_warning.setStyleSheet("color: #c47d00;")
+        location_layout.addWidget(self.location_exe_warning)
+        location_layout.addWidget(self.location_custom_radio)
+        self.location_custom_warning = QLabel(get_text("settings.data_location_custom_warning"))
+        self.location_custom_warning.setWordWrap(True)
+        self.location_custom_warning.setStyleSheet("color: #c47d00;")
+        location_layout.addWidget(self.location_custom_warning)
+        custom_row = QHBoxLayout()
+        self.location_custom_edit = QLineEdit()
+        self.location_custom_edit.setText(current.get("custom_path") or "")
+        self.location_browse_button = QPushButton(get_text("settings.data_location_browse"))
+        self.location_browse_button.clicked.connect(self._browse_data_location)
+        custom_row.addWidget(self.location_custom_edit)
+        custom_row.addWidget(self.location_browse_button)
+        location_layout.addLayout(custom_row)
+        self.location_restart_note = QLabel(get_text("settings.data_location_restart_note"))
+        self.location_restart_note.setWordWrap(True)
+        location_layout.addWidget(self.location_restart_note)
+        location_group.setLayout(location_layout)
+        layout.addWidget(location_group)
+        mode = current.get("data_location", LOCATION_USER)
+        self.location_user_radio.setChecked(mode == LOCATION_USER)
+        self.location_exe_radio.setChecked(mode == LOCATION_EXE)
+        self.location_custom_radio.setChecked(mode == LOCATION_CUSTOM)
+        self.location_exe_radio.toggled.connect(self._update_location_controls)
+        self.location_custom_radio.toggled.connect(self._update_location_controls)
+        self._update_location_controls()
+        self._apply_setting_tip("data_location", location_group)
+
         # 言語設定
         language_group = QGroupBox(get_text("settings.language_settings"))
         language_layout = QFormLayout()
@@ -244,6 +297,36 @@ class SettingsDialog(QDialog):
         general_widget.setLayout(layout)
         
         self.tab_widget.addTab(scroll_area, get_text("settings.tab_general"))
+
+    def _update_location_controls(self):
+        custom = self.location_custom_radio.isChecked()
+        self.location_custom_edit.setEnabled(custom)
+        self.location_browse_button.setEnabled(custom)
+        self.location_custom_warning.setVisible(custom)
+        self.location_exe_warning.setVisible(self.location_exe_radio.isChecked())
+
+    def _browse_data_location(self):
+        path = QFileDialog.getExistingDirectory(
+            self,
+            get_text("settings.data_location_browse"),
+            self.location_custom_edit.text() or "",
+        )
+        if path:
+            self.location_custom_edit.setText(path)
+            self.location_custom_radio.setChecked(True)
+            self._update_location_controls()
+
+    def _current_location_settings(self) -> dict:
+        if self.location_exe_radio.isChecked():
+            mode = LOCATION_EXE
+        elif self.location_custom_radio.isChecked():
+            mode = LOCATION_CUSTOM
+        else:
+            mode = LOCATION_USER
+        return {
+            "data_location": mode,
+            "custom_path": self.location_custom_edit.text().strip(),
+        }
 
     def create_display_tab(self):
         """表示タブを作成"""
@@ -1137,11 +1220,12 @@ class SettingsDialog(QDialog):
 
     def apply_settings(self):
         """設定を適用"""
-        self._save_settings()
+        return self._save_settings()
 
     def accept(self):
         """OKボタンが押された時の処理"""
-        self.apply_settings()
+        if self.apply_settings() is False:
+            return
         super().accept()
 
     def export_config(self):
@@ -1191,6 +1275,23 @@ class SettingsDialog(QDialog):
 
     def _save_settings(self):
         """設定を保存する共通処理"""
+        location = self._current_location_settings()
+        if location["data_location"] == LOCATION_CUSTOM and not location["custom_path"]:
+            QMessageBox.warning(
+                self,
+                get_text("dialogs.warning"),
+                get_text("settings.data_location_custom_required"),
+            )
+            return False
+        target = resolve_data_root(location)
+        if not is_writable_dir(target):
+            QMessageBox.warning(
+                self,
+                get_text("dialogs.warning"),
+                get_text("settings.data_location_not_writable"),
+            )
+        save_location_settings(location)
+
         # 言語設定
         selected_language = self.language_combo.currentData()
         language_changed = False
@@ -1388,6 +1489,7 @@ class SettingsDialog(QDialog):
             parent.update_image()
             if hasattr(parent, '_update_page_slider_dialog'):
                 parent._update_page_slider_dialog()
+        return True
 
     def reject(self):
         """Cancelボタンが押された時の処理"""

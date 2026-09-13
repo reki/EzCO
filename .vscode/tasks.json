@@ -65,6 +65,25 @@
             "problemMatcher": []
         },
         {
+            "label": "EzCo: インストーラ (installer)",
+            "type": "shell",
+            "command": "poetry",
+            "args": [
+                "run",
+                "installer"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "EzCo: 初期化",
             "type": "shell",
             "command": "poetry",

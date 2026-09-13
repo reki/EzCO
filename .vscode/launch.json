@@ -96,6 +96,18 @@
             "preLaunchTask": "EzCo: 頒布用zip (collect)"
         },
         {
+            "name": "▶ インストーラ (poetry run installer)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tooling/noop.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "preLaunchTask": "EzCo: インストーラ (installer)"
+        },
+        {
             "name": "▶ 初期化 (poetry run init-env)",
             "type": "debugpy",
             "request": "launch",

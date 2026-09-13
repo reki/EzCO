@@ -36,6 +36,7 @@ EzCoへの貢献をありがとうございます。開発・実行・ビルド�
 | ▶ ビルド (poetry run build) | Nuitka 標準ビルド |
 | ▶ ビルド (--safe-mode) | 最適化なしビルド |
 | ▶ 頒布用zip (poetry run collect) | 頒布用 zip 作成 |
+| ▶ インストーラ (poetry run installer) | Inno Setup インストーラ作成（PATH に ISCC） |
 | ▶ 初期化 (poetry run init-env) | 環境初期化 |
 | py-spy: top / record … | プロファイラ |
 
@@ -47,6 +48,7 @@ poetry run python -m ez_co.main
 poetry run build
 poetry run build -- --safe-mode
 poetry run collect
+poetry run installer
 ```
 
 ## 貢献の方法
@@ -118,6 +120,7 @@ Requires Windows, Python 3.10+ (3.12 recommended), and [Poetry](https://python-p
 | ▶ ビルド (poetry run build) | Nuitka release build |
 | ▶ ビルド (--safe-mode) | Build without extra optimization |
 | ▶ 頒布用zip (poetry run collect) | Distribution zip |
+| ▶ インストーラ (poetry run installer) | Inno Setup installer (ISCC on PATH) |
 | ▶ 初期化 (poetry run init-env) | Environment setup |
 | py-spy: top / record … | Profiler |
 
@@ -129,6 +132,7 @@ poetry run python -m ez_co.main
 poetry run build
 poetry run build -- --safe-mode
 poetry run collect
+poetry run installer
 ```
 
 ## How to Contribute

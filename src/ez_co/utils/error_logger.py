@@ -14,16 +14,10 @@ class ErrorLogger:
             log_dir: ログファイルの保存ディレクトリ（Noneの場合は実行ファイルと同じディレクトリ）
         """
         if log_dir is None:
-            # 実行ファイルと同じディレクトリにログファイルを作成
-            if getattr(sys, 'frozen', False):
-                # PyInstallerでビルドされた場合
-                self.log_dir = Path(sys.executable).parent
-            else:
-                # 開発環境の場合
-                self.log_dir = Path(__file__).parent.parent.parent.parent
-        self.log_dir = Path(log_dir) if log_dir else self.log_dir
-        self.log_dir = self.log_dir / "logs"
-        self.log_dir.mkdir(exist_ok=True)
+            from ez_co.utils.data_location import get_data_root
+            log_dir = get_data_root()
+        self.log_dir = Path(log_dir) / "logs"
+        self.log_dir.mkdir(parents=True, exist_ok=True)
         # ログファイル名を設定（日付付き）
         self.log_file = self.log_dir / f"error_log_{datetime.now().strftime('%Y%m%d')}.txt"
         # ログフォーマッターを設定

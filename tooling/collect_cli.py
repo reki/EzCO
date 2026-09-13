@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 
 from tooling.build_cli import run_build
+from tooling.release_layout import BUNDLE_NAME, stage_release_dir
 
 try:
     import tomllib
@@ -41,7 +42,6 @@ def _make_release_zip(root: Path, *, skip_build: bool) -> Path:
         raise SystemExit(1)
 
     version = _read_version(root)
-    bundle_name = "EzCO"
     zip_stem = f"EzCo-v{version}-release"
     zip_path = root / f"{zip_stem}.zip"
 
@@ -49,41 +49,9 @@ def _make_release_zip(root: Path, *, skip_build: bool) -> Path:
         print("Removing existing release zip file...")
         zip_path.unlink()
 
-    user_manual = root / "resources" / "UserManual"
-    lang_dir = root / "src" / "ez_co" / "resources" / "langs"
-
     with tempfile.TemporaryDirectory() as td:
-        inner = Path(td) / bundle_name
-        inner.mkdir(parents=True)
-        (inner / "langs" / "sample").mkdir(parents=True)
-        (inner / "fonts").mkdir(parents=True)
-        (inner / "plugins").mkdir(parents=True)
-
-        if skip_build:
-            print("Copying EzCo.exe to release directory (preserving original)...")
-            shutil.copy2(exe, inner / "EzCo.exe")
-        else:
-            print("Moving EzCo.exe to release directory...")
-            shutil.copy2(exe, inner / "EzCo.exe")
-            exe.unlink()
-
-        if user_manual.is_dir():
-            print("Copying resources/UserManual directory...")
-            shutil.copytree(user_manual, inner / "UserManual")
-        else:
-            print("Warning: resources/UserManual directory not found")
-
-        ja = lang_dir / "ja.json"
-        en = lang_dir / "en.json"
-        if ja.is_file() and en.is_file():
-            print("Copying language files to langs/sample...")
-            shutil.copy2(ja, inner / "langs" / "sample" / "ja.json")
-            shutil.copy2(en, inner / "langs" / "sample" / "en.json")
-        else:
-            print(f"Warning: Language files (ja.json, en.json) not found in {lang_dir}")
-
-        exe_size = (inner / "EzCo.exe").stat().st_size
-        print(f"Executable size: {exe_size} bytes")
+        inner = Path(td) / BUNDLE_NAME
+        stage_release_dir(inner, root, consume_exe=not skip_build)
 
         archive_path = shutil.make_archive(
             str(root / zip_stem),

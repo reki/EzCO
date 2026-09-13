@@ -34,6 +34,7 @@
 
                     <h1>⚙️ 設定</h1>
                     <p>EzCoの設定はSQLiteデータベース（<code>config.db</code>）に、<strong>プロファイル単位</strong>で保存されます。設定ダイアログからの変更は現在のプロファイルに反映されます。このページでは各項目の意味と内部キー名を説明します。YAML例はエクスポート形式の参考です。</p>
+                    <p>データの置き場（<code>config.db</code> と <code>plugins</code> など）だけはプロファイル共通です。初回起動で選び、あとから全般タブで変えられます。変更は次回起動時に反映されます。</p>
 
                     <div class="warning-box">
                         <h3>⚠️ 重要な注意</h3>
@@ -44,6 +45,36 @@
                             <li>旧バージョンの<code>config.yaml</code>が残っている場合、起動時に取り込み確認が表示されます</li>
                         </ul>
                     </div>
+
+                    <section id="data-location" class="config-section">
+                        <h3>📂 データの置き場（プロファイル共通）</h3>
+                        <p>場所の設定は、このユーザーのデータフォルダにある <code>location.json</code> に保存します。UI には技術的なフォルダ名は出しません。</p>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">このユーザーのデータフォルダ（推奨）</span>
+                                <span class="setting-key">data_location=user</span>
+                                <span class="setting-type">選択</span>
+                            </div>
+                            <p>この Windows ユーザー専用のフォルダに <code>config.db</code> と <code>plugins</code> を置きます。初回に場所の設定が無いときは、起動ダイアログでも選べます。</p>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">実行ファイルと同じフォルダ</span>
+                                <span class="setting-key">data_location=exe</span>
+                                <span class="setting-type">選択</span>
+                            </div>
+                            <p>実行フォルダに設定を置きます。同じ PC の他のユーザーも、その設定を読んだり変えたりできることがあります。</p>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">フォルダを指定</span>
+                                <span class="setting-key">data_location=custom</span>
+                                <span class="setting-type">選択</span>
+                            </div>
+                            <p>任意のフォルダを使います。他のユーザーが読める場所だと、設定を共有してしまうことがあります。</p>
+                        </div>
+                    </section>
 
                     <!-- ウィンドウ設定 -->
                     <section id="window-settings" class="config-section">
@@ -669,7 +700,7 @@ image_list:
                     <!-- プラグイン設定 -->
                     <section id="plugin-settings" class="config-section">
                         <h3>🔌 プラグイン設定 (plugins)</h3>
-                        <p>メニューの「プラグイン設定」で、プラグインの ON/OFF、拡張子ごとの読み込み方式、読み込み済みプラグインの一覧を扱います。OFF にしたプラグインは無いものとして扱います。設定は現在のプロファイルに保存されます。旧アーカイブ設定の代替として、読み込み方式に「読み込まない」があります。有効なプラグインの拡張子は、「ファイルを開く」ダイアログの「対応しているファイル」と「プラグイン形式」に入り、フォルダを開いたときのスキャン対象にも含まれます。商品情報サイドバーは <code>product_info.zip</code> プラグインです。ホスト API は <a href="plugin-reference.html">プラグインリファレンス</a> を見てください。</p>
+                        <p>メニューの「プラグイン設定」で、プラグインの ON/OFF、拡張子ごとの読み込み方式、読み込み済みプラグインの一覧を扱います。ZIP はデータフォルダ（設定の「データの置き場」）の <code>plugins/</code> に置きます。OFF にしたプラグインは無いものとして扱います。設定は現在のプロファイルに保存されます。旧アーカイブ設定の代替として、読み込み方式に「読み込まない」があります。有効なプラグインの拡張子は、「ファイルを開く」ダイアログの「対応しているファイル」と「プラグイン形式」に入り、フォルダを開いたときのスキャン対象にも含まれます。商品情報サイドバーは <code>product_info.zip</code> プラグインです。ホスト API は <a href="plugin-reference.html">プラグインリファレンス</a> を見てください。</p>
 
                         <div class="setting-item">
                             <div class="setting-header">

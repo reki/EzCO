@@ -1,4 +1,4 @@
-"""実行ファイル旁 plugins/ の掃引と拡張子優先度の解決。"""
+"""データフォルダ plugins/ の掃引と拡張子優先度の解決。"""
 from __future__ import annotations
 
 import logging
@@ -23,7 +23,7 @@ from ez_co.plugins.host import PluginHost
 from ez_co.plugins.manifest import PluginManifest
 from ez_co.utils.error_logger import report_error
 from ez_co.utils.language_manager import get_log_text
-from ez_co.utils.path_utils import get_project_root
+from ez_co.utils.data_location import get_data_root
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ class ExtensionProviderRow:
 
 
 def plugins_dir() -> Path:
-    return get_project_root() / "plugins"
+    return get_data_root() / "plugins"
 
 
 def builtin_kind_for_extension(extension: str) -> Optional[FileKind]:

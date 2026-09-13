@@ -143,9 +143,15 @@ class FontFamilyManager:
         
         # プロジェクトフォントフォルダから取得
         try:
+            from ez_co.utils.data_location import get_data_root
             from ez_co.utils.path_utils import get_project_root
-            font_dir = get_project_root() / "font"
-            if font_dir.exists() and font_dir.is_dir():
+            font_dirs = [get_project_root() / "font", get_data_root() / "font"]
+            seen = set()
+            for font_dir in font_dirs:
+                resolved = font_dir.resolve()
+                if resolved in seen or not font_dir.exists() or not font_dir.is_dir():
+                    continue
+                seen.add(resolved)
                 for f in font_dir.iterdir():
                     if f.suffix.lower() in FontInfo.get_all_extensions():
                         all_fonts.add(f.stem)

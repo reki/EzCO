@@ -53,28 +53,49 @@ class LanguageManager:
                             logger.warning(f"言語ファイルの読み込みに失敗 {file_path}: {e}")
         except Exception as e:
             logger.warning(f"resources/langsフォルダの読み込みに失敗: {e}")
-        # 起動ディレクトリのlangsフォルダから言語ファイルを読み込み（優先）
+        self._load_external_language_dirs()
+
+    def _load_langs_from_dir(self, langs_dir: Path) -> None:
+        if not langs_dir.exists() or not langs_dir.is_dir():
+            return
+        for file_path in langs_dir.glob("*.json"):
+            if not file_path.is_file():
+                continue
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    lang_data = json.load(f)
+                lang_code = lang_data.get("language_code", file_path.stem)
+                lang_name = lang_data.get("language", file_path.stem)
+                self.available_languages[lang_code] = {
+                    "name": lang_name,
+                    "code": lang_code,
+                    "file": file_path,
+                }
+            except Exception as e:
+                logger.warning(f"言語ファイルの読み込みに失敗 {file_path}: {e}")
+
+    def _load_external_language_dirs(self) -> None:
+        """実行フォルダとデータフォルダの langs/ を読む（後から読んだ方が優先）。"""
         try:
-            startup_dir = Path.cwd()
-            langs_dir = startup_dir / "langs"
-            if langs_dir.exists() and langs_dir.is_dir():
-                for file_path in langs_dir.glob("*.json"):
-                    if file_path.is_file():
-                        try:
-                            with open(file_path, 'r', encoding='utf-8') as f:
-                                lang_data = json.load(f)
-                                lang_code = lang_data.get("language_code", file_path.stem)
-                                lang_name = lang_data.get("language", file_path.stem)
-                                # 起動ディレクトリのファイルを優先
-                                self.available_languages[lang_code] = {
-                                    "name": lang_name,
-                                    "code": lang_code,
-                                    "file": file_path
-                                }
-                        except Exception as e:
-                            logger.warning(f"起動ディレクトリの言語ファイルの読み込みに失敗 {file_path}: {e}")
+            from ez_co.utils.data_location import get_data_root
+            from ez_co.utils.path_utils import get_project_root
+            dirs = [Path.cwd() / "langs", get_project_root() / "langs", get_data_root() / "langs"]
+            seen = set()
+            for langs_dir in dirs:
+                try:
+                    resolved = langs_dir.resolve()
+                except OSError:
+                    continue
+                if resolved in seen:
+                    continue
+                seen.add(resolved)
+                self._load_langs_from_dir(langs_dir)
         except Exception as e:
-            logger.warning(f"起動ディレクトリのlangsフォルダの読み込みに失敗: {e}")
+            logger.warning(f"外部 langs フォルダの読み込みに失敗: {e}")
+
+    def reload_external_languages(self) -> None:
+        self._load_external_language_dirs()
+        self._load_language()
     def _load_language(self, language_code: Optional[str] = None):
         """言語データを読み込み"""
         if language_code is None:
@@ -180,6 +201,8 @@ def set_language(language_code: str) -> bool:
 def get_available_languages() -> Dict[str, Dict[str, Any]]:
     """利用可能な言語の一覧を取得する便利関数"""
     return language_manager.get_available_languages()
+def reload_external_languages() -> None:
+    language_manager.reload_external_languages()
 def get_log_text(key: str, **kwargs) -> str:
     """ログメッセージ用のテキストを取得する関数"""
     return language_manager.get_text(f"logging.{key}", **kwargs)
