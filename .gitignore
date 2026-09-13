@@ -65,6 +65,9 @@ coverage.xml
 cover/
 logs/
 
+plugins/product_info
+dist-sample-plugins/product_info.zip
+
 # Translations
 *.mo
 *.pot
