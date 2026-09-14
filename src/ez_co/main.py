@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox, QDialog
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QFont
 from ez_co.ui.main_window import MainWindow
-from ez_co.ui.plugin_session import PluginSession
+from ez_co.ui.plugins.plugin_session import PluginSession
 from ez_co.config import Config
 from ez_co.handlers.file_handler import FileHandler
 from ez_co.utils.path_utils import get_project_root
@@ -137,7 +137,7 @@ def ensure_data_location() -> bool:
         settings = load_location_settings() or default_location_settings()
         set_data_root(apply_data_location(settings))
         return True
-    from ez_co.ui.data_location_dialog import DataLocationDialog
+    from ez_co.ui.dialogs.data_location_dialog import DataLocationDialog
 
     dialog = DataLocationDialog(exe_config_db_path().is_file())
     if dialog.exec() != QDialog.Accepted:
@@ -165,7 +165,7 @@ def maybe_import_legacy_yaml(db_manager: DatabaseManager):
     if config_path is None:
         return
     try:
-        from ez_co.ui.yaml_import_dialog import YamlImportDialog
+        from ez_co.ui.dialogs.yaml_import_dialog import YamlImportDialog
         dialog = YamlImportDialog(db_manager.get_profiles())
         if dialog.exec() != QDialog.Accepted:
             return

@@ -12,7 +12,7 @@ from ez_co.enums.actions import (
     list_assignable_actions,
     list_bound_actions,
 )
-from ez_co.ui.mouse_gesture import MouseGesture
+from ez_co.gestures.mouse_gesture import MouseGesture
 from PySide6.QtGui import QColor
 from ez_co.utils.path_utils import get_project_root
 from ez_co.enums.arrows import Arrow

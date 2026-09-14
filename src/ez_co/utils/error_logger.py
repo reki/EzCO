@@ -158,7 +158,7 @@ def _open_error_dialog(where: str, text: str) -> None:
     _dialog_open = True
     try:
         from PySide6.QtWidgets import QApplication
-        from ez_co.ui.error_log_dialog import ErrorLogDialog
+        from ez_co.ui.dialogs.error_log_dialog import ErrorLogDialog
 
         app = QApplication.instance()
         if app is None:

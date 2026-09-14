@@ -367,7 +367,7 @@ class PluginDialog(QDialog):
         self.plugin_table.setCellWidget(index, self._column(key), holder)
 
     def _open_plugin_license(self, plugin, info):
-        from ez_co.ui.plugin_license_dialog import PluginLicenseDialog
+        from ez_co.ui.plugins.plugin_license_dialog import PluginLicenseDialog
 
         dialog = PluginLicenseDialog(
             plugin.name,
@@ -378,7 +378,7 @@ class PluginDialog(QDialog):
         dialog.exec()
 
     def _open_plugin_config(self, plugin):
-        from ez_co.ui.plugin_config_dialog import PluginConfigDialog
+        from ez_co.ui.plugins.plugin_config_dialog import PluginConfigDialog
 
         dialog = PluginConfigDialog(
             self.plugin_manager.host,
@@ -535,7 +535,7 @@ class PluginDialog(QDialog):
                 get_text("ui.plugin_conflict_none"),
             )
             return
-        from ez_co.ui.plugin_conflict_dialog import PluginConflictDialog
+        from ez_co.ui.plugins.plugin_conflict_dialog import PluginConflictDialog
 
         dialog = PluginConflictDialog(groups, self, initial=self._source_choices)
         dialog.exec()

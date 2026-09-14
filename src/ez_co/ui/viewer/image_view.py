@@ -11,7 +11,7 @@ from PySide6.QtGui import QPixmap, QImage, QMouseEvent, QWheelEvent, QPainter, Q
 from PIL import Image
 from PIL.ImageQt import ImageQt as PILImageQt
 from ez_co.config import Config
-from ez_co.ui.mouse_gesture import MouseGesture
+from ez_co.gestures.mouse_gesture import MouseGesture
 from ez_co.enums.actions import ACTIONS, Actions, get_action_display_name
 from ez_co.enums.arrows import Arrow
 from ez_co.enums.mouse_buttons import MouseButtons

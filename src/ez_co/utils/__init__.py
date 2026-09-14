@@ -1,7 +1,7 @@
 """
 ユーティリティ関数
 """
-from .error_logger import (
+from ez_co.utils.error_logger import (
     ErrorLogger,
     initialize_error_logger,
     setup_exception_handler,

@@ -1,15 +1,17 @@
+"""マウス移動から方向列を組み立てる。"""
 import logging
-from PySide6.QtCore import QObject, QTimer, QPoint, Signal
-from PySide6.QtGui import QMouseEvent
-from ez_co.enums.arrows import Arrow
 import math
-from enum import Enum
+from PySide6.QtCore import QPoint
+from ez_co.enums.arrows import Arrow
 from ez_co.enums.actions import get_action_display_name
 from ez_co.utils.language_manager import get_text, get_log_text
 
 logger = logging.getLogger(__name__)
 
+
 class MouseGesture:
+    """右ドラッグなどの軌跡を方向の列に変換する。"""
+
     def __init__(self, config=None):
         self.points = []
         self.directions = []  # 方向履歴

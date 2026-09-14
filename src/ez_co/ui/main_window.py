@@ -20,26 +20,26 @@ from PySide6.QtGui import (
 from ez_co.config import Config
 from ez_co.handlers.file_handler import FileHandler
 from ez_co.utils.database import DatabaseManager
-from ez_co.ui.viewer_pane import ViewerPane
+from ez_co.ui.viewer.viewer_pane import ViewerPane
 from ez_co.handlers.session_file import (
     SESSION_SUFFIX,
     is_session_file,
     load_session,
     save_session,
 )
-from ez_co.ui.mouse_gesture import MouseGesture
-from ez_co.ui.settings_dialog import SettingsDialog
-from ez_co.ui.plugin_dialog import PluginDialog
-from ez_co.ui.shortcut_dialog import ShortcutDialog
-from ez_co.ui.image_list_dialog import ImageListDialog
-from ez_co.ui.gesture_dialog import GestureDialog
-from ez_co.ui.bookmark_toolbar import BookmarkToolbar
-from ez_co.ui.history_toolbar import HistoryToolbar
-from ez_co.ui.tab_list_toolbar import TabListToolbar
-from ez_co.ui.bookmark_dialog import BookmarkDialog
-from ez_co.ui.image_slide_sidebar import ImageSlideSidebar
-from ez_co.ui.pdf_password_dialog import CLOSE_APP_RESULT, ArchivePasswordDialog
-from ez_co.ui.viewer_tab_bar import ViewerTabBar
+from ez_co.gestures.mouse_gesture import MouseGesture
+from ez_co.ui.dialogs.settings_dialog import SettingsDialog
+from ez_co.ui.plugins.plugin_dialog import PluginDialog
+from ez_co.ui.dialogs.shortcut_dialog import ShortcutDialog
+from ez_co.ui.dialogs.image_list_dialog import ImageListDialog
+from ez_co.ui.dialogs.gesture_dialog import GestureDialog
+from ez_co.ui.docks.bookmark_toolbar import BookmarkToolbar
+from ez_co.ui.docks.history_toolbar import HistoryToolbar
+from ez_co.ui.docks.tab_list_toolbar import TabListToolbar
+from ez_co.ui.dialogs.bookmark_dialog import BookmarkDialog
+from ez_co.ui.docks.image_slide_sidebar import ImageSlideSidebar
+from ez_co.ui.dialogs.pdf_password_dialog import CLOSE_APP_RESULT, ArchivePasswordDialog
+from ez_co.ui.viewer.viewer_tab_bar import ViewerTabBar
 from ez_co.utils.path_utils import get_project_root, is_nuitka
 from ez_co.enums.actions import get_action_display_name, Actions
 from ez_co.enums.mouse_buttons import MouseButtons, MOUSE_BUTTON_VALUES
@@ -151,7 +151,7 @@ class MainWindow(QMainWindow):
         self._closing = False
         self._window_was_maximized = bool(config.window.get("maximized", False))
         self._pending_maximize = False
-        from ez_co.ui.plugin_session import PluginSession
+        from ez_co.ui.plugins.plugin_session import PluginSession
         self.plugin_session = plugin_session or PluginSession()
         # マウスロック関連
         self.mouse_locked = False
@@ -708,7 +708,7 @@ class MainWindow(QMainWindow):
         """プロファイル管理ダイアログ"""
         if self.config.is_runtime_overridden("profile.current_profile"):
             return
-        from ez_co.ui.profile_manage_dialog import ProfileManageDialog
+        from ez_co.ui.dialogs.profile_manage_dialog import ProfileManageDialog
         dialog = ProfileManageDialog(self.db_manager, self)
         dialog.exec()
         if dialog.deleted_current:
@@ -2314,7 +2314,7 @@ class MainWindow(QMainWindow):
             return
         
         # 新しいダイアログを作成
-        from ez_co.ui.page_slider_dialog import PageSliderDialog
+        from ez_co.ui.dialogs.page_slider_dialog import PageSliderDialog
         self.page_slider_dialog = PageSliderDialog(self, self.file_handler)
         
         self.page_slider_dialog.show()  # モードレスダイアログとして表示

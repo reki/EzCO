@@ -8,8 +8,8 @@ from PySide6.QtWidgets import QDialog, QDockWidget, QMainWindow
 from ez_co.plugins.host import make_sidebar_action_id, sidebar_title_stem
 from ez_co.plugins.manager import get_plugin_manager
 from ez_co.plugins.settings_key import hash_plugin_id
-from ez_co.ui.plugin_conflict_dialog import PluginConflictDialog
-from ez_co.ui.plugin_consent_dialog import PluginConsentDialog
+from ez_co.ui.plugins.plugin_conflict_dialog import PluginConflictDialog
+from ez_co.ui.plugins.plugin_consent_dialog import PluginConsentDialog
 from ez_co.utils.data_location import accept_plugin_consent, plugin_consent_accepted
 
 

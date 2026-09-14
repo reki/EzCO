@@ -4,7 +4,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
-from ez_co.ui.image_view import ImageView
+from ez_co.ui.viewer.image_view import ImageView
 from ez_co.utils.language_manager import get_text
 
 

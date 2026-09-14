@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal, QTimer, QMimeData, QEvent
 from PySide6.QtGui import QFont, QIcon, QDrag
 from ez_co.utils.database import DatabaseManager
-from ez_co.ui.bookmark_dialog import BookmarkDialog
+from ez_co.ui.dialogs.bookmark_dialog import BookmarkDialog
 from ez_co.handlers.virtual_path_handler import VirtualPathHandler
 from ez_co.utils.language_manager import get_text, get_log_text
 from ez_co.enums.entry_types import EntryType

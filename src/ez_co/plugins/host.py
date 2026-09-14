@@ -701,7 +701,7 @@ class PluginHost:
     def _ask_password_ui(self, file_path: str, mismatch: bool, verify) -> Optional[str]:
         from PySide6.QtWidgets import QApplication, QDialog
         from ez_co.handlers.archive_password import get_session_password, set_session_password
-        from ez_co.ui.pdf_password_dialog import CLOSE_APP_RESULT, ArchivePasswordDialog
+        from ez_co.ui.dialogs.pdf_password_dialog import CLOSE_APP_RESULT, ArchivePasswordDialog
 
         cached = get_session_password(file_path)
         if cached is not None:
