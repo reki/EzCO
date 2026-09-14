@@ -33,6 +33,7 @@ from ez_co.ui.plugins.plugin_dialog import PluginDialog
 from ez_co.ui.dialogs.shortcut_dialog import ShortcutDialog
 from ez_co.ui.dialogs.image_list_dialog import ImageListDialog
 from ez_co.ui.dialogs.gesture_dialog import GestureDialog
+from ez_co.ui.dialogs.about_dialog import AboutDialog
 from ez_co.ui.docks.bookmark_toolbar import BookmarkToolbar
 from ez_co.ui.docks.history_toolbar import HistoryToolbar
 from ez_co.ui.docks.tab_list_toolbar import TabListToolbar
@@ -595,6 +596,9 @@ class MainWindow(QMainWindow):
         self.manual_action = QAction(get_text("ui.open_manual"), self)
         self.manual_action.triggered.connect(self.open_manual)
         help_menu.addAction(self.manual_action)
+        self.version_action = QAction(get_text("ui.version"), self)
+        self.version_action.triggered.connect(self.show_about_dialog)
+        help_menu.addAction(self.version_action)
         
         # 初期状態で拡張メニューを無効化
         self.update_extensions_menu_actions()
@@ -2808,6 +2812,10 @@ class MainWindow(QMainWindow):
                 get_text("ui.error"),
                 get_text("ui.manual_open_error", error=str(e))
             )
+
+    def show_about_dialog(self):
+        """ヘルプのバージョン表示。"""
+        AboutDialog(self).exec()
     
     def show_plugin_dialog(self):
         """プラグイン設定ダイアログを開き、適用後にセッションへ載せ替えを任せる。"""
