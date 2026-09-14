@@ -573,9 +573,21 @@ class DatabaseManager:
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
-                cursor.execute('UPDATE profiles SET name = ? WHERE name = ?', (new_name, old_name))
-                if cursor.rowcount == 0:
+                cursor.execute(
+                    'SELECT created_at, is_default FROM profiles WHERE name = ?',
+                    (old_name,),
+                )
+                row = cursor.fetchone()
+                if row is None:
                     return False
+                created_at, is_default = row
+                cursor.execute(
+                    '''
+                    INSERT INTO profiles (name, created_at, is_default)
+                    VALUES (?, ?, ?)
+                    ''',
+                    (new_name, created_at, is_default),
+                )
                 for table in ("profile_settings", "plugin_settings", "bookmarks", "bookmark_folders", "history"):
                     cursor.execute(
                         f'UPDATE {table} SET profile_name = ? WHERE profile_name = ?',
@@ -585,6 +597,7 @@ class DatabaseManager:
                     'UPDATE app_state SET value = ? WHERE key = ? AND value = ?',
                     (new_name, APP_STATE_CURRENT_PROFILE, old_name)
                 )
+                cursor.execute('DELETE FROM profiles WHERE name = ?', (old_name,))
                 conn.commit()
             if self.current_profile == old_name:
                 self.current_profile = new_name

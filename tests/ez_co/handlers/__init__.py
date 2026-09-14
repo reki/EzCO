@@ -1,1 +1,0 @@
-# Tests for ez_co.handlers package 
