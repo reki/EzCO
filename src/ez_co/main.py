@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QMessageBox, QDialog
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QFont
 from ez_co.ui.main_window import MainWindow
+from ez_co.ui.plugin_session import PluginSession
 from ez_co.config import Config
 from ez_co.handlers.file_handler import FileHandler
 from ez_co.utils.path_utils import get_project_root
@@ -284,13 +285,46 @@ def initialize_profile(db_manager: DatabaseManager, config: Config, profile_name
         from ez_co.utils.database import get_default_profile_name
         return get_default_profile_name()
 
+
+def connect_plugin_session(window, *, bootstrap=True) -> PluginSession:
+    """プラグイン起動とウィンドウ結線。bootstrap は初回ウィンドウだけ。"""
+    session = getattr(window, "plugin_session", None) or PluginSession()
+    window.plugin_session = session
+    if bootstrap:
+        session.bootstrap(
+            parent=window,
+            config=window.config,
+            rebuild_menu=window.rebuild_menu,
+            save_profile=window.save_plugin_profile_config,
+        )
+    session.attach(
+        window,
+        config=window.config,
+        db_manager=window.db_manager,
+        current=window.plugin_current,
+        reload_current=window.reload_current_for_plugin,
+        run_action=lambda action_id, kwargs: window.run_window_action(action_id),
+        app_config=window.plugin_app_config,
+        restore_docks=window._restore_dock_state,
+        first_shortcut=window._first_keyboard_shortcut,
+        sidebar_menu=lambda: getattr(window, "sidebar_submenu", None),
+        setup_shortcuts=window.setup_shortcuts,
+        reload_open_files=window._reload_open_files_after_plugin_change,
+        rebuild_menu=window.rebuild_menu,
+        save_profile=window.save_plugin_profile_config,
+    )
+    return session
+
+
 def create_new_window(config: Config, parent_window=None):
     """新規ウィンドウを作成"""
     try:
         from ez_co.ui.main_window import MainWindow
         # 新しいウィンドウを作成
         db_manager = getattr(parent_window, "db_manager", None) if parent_window is not None else None
-        new_window = MainWindow(config, db_manager=db_manager)
+        session = PluginSession()
+        new_window = MainWindow(config, db_manager=db_manager, plugin_session=session)
+        connect_plugin_session(new_window, bootstrap=False)
         # 新規ウィンドウにもフォント設定を適用
         try:
             ui_font = config.ui_font
@@ -387,7 +421,9 @@ def main():
         initialize_debug_logging(config)
         set_error_log_enabled(lambda: bool(config.debug.get("show_error_log", False)))
         # メインウィンドウの作成
-        window = MainWindow(config, db_manager=db_manager)
+        session = PluginSession()
+        window = MainWindow(config, db_manager=db_manager, plugin_session=session)
+        connect_plugin_session(window, bootstrap=True)
         
         # データベースマネージャーに現在のプロファイルを設定
         window.db_manager.set_current_profile(current_profile)

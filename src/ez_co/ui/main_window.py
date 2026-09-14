@@ -10,12 +10,12 @@ from PySide6.QtWidgets import (
     QFileDialog, QMessageBox, QInputDialog,
     QApplication, QSpinBox, QLabel, QDockWidget,
     QDialog, QDialogButtonBox, QFormLayout, QColorDialog,
-    QTabWidget, QTabBar, QAbstractButton,
+    QTabWidget,
 )
-from PySide6.QtCore import Qt, QTimer, QRect, QEvent, QPoint, QByteArray, QSize, QRectF
+from PySide6.QtCore import Qt, QTimer, QRect, QEvent, QPoint, QByteArray
 from PySide6.QtGui import (
     QAction, QActionGroup, QPainter, QColor, QDragEnterEvent, QDropEvent,
-    QFont, QCursor, QKeySequence, QPen,
+    QFont, QCursor, QKeySequence,
 )
 from ez_co.config import Config
 from ez_co.handlers.file_handler import FileHandler
@@ -39,6 +39,7 @@ from ez_co.ui.tab_list_toolbar import TabListToolbar
 from ez_co.ui.bookmark_dialog import BookmarkDialog
 from ez_co.ui.image_slide_sidebar import ImageSlideSidebar
 from ez_co.ui.pdf_password_dialog import CLOSE_APP_RESULT, ArchivePasswordDialog
+from ez_co.ui.viewer_tab_bar import ViewerTabBar
 from ez_co.utils.path_utils import get_project_root, is_nuitka
 from ez_co.enums.actions import get_action_display_name, Actions
 from ez_co.enums.mouse_buttons import MouseButtons, MOUSE_BUTTON_VALUES
@@ -48,133 +49,6 @@ from ez_co.enums.images import ImageInfo
 from ez_co.utils.language_manager import get_text, get_log_text, get_log_text
 from ez_co.enums.entry_types import EntryType
 logger = logging.getLogger(__name__)
-
-
-def _is_dark_color_scheme(widget) -> bool:
-    hints = QApplication.styleHints()
-    color_scheme = getattr(Qt, "ColorScheme", None)
-    if hints is not None and color_scheme is not None and hasattr(hints, "colorScheme"):
-        scheme = hints.colorScheme()
-        if scheme == color_scheme.Dark:
-            return True
-        if scheme == color_scheme.Light:
-            return False
-    window = widget.palette().window().color()
-    return window.lightness() < 128
-
-
-class TabCloseButton(QAbstractButton):
-    """枠なしの直線バツ。ダークモードは白、ライトモードは黒。"""
-
-    BUTTON_SIZE = 16
-    CROSS_INSET = 3.5
-    STROKE_WIDTH = 1.8
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.setCursor(Qt.CursorShape.ArrowCursor)
-        self.setFixedSize(self.BUTTON_SIZE, self.BUTTON_SIZE)
-        self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        if self.underMouse():
-            hover = QColor(255, 255, 255, 40) if _is_dark_color_scheme(self) else QColor(0, 0, 0, 28)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(hover)
-            painter.drawRoundedRect(QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), 3, 3)
-        color = QColor("#ffffff") if _is_dark_color_scheme(self) else QColor("#000000")
-        pen = QPen(color, self.STROKE_WIDTH)
-        pen.setCapStyle(Qt.PenCapStyle.FlatCap)
-        painter.setPen(pen)
-        inset = self.CROSS_INSET
-        rect = QRectF(self.rect()).adjusted(inset, inset, -inset, -inset)
-        painter.drawLine(rect.topLeft(), rect.bottomRight())
-        painter.drawLine(rect.topRight(), rect.bottomLeft())
-
-
-class ViewerTabBar(QTabBar):
-    """幅固定。長い名前は省略し、ホバーで全文をツールチップ表示する。"""
-
-    TAB_WIDTH = 160
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setExpanding(False)
-        self.setElideMode(Qt.TextElideMode.ElideRight)
-        self.setUsesScrollButtons(True)
-        self.setStyleSheet(
-            "QTabBar::close-button { image: none; width: 16px; height: 16px; }"
-            "QTabBar::close-button:hover { background: transparent; }"
-        )
-        hints = QApplication.styleHints()
-        if hints is not None and hasattr(hints, "colorSchemeChanged"):
-            hints.colorSchemeChanged.connect(self._refresh_close_buttons)
-
-    def tabSizeHint(self, index: int):
-        size = super().tabSizeHint(index)
-        return QSize(self.TAB_WIDTH, size.height())
-
-    def minimumTabSizeHint(self, index: int):
-        size = super().minimumTabSizeHint(index)
-        return QSize(self.TAB_WIDTH, size.height())
-
-    def tabInserted(self, index: int):
-        super().tabInserted(index)
-        self._install_close_button(index)
-
-    def changeEvent(self, event):
-        super().changeEvent(event)
-        theme_events = {
-            QEvent.Type.PaletteChange,
-            QEvent.Type.ApplicationPaletteChange,
-            QEvent.Type.StyleChange,
-        }
-        if hasattr(QEvent.Type, "ThemeChange"):
-            theme_events.add(QEvent.Type.ThemeChange)
-        if event.type() in theme_events:
-            self._refresh_close_buttons()
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.MiddleButton:
-            index = self.tabAt(event.position().toPoint())
-            if index >= 0:
-                self.tabCloseRequested.emit(index)
-                event.accept()
-                return
-        super().mousePressEvent(event)
-
-    def _close_button_position(self, index: int):
-        for position in (QTabBar.ButtonPosition.RightSide, QTabBar.ButtonPosition.LeftSide):
-            if self.tabButton(index, position) is not None:
-                return position
-        return QTabBar.ButtonPosition.RightSide
-
-    def _install_close_button(self, index: int):
-        position = self._close_button_position(index)
-        existing = self.tabButton(index, position)
-        if isinstance(existing, TabCloseButton):
-            existing.update()
-            return
-        button = TabCloseButton(self)
-        button.clicked.connect(lambda: self._on_close_button_clicked(button))
-        self.setTabButton(index, position, button)
-
-    def _refresh_close_buttons(self):
-        for index in range(self.count()):
-            for position in (QTabBar.ButtonPosition.RightSide, QTabBar.ButtonPosition.LeftSide):
-                button = self.tabButton(index, position)
-                if isinstance(button, TabCloseButton):
-                    button.update()
-
-    def _on_close_button_clicked(self, button):
-        for index in range(self.count()):
-            for position in (QTabBar.ButtonPosition.RightSide, QTabBar.ButtonPosition.LeftSide):
-                if self.tabButton(index, position) is button:
-                    self.tabCloseRequested.emit(index)
-                    return
 
 
 class GestureOverlayWidget(QWidget):
@@ -265,7 +139,8 @@ class GestureOverlayWidget(QWidget):
         painter.end()
 class MainWindow(QMainWindow):
     """メインウィンドウ"""
-    def __init__(self, config: Config, db_manager=None):
+    def __init__(self, config: Config, db_manager=None, plugin_session=None):
+        """閲覧ウィンドウを組み立てる。プラグインのロードは main が attach する。"""
         super().__init__()
         self.config = config
         self.is_fullscreen = False
@@ -276,7 +151,8 @@ class MainWindow(QMainWindow):
         self._closing = False
         self._window_was_maximized = bool(config.window.get("maximized", False))
         self._pending_maximize = False
-        self._plugin_sidebars = {}
+        from ez_co.ui.plugin_session import PluginSession
+        self.plugin_session = plugin_session or PluginSession()
         # マウスロック関連
         self.mouse_locked = False
         self.mouse_lock_center = None
@@ -292,64 +168,9 @@ class MainWindow(QMainWindow):
         self.gesture_overlay.raise_()
         # レイアウト変更時にもgeometryを合わせる
         self.resizeEvent = self._resizeEvent_with_overlay
-        self._bind_plugin_host()
 
-    def _bind_plugin_host(self):
-        from ez_co.plugins.manager import get_plugin_manager
-        if not hasattr(self, "_plugin_sidebars"):
-            self._plugin_sidebars = {}
-        manager = get_plugin_manager()
-        self._resolve_plugin_conflicts(manager)
-        manager.host.bind(
-            parent=self,
-            db_manager=self.db_manager,
-            run_action=self._run_plugin_action,
-            get_current=self._plugin_get_current,
-            reload_current=self._plugin_reload_current,
-            get_app_config=self._plugin_app_config,
-            mount_sidebar=self._mount_plugin_sidebar,
-            unmount_sidebar=self._unmount_plugin_sidebar,
-            toggle_sidebar=self._toggle_plugin_sidebar,
-        )
-        manager.activate_ui(self.config)
-        self._restore_dock_state()
-        self._notify_plugin_current_changed()
-
-    def _plugin_disclaimer_accepted(self) -> bool:
-        from ez_co.utils.data_location import plugin_consent_accepted
-        return plugin_consent_accepted()
-
-    def _save_plugin_profile_config(self):
-        if self.db_manager:
-            self.db_manager.save_profile_config(
-                self.db_manager.current_profile,
-                self.config.to_dict(),
-            )
-
-    def _resolve_plugin_conflicts(self, manager):
-        just_accepted = False
-        if manager.candidates and not self._plugin_disclaimer_accepted():
-            from ez_co.ui.plugin_consent_dialog import PluginConsentDialog
-            dialog = PluginConsentDialog(self)
-            if dialog.exec() != QDialog.DialogCode.Accepted:
-                return
-            from ez_co.utils.data_location import accept_plugin_consent
-            accept_plugin_consent()
-            just_accepted = True
-        if not self._plugin_disclaimer_accepted():
-            return
-        unresolved = manager.unresolved_groups(self.config)
-        if unresolved:
-            from ez_co.ui.plugin_conflict_dialog import PluginConflictDialog
-            dialog = PluginConflictDialog(unresolved, self)
-            dialog.exec()
-            manager.record_choices(dialog.choices(), self.config)
-            self._save_plugin_profile_config()
-        manager.load_selected(self.config)
-        if just_accepted:
-            self.rebuild_menu()
-
-    def _plugin_get_current(self, key: str):
+    def plugin_current(self, key: str):
+        """プラグイン向けの現在 path / folder / page。"""
         if key == "folder":
             return self.get_current_folder_path()
         if key == "path":
@@ -361,100 +182,40 @@ class MainWindow(QMainWindow):
             return getattr(self, "current_page", None)
         return None
 
-    def _plugin_app_config(self):
+    def plugin_app_config(self):
+        """プラグインへ渡すアプリ設定の辞書。"""
         return self.config.to_dict()
 
+    def save_plugin_profile_config(self):
+        """重複選択など、プラグイン関連のプロファイル設定を保存する。"""
+        if self.db_manager:
+            self.db_manager.save_profile_config(
+                self.db_manager.current_profile,
+                self.config.to_dict(),
+            )
+
+    def reload_current_for_plugin(self, page=None):
+        """プラグインから現在タブを再読み込みする。"""
+        return bool(self._reload_current_pane_files(page))
+
+    def _plugin_settings_visible(self) -> bool:
+        """設定メニューにプラグイン設定を出すか。"""
+        session = getattr(self, "plugin_session", None)
+        if session is not None:
+            return session.consent_accepted()
+        return False
+
     def _notify_plugin_current_changed(self):
-        from ez_co.plugins.manager import get_plugin_manager
-        get_plugin_manager().host.emit("current_changed", {
-            "path": self._plugin_get_current("path"),
-            "folder": self._plugin_get_current("folder"),
-            "page": self._plugin_get_current("page"),
-        })
-
-    def _plugin_sidebar_object_name(self, plugin_id: str, sidebar_id: str) -> str:
-        from ez_co.plugins.settings_key import hash_plugin_id
-        safe_id = "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in str(sidebar_id or "main"))
-        return f"plugin_sidebar_{hash_plugin_id(plugin_id)[:16]}_{safe_id}"
-
-    def _mount_plugin_sidebar(self, plugin_id: str, sidebar_id: str, title: str, widget) -> None:
-        from PySide6.QtWidgets import QDockWidget
-        from ez_co.plugins.host import make_sidebar_action_id, sidebar_title_stem
-        key = (plugin_id, sidebar_id)
-        action_text = sidebar_title_stem(title) or str(title or "").strip() or sidebar_id
-        existing = self._plugin_sidebars.get(key)
-        if existing is not None:
-            dock = existing["dock"]
-            dock.setWindowTitle(title)
-            existing["action"].setText(action_text)
-            existing["title"] = title
-            if dock.widget() is not widget:
-                dock.setWidget(widget)
-            return
-        dock = QDockWidget(title, self)
-        dock.setObjectName(self._plugin_sidebar_object_name(plugin_id, sidebar_id))
-        dock.setWidget(widget)
-        dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-        dock.setFeatures(
-            QDockWidget.DockWidgetFeature.DockWidgetClosable
-            | QDockWidget.DockWidgetFeature.DockWidgetMovable
-            | QDockWidget.DockWidgetFeature.DockWidgetFloatable
-        )
-        self.addDockWidget(Qt.RightDockWidgetArea, dock)
-        dock.hide()
-        action = QAction(action_text, self)
-        action.setCheckable(True)
-        action.triggered.connect(lambda checked, target=dock: target.setVisible(bool(checked)))
-        dock.visibilityChanged.connect(lambda visible, item=action: item.setChecked(bool(visible)))
-        action_id = make_sidebar_action_id(plugin_id, sidebar_id)
-        self._apply_plugin_action_shortcut(action, action_id)
-        if hasattr(self, "sidebar_submenu"):
-            self.sidebar_submenu.addAction(action)
-        self._plugin_sidebars[key] = {
-            "dock": dock,
-            "action": action,
-            "title": title,
-            "action_id": action_id,
-        }
-
-    def _unmount_plugin_sidebar(self, plugin_id: str, sidebar_id: str) -> None:
-        record = self._plugin_sidebars.pop((plugin_id, sidebar_id), None)
-        if record is None:
-            return
-        dock = record["dock"]
-        action = record["action"]
-        if hasattr(self, "sidebar_submenu"):
-            self.sidebar_submenu.removeAction(action)
-        self.removeDockWidget(dock)
-        dock.deleteLater()
-
-    def _toggle_plugin_sidebar(self, plugin_id: str, sidebar_id: str) -> bool:
-        record = getattr(self, "_plugin_sidebars", {}).get((plugin_id, sidebar_id))
-        if record is None:
-            return False
-        dock = record["dock"]
-        action = record["action"]
-        visible = not dock.isVisible()
-        dock.setVisible(visible)
-        action.setChecked(visible)
-        if visible:
-            self._notify_plugin_current_changed()
-        return True
+        """開いているファイルの変化をプラグインへ渡す。"""
+        session = getattr(self, "plugin_session", None)
+        if session is not None:
+            session.notify_current_changed()
 
     def _readd_plugin_sidebar_actions(self):
-        if not hasattr(self, "sidebar_submenu"):
-            return
-        for record in getattr(self, "_plugin_sidebars", {}).values():
-            action = record["action"]
-            if action not in self.sidebar_submenu.actions():
-                self.sidebar_submenu.addAction(action)
-            action.setChecked(record["dock"].isVisible())
-            action_id = record.get("action_id")
-            if action_id:
-                self._apply_plugin_action_shortcut(action, action_id)
-
-    def _run_plugin_action(self, action_id: str, kwargs: dict) -> bool:
-        return self.run_window_action(action_id)
+        """サイドバーメニューにプラグイン用アクションを載せ直す。"""
+        session = getattr(self, "plugin_session", None)
+        if session is not None:
+            session.readd_sidebar_actions()
 
     @property
     def current_pane(self) -> Optional[ViewerPane]:
@@ -581,9 +342,9 @@ class MainWindow(QMainWindow):
         # ダイアログの参照
         self.page_slider_dialog = None
         self.image_list_dialog = None
-        if not hasattr(self, "_plugin_sidebars"):
-            self._plugin_sidebars = {}
+
     def _first_keyboard_shortcut(self, action_name: str):
+        """アクションに割り当てた最初のキーボードショートカット。"""
         for shortcut in self.config.shortcuts.get(action_name, []) or []:
             if shortcut and shortcut not in MOUSE_BUTTON_VALUES:
                 return shortcut
@@ -595,17 +356,6 @@ class MainWindow(QMainWindow):
             return
         action.setShortcut(QKeySequence(shortcut))
         action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)
-
-    def _apply_plugin_action_shortcut(self, action: QAction, action_id: str):
-        from ez_co.plugins.manager import get_plugin_manager
-        names = get_plugin_manager().host.action_ids_for(action_id) or [action_id]
-        for name in names:
-            shortcut = self._first_keyboard_shortcut(name)
-            if shortcut:
-                action.setShortcut(QKeySequence(shortcut))
-                action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)
-                return
-        action.setShortcut(QKeySequence())
 
     def setup_menu(self):
         """メニューバーの設定"""
@@ -828,7 +578,7 @@ class MainWindow(QMainWindow):
         self.settings_action = QAction(get_text("ui.settings"), self)
         self.settings_action.triggered.connect(self.show_settings_dialog)
         settings_menu.addAction(self.settings_action)
-        if self._plugin_disclaimer_accepted():
+        if self._plugin_settings_visible():
             self.plugin_settings_action = QAction(get_text("ui.plugin_settings"), self)
             self.plugin_settings_action.triggered.connect(self.show_plugin_dialog)
             settings_menu.addAction(self.plugin_settings_action)
@@ -1854,8 +1604,8 @@ class MainWindow(QMainWindow):
         self._sync_current_tab_title()
 
     def run_window_action(self, action_name: str) -> bool:
-        from ez_co.plugins.manager import get_plugin_manager
-        if get_plugin_manager().host.invoke_registered(action_name):
+        session = getattr(self, "plugin_session", None)
+        if session is not None and session.invoke_registered(action_name):
             return True
         handlers = {
             Actions.NEW_TAB.value: self.new_tab,
@@ -2700,11 +2450,9 @@ class MainWindow(QMainWindow):
             self.image_slide_dock.hide()
             self.image_slide_action.setChecked(False)
         
-        for record in getattr(self, "_plugin_sidebars", {}).values():
-            dock = record["dock"]
-            if dock.isVisible():
-                dock.hide()
-                record["action"].setChecked(False)
+        session = getattr(self, "plugin_session", None)
+        if session is not None:
+            session.hide_visible_sidebars()
 
     def mousePressEvent(self, event):
         shortcuts = self.config.shortcuts
@@ -3062,6 +2810,7 @@ class MainWindow(QMainWindow):
             )
     
     def show_plugin_dialog(self):
+        """プラグイン設定ダイアログを開き、適用後にセッションへ載せ替えを任せる。"""
         dialog = PluginDialog(self.config, self)
         dialog.applied.connect(self._on_plugin_dialog_applied)
         result = dialog.exec()
@@ -3076,21 +2825,17 @@ class MainWindow(QMainWindow):
             self._reload_after_plugin_config(reload_sources=reload_sources)
 
     def _on_plugin_dialog_applied(self):
+        """適用ボタンからの変更を保存し、プラグインを載せ替える。"""
         dialog = self.sender()
         reload_sources = bool(getattr(dialog, "last_applied_source_changes", False))
         self.save_config()
         self._reload_after_plugin_config(reload_sources=reload_sources)
 
     def _reload_after_plugin_config(self, reload_sources=False):
-        from ez_co.plugins.manager import get_plugin_manager
-        manager = get_plugin_manager()
-        if reload_sources:
-            manager.reload_selected(self.config)
-            self.rebuild_menu()
-            self.setup_shortcuts()
-        manager.activate_ui(self.config)
-        self._reload_open_files_after_plugin_change()
-        self._notify_plugin_current_changed()
+        """プラグイン設定変更後の再読込をセッションに渡す。"""
+        session = getattr(self, "plugin_session", None)
+        if session is not None:
+            session.after_config_change(reload_sources=reload_sources)
 
     def _reload_open_files_after_plugin_change(self):
         """プラグイン優先度の変更後、開いているタブを再読み込みする。"""
@@ -3105,9 +2850,6 @@ class MainWindow(QMainWindow):
                 self.tab_widget.setCurrentIndex(current)
         else:
             self._reload_current_pane_files()
-
-    def _plugin_reload_current(self, page=None):
-        return bool(self._reload_current_pane_files(page))
 
     def _reload_current_pane_files(self, page=None):
         """現在のタブのファイルを再読み込みする。"""
