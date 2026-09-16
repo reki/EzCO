@@ -184,7 +184,7 @@
                                 <span class="api-field-meta">object</span>
                                 <span class="api-field-meta">任意</span>
                             </div>
-                            <p>マニフェスト権限。本体だけが読みます。未知キーは無視。今は <code>inactive_callback</code>（<code>bool</code>）のみ。サイドバーが非表示でも <code>current_changed</code> を受け取りたいとき <code>true</code>。プラグイン API では渡せません。</p>
+                            <p>マニフェスト権限。本体だけが読みます。未知キーは無視。今は <code>inactive_callback</code> のみ。値は JSON の <code>true</code> / <code>false</code> だけです（文字列 <code>"false"</code> や <code>1</code> は読み込み失敗）。サイドバーが非表示でも <code>current_changed</code> を受け取りたいとき <code>true</code>。プラグイン API では渡せません。OS のサンドボックスではありません。</p>
 <pre class="api-example">{
   "permissions": {
     "inactive_callback": true

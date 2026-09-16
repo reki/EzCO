@@ -184,7 +184,7 @@
                                 <span class="api-field-meta">object</span>
                                 <span class="api-field-meta">optional</span>
                             </div>
-                            <p>Manifest permissions. The host reads them; plugins cannot pass them through APIs. Unknown keys are ignored. Today only <code>inactive_callback</code> (<code>bool</code>): set <code>true</code> to receive <code>current_changed</code> while all sidebars are hidden.</p>
+                            <p>Manifest permissions. The host reads them; plugins cannot pass them through APIs. Unknown keys are ignored. Today only <code>inactive_callback</code>. Values must be JSON <code>true</code> / <code>false</code> (the string <code>"false"</code> or <code>1</code> fails to load). Set <code>true</code> to receive <code>current_changed</code> while all sidebars are hidden. This is not an OS sandbox.</p>
 <pre class="api-example">{
   "permissions": {
     "inactive_callback": true

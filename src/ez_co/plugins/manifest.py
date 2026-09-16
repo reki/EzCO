@@ -43,15 +43,19 @@ class PluginManifest:
 
 
 def parse_permissions(raw: Any) -> Mapping[str, bool]:
-    """本体が読む既知のマニフェスト権限。未知キーは権限にならない。"""
-    if not isinstance(raw, Mapping):
+    """本体が読む既知のマニフェスト権限。未知キーは権限にならない。既知キーの値は JSON bool のみ。"""
+    if raw is None:
         return _EMPTY_PERMISSIONS
+    if not isinstance(raw, Mapping):
+        raise ValueError("manifest.permissions must be an object")
     granted = {}
     for key, value in raw.items():
         name = str(key or "").strip()
         if name not in _KNOWN_PERMISSIONS:
             continue
-        granted[name] = bool(value)
+        if not isinstance(value, bool):
+            raise ValueError(f"manifest.permissions.{name} must be a bool")
+        granted[name] = value
     if not granted:
         return _EMPTY_PERMISSIONS
     return MappingProxyType(granted)

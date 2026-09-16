@@ -119,7 +119,7 @@ my_plugin.zip  または  my_plugin/
 | `entry` | `string` | はい | `モジュール:クラス`。モジュールは `src/` からのドットパス |
 | `description` | `string` | いいえ | 説明。ホストは現状ログ以外では使わない |
 | `author` | `string` | いいえ | 作者 |
-| `permissions` | `object` | いいえ | マニフェスト権限。本体だけが読む。未知キーは無視。今は `inactive_callback`（`bool`）のみ |
+| `permissions` | `object` | いいえ | マニフェスト権限。本体だけが読む。未知キーは無視。今は `inactive_callback` のみ。値は JSON の `true` / `false` のみ（文字列 `"false"` や `1` は読み込み失敗） |
 | `formats` | `array` | いいえ | 担当形式。`[[".zip", "archive"]]` または `{extension, kind}`。本体だけが読む |
 | `sidebar` | `bool` | いいえ | サイドバーを使う。widget や ID は書かない |
 
@@ -173,6 +173,7 @@ pkg.mod:MyLoader      →  src/pkg/mod.py の MyLoader
 | `src/` に entry モジュールが無い | 読み込み失敗 |
 | 指定クラスがモジュールに無い | 読み込み失敗 |
 | 対応形式もサイドバーも `setup` も無い | 読み込み失敗 |
+| `permissions` の既知キーが JSON bool でない | 読み込み失敗 |
 
 ---
 

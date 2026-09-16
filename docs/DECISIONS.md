@@ -62,19 +62,19 @@
 
 ### Context
 
-本体内部を import すると、リファクタのたびにプラグインが壊れる。
+本体内部を import すると、リファクタのたびにプラグインが壊れる。ネットワークや想定外ファイルへのアクセスを OS サンドボックスで止められないか、という案も出た。
 
 ### Current decision
 
-プラグインはホストから呼ばれる側。`import ez_co` と他プラグインの import は禁止。`main` は実行しない。
+プラグインはホストから呼ばれる側。`import ez_co` と他プラグインの import は禁止。`main` は実行しない。プロセス分離もファイル／ネットワークの隔離もしない。悪意への備えは、初回プラグイン導入時の警告（同意）で足りる。
 
 ### Why
 
-結合事故防止。[plugins.md](plugins.md) と `plugins.mdc`。サンドボックスではなく、置いたコードはアプリと同じ権限で動く。検査もしない。
+結合事故防止。[plugins.md](plugins.md) と `plugins.mdc`。OS サンドボックスは対応量に見合わず、このビュワーでは不要（開発者確認）。置いたコードはアプリと同じ権限で動く。検査もしない。
 
 ### Consequences
 
-信頼は配布者と導入した使用者。権限のゲートは manifest と本体。プロセス分離はしていない。
+信頼は配布者と、導入時に同意した使用者。`permissions` は callback などの出し分けであり、隔離ではない。
 
 ### Status
 
@@ -138,7 +138,7 @@
 
 ### Current decision
 
-本体がゲートする力は `manifest.permissions`。いまのキーは `inactive_callback` のみ。プラグイン API の引数では受け取らない。サイドバーを登録したプラグインは、ドックが全部非表示なら `current_changed` を受け取らない。非表示でも欲しいときだけ `inactive_callback: true`。
+本体がゲートする力は `manifest.permissions`。いまのキーは `inactive_callback` のみ。値は JSON の `true` / `false` だけ。文字列や数値は読み込み失敗。プラグイン API の引数では受け取らない。サイドバーを登録したプラグインは、ドックが全部非表示なら `current_changed` を受け取らない。非表示でも欲しいときだけ `inactive_callback: true`。
 
 ### Why
 
@@ -146,7 +146,31 @@
 
 ### Consequences
 
-新しい「本体だけが止められる力」は API ではなく manifest に載せる。未知キーは無視。
+新しい「本体だけが止められる力」は API ではなく manifest に載せる。未知キーは無視。`"false"` を False と読まない（`bool("false")` は True になるため）。
+
+### Status
+
+採用中。
+
+---
+
+## 商品情報の cache は product ID 単位
+
+### Context
+
+同一フォルダに別商品 ID のファイルが並ぶ。folder path で Web 結果を覚えると、RJ111 の取得を RJ222 が再利用する。取得中に別 ID へ移ると、古い結果が画面を上書きしうる。
+
+### Current decision
+
+cache key は `(kind, product_id)`。完了時に今の `_product_key` と一致しない結果は捨てる。走っている QThread は `quit()` しない。
+
+### Why
+
+スキップは既に product ID、cache だけ folder だった。会話と追加修正の P0。
+
+### Consequences
+
+info.json があるときはファイル優先（現行どおり）。同じ ID のページ送りは今までどおり再取得しない。
 
 ### Status
 

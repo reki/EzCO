@@ -14,7 +14,8 @@ alwaysApply: false
 - 拡張子の優先（ビルトイン／プラグイン）は設定ダイアログで選び、DB に保存する
 - サンプルは後から読まれる。ホスト連携はコメントを厚くする。デモ用の加工表示は意図的だと分かるように残す
 - 動いている `QThread` の Python 参照を切らない（`quit()` だけで `wait()` せず捨てると落ちる）
+- マニフェスト権限は本体が `manifest.json` の `permissions` から読む。値は JSON の true/false のみ。`register_sidebar` などプラグイン API では受け取らない
 - 同じフォルダ／同じ仕事の取得を、ページ送りのたびにやり直さない
-- マニフェスト権限は本体が `manifest.json` の `permissions` から読む。`register_sidebar` などプラグイン API では受け取らない
+- 同じフォルダでも商品 ID が変わったら Web 取得の cache を共用しない。古い fetch 結果は捨てる。動いている QThread は捨てない
 - 形式は `formats`、サイドバーの有無は `sidebar`。`permissions` と混ぜない。未宣言の `register_format` / `register_sidebar` はエラー
 - 非表示の `current_changed` は本体が止める。対象はサイドバーを登録したプラグイン。非表示でも受け取りたいときだけ `permissions.inactive_callback`

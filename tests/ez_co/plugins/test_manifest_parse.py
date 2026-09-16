@@ -64,6 +64,11 @@ def test_parse_manifest_reads_inactive_callback():
     assert manifest.permissions["inactive_callback"] is True
 
 
+def test_parse_manifest_reads_inactive_callback_false():
+    manifest = parse_manifest(_valid(permissions={"inactive_callback": False}))
+    assert manifest.permissions["inactive_callback"] is False
+
+
 def test_parse_manifest_ignores_unknown_permission_keys():
     manifest = parse_manifest(
         _valid(permissions={"inactive_callback": True, "location": True, "not-a-perm": 1})
@@ -71,8 +76,15 @@ def test_parse_manifest_ignores_unknown_permission_keys():
     assert dict(manifest.permissions) == {"inactive_callback": True}
 
 
-def test_parse_manifest_permissions_non_object_is_empty():
-    assert dict(parse_manifest(_valid(permissions=["inactive_callback"])).permissions) == {}
+@pytest.mark.parametrize("value", ["false", "true", 1, 0, None])
+def test_parse_manifest_rejects_non_bool_permission(value):
+    with pytest.raises(ValueError, match="must be a bool"):
+        parse_manifest(_valid(permissions={"inactive_callback": value}))
+
+
+def test_parse_manifest_permissions_non_object_raises():
+    with pytest.raises(ValueError, match="must be an object"):
+        parse_manifest(_valid(permissions=["inactive_callback"]))
 
 
 def test_parse_manifest_permissions_come_from_json_only():

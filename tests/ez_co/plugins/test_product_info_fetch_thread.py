@@ -14,6 +14,9 @@ def _plugin():
     from plugin import ProductInfoPlugin
 
     class Host:
+        def __init__(self):
+            self.current = {}
+
         def register_config(self, *args, **kwargs):
             return None
 
@@ -21,7 +24,7 @@ def _plugin():
             return default
 
         def get_current(self, key):
-            return None
+            return self.current.get(key)
 
     return ProductInfoPlugin(None, lambda *args, **kwargs: "", Host())
 
@@ -82,3 +85,52 @@ def test_start_fetch_queues_when_another_product_is_running():
     plugin._start_fetch("b", "dmm", "d_2")
     assert plugin._thread is thread
     assert plugin._pending_fetch == ("b", "dmm", "d_2")
+
+
+class _Alive:
+    def objectName(self):
+        return "product_info"
+
+
+def test_same_folder_does_not_reuse_other_product_cache():
+    plugin = _plugin()
+    plugin.widget = _Alive()
+    shown = []
+    started = []
+    plugin._show_info = lambda data, folder, cover=None: shown.append(data.get("タイトル"))
+    plugin._show_empty = lambda: None
+    plugin._start_fetch = lambda folder, kind, pid: started.append((kind, pid))
+    plugin._cache[("dlsite", "RJ111111")] = ({"タイトル": "One"}, None)
+    plugin._on_current({"folder": "K:/manga", "path": "RJ222222.png"})
+    assert shown == []
+    assert started == [("dlsite", "RJ222222")]
+    plugin._on_current({"folder": "K:/manga", "path": "RJ111111.png"})
+    assert shown == ["One"]
+
+
+def test_stale_fetch_result_is_discarded():
+    plugin = _plugin()
+    plugin.widget = _Alive()
+    shown = []
+    plugin._show_info = lambda data, folder, cover=None: shown.append(data.get("タイトル"))
+    plugin._folder = "K:/manga"
+    plugin._product_key = ("dlsite", "RJ222222")
+    plugin._fetch_token = 2
+    plugin._on_fetched(
+        "K:/manga",
+        {"タイトル": "One"},
+        token=1,
+        kind="dlsite",
+        product_id="RJ111111",
+    )
+    assert shown == []
+    plugin._on_fetched(
+        "K:/manga",
+        {"タイトル": "Two"},
+        token=2,
+        kind="dlsite",
+        product_id="RJ222222",
+    )
+    assert shown == ["Two"]
+    assert ("dlsite", "RJ222222") in plugin._cache
+    assert ("dlsite", "RJ111111") not in plugin._cache
