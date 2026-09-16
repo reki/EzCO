@@ -980,9 +980,9 @@ class ImageView(QWidget):
         elif action == Actions.PAGE_SLIDER_DIALOG.value:
             # MainWindowのインスタンスを取得
             main_window = self.window()
-            if hasattr(main_window, 'show_page_slider_dialog'):
+            if hasattr(main_window, 'toggle_page_slider_dock'):
                 logger.info(get_log_text("image_view_gesture_main_window_page_slider_dialog"))
-                main_window.show_page_slider_dialog()
+                main_window.toggle_page_slider_dock()
             else:
                 logger.info(get_log_text("image_view_gesture_no_page_slider_dialog"))
         elif action in (

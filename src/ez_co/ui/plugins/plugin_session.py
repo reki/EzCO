@@ -269,13 +269,22 @@ class PluginSession:
             if action_id:
                 self._apply_sidebar_shortcut(action, action_id)
 
-    def hide_visible_sidebars(self) -> None:
-        """表示中のプラグインサイドバーを閉じる。"""
+    def hide_visible_sidebars(self) -> list:
+        """表示中のプラグインサイドバーを閉じ、隠したレコードを返す。"""
+        hidden = []
         for record in self._sidebars.values():
             dock = record["dock"]
             if dock.isVisible():
                 dock.hide()
                 record["action"].setChecked(False)
+                hidden.append(record)
+        return hidden
+
+    def restore_sidebars(self, records) -> None:
+        """hide_visible_sidebars が返したサイドバーを戻す。"""
+        for record in records or []:
+            record["dock"].show()
+            record["action"].setChecked(True)
 
     def _manager_ref(self):
         """マネージャと host を一度だけ取る。"""

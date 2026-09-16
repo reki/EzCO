@@ -42,6 +42,7 @@ from ez_co.ui.docks.history_toolbar import HistoryToolbar
 from ez_co.ui.docks.tab_list_toolbar import TabListToolbar
 from ez_co.ui.dialogs.bookmark_dialog import BookmarkDialog
 from ez_co.ui.docks.image_slide_sidebar import ImageSlideSidebar
+from ez_co.ui.docks.page_slider import PageSlider
 from ez_co.ui.dialogs.pdf_password_dialog import CLOSE_APP_RESULT, ArchivePasswordDialog
 from ez_co.ui.viewer.viewer_tab_bar import ViewerTabBar
 from ez_co.utils.path_utils import get_project_root, is_nuitka
@@ -155,6 +156,7 @@ class MainWindow(QMainWindow):
         self._closing = False
         self._window_was_maximized = bool(config.window.get("maximized", False))
         self._pending_maximize = False
+        self._fullscreen_restore = None
         from ez_co.ui.plugins.plugin_session import PluginSession
         self.plugin_session = plugin_session or PluginSession()
         # マウスロック関連
@@ -344,7 +346,6 @@ class MainWindow(QMainWindow):
         self.mouse_gesture.set_target_widget(self)
         
         # ダイアログの参照
-        self.page_slider_dialog = None
         self.image_list_dialog = None
 
     def _first_keyboard_shortcut(self, action_name: str):
@@ -421,6 +422,13 @@ class MainWindow(QMainWindow):
         self.show_tabs_in_fullscreen_action.setChecked(self.config.viewer.get("show_tabs_in_fullscreen", False))
         self.show_tabs_in_fullscreen_action.triggered.connect(self.toggle_show_tabs_in_fullscreen)
         view_menu.addAction(self.show_tabs_in_fullscreen_action)
+        self.show_page_slider_in_fullscreen_action = QAction(get_text("ui.show_page_slider_in_fullscreen"), self)
+        self.show_page_slider_in_fullscreen_action.setCheckable(True)
+        self.show_page_slider_in_fullscreen_action.setChecked(
+            self.config.viewer.get("show_page_slider_in_fullscreen", False)
+        )
+        self.show_page_slider_in_fullscreen_action.triggered.connect(self.toggle_show_page_slider_in_fullscreen)
+        view_menu.addAction(self.show_page_slider_in_fullscreen_action)
         # 常に手前に表示
         self.always_on_top_action = QAction(get_text("ui.always_on_top"), self)
         self.always_on_top_action.setCheckable(True)
@@ -568,9 +576,9 @@ class MainWindow(QMainWindow):
         self._apply_action_shortcut(self.image_list_action, Actions.IMAGE_LIST.value)
         extensions_menu.addAction(self.image_list_action)
         
-        # ページスライダーダイアログアクション
         self.page_slider_action = QAction(get_text("ui.page_slider_dialog"), self)
-        self.page_slider_action.triggered.connect(self.show_page_slider_dialog)
+        self.page_slider_action.setCheckable(True)
+        self.page_slider_action.triggered.connect(self.toggle_page_slider_dock)
         self._apply_action_shortcut(self.page_slider_action, Actions.PAGE_SLIDER_DIALOG.value)
         extensions_menu.addAction(self.page_slider_action)
 
@@ -610,6 +618,8 @@ class MainWindow(QMainWindow):
             self.history_action.setChecked(self.history_dock.isVisible())
             self.tab_list_action.setChecked(self.tab_list_dock.isVisible())
             self.image_slide_action.setChecked(self.image_slide_dock.isVisible())
+            if hasattr(self, "page_slider_dock"):
+                self.page_slider_action.setChecked(self.page_slider_dock.isVisible())
             self._readd_plugin_sidebar_actions()
 
     def apply_runtime_overrides_to_menu(self):
@@ -635,6 +645,10 @@ class MainWindow(QMainWindow):
         if self.config.is_runtime_overridden("viewer.show_tabs_in_fullscreen"):
             self.show_tabs_in_fullscreen_action.setEnabled(False)
             self.show_tabs_in_fullscreen_action.setToolTip(get_text("ui.runtime_override_tooltip"))
+
+        if self.config.is_runtime_overridden("viewer.show_page_slider_in_fullscreen"):
+            self.show_page_slider_in_fullscreen_action.setEnabled(False)
+            self.show_page_slider_in_fullscreen_action.setToolTip(get_text("ui.runtime_override_tooltip"))
         
         # ページ表示モード
         if self.config.is_runtime_overridden("viewer.page_mode"):
@@ -793,7 +807,7 @@ class MainWindow(QMainWindow):
         if self.file_handler and self.file_handler.current_files:
             self.current_page = self.file_handler.current_index + 1
             self.update_image()
-            self._update_page_slider_dialog()
+            self._update_page_slider()
             self._update_image_list_dialog()
             self._update_image_slide_sidebar()
         self._restore_dock_state()
@@ -834,23 +848,36 @@ class MainWindow(QMainWindow):
         image_slide_dock.setWidget(self.image_slide_sidebar)
         image_slide_dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
         self.addDockWidget(Qt.RightDockWidgetArea, image_slide_dock)
+
+        self.page_slider = PageSlider(host=self, file_handler=self.file_handler)
+        page_slider_dock = QDockWidget(get_text("ui.page_slider_dialog_title"), self)
+        page_slider_dock.setObjectName("page_slider_dock")
+        page_slider_dock.setWidget(self.page_slider)
+        page_slider_dock.setAllowedAreas(Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
+        self.addDockWidget(Qt.BottomDockWidgetArea, page_slider_dock)
+        self.page_slider.set_compact(True)
         
         # デフォルトでは非表示
         bookmark_dock.hide()
         history_dock.hide()
         tab_list_dock.hide()
         image_slide_dock.hide()
+        page_slider_dock.hide()
         # メニューに表示/非表示のアクションを追加
         self.bookmark_dock = bookmark_dock
         self.history_dock = history_dock
         self.tab_list_dock = tab_list_dock
         self.image_slide_dock = image_slide_dock
+        self.page_slider_dock = page_slider_dock
         
         # ドックウィジェットの表示/非表示状態とメニューアクションの同期
         bookmark_dock.visibilityChanged.connect(lambda visible: self.bookmark_action.setChecked(visible))
         history_dock.visibilityChanged.connect(lambda visible: self.history_action.setChecked(visible))
         tab_list_dock.visibilityChanged.connect(lambda visible: self.tab_list_action.setChecked(visible))
         image_slide_dock.visibilityChanged.connect(self.on_image_slide_dock_visibility_changed)
+        page_slider_dock.visibilityChanged.connect(self._on_page_slider_dock_visibility_changed)
+        page_slider_dock.topLevelChanged.connect(self._on_page_slider_floating)
+        self._apply_sidebar_dock_corners()
         self._restore_dock_state()
         self._refresh_tab_list()
     def setup_status_bar(self):
@@ -935,7 +962,7 @@ class MainWindow(QMainWindow):
         if self.file_handler and self.file_handler.current_files:
             self.current_page = self.file_handler.current_index + 1
             self.update_image()
-            self._update_page_slider_dialog()
+            self._update_page_slider()
             self._update_image_list_dialog()
             self._update_image_slide_sidebar()
 
@@ -1363,6 +1390,13 @@ class MainWindow(QMainWindow):
             self.tab_list_action.setChecked(self.tab_list_dock.isVisible())
             self.image_slide_action.setChecked(self.image_slide_dock.isVisible())
             self._readd_plugin_sidebar_actions()
+        if hasattr(self, "page_slider_dock"):
+            self.page_slider.set_compact(not self.page_slider_dock.isFloating())
+            if hasattr(self, "page_slider_action"):
+                self.page_slider_action.setChecked(self.page_slider_dock.isVisible())
+            if self.page_slider_dock.isVisible():
+                self._update_page_slider()
+        self._apply_sidebar_dock_corners()
         if self.image_slide_dock.isVisible():
             self._update_image_slide_sidebar_on_show()
         self._notify_plugin_current_changed()
@@ -1497,6 +1531,19 @@ class MainWindow(QMainWindow):
         self._sync_tab_bar()
         self.save_config()
 
+    def toggle_show_page_slider_in_fullscreen(self):
+        enabled = self.show_page_slider_in_fullscreen_action.isChecked()
+        self.config.viewer["show_page_slider_in_fullscreen"] = enabled
+        if self.is_fullscreen and hasattr(self, "page_slider_dock"):
+            if enabled:
+                self.page_slider_dock.show()
+                self.page_slider_action.setChecked(True)
+                self._update_page_slider()
+            else:
+                self.page_slider_dock.hide()
+                self.page_slider_action.setChecked(False)
+        self.save_config()
+
     def _apply_tab_title(self, index: int):
         pane = self.tab_widget.widget(index)
         if not isinstance(pane, ViewerPane):
@@ -1531,7 +1578,7 @@ class MainWindow(QMainWindow):
             if comic is not None and hasattr(self, "bookmark_toolbar"):
                 self.set_current_file(str(comic), self.current_page)
             self.update_extensions_menu_actions()
-        self._update_page_slider_dialog()
+        self._update_page_slider()
         self.update_title()
         self._refresh_tab_list()
 
@@ -1684,7 +1731,7 @@ class MainWindow(QMainWindow):
                     self.file_handler.current_index = target_index
                     self.current_page = page_number
                     self.load_current_page()
-                    self._update_page_slider_dialog()
+                    self._update_page_slider()
         else:
             self.load_file(file_path, page_number)
         self._sync_current_tab_title()
@@ -2039,7 +2086,7 @@ class MainWindow(QMainWindow):
                 self.save_current_file_history()
                 
                 # ページスライダーダイアログの更新
-                self._update_page_slider_dialog()
+                self._update_page_slider()
                 
                 # 画像一覧ダイアログの更新
                 self._update_image_list_dialog()
@@ -2273,7 +2320,7 @@ class MainWindow(QMainWindow):
             logger.info(get_log_text("debug_next_page_calling_update_image", current_index=self.file_handler.current_index))
             self.update_image()
             logger.info(get_log_text("debug_next_page_update_image_completed"))
-            self._update_page_slider_dialog()
+            self._update_page_slider()
             self._update_image_list_dialog()
             self._update_image_slide_sidebar()
             self._notify_plugin_current_changed()
@@ -2300,7 +2347,7 @@ class MainWindow(QMainWindow):
             logger.info(get_log_text("main_window_moving_to_prev_page"))
             self.current_page = self.file_handler.current_index + 1
             self.update_image()
-            self._update_page_slider_dialog()
+            self._update_page_slider()
             self._update_image_list_dialog()
             self._update_image_slide_sidebar()
             self._notify_plugin_current_changed()
@@ -2367,7 +2414,7 @@ class MainWindow(QMainWindow):
             self.file_handler.current_index = 0
             self.current_page = 1
             self.update_image()
-            self._update_page_slider_dialog()
+            self._update_page_slider()
             self._update_image_list_dialog()
             self._notify_plugin_current_changed()
             logger.info(get_log_text("main_window_moved_to_first_page"))
@@ -2383,31 +2430,48 @@ class MainWindow(QMainWindow):
             self.file_handler.current_index = last_index
             self.current_page = last_index + 1
             self.update_image()
-            self._update_page_slider_dialog()
+            self._update_page_slider()
             self._update_image_list_dialog()
             self._notify_plugin_current_changed()
             logger.info(get_log_text("main_window_moved_to_last_page"))
 
-    def show_page_slider_dialog(self):
-        """ページスライダーダイアログを表示"""
-        # 既にダイアログが開いている場合は前面に出して現在タブに合わせる
-        if self.page_slider_dialog and not self.page_slider_dialog.isHidden():
-            self.page_slider_dialog.raise_()
-            self.page_slider_dialog.activateWindow()
-            self._update_page_slider_dialog()
+    def toggle_page_slider_dock(self):
+        """ページスライダードックの表示/非表示を切り替え"""
+        if not hasattr(self, "page_slider_dock"):
             return
-        
-        # 新しいダイアログを作成（空タブでも出す。操作は無効）
-        from ez_co.ui.dialogs.page_slider_dialog import PageSliderDialog
-        self.page_slider_dialog = PageSliderDialog(self, self.file_handler)
-        
-        self.page_slider_dialog.show()  # モードレスダイアログとして表示
+        if self.page_slider_dock.isVisible():
+            self.page_slider_dock.hide()
+            self.page_slider_action.setChecked(False)
+        else:
+            self.page_slider_dock.show()
+            self.page_slider_action.setChecked(True)
+            self._update_page_slider()
 
-    def _update_page_slider_dialog(self):
-        """ページスライダーダイアログを現在タブの handler で更新"""
-        if self.page_slider_dialog and not self.page_slider_dialog.isHidden():
-            self.page_slider_dialog.file_handler = self.file_handler
-            self.page_slider_dialog.refresh()
+    def _on_page_slider_dock_visibility_changed(self, visible):
+        if hasattr(self, "page_slider_action"):
+            self.page_slider_action.setChecked(visible)
+        if visible:
+            self._update_page_slider()
+
+    def _on_page_slider_floating(self, floating):
+        if not hasattr(self, "page_slider"):
+            return
+        self.page_slider.set_compact(not floating)
+        if floating:
+            self.page_slider_dock.resize(300, 140)
+
+    def _apply_sidebar_dock_corners(self):
+        """左右サイドバーを優先し、上下スライダーは残り幅だけにする。"""
+        self.setCorner(Qt.Corner.TopLeftCorner, Qt.DockWidgetArea.LeftDockWidgetArea)
+        self.setCorner(Qt.Corner.TopRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
+        self.setCorner(Qt.Corner.BottomLeftCorner, Qt.DockWidgetArea.LeftDockWidgetArea)
+        self.setCorner(Qt.Corner.BottomRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
+
+    def _update_page_slider(self):
+        """ページスライダーを現在タブの handler で更新"""
+        if hasattr(self, "page_slider_dock") and self.page_slider_dock.isVisible():
+            self.page_slider.file_handler = self.file_handler
+            self.page_slider.refresh()
 
     def _update_image_list_dialog(self):
         """画像一覧ダイアログを更新"""
@@ -2453,7 +2517,7 @@ class MainWindow(QMainWindow):
             self.file_handler.current_index = target_index
             self.current_page = page_number
             self.update_image()
-            self._update_page_slider_dialog()
+            self._update_page_slider()
             self._update_image_list_dialog()
             self._notify_plugin_current_changed()
             logger.info(get_log_text("main_window_page_set_to", page_number=page_number, target_index=target_index))
@@ -2463,7 +2527,7 @@ class MainWindow(QMainWindow):
                 self.file_handler.current_index = 0
                 self.current_page = 1
                 self.update_image()
-                self._update_page_slider_dialog()
+                self._update_page_slider()
                 self._update_image_list_dialog()
                 self._notify_plugin_current_changed()
                 logger.info(get_log_text("main_window_page_not_found_moved_to_1", page_number=page_number))
@@ -2481,7 +2545,11 @@ class MainWindow(QMainWindow):
     def toggle_fullscreen(self):
         """フルスクリーンの切り替え"""
         if self.is_fullscreen:
-            self.showNormal()
+            restore = getattr(self, "_fullscreen_restore", None) or {}
+            if restore.get("maximized"):
+                self.showMaximized()
+            else:
+                self.showNormal()
             self.is_fullscreen = False
             # メニューバーを表示
             self.menuBar().show()
@@ -2489,7 +2557,9 @@ class MainWindow(QMainWindow):
             if self.mouse_locked:
                 self.disable_mouse_lock()
                 self.mouse_lock_action.setChecked(False)
+            self._restore_after_fullscreen()
         else:
+            self._snapshot_pre_fullscreen()
             self.showFullScreen()
             self.is_fullscreen = True
             # メニューバーを非表示
@@ -2503,19 +2573,61 @@ class MainWindow(QMainWindow):
             self._close_dialogs_on_fullscreen()
         self._sync_tab_bar()
 
+    def _builtin_docks(self):
+        return (
+            ("bookmark_dock", "bookmark_action"),
+            ("history_dock", "history_action"),
+            ("tab_list_dock", "tab_list_action"),
+            ("image_slide_dock", "image_slide_action"),
+            ("page_slider_dock", "page_slider_action"),
+        )
+
+    def _snapshot_pre_fullscreen(self):
+        docks = []
+        for name, _action in self._builtin_docks():
+            dock = getattr(self, name, None)
+            if dock is not None and dock.isVisible():
+                docks.append(name)
+        self._fullscreen_restore = {
+            "maximized": bool(
+                self.isMaximized()
+                or (self.windowState() & Qt.WindowState.WindowMaximized)
+            ),
+            "docks": docks,
+            "plugin_sidebars": [],
+        }
+
+    def _restore_after_fullscreen(self):
+        state = getattr(self, "_fullscreen_restore", None)
+        if not state:
+            return
+        mapping = dict(self._builtin_docks())
+        for name in state.get("docks") or []:
+            dock = getattr(self, name, None)
+            action = getattr(self, mapping.get(name, ""), None)
+            if dock is None:
+                continue
+            dock.show()
+            if action is not None:
+                action.setChecked(True)
+        session = getattr(self, "plugin_session", None)
+        if session is not None:
+            session.restore_sidebars(state.get("plugin_sidebars"))
+        if hasattr(self, "image_slide_dock") and self.image_slide_dock.isVisible():
+            self._update_image_slide_sidebar_on_show()
+        if hasattr(self, "page_slider_dock") and self.page_slider_dock.isVisible():
+            self._update_page_slider()
+        self._fullscreen_restore = None
+
     def _close_dialogs_on_fullscreen(self):
         """フルスクリーン時にダイアログとドックを閉じる"""
-        # ページスライダーダイアログを閉じる
-        if self.page_slider_dialog and not self.page_slider_dialog.isHidden():
-            self.page_slider_dialog.close()
-        
         # 画像一覧ダイアログを閉じる
         if self.image_list_dialog and not self.image_list_dialog.isHidden():
             self.image_list_dialog.close()
         
         # その他の開いているダイアログを閉じる
         for child in self.findChildren(QDialog):
-            if child.isVisible() and child not in [self.page_slider_dialog, self.image_list_dialog]:
+            if child.isVisible() and child is not self.image_list_dialog:
                 child.close()
         
         # 履歴、ブックマーク、画像スライド、商品情報のドックを閉じる
@@ -2534,10 +2646,17 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'image_slide_dock') and self.image_slide_dock.isVisible():
             self.image_slide_dock.hide()
             self.image_slide_action.setChecked(False)
+
+        if hasattr(self, "page_slider_dock") and self.page_slider_dock.isVisible():
+            if not self.config.viewer.get("show_page_slider_in_fullscreen", False):
+                self.page_slider_dock.hide()
+                self.page_slider_action.setChecked(False)
         
         session = getattr(self, "plugin_session", None)
         if session is not None:
-            session.hide_visible_sidebars()
+            hidden = session.hide_visible_sidebars()
+            if getattr(self, "_fullscreen_restore", None) is not None:
+                self._fullscreen_restore["plugin_sidebars"] = hidden
 
     def mousePressEvent(self, event):
         shortcuts = self.config.shortcuts
@@ -2587,7 +2706,7 @@ class MainWindow(QMainWindow):
                 elif action_name == Actions.LAST_PAGE.value:
                     self.last_page()
                 elif action_name == Actions.PAGE_SLIDER_DIALOG.value:
-                    self.show_page_slider_dialog()
+                    self.toggle_page_slider_dock()
                 elif action_name == Actions.IMAGE_SLIDE_SIDEBAR.value:
                     self.toggle_image_slide_dock()
                 elif self._is_page_mode_action(action_name):
@@ -2774,7 +2893,7 @@ class MainWindow(QMainWindow):
             elif action_name == Actions.LAST_PAGE.value:
                 self.last_page()
             elif action_name == Actions.PAGE_SLIDER_DIALOG.value:
-                self.show_page_slider_dialog()
+                self.toggle_page_slider_dock()
             elif action_name == Actions.IMAGE_SLIDE_SIDEBAR.value:
                 self.toggle_image_slide_dock()
             elif self._is_page_mode_action(action_name):
@@ -2821,7 +2940,7 @@ class MainWindow(QMainWindow):
             self.file_handler.current_index = idx
             self.current_page = idx + 1
             self.update_image()
-            self._update_page_slider_dialog()
+            self._update_page_slider()
         
         self.image_list_dialog = ImageListDialog([str(f) for f in self.file_handler.current_files], self, on_select=on_select, file_handler=self.file_handler, config=self.config)
         
@@ -2967,7 +3086,7 @@ class MainWindow(QMainWindow):
             self.file_handler.current_index = target
             self.current_page = target + 1
             self.load_current_page()
-            self._update_page_slider_dialog()
+            self._update_page_slider()
             self._update_image_list_dialog()
             self._update_image_slide_sidebar()
             self._sync_current_tab_title()
@@ -3008,7 +3127,7 @@ class MainWindow(QMainWindow):
         pane = self.current_pane
         if pane is not None:
             pane.show_center_message(message)
-        self._update_page_slider_dialog()
+        self._update_page_slider()
         self._update_save_session_action()
 
     def hide_center_message(self):
@@ -3138,7 +3257,7 @@ class MainWindow(QMainWindow):
             self.file_handler.current_index = page_index
             self.current_page = page_index + 1
             self.update_image()
-            self._update_page_slider_dialog()
+            self._update_page_slider()
             logger.info(get_log_text("main_window_page_selected_from_slide", page=self.current_page))
     
     def on_image_slide_dock_visibility_changed(self, visible):
@@ -3169,10 +3288,10 @@ class MainWindow(QMainWindow):
                         self.file_handler.current_index = target_index
                         self.current_page = page_number
                         self.load_current_page()
-                        self._update_page_slider_dialog()
+                        self._update_page_slider()
             else:
                 self.load_file(file_path, page_number)
-                self._update_page_slider_dialog()
+                self._update_page_slider()
             logger.info(get_log_text("main_window_bookmark_opened", file_path=file_path, page_number=page_number))
             # 履歴ツールバーを更新
             if hasattr(self, 'history_toolbar'):
@@ -3207,10 +3326,10 @@ class MainWindow(QMainWindow):
                         self.file_handler.current_index = target_index
                         self.current_page = page_number
                         self.load_current_page()
-                        self._update_page_slider_dialog()
+                        self._update_page_slider()
             else:
                 self.load_file(file_path, page_number)
-                self._update_page_slider_dialog()
+                self._update_page_slider()
             logger.info(get_log_text("main_window_history_opened", file_path=file_path, page_number=page_number))
             self._sync_current_tab_title()
             # 履歴ツールバーを更新
@@ -3344,7 +3463,7 @@ class MainWindow(QMainWindow):
                 self.activateWindow()
                 
                 # ページスライダーダイアログの更新
-                self._update_page_slider_dialog()
+                self._update_page_slider()
                 
                 logger.info(get_log_text("main_window_file_loaded_successfully", file_path=file_path, page_number=page_number))
             else:

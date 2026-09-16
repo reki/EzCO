@@ -105,6 +105,7 @@ class Config:
             "open_archives_in_own_tab": True,
             "open_folders_in_own_tab": False,
             "show_tabs_in_fullscreen": False,
+            "show_page_slider_in_fullscreen": False,
         }
         self.cache = {
             "memory_limit": "256MB",
@@ -337,6 +338,7 @@ class Config:
                 "open_archives_in_own_tab": bool(viewer_data.get("open_archives_in_own_tab", True)),
                 "open_folders_in_own_tab": bool(viewer_data.get("open_folders_in_own_tab", False)),
                 "show_tabs_in_fullscreen": bool(viewer_data.get("show_tabs_in_fullscreen", False)),
+                "show_page_slider_in_fullscreen": bool(viewer_data.get("show_page_slider_in_fullscreen", False)),
             })
         if "cache" in merged_data:
             cache_data = merged_data["cache"]

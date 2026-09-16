@@ -1487,8 +1487,8 @@ class SettingsDialog(QDialog):
             if hasattr(parent, '_align_current_spread_index'):
                 parent._align_current_spread_index()
             parent.update_image()
-            if hasattr(parent, '_update_page_slider_dialog'):
-                parent._update_page_slider_dialog()
+            if hasattr(parent, '_update_page_slider'):
+                parent._update_page_slider()
         return True
 
     def reject(self):

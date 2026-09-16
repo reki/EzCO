@@ -70,7 +70,7 @@ Most of the code in this program was implemented with the assistance of AI (Clau
 - **Virtual Path Function**: Direct specification of files within archives (`archive://path#filename` format)
 - **Image List Display**: Popup display of current file list
 - **Image Slide Sidebar**: Thumbnail view for page overview and quick navigation
-- **Page Slider Dialog**: Intuitive page navigation with slider interface
+- **Page Slider**: Bottom dock (undock to float). Page navigation with a slider
 - **Mouse Lock Function**: Fix mouse cursor to center of screen
 - **Image Rotation Function**: 90-degree rotation of images
 - **Always on Top**: Keep window always in front
@@ -655,14 +655,15 @@ The Image Slide Sidebar displays thumbnail previews of all pages in a dockable s
 - **Image Files**: PNG, JPG, GIF, BMP, TIFF, WebP
 - **Archive Files**: Images within ZIP, 7Z, RAR, CBZ, CBR
 
-## About Page Slider Dialog Function
+## About Page Slider
 
 ### Overview
-The Page Slider Dialog provides intuitive page navigation through a modeless dialog with slider interface.
+The page slider navigates pages. It docks at the bottom of the window by default.
 
 ### How to Display
 - **Shortcut**: Configurable (no default)
 - **Menu**: Features / Extensions → Page Slider
+- **Fullscreen**: View → Show Page Slider in Fullscreen (hidden by default)
 
 ### Features
 - **Real-time Slider**: Intuitive page selection via slider
@@ -670,14 +671,14 @@ The Page Slider Dialog provides intuitive page navigation through a modeless dia
 - **Quick Jump**: One-click navigation to first/last page
 - **Real-time Updates**: Automatic reflection of file changes and page navigation
 
-### Dialog Characteristics
-- **Modeless**: Can operate simultaneously with main window
-- **Compact Design**: Small 300x100px window
-- **Always Current**: Automatic updates when files change. Stays open and follows the current tab
+### Dock and Floating Window
+- **Docked**: Top or bottom only. One row (slider + input + buttons). Remaining width when left/right sidebars are open
+- **Undocked**: The previous floating window (info label, slider, buttons)
+- **Always Current**: Stays open and follows the current tab
 - **Empty tab**: Remains visible but cannot be used. Does not keep the closed book's page info
 
 ### Control Elements
-- **Page Information**: Display of current page/total pages
+- **Page Information**: Display of current page/total pages (floating window)
 - **Page Slider**: Page selection by dragging
 - **Page Number Input**: Numeric input via keyboard
 - **First Button**: Navigate to page 1
