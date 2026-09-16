@@ -11,6 +11,7 @@ class ThumbnailLoader(QThread):
     thumbnail_loaded = Signal(int, QPixmap)
     def __init__(self, image_paths, thumb_size, file_handler=None):
         super().__init__()
+        self.setObjectName("ImageListThumbnailLoader")
         self.image_paths = image_paths
         self.thumb_size = thumb_size
         self.file_handler = file_handler

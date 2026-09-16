@@ -71,6 +71,7 @@ class FileHandler:
         self.archive_metadata_cache = {}  # 将来のキャッシュ機能用
         self.image_cache = {}
         self.cache_size = 0
+        self._cache_lock = threading.RLock()
         # 設定からキャッシュサイズを読み込み、humanfriendlyでパース
         self.cache_limit = self._parse_cache_size()
         self._on_image_loaded = None
@@ -208,10 +209,70 @@ class FileHandler:
 
     def _clear_image_cache(self):
         """画像キャッシュを完全にクリア"""
-        logger.info(get_log_text("file_handler_clearing_image_cache", cache_size=len(self.image_cache), memory_size=self.cache_size))
-        self.image_cache.clear()
-        self.cache_size = 0
-        logger.info(get_log_text("file_handler_image_cache_cleared"))
+        with self._cache_lock:
+            logger.info(get_log_text("file_handler_clearing_image_cache", cache_size=len(self.image_cache), memory_size=self.cache_size))
+            self.image_cache.clear()
+            self.cache_size = 0
+            logger.info(get_log_text("file_handler_image_cache_cleared"))
+
+    def _cache_key_for_file(self, file) -> Optional[str]:
+        file_str = str(file)
+        if VirtualPathHandler.is_virtual_path(file_str) or file_str.startswith("archive://") or file_str.startswith("archive:\\"):
+            result = VirtualPathHandler.parse_virtual_path(file_str)
+            if not result:
+                return None
+            archive_path, filename = result
+            return f"{str(Path(archive_path).resolve())}|{filename}"
+        try:
+            return str(Path(file).resolve())
+        except Exception:
+            return file_str
+
+    def _is_virtual_file(self, file) -> bool:
+        file_str = str(file)
+        return (
+            VirtualPathHandler.is_virtual_path(file_str)
+            or file_str.startswith("archive://")
+            or file_str.startswith("archive:\\")
+        )
+
+    def _pinned_cache_keys(self) -> set:
+        keys = set()
+        if not self.current_files:
+            return keys
+        for offset in (0, -1, 1):
+            index = self.current_index + offset
+            if 0 <= index < len(self.current_files):
+                key = self._cache_key_for_file(self.current_files[index])
+                if key:
+                    keys.add(key)
+        return keys
+
+    def _cache_get(self, cache_key: str) -> Optional[Image.Image]:
+        with self._cache_lock:
+            return self.image_cache.get(cache_key)
+
+    def _cache_put(self, cache_key: str, image: Image.Image, estimated_size: int) -> None:
+        with self._cache_lock:
+            old = self.image_cache.get(cache_key)
+            if old is not None and old is not image:
+                self.cache_size -= self._estimate_image_size(old)
+            self.image_cache[cache_key] = image
+            if old is not image:
+                self.cache_size += estimated_size
+            self._evict_cache_unlocked()
+
+    def _schedule_on_main_thread(self, func) -> None:
+        try:
+            from PySide6.QtCore import QTimer
+            from PySide6.QtWidgets import QApplication
+
+            app = QApplication.instance()
+            if app is None:
+                return
+            QTimer.singleShot(0, app, func)
+        except Exception as e:
+            logger.error(get_log_text("debug_failed_to_call_image_loaded_callback", error=e))
 
     def _get_current_session_id(self) -> int:
         """現在のセッションIDを取得"""
@@ -811,27 +872,18 @@ class FileHandler:
         file_str = str(file)
         logger.debug(get_log_text("debug_get_current_image_target", file=file, index=index))
         
-        # キャッシュキーを生成
-        cache_key = None
-        is_virtual_path = False
-        
-        # 仮想パスの処理
-        if VirtualPathHandler.is_virtual_path(file_str) or file_str.startswith("archive://") or file_str.startswith("archive:\\"):
-            is_virtual_path = True
+        is_virtual_path = self._is_virtual_file(file)
+        if is_virtual_path:
             logger.info(get_log_text("debug_processing_virtual_archive_path_in_get_current_image", file=file))
             result = VirtualPathHandler.parse_virtual_path(file_str)
             if result:
                 archive_path, filename = result
                 logger.info(get_log_text("file_handler_archive_path_filename", archive_path=archive_path, filename=filename))
-                normalized_archive_path = str(Path(archive_path).resolve())
-                cache_key = f"{normalized_archive_path}|{filename}"
             else:
                 logger.error(get_log_text("debug_invalid_virtual_archive_path_format", file=file))
                 return None
-        else:
-            # 通常のファイルパスの処理
-            cache_key = str(Path(file).resolve())
-        
+
+        cache_key = self._cache_key_for_file(file)
         if not cache_key:
             logger.error(get_log_text("debug_failed_to_generate_cache_key", file=file))
             return None
@@ -839,13 +891,13 @@ class FileHandler:
         logger.info(get_log_text("file_handler_current_image_info", file=file, cache_key=cache_key))
         logger.debug(get_log_text("debug_get_current_image_checking_cache", cache_key=cache_key, cache_size=len(self.image_cache)))
         
-        # キャッシュをチェック
-        if cache_key in self.image_cache:
+        cached = self._cache_get(cache_key)
+        if cached is not None:
             logger.debug(get_log_text("debug_image_found_in_cache", cache_key=cache_key))
             logger.debug(get_log_text("debug_get_current_image_cache_hit", cache_key=cache_key))
             elapsed = time.time() - start_time
             logger.debug(get_log_text("debug_get_current_image_completed", cache_key=cache_key, elapsed_ms=elapsed * 1000))
-            return self.image_cache[cache_key]
+            return cached
         
         # キャッシュにない場合は同期的に読み込む
         logger.info(get_log_text("file_handler_getting_image_directly", file=file))
@@ -872,9 +924,7 @@ class FileHandler:
             # キャッシュに保存
             estimated_size = self._estimate_image_size(image)
             if estimated_size <= self.cache_limit:
-                self.image_cache[cache_key] = image
-                self.cache_size += estimated_size
-                self._evict_cache()
+                self._cache_put(cache_key, image, estimated_size)
                 logger.info(get_log_text("debug_image_loaded_and_cached", cache_key=cache_key))
             else:
                 logger.warning(get_log_text("file_handler_cache_too_large", size=estimated_size))
@@ -910,7 +960,7 @@ class FileHandler:
                 skip_reason = None
                 with self._prefetch_lock:
                     self._prefetch_pending.discard(cache_key)
-                    if cache_key in self.image_cache:
+                    if self._cache_get(cache_key) is not None:
                         skip_reason = "cached"
                     elif cache_key in self._prefetch_in_progress:
                         skip_reason = "prefetching"
@@ -930,7 +980,7 @@ class FileHandler:
                 return
             
             # キュー投入後に別経路でキャッシュされた場合はZIP読み込み・デコードをスキップ
-            if cache_key in self.image_cache:
+            if self._cache_get(cache_key) is not None:
                 logger.info(get_log_text("file_handler_skipping_cached", file=file, session_id=session_id))
                 return
             
@@ -965,20 +1015,18 @@ class FileHandler:
                     logger.warning(get_log_text("file_handler_cache_too_large", size=estimated_size))
                     image.close()
                     return
-                # キャッシュに追加
-                self.image_cache[cache_key] = image
-                self.cache_size += estimated_size
-                # キャッシュサイズが上限を超えたら削除
-                self._evict_cache()
+                self._cache_put(cache_key, image, estimated_size)
                 logger.info(get_log_text("debug_image_loaded_and_cached", cache_key=cache_key, estimated_size=estimated_size, session_id=session_id))
-                # コールバックを呼び出し（メインスレッドで実行）
-                if self._on_image_loaded and self._is_session_active(session_id):
-                    try:
-                        # QTimer.singleShotを使用してメインスレッドで実行
-                        from PySide6.QtCore import QTimer
-                        QTimer.singleShot(0, lambda: self._on_image_loaded(file, image))
-                    except Exception as e:
-                        logger.error(get_log_text("debug_failed_to_call_image_loaded_callback", error=e))
+                # 表示中ページだけ GUI スレッドへ通知する（先読み分で set_image しない）
+                if is_current and self._on_image_loaded and self._is_session_active(session_id):
+                    loaded_cb = self._on_image_loaded
+                    loaded_file, loaded_image = file, image
+                    def _notify(cb=loaded_cb, path=loaded_file, img=loaded_image):
+                        try:
+                            cb(path, img)
+                        except Exception as callback_error:
+                            logger.error(get_log_text("debug_failed_to_call_image_loaded_callback", error=callback_error))
+                    self._schedule_on_main_thread(_notify)
             else:
                 logger.error(get_log_text("debug_failed_to_load_image", file=file))
         except Exception as e:
@@ -1054,7 +1102,7 @@ class FileHandler:
             should_enqueue = False
             skip_reason = None
             with self._prefetch_lock:
-                if cache_key in self.image_cache:
+                if self._cache_get(cache_key) is not None:
                     skip_reason = "cached"
                 elif cache_key in self._prefetch_pending or cache_key in self._prefetch_in_progress:
                     skip_reason = "prefetching"
@@ -1146,20 +1194,23 @@ class FileHandler:
         
         return optimized_image
     def _evict_cache(self):
+        with self._cache_lock:
+            self._evict_cache_unlocked()
+
+    def _evict_cache_unlocked(self):
         # キャッシュサイズが上限を超えたら現在ページからの距離を考慮して削除
         initial_cache_size = self.cache_size
         evicted_count = 0
+        pinned = self._pinned_cache_keys()
         
         while self.cache_size > self.cache_limit and self.image_cache:
             # 現在ページからの距離を考慮して最も遠いエントリを見つける
-            farthest_key = self._find_farthest_cache_key()
+            farthest_key = self._find_farthest_cache_key(exclude=pinned)
             if farthest_key is None:
-                # フォールバック：LRU（最初のエントリ）を削除
-                farthest_key = next(iter(self.image_cache))
-                logger.warning(get_log_text("debug_cache_eviction_fallback_lru", cache_key=farthest_key))
+                break
             
             farthest_image = self.image_cache.pop(farthest_key)
-            # 画像のメモリ使用量を推定して減算
+            # 画像のメモリ使用量を推定して減算。表示中の参照は閉じない
             estimated_size = self._estimate_image_size(farthest_image)
             self.cache_size -= estimated_size
             evicted_count += 1
@@ -1175,15 +1226,18 @@ class FileHandler:
                                       final_size=self.cache_size,
                                       cache_limit=self.cache_limit))
     
-    def _find_farthest_cache_key(self) -> Optional[str]:
+    def _find_farthest_cache_key(self, exclude=None) -> Optional[str]:
         """現在ページから最も遠いキャッシュキーを見つける"""
         if not self.current_files or self.current_index < 0:
             return None
         
+        skip = exclude or set()
         max_distance = -1
         farthest_key = None
         
-        for cache_key in self.image_cache.keys():
+        for cache_key in list(self.image_cache.keys()):
+            if cache_key in skip:
+                continue
             distance = self._calculate_page_distance(cache_key)
             if distance > max_distance:
                 max_distance = distance
@@ -1818,9 +1872,10 @@ class FileHandler:
         file = self.current_files[target_index]
         logger.info(get_log_text("debug_check_file_accessibility", index=target_index, file=file))
         
-        # デバッグ情報を出力
-        logger.info(get_log_text("debug_current_files_list", current_files=self.current_files))
-        logger.info(get_log_text("debug_cache_keys_list", cache_keys=list(self.image_cache.keys())))
+        logger.debug(get_log_text("debug_current_files_list", current_files=self.current_files))
+        with self._cache_lock:
+            cache_keys = list(self.image_cache.keys())
+        logger.debug(get_log_text("debug_cache_keys_list", cache_keys=cache_keys))
         
         # キャッシュにある場合はアクセス可能とみなす
         if VirtualPathHandler.is_virtual_path(file):
@@ -1832,7 +1887,7 @@ class FileHandler:
                 cache_key = f"{normalized_archive_path}|{filename}"
                 logger.debug(get_log_text("debug_file_accessibility_cache_miss", cache_key=cache_key))
                 
-                if cache_key in self.image_cache:
+                if self._cache_get(cache_key) is not None:
                     logger.debug(get_log_text("debug_file_accessibility_cache_hit", cache_key=cache_key))
                     logger.debug(get_log_text("debug_file_accessibility_result", result=True))
                     return True
@@ -1860,7 +1915,7 @@ class FileHandler:
             # 通常のファイル - パスを正規化
             cache_key = str(Path(file).resolve())
             
-            if cache_key in self.image_cache:
+            if self._cache_get(cache_key) is not None:
                 logger.debug(get_log_text("debug_file_accessibility_cache_hit", cache_key=cache_key))
                 logger.debug(get_log_text("debug_file_accessibility_result", result=True))
                 return True
@@ -1898,12 +1953,15 @@ class FileHandler:
             return True
     def _notify_error(self, error_type: str, error_message: str, archive_path: str):
         """エラーをメインスレッドに通知"""
-        if self._on_error_occurred:
+        if not self._on_error_occurred:
+            return
+        callback = self._on_error_occurred
+        def _notify(cb=callback, et=error_type, em=error_message, ap=archive_path):
             try:
-                from PySide6.QtCore import QTimer
-                QTimer.singleShot(0, lambda: self._on_error_occurred(error_type, error_message, archive_path))
+                cb(et, em, ap)
             except Exception as e:
                 logger.error(get_log_text("debug_failed_to_call_error_callback", error=e))
+        self._schedule_on_main_thread(_notify)
     def _process_zip_archive_sync(self, archive_path_str: str, filename: str) -> Optional[Image.Image]:
         """ZIPアーカイブの処理（同期的、セッションチェックなし）"""
         with open_zip(archive_path_str, 'r') as archive:

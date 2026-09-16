@@ -32,6 +32,7 @@ class ImageView(QWidget):
         # 画像関連の変数
         self.current_image = None
         self.current_qimage = None  # QImageを保持
+        self._qimage_source = None  # ImageQt が参照する PIL バッファを保持
         self.zoom_factor = 1.0
         self.rotation_angle = 0  # 回転角度（0, 90, 180, 270度）
         self._is_updating = False
@@ -108,8 +109,10 @@ class ImageView(QWidget):
         if image:
             logger.info(get_log_text("image_view_setting_image", size=image.size))
             logger.info(get_log_text("debug_set_image_zoom_factor", zoom_factor=self.zoom_factor))
-            # PIL.Image から QImage への変換（1回だけ）
-            self.current_qimage = PILImageQt(image.convert("RGBA"))
+            # PIL.Image から QImage への変換（1回だけ）。convert 結果を保持しないと ImageQt が落ちる
+            rgba = image.convert("RGBA")
+            self._qimage_source = rgba
+            self.current_qimage = PILImageQt(rgba)
             
             # 拡大時は画像の右上から表示を開始
             if self.zoom_factor > 1.0:
@@ -123,6 +126,7 @@ class ImageView(QWidget):
         else:
             logger.info(get_log_text("image_view_clearing_image"))
             self.current_qimage = None
+            self._qimage_source = None
             self.image_label.clear()
             # 画像がない場合も背景色を反映
             color = "#000000"

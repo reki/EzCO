@@ -19,6 +19,7 @@ class ThumbnailLoaderThread(QThread):
     
     def __init__(self, image_paths, thumb_size, file_handler=None, start_index=0, end_index=None):
         super().__init__()
+        self.setObjectName("ThumbnailLoaderThread")
         self.image_paths = image_paths
         self.thumb_size = thumb_size
         self.file_handler = file_handler
@@ -343,6 +344,10 @@ class ImageSlideSidebar(QWidget):
         if not self.image_paths:
             return
         
+        if self.thumbnail_loader is not None:
+            self.thumbnail_loader.stop()
+            self.thumbnail_loader.wait()
+            self.thumbnail_loader = None
         self.thumbnail_loader = ThumbnailLoaderThread(
             self.image_paths, 
             self.thumbnail_size, 
