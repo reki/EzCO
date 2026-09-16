@@ -1,0 +1,12 @@
+{
+  "id": "com.ezco.example.filter",
+  "name": "Example Filter",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "plugin:ExampleFilterPlugin",
+  "description": "Sample display filter. Overlays a teal tint and label so it is obvious the filter ran. Font size is an int_range with sync and reload.",
+  "author": "EzCo",
+  "permissions": {
+    "filter": true
+  }
+}

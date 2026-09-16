@@ -106,7 +106,7 @@ Most of the code in this program was implemented with the assistance of AI (Clau
 - The plugin list shows ID without version. Column widths and order can be changed and are saved
 - Built-in handlers win by default for known extensions
 - Enabled plugin extensions appear in the file dialog under "Supported Files" and "Plugin formats", and in folder scans
-- Samples: sources in `plugins/`, packaged ZIPs in [`dist-sample-plugins/`](dist-sample-plugins/) (PNG, ZIP, text pages, product info sidebar)
+- Samples: sources in `plugins/`, packaged ZIPs in [`dist-sample-plugins/`](dist-sample-plugins/) (PNG, ZIP, text pages, product info sidebar, display filter)
 - Developer reference: [docs/plugins.md](docs/plugins.md), [Plugin Reference](resources/UserManual/files/plugin-reference-en.html) in the user manual, each plugin `README_EN.md`, [plugins/README_EN.md](plugins/README_EN.md)
 
 ## Development Environment Setup

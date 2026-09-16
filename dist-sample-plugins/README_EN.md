@@ -15,5 +15,6 @@ For development, use the unpacked folders under `plugins/` in the repo. Point th
 | `error_setup-1.0.0.zip` | Raises in `setup()`. All three LICENSE files; viewer shows md |
 | `error_callback-1.0.0.zip` | Raises from a callback. txt and bare LICENSE; viewer shows txt |
 | `config_types-1.0.0.zip` | Registers every config type (bool / string / int / float / int_range / float_range / path / password / color / date / datetime / choice / font) |
+| `example_filter-1.0.0.zip` | Display filter. Overlays color and a label. Font size is an `int_range` with `sync` and `reload` |
 
 Rebuild from source with task **“EzCo: プラグインZIP”** or `poetry run pack-plugins`. One folder: `poetry run pack-plugins example_txt`. Output is `<folder>-<version>.zip`. Invalid manifests are logged and skipped; the command prints success / fail counts.

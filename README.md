@@ -108,7 +108,7 @@
 - **ダイアログ**: 一覧の ID はバージョンなし。列の幅変更・並べ替えができ、レイアウトは保存される
 - **既定**: ビルドインが知っている拡張子はビルドイン優先。プラグイン専用拡張子はそのプラグインが担当
 - **ファイルダイアログ**: 有効なプラグインの拡張子は「対応しているファイル」と「プラグイン形式」に入る。フォルダを開いたときのスキャン対象にも含まれる
-- **サンプル**: ソースは `plugins/`、配布 ZIP は [`dist-sample-plugins/`](dist-sample-plugins/)（PNG / ZIP / テキスト画像 / 商品情報サイドバー）
+- **サンプル**: ソースは `plugins/`、配布 ZIP は [`dist-sample-plugins/`](dist-sample-plugins/)（PNG / ZIP / テキスト画像 / 商品情報サイドバー / 表示フィルター）
 - **開発者向け**: [プラグインマニュアル](docs/plugins.md)、[本体の構造](docs/ARCHITECTURE.md)、ユーザーマニュアルの [プラグインリファレンス](resources/UserManual/files/plugin-reference.html)、各プラグインの `README.md`、[plugins/README.md](plugins/README.md)
 
 ## 開発環境のセットアップ

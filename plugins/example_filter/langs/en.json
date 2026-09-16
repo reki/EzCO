@@ -1,0 +1,6 @@
+{
+  "filter_title": "Overlay",
+  "watermark": "Filter overlay",
+  "font_size": "Font size",
+  "font_size_help": "Slider with sync and reload. Saves after 0.5s idle and refreshes the view"
+}

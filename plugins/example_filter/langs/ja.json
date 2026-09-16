@@ -1,0 +1,6 @@
+{
+  "filter_title": "重ね表示",
+  "watermark": "フィルター加工表示",
+  "font_size": "文字サイズ",
+  "font_size_help": "スライダー。sync と reload 付き。0.5 秒アイドル後に保存し、表示を更新する"
+}

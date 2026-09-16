@@ -15,5 +15,6 @@
 | `error_setup-1.0.0.zip` | `setup()` で例外を出す確認用。LICENSE 3種あり、表示は md |
 | `error_callback-1.0.0.zip` | コールバック例外の確認用。txt と無印あり、表示は txt |
 | `config_types-1.0.0.zip` | 設定種別の確認用。bool / string / int / float / int_range / float_range / path / password / color / date / datetime / choice / font |
+| `example_filter-1.0.0.zip` | 表示フィルターの確認用。色とラベルを重ね、文字サイズを `int_range`（`sync` と `reload`）で変える |
 
 ソースから ZIP を作り直すときは、タスク **「EzCo: プラグインZIP」** または `poetry run pack-plugins` です。1 件だけなら `poetry run pack-plugins example_txt` です。出力は `<フォルダ>-<version>.zip`。manifest が不正なものはログしてスキップし、最後に成功／失敗件数を出します。

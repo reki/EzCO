@@ -1,6 +1,6 @@
 # EzCo プラグイン
 
-データフォルダ（設定の「データの置き場」。既定はこのユーザーのデータフォルダ）の `plugins/` に ZIP、または `manifest.json` 付きの展開フォルダを置くと、独自の画像／アーカイブ形式やサイドバーを追加できます。開発時にリポジトリのこのフォルダを使うときは、置き場を実行ファイルと同じフォルダにしてください。
+データフォルダ（設定の「データの置き場」。既定はこのユーザーのデータフォルダ）の `plugins/` に ZIP、または `manifest.json` 付きの展開フォルダを置くと、独自の画像／アーカイブ形式、サイドバー、表示フィルターを追加できます。開発時にリポジトリのこのフォルダを使うときは、置き場を実行ファイルと同じフォルダにしてください。
 
 開発者向けの契約・API リファレンスは [docs/plugins.md](../docs/plugins.md) とユーザーマニュアルの [プラグインリファレンス](../resources/UserManual/files/plugin-reference.html) にあります。各プラグインの説明はフォルダ内の `README.md` です。配布用 ZIP は [dist-sample-plugins/](../dist-sample-plugins/) です。英語は [README_EN.md](README_EN.md) です。
 
@@ -38,6 +38,7 @@
 | `error_setup/` | 確認用。`setup()` で例外を出す。[README](error_setup/README.md) |
 | `error_callback/` | 確認用。サイドバーの「エラー」ボタンでコールバック例外を出す。[README](error_callback/README.md) |
 | `config_types/` | 確認用。設定種別（bool / string / int / float / int_range / float_range / path / password / color / date / datetime / choice / font）を全部登録する。[README](config_types/README.md) |
+| `example_filter/` | 確認用。表示フィルター。青緑の色とラベルを重ね、文字サイズを `int_range`（`sync` と `reload`）で変える。[README](example_filter/README.md) |
 
 配布 ZIP の作り直しはタスク **「EzCo: プラグインZIP」** または `poetry run pack-plugins` です。出力先は [`dist-sample-plugins/`](../dist-sample-plugins/) です。
 
@@ -56,4 +57,4 @@ my_plugin/   または my_plugin.zip
 └── LICENSE.md   # 任意。LICENSE.txt / LICENSE でも可。設定から表示
 ```
 
-ファイルローダーは `manifest.json` の `formats` と `read_entry` などを実装します。サイドバーは `sidebar: true` を書いたうえで `setup` で `host.load_ui` / `host.register_sidebar` します。未宣言の登録はエラーです。開閉は自動でアクション登録されます。旧ショートカット ID を残すときは `aliases` を渡します。独自処理は `host.register_action` です。コンストラクタは `Class(root, get_text, host)` です。`ez_co` は import できません（結合事故防止であり、サンドボックスではありません）。設定上の正体は `manifest.id(ver:version)` です。ダイアログの ID 列はバージョンなしの `id` だけです。同じ `id` は同時に1つだけロードします。詳細はマニュアルを見てください。
+ファイルローダーは `manifest.json` の `formats` と `read_entry` などを実装します。サイドバーは `sidebar: true` を書いたうえで `setup` で `host.load_ui` / `host.register_sidebar` します。表示フィルターは `permissions.filter: true` を書いたうえで `setup` で `host.register_filter` します。未宣言の登録はエラーです。開閉は自動でアクション登録されます。旧ショートカット ID を残すときは `aliases` を渡します。独自処理は `host.register_action` です。コンストラクタは `Class(root, get_text, host)` です。`ez_co` は import できません（結合事故防止であり、サンドボックスではありません）。設定上の正体は `manifest.id(ver:version)` です。ダイアログの ID 列はバージョンなしの `id` だけです。同じ `id` は同時に1つだけロードします。詳細はマニュアルを見てください。
