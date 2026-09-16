@@ -9,6 +9,7 @@
 - `.cursor/rules/plugin-data.mdc`
 - `.cursor/rules/ui-strings.mdc`
 - `.cursor/rules/workflow.mdc`
+- リリースノートを書くとき: `.cursor/rules/release-notes.mdc`
 
 ## 守ること
 
@@ -22,3 +23,4 @@
 - クラッシュは推測で直さない。先に呼び出しとスレッドが残る調査ログ
 - manifest / host API を変えたら `docs/plugins.md` とユーザーマニュアル（日英）を直す
 - UI 文言は `langs` の ja / en。画面に `%APPDATA%` を出さない
+- リリースノートは `.cursor/rules/release-notes.mdc`。`RELEASE_NOTES_<version>.md` を出す。タグは指示があるまで作らない

@@ -92,6 +92,9 @@ type: 簡潔な説明
 
 **Type:** `feat` / `fix` / `docs` / `style` / `refactor` / `test` / `chore`
 
+### リリースノート
+バージョンを上げて出すときの本文は [`.cursor/rules/release-notes.mdc`](.cursor/rules/release-notes.mdc)。リポジトリ直下に `RELEASE_NOTES_<version>.md` を作り、GitHub Release へコピーする。タグと Release は指示があるまで作らない。
+
 ## ライセンス
 
 貢献コードは本体と同じ [MIT License](LICENSE) です。依存ライブラリは [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) を見てください。pylint は GPL ですが開発専用で、アプリには入れません。
@@ -177,6 +180,9 @@ Detailed description (if needed)
 ```
 
 **Types:** `feat` / `fix` / `docs` / `style` / `refactor` / `test` / `chore`
+
+### Release notes
+When shipping a version bump, follow [`.cursor/rules/release-notes.mdc`](.cursor/rules/release-notes.mdc). Write `RELEASE_NOTES_<version>.md` at the repo root and copy it into the GitHub Release. Do not create a tag or GitHub Release until asked.
 
 ## License
 
