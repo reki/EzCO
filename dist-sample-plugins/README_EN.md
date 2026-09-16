@@ -13,6 +13,7 @@ For development, use the unpacked folders under `plugins/` in the repo. Point th
 | `example_txt-1.0.0.zip` | Renders `.txt` as image pages. Root file is `LICENSE.md` |
 | `product_info-1.0.0.zip` | Product info sidebar. No LICENSE |
 | `error_setup-1.0.0.zip` | Raises in `setup()`. All three LICENSE files; viewer shows md |
+| `error_register-1.0.0.zip` | Calls `register_sidebar` without the manifest flag. Status is "Failed: A registration without permission" |
 | `error_callback-1.0.0.zip` | Raises from a callback. txt and bare LICENSE; viewer shows txt |
 | `config_types-1.0.0.zip` | Registers every config type (bool / string / int / float / int_range / float_range / path / password / color / date / datetime / choice / font) |
 | `example_filter-1.0.0.zip` | Display filter. Overlays color and a label. Font size is an `int_range` with `sync` and `reload` |

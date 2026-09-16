@@ -13,6 +13,7 @@
 | `example_txt-1.0.0.zip` | `.txt` をページ画像として開く。ルートは `LICENSE.md` |
 | `product_info-1.0.0.zip` | 商品情報サイドバー。LICENSE なし |
 | `error_setup-1.0.0.zip` | `setup()` で例外を出す確認用。LICENSE 3種あり、表示は md |
+| `error_register-1.0.0.zip` | マニフェストに無い `register_sidebar`。状態は「失敗: 権限がない登録がありました」 |
 | `error_callback-1.0.0.zip` | コールバック例外の確認用。txt と無印あり、表示は txt |
 | `config_types-1.0.0.zip` | 設定種別の確認用。bool / string / int / float / int_range / float_range / path / password / color / date / datetime / choice / font |
 | `example_filter-1.0.0.zip` | 表示フィルターの確認用。色とラベルを重ね、文字サイズを `int_range`（`sync` と `reload`）で変える |

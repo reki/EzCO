@@ -36,6 +36,7 @@
 | `example_txt/` | `.txt` をページ画像として開く一般向けサンプル。サイドバーで字体・色・縦読み／横読みを即時反映します。[README](example_txt/README.md) |
 | `product_info/` | 商品情報サイドバー。`info.json` と `folder.jpg` を表示。無いときはフォルダ／ファイル名の DLsite / DMM 番号から Web 取得（設定で OFF 可。フォルダには書かない）。[README](product_info/README.md) |
 | `error_setup/` | 確認用。`setup()` で例外を出す。[README](error_setup/README.md) |
+| `error_register/` | 確認用。マニフェストに無い `register_sidebar`。[README](error_register/README.md) |
 | `error_callback/` | 確認用。サイドバーの「エラー」ボタンでコールバック例外を出す。[README](error_callback/README.md) |
 | `config_types/` | 確認用。設定種別（bool / string / int / float / int_range / float_range / path / password / color / date / datetime / choice / font）を全部登録する。[README](config_types/README.md) |
 | `example_filter/` | 確認用。表示フィルター。青緑の色とラベルを重ね、文字サイズを `int_range`（`sync` と `reload`）で変える。[README](example_filter/README.md) |

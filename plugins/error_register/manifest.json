@@ -1,0 +1,9 @@
+{
+  "id": "com.ezco.error_register",
+  "name": "Error Register Probe",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "plugin:ErrorRegisterPlugin",
+  "description": "Test plugin that calls register_sidebar without manifest.sidebar. Not for production.",
+  "author": "EzCo"
+}
