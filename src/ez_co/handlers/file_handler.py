@@ -68,10 +68,12 @@ class FileHandler:
         self.current_archive = None
         self.current_archive_path = None
         # 新しいファイルハンドル管理設定用
-        self.archive_metadata_cache = {}  # 将来のキャッシュ機能用
+        self.archive_metadata_cache = {}
         self.image_cache = {}
         self.cache_size = 0
         self._cache_lock = threading.RLock()
+        self._load_events = {}
+        self._load_wait_timeout = 0.4
         # 設定からキャッシュサイズを読み込み、humanfriendlyでパース
         self.cache_limit = self._parse_cache_size()
         self._on_image_loaded = None
@@ -196,6 +198,11 @@ class FileHandler:
         with self._prefetch_lock:
             self._prefetch_pending.clear()
             self._prefetch_in_progress.clear()
+            events = list(self._load_events.values())
+            self._load_events.clear()
+        for event in events:
+            event.set()
+        self.archive_metadata_cache.clear()
         
         # キャッシュをクリア（大きなアーカイブファイルのメモリを解放）
         self._clear_image_cache()
@@ -631,6 +638,73 @@ class FileHandler:
     def _decode_zip_filename(self, name: str) -> str:
         """ZIPファイル内のファイル名を適切なエンコーディングでデコード（後方互換性のため）"""
         return self._decode_archive_filename(name, ArchiveInfo.get_internal_name(ArchiveType.ZIP))
+
+    def _archive_metadata_enabled(self) -> bool:
+        if not self.config or not hasattr(self.config, "debug") or not isinstance(self.config.debug, dict):
+            return True
+        return bool(self.config.debug.get("cache_archive_metadata", True))
+
+    def _archive_metadata_key(self, archive_path) -> str:
+        return str(Path(archive_path).resolve())
+
+    def _archive_fingerprint(self, archive_path) -> Optional[tuple]:
+        try:
+            stat = Path(archive_path).stat()
+        except OSError:
+            return None
+        return (stat.st_mtime_ns, stat.st_size)
+
+    def _store_archive_entries(self, archive_path, entries) -> None:
+        if not self._archive_metadata_enabled():
+            return
+        fingerprint = self._archive_fingerprint(archive_path)
+        if fingerprint is None:
+            return
+        self.archive_metadata_cache[self._archive_metadata_key(archive_path)] = {
+            "fingerprint": fingerprint,
+            "entries": list(entries),
+        }
+
+    def _cached_archive_entries(self, archive_path) -> Optional[list]:
+        if not self._archive_metadata_enabled():
+            return None
+        fingerprint = self._archive_fingerprint(archive_path)
+        if fingerprint is None:
+            return None
+        cached = self.archive_metadata_cache.get(self._archive_metadata_key(archive_path))
+        if not cached or cached.get("fingerprint") != fingerprint:
+            return None
+        entries = cached.get("entries")
+        if not isinstance(entries, list):
+            return None
+        return entries
+
+    def _claim_decode(self, cache_key: str) -> str:
+        with self._prefetch_lock:
+            if self._cache_get(cache_key) is not None:
+                return "have"
+            if cache_key in self._prefetch_in_progress:
+                self._load_events.setdefault(cache_key, threading.Event())
+                return "wait"
+            self._prefetch_in_progress.add(cache_key)
+            self._prefetch_pending.discard(cache_key)
+            self._load_events.setdefault(cache_key, threading.Event())
+            return "owner"
+
+    def _finish_decode(self, cache_key: str) -> None:
+        with self._prefetch_lock:
+            self._prefetch_in_progress.discard(cache_key)
+            self._prefetch_pending.discard(cache_key)
+            event = self._load_events.pop(cache_key, None)
+        if event is not None:
+            event.set()
+
+    def _wait_for_decode(self, cache_key: str) -> Optional[Image.Image]:
+        with self._prefetch_lock:
+            event = self._load_events.get(cache_key)
+        if event is not None:
+            event.wait(self._load_wait_timeout)
+        return self._cache_get(cache_key)
     def _expand_archive(self, archive_path: Path) -> List[Path]:
         """アーカイブファイル内の画像ファイルを展開"""
         logger.info(get_log_text("debug_expanding_archive", archive_path=archive_path))
@@ -654,7 +728,9 @@ class FileHandler:
             if archive_type in (ArchiveType.ZIP, ArchiveType.CBZ):
                 with open_zip(archive_path) as archive:
                     apply_zip_password(archive, str(archive_path))
-                    for name in archive.namelist():
+                    archive_names = archive.namelist()
+                    self._store_archive_entries(archive_path, archive_names)
+                    for name in archive_names:
                         # 文字エンコーディングの修正
                         decoded_name = self._decode_zip_filename(name)
                         logger.debug(get_log_text("file_handler_original_name_decoded", name=name, decoded_name=decoded_name))
@@ -665,7 +741,9 @@ class FileHandler:
                             logger.debug(get_log_text("file_handler_found_image_in_archive", decoded_name=decoded_name))
             elif archive_type == ArchiveType.SEVEN_ZIP:
                 with py7zr.SevenZipFile(archive_path, 'r', password=seven_zip_password_arg(str(archive_path))) as archive:
-                    for name in archive.getnames():
+                    archive_names = archive.getnames()
+                    self._store_archive_entries(archive_path, archive_names)
+                    for name in archive_names:
                         # 文字エンコーディングの修正
                         decoded_name = self._decode_archive_filename(name, internal_name)
                         logger.debug(get_log_text("file_handler_original_name_decoded", name=name, decoded_name=decoded_name))
@@ -676,7 +754,9 @@ class FileHandler:
             elif archive_type in (ArchiveType.RAR, ArchiveType.CBR):
                 with rarfile.RarFile(archive_path, 'r') as archive:
                     apply_rar_password(archive, str(archive_path))
-                    for name in archive.namelist():
+                    archive_names = archive.namelist()
+                    self._store_archive_entries(archive_path, archive_names)
+                    for name in archive_names:
                         # 文字エンコーディングの修正
                         decoded_name = self._decode_archive_filename(name, internal_name)
                         # パス区切り文字を正規化（バックスラッシュをスラッシュに変換）
@@ -688,7 +768,9 @@ class FileHandler:
                             logger.debug(get_log_text("file_handler_found_image_in_rar", normalized_name=normalized_name))
             elif archive_type in [ArchiveType.TAR, ArchiveType.TAR_GZ, ArchiveType.TAR_BZ2, ArchiveType.TAR_XZ]:
                 with tarfile.open(archive_path) as archive:
-                    for name in archive.getnames():
+                    archive_names = archive.getnames()
+                    self._store_archive_entries(archive_path, archive_names)
+                    for name in archive_names:
                         # 文字エンコーディングの修正
                         decoded_name = self._decode_archive_filename(name, internal_name)
                         logger.debug(get_log_text("file_handler_original_name_decoded", name=name, decoded_name=decoded_name))
@@ -794,7 +876,9 @@ class FileHandler:
                 if archive_type in (ArchiveType.ZIP, ArchiveType.CBZ):
                     self.current_archive = open_zip(file)
                     apply_zip_password(self.current_archive, str(file))
-                    for name in self.current_archive.namelist():
+                    archive_names = self.current_archive.namelist()
+                    self._store_archive_entries(file, archive_names)
+                    for name in archive_names:
                         decoded_name = self._decode_zip_filename(name)
                         if Path(decoded_name).suffix.lower() in self.SUPPORTED_IMAGE_EXTENSIONS:
                             virtual_path = f"archive://{file}|{decoded_name}"
@@ -802,7 +886,9 @@ class FileHandler:
                     logger.info(get_log_text("file_handler_opened_zip_archive", file=file, count=len(archive_files)))
                 elif archive_type in [ArchiveType.TAR, ArchiveType.TAR_GZ, ArchiveType.TAR_BZ2, ArchiveType.TAR_XZ]:
                     self.current_archive = tarfile.open(file)
-                    for name in self.current_archive.getnames():
+                    archive_names = self.current_archive.getnames()
+                    self._store_archive_entries(file, archive_names)
+                    for name in archive_names:
                         decoded_name = self._decode_archive_filename(name, internal_name)
                         if Path(decoded_name).suffix.lower() in self.SUPPORTED_IMAGE_EXTENSIONS:
                             virtual_path = f"archive://{file}|{decoded_name}"
@@ -898,10 +984,21 @@ class FileHandler:
             elapsed = time.time() - start_time
             logger.debug(get_log_text("debug_get_current_image_completed", cache_key=cache_key, elapsed_ms=elapsed * 1000))
             return cached
+
+        claim = self._claim_decode(cache_key)
+        if claim == "have":
+            return self._cache_get(cache_key)
+        if claim == "wait":
+            waited = self._wait_for_decode(cache_key)
+            if waited is not None:
+                elapsed = time.time() - start_time
+                logger.debug(get_log_text("debug_get_current_image_completed", cache_key=cache_key, elapsed_ms=elapsed * 1000))
+                return waited
         
         # キャッシュにない場合は同期的に読み込む
         logger.info(get_log_text("file_handler_getting_image_directly", file=file))
         logger.debug(get_log_text("debug_get_current_image_cache_miss_loading_sync", cache_key=cache_key))
+        owned = claim == "owner"
         
         try:
             if is_virtual_path:
@@ -937,6 +1034,9 @@ class FileHandler:
         except Exception as e:
             logger.error(get_log_text("debug_failed_to_load_image", file=file, error=str(e)))
             return None
+        finally:
+            if owned:
+                self._finish_decode(cache_key)
     def _load_image(self, file: str, cache_key: str, is_current: bool = False, session_id: int = None):
         """画像を非同期で読み込み、キャッシュに保存"""
         claimed_prefetch = False
@@ -957,22 +1057,14 @@ class FileHandler:
                     self._current_loading = cache_key
             else:
                 # pending → in_progress へ遷移。キャッシュ済み・処理中なら読み込みしない
-                skip_reason = None
-                with self._prefetch_lock:
-                    self._prefetch_pending.discard(cache_key)
-                    if self._cache_get(cache_key) is not None:
-                        skip_reason = "cached"
-                    elif cache_key in self._prefetch_in_progress:
-                        skip_reason = "prefetching"
-                    else:
-                        self._prefetch_in_progress.add(cache_key)
-                        claimed_prefetch = True
-                if skip_reason == "cached":
+                claim = self._claim_decode(cache_key)
+                if claim == "have":
                     logger.info(get_log_text("file_handler_skipping_cached", file=file, session_id=session_id))
                     return
-                if skip_reason == "prefetching":
+                if claim == "wait":
                     logger.info(get_log_text("file_handler_already_prefetching", cache_key=cache_key))
                     return
+                claimed_prefetch = True
             
             # 画像読み込み前にもう一度セッションチェック
             if not self._is_session_active(session_id):
@@ -1037,10 +1129,8 @@ class FileHandler:
                     logger.info(get_log_text("file_handler_clearing_current_loading", cache_key=cache_key))
                     self._current_loading = None
             if not is_current:
-                with self._prefetch_lock:
-                    self._prefetch_pending.discard(cache_key)
-                    if claimed_prefetch:
-                        self._prefetch_in_progress.discard(cache_key)
+                if claimed_prefetch:
+                    self._finish_decode(cache_key)
     def _prefetch_around(self, index, session_id=None):
         # セッションIDが指定されていない場合は現在のセッションIDを取得
         if session_id is None:
@@ -1968,8 +2058,10 @@ class FileHandler:
         """ZIPアーカイブの処理（同期的、セッションチェックなし）"""
         with open_zip(archive_path_str, 'r') as archive:
             apply_zip_password(archive, archive_path_str)
-            # アーカイブ内のファイル名を検索
-            archive_names = archive.namelist()
+            archive_names = self._cached_archive_entries(archive_path_str)
+            if archive_names is None:
+                archive_names = archive.namelist()
+                self._store_archive_entries(archive_path_str, archive_names)
             target_filename = None
             logger.debug(get_log_text("file_handler_looking_for_file", filename=filename))
             logger.debug(get_log_text("file_handler_archive_contains_files", file_count=len(archive_names)))
@@ -2047,7 +2139,10 @@ class FileHandler:
         """7ZIPアーカイブの処理（同期的、セッションチェックなし）"""
         with py7zr.SevenZipFile(archive_path_str, 'r', password=seven_zip_password_arg(archive_path_str)) as archive:
             try:
-                archive_names = archive.getnames()
+                archive_names = self._cached_archive_entries(archive_path_str)
+                if archive_names is None:
+                    archive_names = archive.getnames()
+                    self._store_archive_entries(archive_path_str, archive_names)
                 target_filename = None
                 logger.debug(get_log_text("file_handler_looking_for_file", filename=filename))
                 logger.debug(get_log_text("file_handler_archive_contains_files", file_count=len(archive_names)))
@@ -2111,7 +2206,10 @@ class FileHandler:
         """RARアーカイブの処理（同期的、セッションチェックなし）"""
         with rarfile.RarFile(archive_path_str, 'r') as archive:
             apply_rar_password(archive, archive_path_str)
-            archive_names = archive.namelist()
+            archive_names = self._cached_archive_entries(archive_path_str)
+            if archive_names is None:
+                archive_names = archive.namelist()
+                self._store_archive_entries(archive_path_str, archive_names)
             target_filename = None
             logger.debug(get_log_text("file_handler_looking_for_file", filename=filename))
             logger.debug(get_log_text("file_handler_archive_contains_files", file_count=len(archive_names)))
@@ -2165,7 +2263,10 @@ class FileHandler:
     def _process_tar_archive_sync(self, archive_path_str: str, filename: str, internal_name: str) -> Optional[Image.Image]:
         """TARアーカイブの処理（同期的、セッションチェックなし）"""
         with tarfile.open(archive_path_str, 'r') as archive:
-            archive_names = archive.getnames()
+            archive_names = self._cached_archive_entries(archive_path_str)
+            if archive_names is None:
+                archive_names = archive.getnames()
+                self._store_archive_entries(archive_path_str, archive_names)
             target_filename = None
             logger.debug(get_log_text("file_handler_looking_for_file", filename=filename))
             logger.debug(get_log_text("file_handler_archive_contains_files", file_count=len(archive_names)))
