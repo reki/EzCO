@@ -5,17 +5,17 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
-    QDialogButtonBox,
     QDoubleSpinBox,
     QFormLayout,
     QHBoxLayout,
+    QPushButton,
     QSlider,
     QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
-from ez_co.filters.builtin import BUILTIN_FILTER_ID, normalize_basic_settings
+from ez_co.filters.builtin import BUILTIN_FILTER_ID, default_basic_settings, normalize_basic_settings
 from ez_co.utils.language_manager import get_text
 
 
@@ -42,10 +42,19 @@ class FilterDialog(QDialog):
         form.addRow(get_text("ui.filter_gamma"), self._gamma)
         form.addRow(get_text("ui.filter_grayscale"), self._grayscale)
         layout.addLayout(form)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self._apply_and_accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        reset_button = QPushButton(get_text("ui.reset"))
+        reset_button.clicked.connect(self._reset_to_defaults)
+        ok_button = QPushButton(get_text("ui.ok"))
+        ok_button.clicked.connect(self._apply_and_accept)
+        cancel_button = QPushButton(get_text("ui.cancel"))
+        cancel_button.clicked.connect(self.reject)
+        buttons.addWidget(reset_button)
+        buttons.addWidget(ok_button)
+        buttons.addWidget(cancel_button)
+        layout.addLayout(buttons)
+        self._reset_button = reset_button
         self._brightness.valueChanged.connect(self._preview)
         self._contrast.valueChanged.connect(self._preview)
         self._gamma.valueChanged.connect(self._preview)
@@ -72,6 +81,16 @@ class FilterDialog(QDialog):
         self._write_settings(self._current_settings())
         if self._in_pipe():
             self._window.update_image()
+
+    def _reset_to_defaults(self) -> None:
+        defaults = default_basic_settings()
+        self._brightness.setValue(defaults["brightness"])
+        self._contrast.setValue(defaults["contrast"])
+        self._gamma.setValue(defaults["gamma"])
+        self._grayscale.blockSignals(True)
+        self._grayscale.setChecked(bool(defaults["grayscale"]))
+        self._grayscale.blockSignals(False)
+        self._preview()
 
     def _apply_and_accept(self) -> None:
         self._write_settings(self._current_settings())
