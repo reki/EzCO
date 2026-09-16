@@ -115,6 +115,7 @@ class PluginSession:
             mount_sidebar=self.mount_sidebar,
             unmount_sidebar=self.unmount_sidebar,
             toggle_sidebar=self.toggle_sidebar,
+            sidebar_visible=self.sidebar_visible,
         )
         manager.activate_ui(config)
         if restore_docks is not None:
@@ -122,7 +123,7 @@ class PluginSession:
         else:
             self.notify_current_changed()
 
-    def notify_current_changed(self) -> None:
+    def notify_current_changed(self, plugin_id: str | None = None) -> None:
         """開いている path / folder / page をプラグインへ知らせる。"""
         host = self._host
         if host is None:
@@ -133,7 +134,15 @@ class PluginSession:
             "folder": current("folder") if current is not None else None,
             "page": current("page") if current is not None else None,
         }
-        host.emit("current_changed", payload)
+        host.emit("current_changed", payload, plugin_id=plugin_id)
+
+    def sidebar_visible(self, plugin_id: str) -> bool:
+        """そのプラグインのドックが1つでも表示中なら True。"""
+        return any(
+            record["dock"].isVisible()
+            for key, record in self._sidebars.items()
+            if key[0] == plugin_id
+        )
 
     def invoke_registered(self, action_id: str) -> bool:
         """プラグイン登録アクションを実行する。未結線なら False。"""
@@ -187,7 +196,9 @@ class PluginSession:
         action = QAction(action_text, window)
         action.setCheckable(True)
         action.triggered.connect(lambda checked, target=dock: target.setVisible(bool(checked)))
-        dock.visibilityChanged.connect(lambda visible, item=action: item.setChecked(bool(visible)))
+        dock.visibilityChanged.connect(
+            lambda visible, pid=plugin_id, item=action: self._on_sidebar_visibility(pid, item, visible)
+        )
         action_id = make_sidebar_action_id(plugin_id, sidebar_id)
         self._apply_sidebar_shortcut(action, action_id)
         menu = self._sidebar_menu() if self._sidebar_menu is not None else None
@@ -216,7 +227,7 @@ class PluginSession:
         dock.deleteLater()
 
     def toggle_sidebar(self, plugin_id: str, sidebar_id: str) -> bool:
-        """サイドバーの表示を切り替える。開けたときは current_changed を出す。"""
+        """サイドバーの表示を切り替える。開けたときの current_changed は visibilityChanged。"""
         record = self._sidebars.get((plugin_id, sidebar_id))
         if record is None:
             return False
@@ -225,9 +236,13 @@ class PluginSession:
         visible = not dock.isVisible()
         dock.setVisible(visible)
         action.setChecked(visible)
-        if visible:
-            self.notify_current_changed()
         return True
+
+    def _on_sidebar_visibility(self, plugin_id: str, action, visible) -> None:
+        """表示になったプラグインへだけ current_changed を出す。"""
+        action.setChecked(bool(visible))
+        if visible:
+            self.notify_current_changed(plugin_id=plugin_id)
 
     def readd_sidebar_actions(self) -> None:
         """メニュー再構築のあと、サイドバー用アクションを載せ直す。"""

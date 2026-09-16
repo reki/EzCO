@@ -14,3 +14,4 @@ alwaysApply: true
 - 共通土台は `tests/conftest.py`。本番の `%APPDATA%`・リポジトリの `config.db`・プラグイン singleton は触らない
 - `MainWindow` 全体や描画の自動テストは書かない
 - 互換レイヤは置かない。import はフルパス
+- 挙動を変えたら、その対象モジュールのテストを足すか直す

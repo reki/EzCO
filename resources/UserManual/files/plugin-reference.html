@@ -179,6 +179,19 @@
                             </div>
                             <p>作者名です。</p>
                         </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">permissions</span>
+                                <span class="api-field-meta">object</span>
+                                <span class="api-field-meta">任意</span>
+                            </div>
+                            <p>マニフェスト権限。本体だけが読みます。未知キーは無視。今は <code>inactive_callback</code>（<code>bool</code>）のみ。サイドバーが非表示でも <code>current_changed</code> を受け取りたいとき <code>true</code>。プラグイン API では渡せません。</p>
+<pre class="api-example">{
+  "permissions": {
+    "inactive_callback": true
+  }
+}</pre>
+                        </div>
 
                         <p class="api-caption">サンプル（画像ローダー）</p>
 <pre class="api-example">{
@@ -199,6 +212,19 @@
   "entry": "plugin:MyPlugin",
   "description": "Shows info for the current folder.",
   "author": "Example"
+}</pre>
+                        <p class="api-caption">サンプル（非表示でも current_changed）</p>
+<pre class="api-example">{
+  "id": "com.example.sidebar",
+  "name": "My Sidebar",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "plugin:MyPlugin",
+  "description": "Shows info for the current folder.",
+  "author": "Example",
+  "permissions": {
+    "inactive_callback": true
+  }
 }</pre>
                     </section>
 
@@ -330,7 +356,7 @@ host.register_format(".xyz", "archive")</pre>
                         <article id="register-sidebar" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None) -&gt; None</code></div>
                             <div class="api-body">
-                                <p><code>QWidget</code> または <code>QLayout</code>。ドック化は本体。開閉アクション <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code> を自動登録します。ドックの題名とサイドバーメニューは <code>title</code>、ショートカット／ジェスチャーの表示は本体が <code>{title}サイドバー表示/非表示</code> にします。<code>aliases</code> は旧ショートカット ID など。本体は特定プラグインの ID を知りません。</p>
+                                <p><code>QWidget</code> または <code>QLayout</code>。ドック化は本体。開閉アクション <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code> を自動登録します。ドックの題名とサイドバーメニューは <code>title</code>、ショートカット／ジェスチャーの表示は本体が <code>{title}サイドバー表示/非表示</code> にします。<code>aliases</code> は旧ショートカット ID など。本体は特定プラグインの ID を知りません。権限は引数では渡しません。</p>
 <pre class="api-example">widget = QWidget()
 host.register_sidebar("info", get_text("title"), widget)
 # 公開 ID: plugin:com.example.sidebar:sidebar:info
@@ -455,7 +481,7 @@ page = host.get_current("page")</pre>
                         <article id="on-off" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.on(event, callback) / host.off(event, callback=None)</code></div>
                             <div class="api-body">
-                                <p><code>current_changed</code> と <code>config_changed</code>。<code>off</code> で callback を省略するとそのイベントの自プラグイン分を全部外します。</p>
+                                <p><code>current_changed</code> と <code>config_changed</code>。<code>off</code> で callback を省略するとそのイベントの自プラグイン分を全部外します。サイドバーを登録したプラグインへの <code>current_changed</code> は、ドックが表示中か <code>permissions.inactive_callback</code> があるときに限ります。<code>config_changed</code> は間引きません。</p>
 <pre class="api-example">def _on_current(payload):
     self._refresh(payload.get("folder"))
 
@@ -610,7 +636,7 @@ icon = root.read_bytes("resources/icon.png")</pre>
                             <div class="api-field-head">
                                 <span class="api-field-name">current_changed</span>
                             </div>
-                            <p>表示中のファイルが変わったとき。payload は <code>{path, folder, page}</code> です。</p>
+                            <p>表示中のファイルが変わったとき。payload は <code>{path, folder, page}</code> です。サイドバーを登録したプラグインには、ドックが表示中か <code>permissions.inactive_callback</code> があるときだけ届きます。</p>
                         </div>
                         <div class="api-field">
                             <div class="api-field-head">

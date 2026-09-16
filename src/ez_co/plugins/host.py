@@ -14,6 +14,7 @@ from types import MappingProxyType
 from typing import Any, Callable, Optional
 
 from ez_co.plugins.api import FileKind, FormatSpec, normalize_formats, parse_file_kind
+from ez_co.plugins.manifest import parse_permissions
 from ez_co.utils.language_manager import get_log_text, get_text
 
 logger = logging.getLogger(__name__)
@@ -315,12 +316,14 @@ class PluginHost:
         self._mount_sidebar = None
         self._unmount_sidebar = None
         self._toggle_sidebar = None
+        self._sidebar_visible = None
         self._formats: dict[str, list[FormatSpec]] = {}
         self._sidebars: dict[tuple[str, str], SidebarRegistration] = {}
         self._actions: dict[str, PluginAction] = {}
         self._listeners: dict[str, list[tuple[str, Callable]]] = {}
         self._scoped: dict[str, "ScopedPluginHost"] = {}
         self._config_fields: dict[str, list[ConfigField]] = {}
+        self._permissions: dict[str, MappingProxyType] = {}
 
     def scoped(self, plugin_id: str) -> "ScopedPluginHost":
         key = str(plugin_id or "")
@@ -341,6 +344,7 @@ class PluginHost:
         mount_sidebar: Optional[Callable] = None,
         unmount_sidebar: Optional[Callable] = None,
         toggle_sidebar: Optional[Callable] = None,
+        sidebar_visible: Optional[Callable] = None,
     ) -> None:
         self._parent = parent
         self._db = db_manager
@@ -351,6 +355,7 @@ class PluginHost:
         self._mount_sidebar = mount_sidebar
         self._unmount_sidebar = unmount_sidebar
         self._toggle_sidebar = toggle_sidebar
+        self._sidebar_visible = sidebar_visible
         self._ensure_bridge()
         if mount_sidebar:
             for record in list(self._sidebars.values()):
@@ -389,13 +394,51 @@ class PluginHost:
         from ez_co.utils.error_logger import report_error
         report_error(where, exc, plugin_id=plugin_id)
 
+    def set_manifest_permissions(self, plugin_id: str, permissions) -> None:
+        """本体のロード経路だけが呼ぶ。プラグイン API には出さない。"""
+        key = str(plugin_id or "")
+        if not key:
+            return
+        if isinstance(permissions, dict):
+            raw = permissions
+        elif permissions is None:
+            raw = {}
+        else:
+            try:
+                raw = dict(permissions)
+            except (TypeError, ValueError):
+                raw = {}
+        self._permissions[key] = parse_permissions(raw)
+
+    def has_manifest_permission(self, plugin_id: str, name: str) -> bool:
+        granted = self._permissions.get(str(plugin_id))
+        if not granted:
+            return False
+        return bool(granted.get(str(name or "")))
+
+    def _delivers_current_changed(self, plugin_id: str) -> bool:
+        if not self.sidebars_for(plugin_id):
+            return True
+        if self.has_manifest_permission(plugin_id, "inactive_callback"):
+            return True
+        checker = self._sidebar_visible
+        if checker is None:
+            return False
+        try:
+            return bool(checker(plugin_id))
+        except Exception:
+            return False
+
     def emit(self, event: str, payload=None, plugin_id: Optional[str] = None) -> None:
         name = str(event or "").strip()
         if not name:
             return
         target = str(plugin_id) if plugin_id else None
+        gate_inactive = name == "current_changed"
         for owner, callback in list(self._listeners.get(name, [])):
             if target is not None and owner != target:
+                continue
+            if gate_inactive and not self._delivers_current_changed(owner):
                 continue
             try:
                 callback(payload)

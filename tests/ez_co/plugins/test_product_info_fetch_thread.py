@@ -26,15 +26,31 @@ def _plugin():
     return ProductInfoPlugin(None, lambda *args, **kwargs: "", Host())
 
 
-def test_same_folder_page_turn_does_not_refresh():
+def test_same_product_id_does_not_refresh_when_folder_changes():
     plugin = _plugin()
-    plugin._folder = "K:/manga/d_799677"
+    called = []
+    plugin.refresh = lambda folder: called.append(folder)
+    plugin._on_current({"folder": "K:/manga/d_799677", "path": "a.png"})
+    plugin._on_current({"folder": "K:/other/d_799677", "path": "b.png"})
+    assert called == ["K:/manga/d_799677"]
+
+
+def test_product_id_change_refreshes():
+    plugin = _plugin()
     called = []
     plugin.refresh = lambda folder: called.append(folder)
     plugin._on_current({"folder": "K:/manga/d_799677"})
-    assert called == []
-    plugin._on_current({"folder": "K:/manga/other"})
-    assert called == ["K:/manga/other"]
+    plugin._on_current({"folder": "K:/manga/d_111111"})
+    assert called == ["K:/manga/d_799677", "K:/manga/d_111111"]
+
+
+def test_same_filename_id_does_not_refresh_on_page_turn():
+    plugin = _plugin()
+    called = []
+    plugin.refresh = lambda folder: called.append(folder)
+    plugin._on_current({"folder": "K:/manga", "path": "RJ123456_1.png"})
+    plugin._on_current({"folder": "K:/manga", "path": "RJ123456_2.png"})
+    assert called == ["K:/manga"]
 
 
 def test_stop_fetch_does_not_drop_running_thread():

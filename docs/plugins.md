@@ -131,6 +131,9 @@ with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zf:
 | `entry` | `string` | はい | `モジュール:クラス`。モジュールは `src/` からのドットパス |
 | `description` | `string` | いいえ | 説明。ホストは現状ログ以外では使わない |
 | `author` | `string` | いいえ | 作者 |
+| `permissions` | `object` | いいえ | マニフェスト権限。本体だけが読む。未知キーは無視。今は `inactive_callback`（`bool`）のみ |
+
+サイドバーを登録したプラグインは、ドックが全部非表示のとき `"current_changed"` を受け取りません。非表示でも受け取りたいときだけ `permissions.inactive_callback` を `true` にします。拡張子だけのプラグインは書きません。`register_sidebar` などプラグイン API では権限を渡せません。
 
 ### `entry` の解釈
 
@@ -313,7 +316,7 @@ class _Entry:
 登録（`__init__` または `setup`）:
 
 - `host.register_format(extension, kind)` — `kind` は `"image"` / `"archive"`
-- `host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None)` — `QWidget` または `QLayout`。ドック化は本体。開閉アクションも自動登録され、ショートカット／ジェスチャーに出せる。メニューは `{title}`、ショートカット／ジェスチャーの表示名は `{title}サイドバー表示/非表示`。`aliases` は旧アクション ID など
+- `host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None)` — `QWidget` または `QLayout`。ドック化は本体。開閉アクションも自動登録され、ショートカット／ジェスチャーに出せる。メニューは `{title}`、ショートカット／ジェスチャーの表示名は `{title}サイドバー表示/非表示`。`aliases` は旧アクション ID など。権限はここへ渡さない
 - `host.unregister_sidebar(sidebar_id)`
 - `host.register_action(action_id, label, callback, aliases=None)` — 独自アクション。ショートカット／ジェスチャーから呼ばれる
 - `host.unregister_action(action_id)`
@@ -324,7 +327,7 @@ class _Entry:
 
 - `host.get_current(key)` — `"path"` / `"folder"` / `"page"`
 - `host.reload_current(page=None)` — 現在のファイルを開き直す（画像キャッシュも消える）。`page` は 1 始まり。省略時は今のページ
-- `host.on(event, callback)` / `host.off(event, callback)` — `"current_changed"` / `"config_changed"`
+- `host.on(event, callback)` / `host.off(event, callback)` — `"current_changed"` / `"config_changed"`。サイドバーを登録したプラグインへの `"current_changed"` は、ドックが表示中か `permissions.inactive_callback` があるときに限る。`"config_changed"` は間引かない
 - `host.get_app_config()` — `language` / `viewer` / `cache` / `ui_font` の読み取り専用
 
 自プラグイン設定（DB の `plugin_id` はハッシュ化。他プラグインの行は読めない）:

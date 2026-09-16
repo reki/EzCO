@@ -28,6 +28,7 @@ def test_parse_manifest_reads_required_fields():
     assert manifest.entry_class == "Probe"
     assert manifest.description == "d"
     assert manifest.author == "a"
+    assert dict(manifest.permissions) == {}
 
 
 @pytest.mark.parametrize(
@@ -50,3 +51,30 @@ def test_parse_manifest_rejects_invalid(payload, match):
 def test_parse_manifest_rejects_non_object():
     with pytest.raises(ValueError, match="object"):
         parse_manifest([])
+
+
+def test_parse_manifest_permissions_default_empty():
+    assert dict(parse_manifest(_valid()).permissions) == {}
+
+
+def test_parse_manifest_reads_inactive_callback():
+    manifest = parse_manifest(_valid(permissions={"inactive_callback": True}))
+    assert manifest.permissions["inactive_callback"] is True
+
+
+def test_parse_manifest_ignores_unknown_permission_keys():
+    manifest = parse_manifest(
+        _valid(permissions={"inactive_callback": True, "location": True, "not-a-perm": 1})
+    )
+    assert dict(manifest.permissions) == {"inactive_callback": True}
+
+
+def test_parse_manifest_permissions_non_object_is_empty():
+    assert dict(parse_manifest(_valid(permissions=["inactive_callback"])).permissions) == {}
+
+
+def test_parse_manifest_permissions_come_from_json_only():
+    manifest = parse_manifest(_valid())
+    with pytest.raises(TypeError):
+        manifest.permissions["inactive_callback"] = True
+    assert dict(manifest.permissions) == {}

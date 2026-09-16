@@ -263,6 +263,8 @@ def load_plugin(path: Path, host=None) -> tuple[PluginManifest, Any, PluginRoot,
         from ez_co.plugins.host import PluginHost, ScopedPluginHost
         from ez_co.plugins.i18n import make_plugin_get_text
         shared = host or PluginHost()
+        if isinstance(shared, PluginHost):
+            shared.set_manifest_permissions(manifest.plugin_id, manifest.permissions)
         if isinstance(shared, ScopedPluginHost):
             scoped = shared
         elif hasattr(shared, "scoped"):

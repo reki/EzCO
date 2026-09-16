@@ -1,8 +1,13 @@
 """プラグイン ZIP のマニフェスト。"""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Any, Optional
+
+_EMPTY_PERMISSIONS: Mapping[str, bool] = MappingProxyType({})
+_KNOWN_PERMISSIONS = frozenset({"inactive_callback"})
 
 
 @dataclass(frozen=True)
@@ -14,6 +19,7 @@ class PluginManifest:
     entry: str
     description: str = ""
     author: str = ""
+    permissions: Mapping[str, bool] = field(default=_EMPTY_PERMISSIONS, hash=False)
 
     @property
     def entry_module(self) -> str:
@@ -29,6 +35,21 @@ class PluginManifest:
         if not sep:
             return None
         return cls.strip() or None
+
+
+def parse_permissions(raw: Any) -> Mapping[str, bool]:
+    """本体が読む既知のマニフェスト権限。未知キーは権限にならない。"""
+    if not isinstance(raw, Mapping):
+        return _EMPTY_PERMISSIONS
+    granted = {}
+    for key, value in raw.items():
+        name = str(key or "").strip()
+        if name not in _KNOWN_PERMISSIONS:
+            continue
+        granted[name] = bool(value)
+    if not granted:
+        return _EMPTY_PERMISSIONS
+    return MappingProxyType(granted)
 
 
 def parse_manifest(data: Any) -> PluginManifest:
@@ -61,4 +82,5 @@ def parse_manifest(data: Any) -> PluginManifest:
         entry=entry,
         description=str(data.get("description") or ""),
         author=str(data.get("author") or ""),
+        permissions=parse_permissions(data.get("permissions")),
     )

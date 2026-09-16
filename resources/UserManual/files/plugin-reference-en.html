@@ -179,6 +179,19 @@
                             </div>
                             <p>Author name.</p>
                         </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">permissions</span>
+                                <span class="api-field-meta">object</span>
+                                <span class="api-field-meta">optional</span>
+                            </div>
+                            <p>Manifest permissions. The host reads them; plugins cannot pass them through APIs. Unknown keys are ignored. Today only <code>inactive_callback</code> (<code>bool</code>): set <code>true</code> to receive <code>current_changed</code> while all sidebars are hidden.</p>
+<pre class="api-example">{
+  "permissions": {
+    "inactive_callback": true
+  }
+}</pre>
+                        </div>
 
                         <p class="api-caption">Sample (image loader)</p>
 <pre class="api-example">{
@@ -199,6 +212,19 @@
   "entry": "plugin:MyPlugin",
   "description": "Shows info for the current folder.",
   "author": "Example"
+}</pre>
+                        <p class="api-caption">Sample (current_changed while hidden)</p>
+<pre class="api-example">{
+  "id": "com.example.sidebar",
+  "name": "My Sidebar",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "plugin:MyPlugin",
+  "description": "Shows info for the current folder.",
+  "author": "Example",
+  "permissions": {
+    "inactive_callback": true
+  }
 }</pre>
                     </section>
 
@@ -330,7 +356,7 @@ host.register_format(".xyz", "archive")</pre>
                         <article id="register-sidebar" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None) -&gt; None</code></div>
                             <div class="api-body">
-                                <p><code>QWidget</code> or <code>QLayout</code>. The host docks it and auto-registers <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code>. The dock title and sidebar menu use <code>title</code>; shortcut / gesture labels become <code>Show/Hide {title} Sidebar</code>. <code>aliases</code> are old shortcut ids. The host does not hard-code plugin-specific ids.</p>
+                                <p><code>QWidget</code> or <code>QLayout</code>. The host docks it and auto-registers <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code>. The dock title and sidebar menu use <code>title</code>; shortcut / gesture labels become <code>Show/Hide {title} Sidebar</code>. <code>aliases</code> are old shortcut ids. The host does not hard-code plugin-specific ids. Do not pass permissions here.</p>
 <pre class="api-example">widget = QWidget()
 host.register_sidebar("info", get_text("title"), widget)
 # Public id: plugin:com.example.sidebar:sidebar:info
@@ -455,7 +481,7 @@ page = host.get_current("page")</pre>
                         <article id="on-off" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.on(event, callback) / host.off(event, callback=None)</code></div>
                             <div class="api-body">
-                                <p><code>current_changed</code> and <code>config_changed</code>. Omitting <code>callback</code> on <code>off</code> removes all of this plugin's handlers for that event.</p>
+                                <p><code>current_changed</code> and <code>config_changed</code>. Omitting <code>callback</code> on <code>off</code> removes all of this plugin's handlers for that event. For plugins that registered a sidebar, <code>current_changed</code> is delivered only while a dock is visible or <code>permissions.inactive_callback</code> is set. <code>config_changed</code> is not gated.</p>
 <pre class="api-example">def _on_current(payload):
     self._refresh(payload.get("folder"))
 
@@ -610,7 +636,7 @@ icon = root.read_bytes("resources/icon.png")</pre>
                             <div class="api-field-head">
                                 <span class="api-field-name">current_changed</span>
                             </div>
-                            <p>Fired when the current file changes. Payload is <code>{path, folder, page}</code>.</p>
+                            <p>Fired when the current file changes. Payload is <code>{path, folder, page}</code>. Plugins that registered a sidebar receive it only while a dock is visible or <code>permissions.inactive_callback</code> is set.</p>
                         </div>
                         <div class="api-field">
                             <div class="api-field-head">

@@ -15,3 +15,5 @@ alwaysApply: false
 - サンプルは後から読まれる。ホスト連携はコメントを厚くする。デモ用の加工表示は意図的だと分かるように残す
 - 動いている `QThread` の Python 参照を切らない（`quit()` だけで `wait()` せず捨てると落ちる）
 - 同じフォルダ／同じ仕事の取得を、ページ送りのたびにやり直さない
+- マニフェスト権限は本体が `manifest.json` の `permissions` から読む。`register_sidebar` などプラグイン API では受け取らない
+- 非表示の `current_changed` は本体が止める。対象はサイドバーを登録したプラグイン。非表示でも受け取りたいときだけ `permissions.inactive_callback`
