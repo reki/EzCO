@@ -972,7 +972,6 @@
     "plugin_api_version_unsupported": "プラグインAPIバージョンが非対応です: {plugin_id} api={api_version} host={host_api_version}",
     "plugin_import_blocked": "プラグインから禁止された import です: {name} ({plugin_id})",
     "plugin_no_formats": "プラグインが対応形式もサイドバーも登録していません: {plugin_id}",
-    "plugin_format_not_declared": "マニフェストに無い形式です: {plugin_id} {extension} {kind}",
     "plugin_sidebar_not_declared": "マニフェストに sidebar がありません: {plugin_id}",
     "plugin_filter_not_permitted": "マニフェストに permissions.filter がありません: {plugin_id}",
     "plugin_filter_invalid": "フィルターの登録に失敗しました: {plugin_id} {filter_id}",

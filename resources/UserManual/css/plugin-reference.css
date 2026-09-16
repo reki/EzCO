@@ -206,6 +206,16 @@
     margin: 0.8rem 0 0.3rem;
 }
 
+.api-see {
+    margin-top: 0.85rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary, #6b7280);
+}
+
+.api-see a code {
+    font-size: 0.88rem;
+}
+
 .config-section > table {
     width: 100%;
     border-collapse: collapse;

@@ -8,6 +8,7 @@
 - `.cursor/rules/plugins.mdc`
 - `.cursor/rules/plugin-data.mdc`
 - `.cursor/rules/ui-strings.mdc`
+- `.cursor/rules/user-manual.mdc`
 - `.cursor/rules/workflow.mdc`
 - リリースノートを書くとき: `.cursor/rules/release-notes.mdc`
 

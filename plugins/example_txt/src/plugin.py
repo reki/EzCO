@@ -56,7 +56,6 @@ class TextImagePlugin:
         self._timer = None
         self._pending_keys = set()
         self._last_txt = None
-        self.host.register_format(".txt", "archive")
         for key, default in _DEFAULTS.items():
             if key in _INT_KEYS:
                 value_type = "int"

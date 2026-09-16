@@ -1,11 +1,11 @@
 # EzCo プラグインマニュアル
 
-ファイル読み込みプラグインの開発者向けリファレンスです。エンドユーザー向けの配置手順は [plugins/README.md](../plugins/README.md) を参照してください。ブラウザ向けの API 一覧はユーザーマニュアルの [プラグインリファレンス](../resources/UserManual/files/plugin-reference.html) です。同梱プラグインごとの説明は各フォルダの `README.md` にあります。本体側の発見・有効化・拡張子解決は [ARCHITECTURE.md](ARCHITECTURE.md)、なぜその境界かは [DECISIONS.md](DECISIONS.md) です。
+プラグインの開発者向けリファレンスです。エンドユーザー向けの配置手順は [plugins/README.md](../plugins/README.md) を参照してください。ブラウザ向けの API 一覧はユーザーマニュアルの [プラグインリファレンス](../resources/UserManual/files/plugin-reference.html) です。同梱プラグインごとの説明は各フォルダの `README.md` にあります。本体側の発見・有効化・拡張子解決は [ARCHITECTURE.md](ARCHITECTURE.md)、なぜその境界かは [DECISIONS.md](DECISIONS.md) です。
 
 - **API バージョン**: `1`（`manifest.json` の `api_version` と一致必須）
 - **配置場所**: データフォルダの `plugins/` のみ（設定の「データの置き場」。既定はこのユーザーのデータフォルダ）
 - **配布形式**: ZIP（`.zip`）または同じ構成の展開フォルダ。DLL は未対応
-- **担当範囲**: ファイル読み込み、サイドバー UI、または表示フィルター。どれも同じパッケージ + `__init__` 登録
+- **担当範囲**: ファイル読み込み、サイドバー、表示フィルター。1つのプラグインがいくつでも持てる。入口は同じ `__init__`
 - **信用**: 本体は中身を検査しない。責任は配布者と導入した使用者。詳細は [plugins/README.md](../plugins/README.md)
 
 ---
@@ -15,7 +15,7 @@
 1. [概要と制約](#1-概要と制約)
 2. [パッケージ構造](#2-パッケージ構造)
 3. [読み込みと優先度](#3-読み込みと優先度)
-4. [manifest.json](#4-manifestjson)
+4. [manifest.json](#4-manifestjson)（[権限](#マニフェスト権限)）
 5. [ローダー契約 `FileLoader`](#5-ローダー契約-fileloader)
 6. [ホスト API](#6-ホスト-api)
 7. [多言語 `get_text`](#7-多言語-get_text)
@@ -33,11 +33,22 @@
 | できること | できないこと |
 | --- | --- |
 | 画像／アーカイブを独自に展開して画像バイトを返す | `import ez_co` / `import ez_co.*` |
-| `__init__` / `setup` で拡張子とサイドバーとフィルターを登録する | 他プラグインのモジュールを import する |
+| `__init__` / `setup` でサイドバーとフィルターを登録する | 他プラグインのモジュールを import する |
 | `host.load_ui` で `.ui` を読む。PySide6 は import 可 | 他プラグインの設定を読む |
 | ホストのパスワードダイアログを呼ぶ | ドックの貼り付け／フローティングを自分で制御する |
 | プラグイン内の `langs/` `resources/` を読む | DLL プラグイン（未対応） |
 | サードパーティ（`PIL`, `pyzipper` など本体依存）を import する | |
+
+役割はクラスを分けなくてよい。同じ入口が全部持てる。
+
+| 役割 | マニフェスト | コード |
+| --- | --- | --- |
+| ファイル読み込み | `formats` | `get_file_count` / `list_entries` / `read_entry` |
+| サイドバー | `sidebar: true` | `setup()` で `register_sidebar` |
+| 表示フィルター | `permissions.filter: true` | `setup()` で `register_filter`。有効化はフィルターメニュー |
+| 設定項目 | なし | `__init__` で `register_config` |
+
+`formats` も `sidebar` も無く `setup()` も無いと読み込み失敗。フィルターだけなら `permissions.filter` と `setup()` で足りる。
 
 `src/` が import ルートです。同じパッケージ内の `from mark import mark_image` は許可されます。`import ez_co` の禁止は本体との結合事故を防ぐためであり、サンドボックスではありません。プラグインはアプリと同じ権限で動きます。中身は検査しません。悪意のあるコードや欠陥による損害について、EzCo の開発者は責任を負いません。責任は配布者と、それを導入した使用者にあります。利用者向けの注意は [plugins/README.md](../plugins/README.md) です。
 
@@ -119,11 +130,18 @@ my_plugin.zip  または  my_plugin/
 | `entry` | `string` | はい | `モジュール:クラス`。モジュールは `src/` からのドットパス |
 | `description` | `string` | いいえ | 説明。ホストは現状ログ以外では使わない |
 | `author` | `string` | いいえ | 作者 |
-| `permissions` | `object` | いいえ | マニフェスト権限。本体だけが読む。未知キーは無視。今は `inactive_callback` と `filter`。値は JSON の `true` / `false` のみ（文字列 `"false"` や `1` は読み込み失敗） |
-| `formats` | `array` | いいえ | 担当形式。`[[".zip", "archive"]]` または `{extension, kind}`。本体だけが読む |
-| `sidebar` | `bool` | いいえ | サイドバーを使う。widget や ID は書かない |
+| `permissions` | `object` | いいえ | マニフェスト権限。本体だけが読む。詳細は下 |
+| `formats` | `array` | いいえ | 担当形式。これが正。`[[".zip", "archive"]]` または `{extension, kind}` |
+| `sidebar` | `bool` | いいえ | サイドバーを使う宣言。widget や ID は書かない。実体は `register_sidebar` |
 
-サイドバーを登録したプラグインは、ドックが全部非表示のとき `"current_changed"` を受け取りません。非表示でも受け取りたいときだけ `permissions.inactive_callback` を `true` にします。拡張子だけのプラグインは書きません。表示画像を書き換える `register_filter` は `permissions.filter` が `true` のときだけです。プラグイン API では権限を渡せません。
+### マニフェスト権限
+
+`permissions` は本体がロード前に読む力です。OS のサンドボックスではありません。未知キーは無視。値は JSON の `true` / `false` のみ（文字列 `"false"` や `1` は読み込み失敗）。`register_sidebar` / `register_filter` の引数では渡せません。
+
+| キー | ないと | あると |
+| --- | --- | --- |
+| `filter` | `register_filter` は読み込み失敗 | 表示フィルターを台帳へ載せられる。登録しただけでは動かない。ユーザーがフィルターメニューで有効化した ID だけが pipe に入る |
+| `inactive_callback` | サイドバーを登録したプラグインは、ドックが全部非表示のとき `current_changed` を受け取らない | 非表示でも届く。拡張子だけのプラグインは書かない |
 
 ### `entry` の解釈
 
@@ -216,9 +234,9 @@ class FileLoader:
 | --- | --- |
 | `root` | プラグイン ZIP 内のファイル。`read_bytes` / `exists` |
 | `get_text` | 文言。`get_text("plugin.watermark")` |
-| `host` | 登録・設定・状態参照。`host.register_format`（manifest の `formats` にある組だけ） / `register_sidebar`（`sidebar: true` のときだけ） / `register_action` / `register_filter`（`permissions.filter` のときだけ） / `get_config` |
+| `host` | 登録・設定・状態参照。`register_sidebar`（`sidebar: true` のときだけ） / `register_action` / `register_filter`（`permissions.filter` のときだけ） / `get_config` |
 
-担当形式は `manifest.json` の `formats` が正です。`host.register_format` はそこに書いた組だけ通します。未宣言・種別違いは読み込み失敗です。
+担当形式は `manifest.json` の `formats` が正です。本体がロード時に読みます。
 
 | 要素 | 説明 |
 | --- | --- |
@@ -320,7 +338,6 @@ class _Entry:
 
 登録（`__init__` または `setup`）:
 
-- `host.register_format(extension, kind)` — `kind` は `"image"` / `"archive"`。`manifest.formats` にある組だけ。未宣言はエラー
 - `host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None)` — `QWidget` または `QLayout`。ドック化は本体。開閉アクションも自動登録され、ショートカット／ジェスチャーに出せる。メニューは `{title}`、ショートカット／ジェスチャーの表示名は `{title}サイドバー表示/非表示`。`aliases` は旧アクション ID など。権限はここへ渡さない。`manifest.sidebar` が `true` のときだけ。未宣言はエラー
 - `host.unregister_sidebar(sidebar_id)`
 - `host.register_action(action_id, label, callback, aliases=None)` — 独自アクション。ショートカット／ジェスチャーから呼ばれる

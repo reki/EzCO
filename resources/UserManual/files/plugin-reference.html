@@ -31,8 +31,10 @@
                     <h3>API 索引</h3>
                     <ul class="toc-list">
                         <li><a href="#overview" class="toc-link">概要</a></li>
+                        <li><a href="#roles" class="toc-link">プラグインの種類</a></li>
                         <li><a href="#package" class="toc-link">パッケージ構造</a></li>
                         <li><a href="#manifest" class="toc-link">manifest.json</a></li>
+                        <li><a href="#permissions" class="toc-link">マニフェスト権限</a></li>
                         <li><a href="#loader" class="toc-link">FileLoader</a>
                             <ul class="toc-sublist">
                                 <li><a href="#loader-init" class="toc-link">__init__</a></li>
@@ -44,30 +46,34 @@
                         </li>
                         <li><a href="#host" class="toc-link">host</a>
                             <ul class="toc-sublist">
-                                <li><a href="#register-format" class="toc-link">register_format</a></li>
-                                <li><a href="#register-sidebar" class="toc-link">register_sidebar</a></li>
-                                <li><a href="#unregister-sidebar" class="toc-link">unregister_sidebar</a></li>
-                                <li><a href="#register-action" class="toc-link">register_action</a></li>
-                                <li><a href="#unregister-action" class="toc-link">unregister_action</a></li>
-                                <li><a href="#register-filter" class="toc-link">register_filter</a></li>
-                                <li><a href="#unregister-filter" class="toc-link">unregister_filter</a></li>
-                                <li><a href="#register-config" class="toc-link">register_config</a></li>
-                                <li><a href="#get-config" class="toc-link">get_config</a></li>
-                                <li><a href="#set-config" class="toc-link">set_config</a></li>
-                                <li><a href="#delete-config" class="toc-link">delete_config</a></li>
-                                <li><a href="#load-ui" class="toc-link">load_ui</a></li>
-                                <li><a href="#get-current" class="toc-link">get_current</a></li>
-                                <li><a href="#reload-current" class="toc-link">reload_current</a></li>
-                                <li><a href="#on-off" class="toc-link">on / off</a></li>
-                                <li><a href="#get-app-config" class="toc-link">get_app_config</a></li>
                                 <li><a href="#ask-password" class="toc-link">ask_password</a></li>
-                                <li><a href="#show-dialog" class="toc-link">show_dialog</a></li>
+                                <li><a href="#delete-config" class="toc-link">delete_config</a></li>
+                                <li><a href="#get-app-config" class="toc-link">get_app_config</a></li>
+                                <li><a href="#get-config" class="toc-link">get_config</a></li>
+                                <li><a href="#get-current" class="toc-link">get_current</a></li>
+                                <li><a href="#load-ui" class="toc-link">load_ui</a></li>
+                                <li><a href="#on-off" class="toc-link">on / off</a></li>
+                                <li><a href="#register-action" class="toc-link">register_action</a></li>
+                                <li><a href="#register-config" class="toc-link">register_config</a></li>
+                                <li><a href="#register-filter" class="toc-link">register_filter</a></li>
+                                <li><a href="#register-sidebar" class="toc-link">register_sidebar</a></li>
+                                <li><a href="#reload-current" class="toc-link">reload_current</a></li>
                                 <li><a href="#run-action" class="toc-link">run_action</a></li>
+                                <li><a href="#set-config" class="toc-link">set_config</a></li>
+                                <li><a href="#show-dialog" class="toc-link">show_dialog</a></li>
+                                <li><a href="#unregister-action" class="toc-link">unregister_action</a></li>
+                                <li><a href="#unregister-filter" class="toc-link">unregister_filter</a></li>
+                                <li><a href="#unregister-sidebar" class="toc-link">unregister_sidebar</a></li>
                             </ul>
                         </li>
                         <li><a href="#plugin-config" class="toc-link">プラグイン設定（コンフィグ）</a></li>
                         <li><a href="#gettext" class="toc-link">get_text</a></li>
-                        <li><a href="#root" class="toc-link">root</a></li>
+                        <li><a href="#root" class="toc-link">root</a>
+                            <ul class="toc-sublist">
+                                <li><a href="#root-exists" class="toc-link">exists</a></li>
+                                <li><a href="#root-read-bytes" class="toc-link">read_bytes</a></li>
+                            </ul>
+                        </li>
                         <li><a href="#events" class="toc-link">イベント</a></li>
                         <li><a href="#limits" class="toc-link">制約</a></li>
                     </ul>
@@ -83,10 +89,11 @@
                     <h1>🔌 プラグインリファレンス</h1>
                     <p>本体がプラグインに渡す契約です。JavaDoc のように型と引数を並べています。ユーザー向けの配置手順は <a href="settings.html#plugin-settings">プラグイン設定</a> を、開発者向けの長文はリポジトリの <code>docs/plugins.md</code> を見てください。</p>
                     <p><strong>API バージョン:</strong> <code>1</code>　／　<strong>配置:</strong> データフォルダの <code>plugins/</code> の ZIP、または <code>manifest.json</code> 付きフォルダ（設定の「データの置き場」）</p>
+                    <p>提供物（どの形式を開くか、サイドバーを出すか、画像を書き換えられるか）は <a href="#manifest">manifest.json</a> が正です。<code>host</code> の登録 API は、そこに書いたものだけ通ります。</p>
 
                     <section id="overview" class="config-section">
                         <h3>概要</h3>
-                        <p>プラグインはホストから生成され、コールバックされるだけです。コンストラクタは常に <code>Class(root, get_text, host)</code> です。</p>
+                        <p>プラグインはホストから生成され、コールバックされるだけです。コンストラクタは常に <code>Class(root, get_text, host)</code> です。ファイル読み込み・サイドバー・表示フィルターは別の役割で、1つのプラグインがいくつでも持てます。詳細は <a href="#roles">プラグインの種類</a> です。</p>
                         <ul>
                             <li><code>import ez_co</code> はできません（結合事故防止であり、サンドボックスではありません）。</li>
                             <li>本体は中身を検査しません。置いたコードはアプリと同じ権限で動きます。</li>
@@ -94,11 +101,49 @@
                             <li>PySide6 と本体が入れているサードパーティは import できます。</li>
                         </ul>
                         <div class="api-index">
+                            <a href="#roles"><div class="api-index-name">種類</div><div class="api-index-desc">ローダー／サイドバー／フィルター。兼ねてよい</div></a>
+                            <a href="#permissions"><div class="api-index-name">permissions</div><div class="api-index-desc">本体がゲートする力</div></a>
                             <a href="#loader"><div class="api-index-name">FileLoader</div><div class="api-index-desc">画像／アーカイブの読み込み契約</div></a>
                             <a href="#host"><div class="api-index-name">host</div><div class="api-index-desc">登録・設定・ダイアログ・アクション</div></a>
                             <a href="#gettext"><div class="api-index-name">get_text</div><div class="api-index-desc">多言語文言</div></a>
                             <a href="#root"><div class="api-index-name">root</div><div class="api-index-desc">プラグイン内リソース</div></a>
                         </div>
+                    </section>
+
+                    <section id="roles" class="config-section">
+                        <h3>プラグインの種類</h3>
+                        <p>種類はクラスを分ける必要はありません。同じ <code>src/plugin.py</code> の1クラスが、マニフェストに書いた役割を全部持てます。入口はどれも <code>Class(root, get_text, host)</code> です。</p>
+                        <table>
+                            <thead><tr><th>役割</th><th>マニフェスト</th><th>コード</th></tr></thead>
+                            <tbody>
+                                <tr>
+                                    <td>ファイル読み込み</td>
+                                    <td><code>formats</code>（<code>image</code> は1枚、<code>archive</code> は中身をページに）</td>
+                                    <td><code>get_file_count</code> / <code>list_entries</code> / <code>read_entry</code></td>
+                                </tr>
+                                <tr>
+                                    <td>サイドバー</td>
+                                    <td><code>sidebar: true</code>（widget や ID は書かない）</td>
+                                    <td><code>setup()</code> で <a href="#register-sidebar"><code>register_sidebar</code></a></td>
+                                </tr>
+                                <tr>
+                                    <td>表示フィルター</td>
+                                    <td><a href="#permissions"><code>permissions.filter: true</code></a></td>
+                                    <td><code>setup()</code> で <a href="#register-filter"><code>register_filter</code></a>。有効化はフィルターメニュー（プラグイン ON とは別）</td>
+                                </tr>
+                                <tr>
+                                    <td>設定項目</td>
+                                    <td>なし（スキーマはコード）</td>
+                                    <td><code>__init__</code> で <a href="#register-config"><code>register_config</code></a></td>
+                                </tr>
+                                <tr>
+                                    <td>独自アクション</td>
+                                    <td>なし</td>
+                                    <td><a href="#register-action"><code>register_action</code></a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p><code>formats</code> も <code>sidebar</code> も無く、<code>setup()</code> も無いプラグインは読み込み失敗です。フィルターだけなら <code>permissions.filter</code> と <code>setup()</code> で足ります。</p>
                     </section>
 
                     <section id="package" class="config-section">
@@ -186,13 +231,7 @@
                                 <span class="api-field-meta">object</span>
                                 <span class="api-field-meta">任意</span>
                             </div>
-                            <p>マニフェスト権限。本体だけが読みます。未知キーは無視。今は <code>inactive_callback</code> と <code>filter</code>。値は JSON の <code>true</code> / <code>false</code> だけです（文字列 <code>"false"</code> や <code>1</code> は読み込み失敗）。サイドバーが非表示でも <code>current_changed</code> を受け取りたいとき <code>inactive_callback: true</code>。表示画像を書き換える <code>register_filter</code> は <code>filter: true</code>。プラグイン API では渡せません。OS のサンドボックスではありません。</p>
-<pre class="api-example">{
-  "permissions": {
-    "inactive_callback": true,
-    "filter": true
-  }
-}</pre>
+                            <p>本体がゲートする力です。詳細は <a href="#permissions">マニフェスト権限</a>。プラグイン API では渡せません。</p>
                         </div>
                         <div class="api-field">
                             <div class="api-field-head">
@@ -200,7 +239,7 @@
                                 <span class="api-field-meta">array</span>
                                 <span class="api-field-meta">任意</span>
                             </div>
-                            <p>担当形式。本体だけが読みます。<code>[[".zip", "archive"]]</code> または <code>{extension, kind}</code>。<code>image</code> は1枚、<code>archive</code> は中身をページにします。未宣言の <code>register_format</code> はエラーです。</p>
+                            <p>担当する拡張子と種別。本体だけが読み、これが正です。<code>[[".zip", "archive"]]</code> または <code>{extension, kind}</code>。<code>image</code> は1枚、<code>archive</code> は中身をページにします。</p>
 <pre class="api-example">{
   "formats": [[".txt", "archive"]]
 }</pre>
@@ -211,7 +250,7 @@
                                 <span class="api-field-meta">bool</span>
                                 <span class="api-field-meta">任意</span>
                             </div>
-                            <p>サイドバーを使うことだけ書きます。widget や ID は書きません。未宣言の <code>register_sidebar</code> はエラーです。</p>
+                            <p>サイドバーを使う宣言です。widget や ID は書きません。実体は <code>setup()</code> の <a href="#register-sidebar"><code>register_sidebar</code></a> です。このフラグなしの登録はエラーです。</p>
 <pre class="api-example">{
   "sidebar": true
 }</pre>
@@ -266,18 +305,53 @@
     "filter": true
   }
 }</pre>
+                        <p class="api-caption">サンプル（ローダーとサイドバーを兼ねる）</p>
+<pre class="api-example">{
+  "id": "com.example.txt",
+  "name": "Example Text Pages",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "plugin:TextImagePlugin",
+  "formats": [[".txt", "archive"]],
+  "sidebar": true
+}</pre>
+                    </section>
+
+                    <section id="permissions" class="config-section">
+                        <h3>マニフェスト権限</h3>
+                        <p><code>manifest.json</code> の <code>permissions</code> だけが正です。本体がロード前に読みます。<code>register_sidebar</code> や <code>register_filter</code> の引数では渡せません。OS のサンドボックスではありません。未知キーは無視します。値は JSON の <code>true</code> / <code>false</code> だけです（文字列 <code>"false"</code> や <code>1</code> は読み込み失敗）。</p>
+                        <table>
+                            <thead><tr><th>キー</th><th>ないと</th><th>あると</th></tr></thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>filter</code></td>
+                                    <td><a href="#register-filter"><code>register_filter</code></a> は読み込み失敗</td>
+                                    <td>表示画像を加工するフィルターを台帳へ載せられる。登録しただけでは動かない。ユーザーがフィルターメニューで有効化した ID だけが pipe に入る</td>
+                                </tr>
+                                <tr>
+                                    <td><code>inactive_callback</code></td>
+                                    <td>サイドバーを登録したプラグインは、ドックが全部非表示のとき <code>current_changed</code> を受け取らない</td>
+                                    <td>非表示でも <code>current_changed</code> が届く。拡張子だけのプラグインは書かない（もともと届く）</td>
+                                </tr>
+                            </tbody>
+                        </table>
+<pre class="api-example">{
+  "permissions": {
+    "filter": true,
+    "inactive_callback": true
+  }
+}</pre>
                     </section>
 
                     <section id="loader" class="config-section">
                         <h3>FileLoader</h3>
-                        <p>ホストが <code>manifest.entry</code> のクラスを生成し、決まった名前のメソッドを呼びます。<code>ez_co.plugins.api</code> は import しません。サイドバーだけのプラグインでも同じコンストラクタです。</p>
+                        <p>ホストが <code>manifest.entry</code> のクラスを生成し、決まった名前のメソッドを呼びます。<code>ez_co.plugins.api</code> は import しません。サイドバーやフィルターだけのプラグインでも同じコンストラクタです。担当形式は <code>manifest.formats</code> です。</p>
                         <p class="api-caption">画像ローダーの最小例（<code>src/plugin.py</code>）</p>
 <pre class="api-example">class FileLoader:
     def __init__(self, root, get_text, host):
         self.root = root
         self.get_text = get_text
         self.host = host
-        host.register_format(".png", "image")
 
     def get_file_count(self, file_path):
         return 1
@@ -312,7 +386,6 @@ class _Entry:
     self.root = root
     self.get_text = get_text
     self.host = host
-    host.register_format(".zip", "archive")
     host.register_config("strict", "bool", default=True, label="Strict")</pre>
                             </div>
                         </article>
@@ -357,7 +430,7 @@ class _Entry:
                         <article id="setup-teardown" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>setup() / teardown()</code></div>
                             <div class="api-body">
-                                <p>任意。有効化で <code>setup</code>、無効化で <code>teardown</code> のあとホストの <code>clear_plugin</code> がサイドバー・アクションとそのプラグインのフィルター台帳を外します。pipe の ID は残します。設定スキーマは残ります。teardown に頼らないでください。</p>
+                                <p>任意。有効化で <code>setup</code>、無効化で <code>teardown</code> のあとホストの <code>clear_plugin</code> がサイドバー・アクションとそのプラグインのフィルター台帳を外します。pipe の ID は残します。設定スキーマは残ります。teardown に頼らないでください。サイドバーなら先に <code>manifest.sidebar: true</code>。フィルターなら先に <code>permissions.filter: true</code>。</p>
 <pre class="api-example">def setup(self):
     widget = self.host.load_ui(self.root.read_bytes("resources/sidebar.ui"))
     self.host.register_sidebar("info", self.get_text("title"), widget)
@@ -371,42 +444,93 @@ def teardown(self):
 
                     <section id="host" class="config-section">
                         <h3>host</h3>
-                        <p>コンストラクタ第 3 引数。同じ名前はモジュール組み込みにも渡ります。プラグインから <code>bind</code> は呼びません。</p>
+                        <p>コンストラクタ第 3 引数。同じ名前はモジュール組み込みにも渡ります。プラグインから <code>bind</code> は呼びません。登録 API はマニフェストの宣言と対です。</p>
+                        <table>
+                            <thead><tr><th>API</th><th>先にマニフェストへ</th></tr></thead>
+                            <tbody>
+                                <tr><td>ファイル読み込みのメソッド</td><td><code>formats</code></td></tr>
+                                <tr><td><code>register_sidebar</code></td><td><code>sidebar: true</code></td></tr>
+                                <tr><td><code>register_filter</code></td><td><code>permissions.filter: true</code></td></tr>
+                            </tbody>
+                        </table>
 
-                        <article id="register-format" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_format(extension, kind) -&gt; None</code></div>
+                        <article id="ask-password" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.ask_password(file_path, mismatch=False, verify=None) -&gt; str | None</code></div>
                             <div class="api-body">
-                                <p><code>kind</code> は <code>"image"</code> / <code>"archive"</code>。<code>__init__</code> で登録してよい。</p>
-<pre class="api-example">host.register_format(".png", "image")
-host.register_format(".xyz", "archive")</pre>
+                                <p>本体のパスワードダイアログ。セッションと履歴も見ます。ワーカーから呼んでも UI スレッドで動きます。<code>None</code> はキャンセルまたはアプリ終了です。</p>
+<pre class="api-example">password = host.ask_password(
+    file_path,
+    verify=lambda pwd: self._can_open(file_path, pwd),
+)
+if password is None:
+    raise RuntimeError("password cancelled")</pre>
+                                <p class="api-see">関連: <a href="#show-dialog"><code>show_dialog</code></a></p>
                             </div>
                         </article>
-
-                        <article id="register-sidebar" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None) -&gt; None</code></div>
+                        <article id="delete-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.delete_config(key) -&gt; bool</code></div>
                             <div class="api-body">
-                                <p><code>QWidget</code> または <code>QLayout</code>。ドック化は本体。開閉アクション <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code> を自動登録します。ドックの題名とサイドバーメニューは <code>title</code>、ショートカット／ジェスチャーの表示は本体が <code>{title}サイドバー表示/非表示</code> にします。<code>aliases</code> は旧ショートカット ID など。本体は特定プラグインの ID を知りません。権限は引数では渡しません。</p>
-<pre class="api-example">widget = QWidget()
-host.register_sidebar("info", get_text("title"), widget)
-# 公開 ID: plugin:com.example.sidebar:sidebar:info
-
-host.register_sidebar(
-    "info",
-    get_text("title"),
-    widget,
-    aliases=("toggle_my_dock",),
-)</pre>
+                                <p>保存値を消します。スキーマは残ります。</p>
+<pre class="api-example">host.delete_config("fetch_web")</pre>
+                                <p class="api-see">関連: <a href="#register-config"><code>register_config</code></a> / <a href="#get-config"><code>get_config</code></a> / <a href="#set-config"><code>set_config</code></a></p>
                             </div>
                         </article>
-
-                        <article id="unregister-sidebar" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.unregister_sidebar(sidebar_id) -&gt; None</code></div>
+                        <article id="get-app-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.get_app_config() -&gt; Mapping</code></div>
                             <div class="api-body">
-                                <p>サイドバーと自動登録した開閉アクションを外します。</p>
-<pre class="api-example">host.unregister_sidebar("info")</pre>
+                                <p>読み取り専用。<code>language</code> / <code>viewer</code> / <code>cache</code> / <code>ui_font</code> だけです。</p>
+<pre class="api-example">lang = host.get_app_config().get("language")</pre>
                             </div>
                         </article>
+                        <article id="get-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.get_config(key, default=None) -&gt; Any</code></div>
+                            <div class="api-body">
+                                <p>自プラグインの保存値。未保存ならスキーマの default。他プラグインの行は読めません。<code>date</code> / <code>datetime</code> は Unix 秒の int、<code>color</code> は <code>#RRGGBB</code>、<code>password</code> は平文、<code>path</code> は文字列です。</p>
+<pre class="api-example">if host.get_config("fetch_web", True):
+    self._fetch(folder)</pre>
+                                <p class="api-see">関連: <a href="#register-config"><code>register_config</code></a> / <a href="#set-config"><code>set_config</code></a> / <a href="#delete-config"><code>delete_config</code></a></p>
+                            </div>
+                        </article>
+                        <article id="get-current" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.get_current(key) -&gt; Any</code></div>
+                            <div class="api-body">
+                                <table>
+                                    <thead><tr><th>key</th><th>内容</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><code>path</code></td><td>現在ページのファイルパス</td></tr>
+                                        <tr><td><code>folder</code></td><td>現在フォルダ</td></tr>
+                                        <tr><td><code>page</code></td><td>ページ番号</td></tr>
+                                    </tbody>
+                                </table>
+<pre class="api-example">folder = host.get_current("folder")
+path = host.get_current("path")
+page = host.get_current("page")</pre>
+                            </div>
+                        </article>
+                        <article id="load-ui" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.load_ui(bytes_or_path) -&gt; QWidget</code></div>
+                            <div class="api-body">
+                                <p>Designer の <code>.ui</code> を <code>QUiLoader</code> で読みます。</p>
+<pre class="api-example">widget = host.load_ui(self.root.read_bytes("resources/sidebar.ui"))
+title = widget.findChild(QLabel, "titleLabel")</pre>
+                            </div>
+                        </article>
+                        <article id="on-off" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.on(event, callback) / host.off(event, callback=None)</code></div>
+                            <div class="api-body">
+                                <p><code>current_changed</code> と <code>config_changed</code>。<code>off</code> で callback を省略するとそのイベントの自プラグイン分を全部外します。サイドバーを登録したプラグインへの <code>current_changed</code> は、ドックが表示中か <code>permissions.inactive_callback</code> があるときに限ります。<code>config_changed</code> は間引きません。</p>
+<pre class="api-example">def _on_current(payload):
+    self._refresh(payload.get("folder"))
 
+def _on_config(payload):
+    if payload.get("key") == "fetch_web":
+        self._refresh(host.get_current("folder"))
+
+host.on("current_changed", _on_current)
+host.on("config_changed", _on_config)
+host.off("current_changed")</pre>
+                            </div>
+                        </article>
                         <article id="register-action" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.register_action(action_id, label, callback, aliases=None) -&gt; None</code></div>
                             <div class="api-body">
@@ -416,37 +540,9 @@ host.register_sidebar(
 
 host.register_action("reload", get_text("reload"), _reload)
 # 公開 ID: plugin:com.example.sidebar:reload</pre>
+                                <p class="api-see">関連: <a href="#unregister-action"><code>unregister_action</code></a> / <a href="#run-action"><code>run_action</code></a></p>
                             </div>
                         </article>
-
-                        <article id="unregister-action" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.unregister_action(action_id) -&gt; None</code></div>
-                            <div class="api-body">
-                                <p>独自アクションを外します。ユーザーの割り当ては設定に残ります。</p>
-<pre class="api-example">host.unregister_action("reload")</pre>
-                            </div>
-                        </article>
-
-                        <article id="register-filter" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_filter(filter_id, title, process) -&gt; None</code></div>
-                            <div class="api-body">
-                                <p>表示画像の加工。<code>permissions.filter</code> が必須。公開 ID は <code>plugin:{plugin_id}:{filter_id}</code>。<code>filter_id</code> に <code>:</code> は使えません。<code>setup()</code> で複数回呼んでよい（違う <code>filter_id</code> は別枝）。登録しただけでは <code>process</code> は呼ばれません。ユーザーがフィルターメニューで有効化した ID だけが pipe に入り、本体が順に呼びます。設定は既存の <code>register_config</code>（フィルター専用 API はありません。複数フィルターでも設定ダイアログは1つ）。<code>process(image, context)</code> の v1 は同期・短時間向け。<code>context</code> は path / page / size（Host は入りません）。原画キャッシュのオブジェクトは渡しません。プラグイン ON とフィルター pipe は別です。</p>
-<pre class="api-example">def _sharp(image, context):
-    return image.filter(ImageFilter.SHARPEN)
-
-host.register_filter("sharp", get_text("sharp"), _sharp)
-# 公開 ID: plugin:com.example.x:sharp</pre>
-                            </div>
-                        </article>
-
-                        <article id="unregister-filter" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.unregister_filter(filter_id) -&gt; None</code></div>
-                            <div class="api-body">
-                                <p>台帳からその1件を消します。pipe の ID は残します（ユーザーの有効記憶）。掃除の正は本体の <code>clear_plugin</code> です。</p>
-<pre class="api-example">host.unregister_filter("sharp")</pre>
-                            </div>
-                        </article>
-
                         <article id="register-config" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False) -&gt; None</code></div>
                             <div class="api-body">
@@ -476,60 +572,38 @@ host.register_config(
     sync=True,
     reload=True,
 )</pre>
+                                <p class="api-see">関連: <a href="#get-config"><code>get_config</code></a> / <a href="#set-config"><code>set_config</code></a> / <a href="#delete-config"><code>delete_config</code></a></p>
                             </div>
                         </article>
-
-                        <article id="get-config" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.get_config(key, default=None) -&gt; Any</code></div>
+                        <article id="register-filter" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_filter(filter_id, title, process) -&gt; None</code></div>
                             <div class="api-body">
-                                <p>自プラグインの保存値。未保存ならスキーマの default。他プラグインの行は読めません。<code>date</code> / <code>datetime</code> は Unix 秒の int、<code>color</code> は <code>#RRGGBB</code>、<code>password</code> は平文、<code>path</code> は文字列です。</p>
-<pre class="api-example">if host.get_config("fetch_web", True):
-    self._fetch(folder)</pre>
+                                <p>表示画像の加工。先に <a href="#permissions"><code>permissions.filter: true</code></a> が必須（API では渡せない）。公開 ID は <code>plugin:{plugin_id}:{filter_id}</code>。<code>filter_id</code> に <code>:</code> は使えません。<code>setup()</code> で複数回呼んでよい（違う <code>filter_id</code> は別枝）。登録しただけでは <code>process</code> は呼ばれません。ユーザーがフィルターメニューで有効化した ID だけが pipe に入り、本体が順に呼びます。設定は既存の <a href="#register-config"><code>register_config</code></a>（フィルター専用 API はありません。複数フィルターでも設定ダイアログは1つ）。<code>process(image, context)</code> の v1 は同期・短時間向け。<code>context</code> は path / page / size（Host は入りません）。原画キャッシュのオブジェクトは渡しません。プラグイン ON とフィルター pipe は別です。</p>
+<pre class="api-example">def _sharp(image, context):
+    return image.filter(ImageFilter.SHARPEN)
+
+host.register_filter("sharp", get_text("sharp"), _sharp)
+# 公開 ID: plugin:com.example.x:sharp</pre>
+                                <p class="api-see">関連: <a href="#unregister-filter"><code>unregister_filter</code></a></p>
                             </div>
                         </article>
-
-                        <article id="set-config" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.set_config(key, value) -&gt; bool</code></div>
+                        <article id="register-sidebar" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None) -&gt; None</code></div>
                             <div class="api-body">
-                                <p>型を正規化して保存し、そのプラグインへ <code>config_changed</code>（<code>{key, value}</code>）を送ります。</p>
-<pre class="api-example">host.set_config("fetch_web", False)</pre>
+                                <p>先に <code>manifest.sidebar</code> を <code>true</code> にします（widget や ID はマニフェストに書かない）。そのうえで <code>setup()</code> から呼びます。フラグなしはエラーです。<code>QWidget</code> または <code>QLayout</code>。ドック化は本体。開閉アクション <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code> を自動登録します。ドックの題名とサイドバーメニューは <code>title</code>、ショートカット／ジェスチャーの表示は本体が <code>{title}サイドバー表示/非表示</code> にします。<code>aliases</code> は旧ショートカット ID など。権限は引数では渡しません。</p>
+<pre class="api-example">widget = QWidget()
+host.register_sidebar("info", get_text("title"), widget)
+# 公開 ID: plugin:com.example.sidebar:sidebar:info
+
+host.register_sidebar(
+    "info",
+    get_text("title"),
+    widget,
+    aliases=("toggle_my_dock",),
+)</pre>
+                                <p class="api-see">関連: <a href="#unregister-sidebar"><code>unregister_sidebar</code></a></p>
                             </div>
                         </article>
-
-                        <article id="delete-config" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.delete_config(key) -&gt; bool</code></div>
-                            <div class="api-body">
-                                <p>保存値を消します。スキーマは残ります。</p>
-<pre class="api-example">host.delete_config("fetch_web")</pre>
-                            </div>
-                        </article>
-
-                        <article id="load-ui" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.load_ui(bytes_or_path) -&gt; QWidget</code></div>
-                            <div class="api-body">
-                                <p>Designer の <code>.ui</code> を <code>QUiLoader</code> で読みます。</p>
-<pre class="api-example">widget = host.load_ui(self.root.read_bytes("resources/sidebar.ui"))
-title = widget.findChild(QLabel, "titleLabel")</pre>
-                            </div>
-                        </article>
-
-                        <article id="get-current" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.get_current(key) -&gt; Any</code></div>
-                            <div class="api-body">
-                                <table>
-                                    <thead><tr><th>key</th><th>内容</th></tr></thead>
-                                    <tbody>
-                                        <tr><td><code>path</code></td><td>現在ページのファイルパス</td></tr>
-                                        <tr><td><code>folder</code></td><td>現在フォルダ</td></tr>
-                                        <tr><td><code>page</code></td><td>ページ番号</td></tr>
-                                    </tbody>
-                                </table>
-<pre class="api-example">folder = host.get_current("folder")
-path = host.get_current("path")
-page = host.get_current("page")</pre>
-                            </div>
-                        </article>
-
                         <article id="reload-current" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.reload_current(page=None) -&gt; bool</code></div>
                             <div class="api-body">
@@ -537,58 +611,52 @@ page = host.get_current("page")</pre>
 <pre class="api-example">host.reload_current(3)</pre>
                             </div>
                         </article>
-
-                        <article id="on-off" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.on(event, callback) / host.off(event, callback=None)</code></div>
-                            <div class="api-body">
-                                <p><code>current_changed</code> と <code>config_changed</code>。<code>off</code> で callback を省略するとそのイベントの自プラグイン分を全部外します。サイドバーを登録したプラグインへの <code>current_changed</code> は、ドックが表示中か <code>permissions.inactive_callback</code> があるときに限ります。<code>config_changed</code> は間引きません。</p>
-<pre class="api-example">def _on_current(payload):
-    self._refresh(payload.get("folder"))
-
-def _on_config(payload):
-    if payload.get("key") == "fetch_web":
-        self._refresh(host.get_current("folder"))
-
-host.on("current_changed", _on_current)
-host.on("config_changed", _on_config)
-host.off("current_changed")</pre>
-                            </div>
-                        </article>
-
-                        <article id="get-app-config" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.get_app_config() -&gt; Mapping</code></div>
-                            <div class="api-body">
-                                <p>読み取り専用。<code>language</code> / <code>viewer</code> / <code>cache</code> / <code>ui_font</code> だけです。</p>
-<pre class="api-example">lang = host.get_app_config().get("language")</pre>
-                            </div>
-                        </article>
-
-                        <article id="ask-password" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.ask_password(file_path, mismatch=False, verify=None) -&gt; str | None</code></div>
-                            <div class="api-body">
-                                <p>本体のパスワードダイアログ。セッションと履歴も見ます。ワーカーから呼んでも UI スレッドで動きます。<code>None</code> はキャンセルまたはアプリ終了です。</p>
-<pre class="api-example">password = host.ask_password(
-    file_path,
-    verify=lambda pwd: self._can_open(file_path, pwd),
-)
-if password is None:
-    raise RuntimeError("password cancelled")</pre>
-                            </div>
-                        </article>
-
-                        <article id="show-dialog" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.show_dialog(name, **kwargs) -&gt; Any</code></div>
-                            <div class="api-body">
-                                <p><code>password</code> / <code>archive_password</code> / <code>ask_password</code> は <code>ask_password</code> と同じ。それ以外は警告して <code>None</code>。</p>
-<pre class="api-example">password = host.show_dialog("ask_password", file_path=file_path)</pre>
-                            </div>
-                        </article>
-
                         <article id="run-action" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.run_action(action_id, **kwargs) -&gt; bool</code></div>
                             <div class="api-body">
                                 <p>本体アクション（例 <code>new_tab</code>）または登録済みプラグインアクションを呼びます。未対応なら <code>False</code>。</p>
 <pre class="api-example">host.run_action("new_tab")</pre>
+                                <p class="api-see">関連: <a href="#register-action"><code>register_action</code></a></p>
+                            </div>
+                        </article>
+                        <article id="set-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.set_config(key, value) -&gt; bool</code></div>
+                            <div class="api-body">
+                                <p>型を正規化して保存し、そのプラグインへ <code>config_changed</code>（<code>{key, value}</code>）を送ります。</p>
+<pre class="api-example">host.set_config("fetch_web", False)</pre>
+                                <p class="api-see">関連: <a href="#register-config"><code>register_config</code></a> / <a href="#get-config"><code>get_config</code></a> / <a href="#delete-config"><code>delete_config</code></a></p>
+                            </div>
+                        </article>
+                        <article id="show-dialog" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.show_dialog(name, **kwargs) -&gt; Any</code></div>
+                            <div class="api-body">
+                                <p><code>password</code> / <code>archive_password</code> / <code>ask_password</code> は <a href="#ask-password"><code>ask_password</code></a> と同じ。それ以外は警告して <code>None</code>。</p>
+<pre class="api-example">password = host.show_dialog("ask_password", file_path=file_path)</pre>
+                                <p class="api-see">関連: <a href="#ask-password"><code>ask_password</code></a></p>
+                            </div>
+                        </article>
+                        <article id="unregister-action" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.unregister_action(action_id) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p>独自アクションを外します。ユーザーの割り当ては設定に残ります。</p>
+<pre class="api-example">host.unregister_action("reload")</pre>
+                                <p class="api-see">関連: <a href="#register-action"><code>register_action</code></a></p>
+                            </div>
+                        </article>
+                        <article id="unregister-filter" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.unregister_filter(filter_id) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p>台帳からその1件を消します。pipe の ID は残します（ユーザーの有効記憶）。掃除の正は本体の <code>clear_plugin</code> です。</p>
+<pre class="api-example">host.unregister_filter("sharp")</pre>
+                                <p class="api-see">関連: <a href="#register-filter"><code>register_filter</code></a></p>
+                            </div>
+                        </article>
+                        <article id="unregister-sidebar" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.unregister_sidebar(sidebar_id) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p>サイドバーと自動登録した開閉アクションを外します。</p>
+<pre class="api-example">host.unregister_sidebar("info")</pre>
+                                <p class="api-see">関連: <a href="#register-sidebar"><code>register_sidebar</code></a></p>
                             </div>
                         </article>
                     </section>
@@ -677,20 +745,20 @@ status = get_text("status", count=3)</pre>
 
                     <section id="root" class="config-section">
                         <h3>root</h3>
-                        <article class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>root.read_bytes(relative_path: str) -&gt; bytes</code></div>
-                            <div class="api-body">
-                                <p>プラグイン内の相対パス。無ければ <code>KeyError</code>。</p>
-<pre class="api-example">ui = root.read_bytes("resources/sidebar.ui")
-icon = root.read_bytes("resources/icon.png")</pre>
-                            </div>
-                        </article>
-                        <article class="api-member">
+                        <article id="root-exists" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>root.exists(relative_path: str) -&gt; bool</code></div>
                             <div class="api-body">
                                 <p>プラグイン内にあるか。</p>
 <pre class="api-example">if root.exists("resources/sidebar.ui"):
     widget = host.load_ui(root.read_bytes("resources/sidebar.ui"))</pre>
+                            </div>
+                        </article>
+                        <article id="root-read-bytes" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>root.read_bytes(relative_path: str) -&gt; bytes</code></div>
+                            <div class="api-body">
+                                <p>プラグイン内の相対パス。無ければ <code>KeyError</code>。</p>
+<pre class="api-example">ui = root.read_bytes("resources/sidebar.ui")
+icon = root.read_bytes("resources/icon.png")</pre>
                             </div>
                         </article>
                     </section>

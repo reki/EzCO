@@ -84,7 +84,6 @@ def test_format_plugin_with_hidden_sidebar_is_gated():
         [FormatSpec(".txt", FileKind.ARCHIVE)],
         sidebar=True,
     )
-    host.scoped("hybrid.plugin").register_format(".txt", "archive")
     _add_sidebar(host, "hybrid.plugin")
     host.bind(parent=None, sidebar_visible=lambda pid: False)
     got = _listen(host, "hybrid.plugin")

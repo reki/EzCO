@@ -114,7 +114,7 @@
 
 ### Current decision
 
-担当形式は `manifest.json` の `formats`、サイドバーの有無は `sidebar`。`host.register_format` / `register_sidebar` は宣言済みだけ通す。未宣言は読み込み失敗。
+担当形式は `manifest.json` の `formats`。本体がロード時に読む。プラグイン API に `register_format` は無い。サイドバーの有無は `sidebar`。`register_sidebar` は宣言済みだけ通す。未宣言は読み込み失敗。
 
 ### Why
 

@@ -14,7 +14,7 @@ from types import MappingProxyType
 from typing import Any, Callable, Optional
 
 from ez_co.filters.registry import FilterRecord, get_filter_registry
-from ez_co.plugins.api import FileKind, FormatSpec, normalize_formats, parse_file_kind
+from ez_co.plugins.api import FormatSpec, normalize_formats
 from ez_co.plugins.manifest import parse_permissions
 from ez_co.utils.language_manager import get_log_text, get_text
 
@@ -548,7 +548,6 @@ class PluginHost:
         self._scoped: dict[str, "ScopedPluginHost"] = {}
         self._config_fields: dict[str, list[ConfigField]] = {}
         self._permissions: dict[str, MappingProxyType] = {}
-        self._declared_formats: dict[str, tuple[FormatSpec, ...]] = {}
         self._declared_sidebar: dict[str, bool] = {}
 
     def scoped(self, plugin_id: str) -> "ScopedPluginHost":
@@ -647,7 +646,6 @@ class PluginHost:
             specs = tuple(formats)
         else:
             specs = tuple(normalize_formats(formats))
-        self._declared_formats[key] = specs
         self._declared_sidebar[key] = bool(sidebar)
         self._formats[key] = list(specs)
 
@@ -749,31 +747,6 @@ class PluginHost:
         for event, rows in list(self._listeners.items()):
             self._listeners[event] = [item for item in rows if item[0] != plugin_id]
         get_filter_registry().unregister_plugin(plugin_id)
-
-    def _format_is_declared(self, plugin_id: str, spec: FormatSpec) -> bool:
-        return any(
-            item.extension == spec.extension and item.kind == spec.kind
-            for item in self._declared_formats.get(plugin_id, ())
-        )
-
-    def _register_format(self, plugin_id: str, extension, kind) -> None:
-        specs = normalize_formats([(extension, kind if not isinstance(kind, str) else parse_file_kind(kind) or kind)])
-        if not specs and isinstance(kind, FileKind):
-            specs = normalize_formats([(extension, kind)])
-        for spec in specs:
-            if not self._format_is_declared(plugin_id, spec):
-                raise ValueError(
-                    get_log_text(
-                        "plugin_format_not_declared",
-                        plugin_id=plugin_id,
-                        extension=spec.extension,
-                        kind=spec.kind.value,
-                    )
-                )
-        bucket = self._formats.setdefault(plugin_id, [])
-        for spec in specs:
-            if not any(item.extension == spec.extension and item.kind == spec.kind for item in bucket):
-                bucket.append(spec)
 
     def _register_sidebar(self, plugin_id: str, sidebar_id: str, title: str, widget_or_layout, aliases=None) -> None:
         if not self._declared_sidebar.get(plugin_id):
@@ -1138,9 +1111,6 @@ class ScopedPluginHost:
     def __init__(self, host: PluginHost, plugin_id: str):
         self._host = host
         self._plugin_id = plugin_id
-
-    def register_format(self, extension, kind) -> None:
-        self._host._register_format(self._plugin_id, extension, kind)
 
     def register_sidebar(self, sidebar_id: str, title: str, widget_or_layout, aliases=None) -> None:
         self._host._register_sidebar(self._plugin_id, sidebar_id, title, widget_or_layout, aliases)

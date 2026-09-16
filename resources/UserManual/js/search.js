@@ -59,28 +59,40 @@ class ManualSearch {
     }
 
     buildSearchIndex() {
-        const sections = document.querySelectorAll('.section');
         this.searchIndex = [];
+        this.indexSections(document.querySelectorAll('.section, .config-section'));
+        this.indexApiMembers();
+        this.indexApiFields();
+        console.log(`Search index built with ${this.searchIndex.length} entries`);
+    }
 
+    indexSections(sections) {
         sections.forEach(section => {
             const sectionId = section.id;
-            const sectionTitle = section.querySelector('h2')?.textContent || '';
-            
+            const isConfig = section.classList.contains('config-section');
+            const heading = isConfig
+                ? section.querySelector(':scope > h3')
+                : section.querySelector('h2');
+            const sectionTitle = heading?.textContent || '';
+
             if (sectionTitle) {
                 this.searchIndex.push({
                     type: 'section',
                     id: sectionId,
                     title: sectionTitle,
                     content: sectionTitle,
-                    element: section.querySelector('h2')
+                    names: [],
+                    element: heading
                 });
             }
 
-            const subsections = section.querySelectorAll('h3, h4');
+            const subsections = isConfig
+                ? section.querySelectorAll('h4')
+                : section.querySelectorAll('h3, h4');
             subsections.forEach(subsection => {
                 const subsectionTitle = subsection.textContent;
                 const subsectionId = subsection.id || this.generateId(subsectionTitle);
-                
+
                 if (!subsection.id) {
                     subsection.id = subsectionId;
                 }
@@ -91,6 +103,7 @@ class ManualSearch {
                     sectionId: sectionId,
                     title: subsectionTitle,
                     content: subsectionTitle,
+                    names: [],
                     element: subsection
                 });
             });
@@ -105,6 +118,7 @@ class ManualSearch {
                         sectionId: sectionId,
                         title: sectionTitle,
                         content: content,
+                        names: [],
                         element: paragraph
                     });
                 }
@@ -116,7 +130,7 @@ class ManualSearch {
                 rows.forEach((row, rowIndex) => {
                     const cells = row.querySelectorAll('td, th');
                     const rowContent = Array.from(cells).map(cell => cell.textContent.trim()).join(' ');
-                    
+
                     if (rowContent.length > 5) {
                         this.searchIndex.push({
                             type: 'table',
@@ -124,14 +138,72 @@ class ManualSearch {
                             sectionId: sectionId,
                             title: sectionTitle,
                             content: rowContent,
+                            names: [],
                             element: row
                         });
                     }
                 });
             });
         });
+    }
 
-        console.log(`Search index built with ${this.searchIndex.length} entries`);
+    indexApiMembers() {
+        document.querySelectorAll('.api-member').forEach(article => {
+            const sigEl = article.querySelector('.api-sig');
+            const code = sigEl?.querySelector('code')?.textContent?.trim() || '';
+            if (!code) return;
+
+            const names = this.extractApiNames(code);
+            const title = names.length ? names.join(' / ') : code;
+            const body = article.querySelector('.api-body')?.textContent?.trim() || '';
+            const section = article.closest('.section, .config-section');
+
+            this.searchIndex.push({
+                type: 'api',
+                id: article.id || this.generateId(title),
+                sectionId: section?.id || '',
+                title: title,
+                content: `${code} ${body}`,
+                names: names,
+                element: sigEl || article
+            });
+        });
+    }
+
+    indexApiFields() {
+        document.querySelectorAll('.api-field').forEach((field, index) => {
+            const nameEl = field.querySelector('.api-field-name');
+            const name = nameEl?.textContent?.trim() || '';
+            if (!name) return;
+
+            const desc = field.querySelector('p')?.textContent?.trim() || '';
+            const section = field.closest('.section, .config-section');
+
+            this.searchIndex.push({
+                type: 'api',
+                id: field.id || `${section?.id || 'field'}-${this.generateId(name)}-${index}`,
+                sectionId: section?.id || '',
+                title: name,
+                content: `${name} ${desc}`,
+                names: [name],
+                element: nameEl
+            });
+        });
+    }
+
+    extractApiNames(sig) {
+        const names = [];
+        const seen = new Set();
+        const re = /\b(?:host\.|root\.)?([A-Za-z_][A-Za-z0-9_]*)\s*\(/g;
+        let match;
+        while ((match = re.exec(sig)) !== null) {
+            const name = match[1];
+            const key = name.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            names.push(name);
+        }
+        return names;
     }
 
     generateId(text) {
@@ -231,8 +303,14 @@ class ManualSearch {
             let score = 0;
             let matches = 0;
 
+            const names = (item.names || []).map(name => name.toLowerCase());
+            const titleTokens = title.split(/[^a-z0-9_]+/).filter(Boolean);
+
             words.forEach(word => {
-                if (title.includes(word)) {
+                if (names.includes(word) || titleTokens.includes(word)) {
+                    score += 25;
+                    matches++;
+                } else if (title.includes(word)) {
                     score += 10;
                     matches++;
                 } else if (content.includes(word)) {
@@ -258,7 +336,7 @@ class ManualSearch {
                 return b.score - a.score;
             }
             
-            const typePriority = { section: 4, subsection: 3, content: 2, table: 1 };
+            const typePriority = { api: 5, section: 4, subsection: 3, content: 2, table: 1 };
             return (typePriority[b.type] || 0) - (typePriority[a.type] || 0);
         }).slice(0, 10);
     }
@@ -314,6 +392,7 @@ class ManualSearch {
 
     getTypeLabel(type) {
         const labels = {
+            api: 'API',
             section: this.isJapanese ? 'セクション' : 'Section',
             subsection: this.isJapanese ? 'サブセクション' : 'Subsection',
             content: this.isJapanese ? 'コンテンツ' : 'Content',
