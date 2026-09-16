@@ -5,7 +5,7 @@
 - **API バージョン**: `1`（`manifest.json` の `api_version` と一致必須）
 - **配置場所**: データフォルダの `plugins/` のみ（設定の「データの置き場」。既定はこのユーザーのデータフォルダ）
 - **配布形式**: ZIP（`.zip`）または同じ構成の展開フォルダ。DLL は未対応
-- **担当範囲**: ファイル読み込み、またはサイドバー UI。どちらも同じパッケージ + `__init__` 登録
+- **担当範囲**: ファイル読み込み、サイドバー UI、または表示フィルター。どれも同じパッケージ + `__init__` 登録
 - **信用**: 本体は中身を検査しない。責任は配布者と導入した使用者。詳細は [plugins/README.md](../plugins/README.md)
 
 ---
@@ -33,7 +33,7 @@
 | できること | できないこと |
 | --- | --- |
 | 画像／アーカイブを独自に展開して画像バイトを返す | `import ez_co` / `import ez_co.*` |
-| `__init__` / `setup` で拡張子とサイドバーを登録する | 他プラグインのモジュールを import する |
+| `__init__` / `setup` で拡張子とサイドバーとフィルターを登録する | 他プラグインのモジュールを import する |
 | `host.load_ui` で `.ui` を読む。PySide6 は import 可 | 他プラグインの設定を読む |
 | ホストのパスワードダイアログを呼ぶ | ドックの貼り付け／フローティングを自分で制御する |
 | プラグイン内の `langs/` `resources/` を読む | DLL プラグイン（未対応） |
@@ -119,11 +119,11 @@ my_plugin.zip  または  my_plugin/
 | `entry` | `string` | はい | `モジュール:クラス`。モジュールは `src/` からのドットパス |
 | `description` | `string` | いいえ | 説明。ホストは現状ログ以外では使わない |
 | `author` | `string` | いいえ | 作者 |
-| `permissions` | `object` | いいえ | マニフェスト権限。本体だけが読む。未知キーは無視。今は `inactive_callback` のみ。値は JSON の `true` / `false` のみ（文字列 `"false"` や `1` は読み込み失敗） |
+| `permissions` | `object` | いいえ | マニフェスト権限。本体だけが読む。未知キーは無視。今は `inactive_callback` と `filter`。値は JSON の `true` / `false` のみ（文字列 `"false"` や `1` は読み込み失敗） |
 | `formats` | `array` | いいえ | 担当形式。`[[".zip", "archive"]]` または `{extension, kind}`。本体だけが読む |
 | `sidebar` | `bool` | いいえ | サイドバーを使う。widget や ID は書かない |
 
-サイドバーを登録したプラグインは、ドックが全部非表示のとき `"current_changed"` を受け取りません。非表示でも受け取りたいときだけ `permissions.inactive_callback` を `true` にします。拡張子だけのプラグインは書きません。`register_sidebar` などプラグイン API では権限を渡せません。
+サイドバーを登録したプラグインは、ドックが全部非表示のとき `"current_changed"` を受け取りません。非表示でも受け取りたいときだけ `permissions.inactive_callback` を `true` にします。拡張子だけのプラグインは書きません。表示画像を書き換える `register_filter` は `permissions.filter` が `true` のときだけです。プラグイン API では権限を渡せません。
 
 ### `entry` の解釈
 
@@ -203,7 +203,7 @@ class FileLoader:
 | --- | --- |
 | `root` | プラグイン ZIP 内のファイル。`read_bytes` / `exists` |
 | `get_text` | 文言。`get_text("plugin.watermark")` |
-| `host` | 登録・設定・状態参照。`host.register_format`（manifest の `formats` にある組だけ） / `register_sidebar`（`sidebar: true` のときだけ） / `register_action` / `get_config` |
+| `host` | 登録・設定・状態参照。`host.register_format`（manifest の `formats` にある組だけ） / `register_sidebar`（`sidebar: true` のときだけ） / `register_action` / `register_filter`（`permissions.filter` のときだけ） / `get_config` |
 
 担当形式は `manifest.json` の `formats` が正です。`host.register_format` はそこに書いた組だけ通します。未宣言・種別違いは読み込み失敗です。
 
@@ -312,6 +312,8 @@ class _Entry:
 - `host.unregister_sidebar(sidebar_id)`
 - `host.register_action(action_id, label, callback, aliases=None)` — 独自アクション。ショートカット／ジェスチャーから呼ばれる
 - `host.unregister_action(action_id)`
+- `host.register_filter(filter_id, title, process)` — 表示画像の加工。`permissions.filter` が `true` のときだけ。公開 ID は `plugin:{plugin_id}:{filter_id}`。`setup()` で複数回呼んでよい（`filter_id` が違えば別レコード）。同じ `filter_id` の再登録は上書き。値は既存の `register_config`（フィルター専用の config API は無い）。v1 の `process(image, context)` は同期・短時間向け。`context` は path / page / size。Host は入らない。登録しただけでは呼ばない。本体の pipe に載り、かつ台帳にあるときだけ
+- `host.unregister_filter(filter_id)` — 台帳からその1件を消す。pipe は触らない（ユーザーの ON 記憶を残す）。掃除の正は `clear_plugin`
 - `host.load_ui(bytes_or_path)` — Designer の `.ui` を `QUiLoader` で読む
 - `host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False)` — プラグイン設定ダイアログ用。`value_type` は `"bool"` / `"string"` / `"int"` / `"float"` / `"int_range"` / `"float_range"` / `"path"` / `"password"` / `"color"` / `"date"` / `"datetime"` / `"choice"` / `"font"`。`choice` は `choices`（値の列、または `(value, label)`）。`int_range` / `float_range` は範囲付きの単一値で `minimum` / `maximum` / `step` が必須（欠落・逆転・`step <= 0` はエラー。ダイアログはスライダー+スピン。項目名の末尾に範囲を付ける。`float_range` は `step` も付ける）。`path` は `path_kind` が `"file"`（省略時）または `"directory"`。`password` は画面マスク、DB は DPAPI、`get_config` は平文。`sync=True` は数値のみ。最後の変更から 500ms 動かなくなってから保存し `config_changed`。`reload=True`（`sync` と併用）のときだけ `reload_current`。キャンセルはプレビューした値を開き時点（または最後の適用）へ戻し、`reload` 項目なら画像も戻す。`color` は `#RRGGBB` 文字列。`date` / `datetime` は UTC の Unix 秒（int。`date` はその日 00:00:00）。無効化してもスキーマは残るので `__init__` で登録してよい
 
@@ -330,7 +332,7 @@ class _Entry:
 
 プラグイン設定の一覧にスキーマがある行は「設定」ボタンが出ます。そこでパネルを開き OK / 適用すると、本体ダイアログの OK を待たずに DB へ保存して通知します。初期化はスキーマの default に戻します。`sync=True` の数値は 500ms のアイドル後に保存します。`reload=True` ならそのとき現在画像を開き直します。キャンセルはそのプレビューも戻します。ユーザーマニュアルの [プラグインリファレンス（コンフィグ）](../resources/UserManual/files/plugin-reference.html#plugin-config) に、スキーマ・保存場所・ダイアログの扱いをまとめています。
 
-UI の再接続用に任意の `setup()` / `teardown()` を実装できます。無効化すると本体はサイドバーと登録アクションを外します。
+UI の再接続用に任意の `setup()` / `teardown()` を実装できます。無効化すると本体の `clear_plugin` がサイドバー・登録アクション・そのプラグインの FilterRecord を台帳から外します。**pipe の ID は残します**（次回 ON・次回起動で復元するため）。teardown に頼らないでください。プラグイン設定の ON/OFF と、フィルターメニューの有効は別です。
 
 ---
 
@@ -490,6 +492,44 @@ register_action(action_id: str, label: str, callback, aliases=None) -> None
 ```python
 self.host.register_sidebar("main", self.get_text("title"), self.widget, aliases=("old_toggle_id",))
 self.host.register_action("refresh", self.get_text("refresh"), self.refresh)
+```
+
+---
+
+### `register_filter`
+
+```text
+register_filter(filter_id: str, title: str, process) -> None
+```
+
+表示画像を加工するフィルターを台帳へ載せる。`manifest.permissions.filter` が `true` でない、または `process` が呼べないときは読み込み失敗。登録だけでは `process` は呼ばない。ユーザーがフィルターメニューで有効化した公開 ID だけが `config.filters.pipe` に入り、本体の `apply_pipe` がその順で呼ぶ。
+
+**引数**
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| `filter_id` | `str` | プラグイン内で一意。`:` は使えない |
+| `title` | `str` | フィルターメニューの枝名 |
+| `process` | callable | `process(image, context) -> Image`。失敗は本体がログしてその段をスキップ。v1 は同期・短時間向け |
+
+公開 ID は `plugin:{plugin_id}:{filter_id}`。設定は `register_config`。プラグインが複数フィルターを出しても設定ダイアログは1つ。原画キャッシュのオブジェクトは渡さない（working copy）。
+
+```python
+self.host.register_filter("sharp", self.get_text("sharp"), self._sharp)
+```
+
+---
+
+### `unregister_filter`
+
+```text
+unregister_filter(filter_id: str) -> None
+```
+
+台帳からその1件を消す。pipe は触らない。
+
+```python
+self.host.unregister_filter("sharp")
 ```
 
 ---

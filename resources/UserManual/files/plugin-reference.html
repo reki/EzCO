@@ -49,6 +49,8 @@
                                 <li><a href="#unregister-sidebar" class="toc-link">unregister_sidebar</a></li>
                                 <li><a href="#register-action" class="toc-link">register_action</a></li>
                                 <li><a href="#unregister-action" class="toc-link">unregister_action</a></li>
+                                <li><a href="#register-filter" class="toc-link">register_filter</a></li>
+                                <li><a href="#unregister-filter" class="toc-link">unregister_filter</a></li>
                                 <li><a href="#register-config" class="toc-link">register_config</a></li>
                                 <li><a href="#get-config" class="toc-link">get_config</a></li>
                                 <li><a href="#set-config" class="toc-link">set_config</a></li>
@@ -184,10 +186,11 @@
                                 <span class="api-field-meta">object</span>
                                 <span class="api-field-meta">任意</span>
                             </div>
-                            <p>マニフェスト権限。本体だけが読みます。未知キーは無視。今は <code>inactive_callback</code> のみ。値は JSON の <code>true</code> / <code>false</code> だけです（文字列 <code>"false"</code> や <code>1</code> は読み込み失敗）。サイドバーが非表示でも <code>current_changed</code> を受け取りたいとき <code>true</code>。プラグイン API では渡せません。OS のサンドボックスではありません。</p>
+                            <p>マニフェスト権限。本体だけが読みます。未知キーは無視。今は <code>inactive_callback</code> と <code>filter</code>。値は JSON の <code>true</code> / <code>false</code> だけです（文字列 <code>"false"</code> や <code>1</code> は読み込み失敗）。サイドバーが非表示でも <code>current_changed</code> を受け取りたいとき <code>inactive_callback: true</code>。表示画像を書き換える <code>register_filter</code> は <code>filter: true</code>。プラグイン API では渡せません。OS のサンドボックスではありません。</p>
 <pre class="api-example">{
   "permissions": {
-    "inactive_callback": true
+    "inactive_callback": true,
+    "filter": true
   }
 }</pre>
                         </div>
@@ -341,7 +344,7 @@ class _Entry:
                         <article id="setup-teardown" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>setup() / teardown()</code></div>
                             <div class="api-body">
-                                <p>任意。有効化で <code>setup</code>、無効化で <code>teardown</code> のあとホストがサイドバーとアクションを外します。設定スキーマは残ります。</p>
+                                <p>任意。有効化で <code>setup</code>、無効化で <code>teardown</code> のあとホストの <code>clear_plugin</code> がサイドバー・アクションとそのプラグインのフィルター台帳を外します。pipe の ID は残します。設定スキーマは残ります。teardown に頼らないでください。</p>
 <pre class="api-example">def setup(self):
     widget = self.host.load_ui(self.root.read_bytes("resources/sidebar.ui"))
     self.host.register_sidebar("info", self.get_text("title"), widget)
@@ -408,6 +411,26 @@ host.register_action("reload", get_text("reload"), _reload)
                             <div class="api-body">
                                 <p>独自アクションを外します。ユーザーの割り当ては設定に残ります。</p>
 <pre class="api-example">host.unregister_action("reload")</pre>
+                            </div>
+                        </article>
+
+                        <article id="register-filter" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_filter(filter_id, title, process) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p>表示画像の加工。<code>permissions.filter</code> が必須。公開 ID は <code>plugin:{plugin_id}:{filter_id}</code>。<code>filter_id</code> に <code>:</code> は使えません。<code>setup()</code> で複数回呼んでよい（違う <code>filter_id</code> は別枝）。登録しただけでは <code>process</code> は呼ばれません。ユーザーがフィルターメニューで有効化した ID だけが pipe に入り、本体が順に呼びます。設定は既存の <code>register_config</code>（フィルター専用 API はありません。複数フィルターでも設定ダイアログは1つ）。<code>process(image, context)</code> の v1 は同期・短時間向け。<code>context</code> は path / page / size（Host は入りません）。原画キャッシュのオブジェクトは渡しません。プラグイン ON とフィルター pipe は別です。</p>
+<pre class="api-example">def _sharp(image, context):
+    return image.filter(ImageFilter.SHARPEN)
+
+host.register_filter("sharp", get_text("sharp"), _sharp)
+# 公開 ID: plugin:com.example.x:sharp</pre>
+                            </div>
+                        </article>
+
+                        <article id="unregister-filter" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.unregister_filter(filter_id) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p>台帳からその1件を消します。pipe の ID は残します（ユーザーの有効記憶）。掃除の正は本体の <code>clear_plugin</code> です。</p>
+<pre class="api-example">host.unregister_filter("sharp")</pre>
                             </div>
                         </article>
 

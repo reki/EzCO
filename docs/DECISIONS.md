@@ -42,7 +42,7 @@
 
 ### Current decision
 
-描画・ズーム・見開き・ページ送り・キャッシュは本体。プラグインは Qt / PIL が読める画像バイトまで。アーカイブの中身を別プラグインへ回さない。サイドバーは widget / layout を渡すだけ。
+描画・ズーム・見開き・ページ送り・キャッシュは本体。プラグインは Qt / PIL が読める画像バイトまで。アーカイブの中身を別プラグインへ回さない。サイドバーは widget / layout を渡すだけ。表示画像を書き換えるときは `permissions.filter` と `register_filter`。画素処理は本体の pipe が台帳の ID を辿るときだけ。
 
 ### Why
 
@@ -138,7 +138,7 @@
 
 ### Current decision
 
-本体がゲートする力は `manifest.permissions`。いまのキーは `inactive_callback` のみ。値は JSON の `true` / `false` だけ。文字列や数値は読み込み失敗。プラグイン API の引数では受け取らない。サイドバーを登録したプラグインは、ドックが全部非表示なら `current_changed` を受け取らない。非表示でも欲しいときだけ `inactive_callback: true`。
+本体がゲートする力は `manifest.permissions`。既知キーは `inactive_callback` と `filter`。値は JSON の `true` / `false` だけ。文字列や数値は読み込み失敗。プラグイン API の引数では受け取らない。サイドバーを登録したプラグインは、ドックが全部非表示なら `current_changed` を受け取らない。非表示でも欲しいときだけ `inactive_callback: true`。表示画像を書き換える `register_filter` は `filter: true` が必須。
 
 ### Why
 
@@ -147,6 +147,54 @@
 ### Consequences
 
 新しい「本体だけが止められる力」は API ではなく manifest に載せる。未知キーは無視。`"false"` を False と読まない（`bool("false")` は True になるため）。
+
+### Status
+
+採用中。
+
+---
+
+## 画像フィルターは台帳と pipe を分ける
+
+### Context
+
+ビルドイン補正とプラグイン加工を別ルートにすると、メニューと適用順が分岐する。プラグイン OFF で pipe から ID を消すと、再 ON・再起動で有効状態を忘れる。
+
+### Current decision
+
+ビルドインもプラグインも同じ `register_filter` 台帳。適用・メニュー・有効化は公開 ID だけ見る。`config.filters.pipe` は有効化した順の ID リスト。無効化は pipe から除く。プラグイン自体の OFF は `clear_plugin` が台帳だけ落とす。pipe の ID は残し、再 ON で `register_filter` すれば同じ位置で戻る。プラグインの値は `register_config`。v1 の `process` は同期・短時間。processed cache と順の D&D は今回やらない。
+
+### Why
+
+会話で確定。ChatGPT 指示書の interceptor / ロードオーダー / 別 Processor メニューは採用しない。
+
+### Consequences
+
+空 pipe と `builtin:basic` の identity は同一オブジェクト（copy なし）。未登録 ID はスキップ。プラグイン ON とフィルター pipe は別。
+
+### Status
+
+採用中。
+
+---
+
+## 原画オブジェクトをプラグインに渡さない
+
+### Context
+
+cache へ再格納しなくても、受け取った `PIL.Image` を in-place に変えると cache 内の原画が壊れる。
+
+### Current decision
+
+実効フィルターがあるときだけ working copy を1回作る。プラグインの `process` には cache と同一のオブジェクトを渡さない。失敗はその段をログしてスキップする。
+
+### Why
+
+原画キャッシュを表示経路の加工から守る。IMAGE_LOADING の Decode → cache → pipe → `ImageView`。
+
+### Consequences
+
+空 pipe は最速。v1 は表示都度 pipe。ズーム／パン／回転は既存 QImage 側なので再 pipe しない。
 
 ### Status
 

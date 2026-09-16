@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from types import MappingProxyType
 from typing import Any, Callable, Optional
 
+from ez_co.filters.registry import FilterRecord, get_filter_registry
 from ez_co.plugins.api import FileKind, FormatSpec, normalize_formats, parse_file_kind
 from ez_co.plugins.manifest import parse_permissions
 from ez_co.utils.language_manager import get_log_text, get_text
@@ -41,6 +42,17 @@ _COLOR_FALLBACK = "#000000"
 
 def make_plugin_action_id(plugin_id: str, action_id: str) -> str:
     return f"plugin:{plugin_id}:{action_id}"
+
+
+def make_plugin_filter_id(plugin_id: str, filter_id: str) -> str:
+    return f"plugin:{plugin_id}:{filter_id}"
+
+
+def normalize_local_filter_id(filter_id) -> str:
+    name = str(filter_id or "").strip()
+    if not name or ":" in name:
+        return ""
+    return name
 
 
 def make_sidebar_action_id(plugin_id: str, sidebar_id: str) -> str:
@@ -528,6 +540,7 @@ class PluginHost:
         self._unmount_sidebar = None
         self._toggle_sidebar = None
         self._sidebar_visible = None
+        self._after_plugin_config = None
         self._formats: dict[str, list[FormatSpec]] = {}
         self._sidebars: dict[tuple[str, str], SidebarRegistration] = {}
         self._actions: dict[str, PluginAction] = {}
@@ -558,6 +571,7 @@ class PluginHost:
         unmount_sidebar: Optional[Callable] = None,
         toggle_sidebar: Optional[Callable] = None,
         sidebar_visible: Optional[Callable] = None,
+        after_plugin_config: Optional[Callable] = None,
     ) -> None:
         self._parent = parent
         self._db = db_manager
@@ -569,6 +583,7 @@ class PluginHost:
         self._unmount_sidebar = unmount_sidebar
         self._toggle_sidebar = toggle_sidebar
         self._sidebar_visible = sidebar_visible
+        self._after_plugin_config = after_plugin_config
         self._ensure_bridge()
         if mount_sidebar:
             for record in list(self._sidebars.values()):
@@ -733,6 +748,7 @@ class PluginHost:
             self._actions.pop(public_id, None)
         for event, rows in list(self._listeners.items()):
             self._listeners[event] = [item for item in rows if item[0] != plugin_id]
+        get_filter_registry().unregister_plugin(plugin_id)
 
     def _format_is_declared(self, plugin_id: str, spec: FormatSpec) -> bool:
         return any(
@@ -807,6 +823,30 @@ class PluginHost:
         except Exception as exc:
             logger.debug(get_log_text("plugin_event_failed", event=f"toggle_sidebar:{sidebar_id}", error=exc))
             return False
+
+    def _register_filter(self, plugin_id: str, filter_id: str, title: str, process) -> None:
+        if not self.has_manifest_permission(plugin_id, "filter"):
+            raise ValueError(get_log_text("plugin_filter_not_permitted", plugin_id=plugin_id))
+        local_id = normalize_local_filter_id(filter_id)
+        if not local_id or not callable(process):
+            raise ValueError(get_log_text("plugin_filter_invalid", plugin_id=plugin_id, filter_id=filter_id))
+        public_id = make_plugin_filter_id(plugin_id, local_id)
+        get_filter_registry().register(
+            FilterRecord(
+                public_id=public_id,
+                plugin_id=plugin_id,
+                local_id=local_id,
+                title=str(title or local_id),
+                process=process,
+                has_settings=bool(self.configs_for(plugin_id)),
+            )
+        )
+
+    def _unregister_filter(self, plugin_id: str, filter_id: str) -> None:
+        local_id = normalize_local_filter_id(filter_id)
+        if not local_id:
+            return
+        get_filter_registry().unregister(make_plugin_filter_id(plugin_id, local_id))
 
     def _register_action(self, plugin_id: str, action_id, label, callback, aliases=None) -> None:
         local_id = normalize_local_action_id(action_id)
@@ -955,7 +995,17 @@ class PluginHost:
             ok = bool(self._db.set_plugin_setting(plugin_id, key, stored))
         if notify:
             self.emit("config_changed", {"key": str(key or ""), "value": plain}, plugin_id=plugin_id)
+            self._notify_after_plugin_config(plugin_id)
         return ok
+
+    def _notify_after_plugin_config(self, plugin_id: str) -> None:
+        callback = self._after_plugin_config
+        if callback is None:
+            return
+        try:
+            callback(plugin_id)
+        except Exception as exc:
+            logger.debug(get_log_text("plugin_event_failed", event="after_plugin_config", error=exc))
 
     def _delete_plugin_config(self, plugin_id: str, key: str) -> bool:
         if self._db is None:
@@ -1103,6 +1153,12 @@ class ScopedPluginHost:
 
     def unregister_action(self, action_id) -> None:
         self._host._unregister_action(self._plugin_id, action_id)
+
+    def register_filter(self, filter_id: str, title: str, process) -> None:
+        self._host._register_filter(self._plugin_id, filter_id, title, process)
+
+    def unregister_filter(self, filter_id: str) -> None:
+        self._host._unregister_filter(self._plugin_id, filter_id)
 
     def load_ui(self, data_or_path):
         return self._host.load_ui(data_or_path)

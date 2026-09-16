@@ -28,3 +28,24 @@ def test_from_dict_fills_missing_sections():
     config = Config.from_dict({})
     assert "width" in config.window
     assert "extension_handlers" in config.plugins
+    assert config.filters["pipe"] == []
+    assert config.filters["settings"]["builtin:basic"]["gamma"] == 1.0
+
+
+def test_from_dict_normalizes_filters_pipe_and_builtin_settings():
+    config = Config.from_dict(
+        {
+            "filters": {
+                "pipe": ["builtin:basic", "builtin:basic", "plugin:com.example.x:sharp", ""],
+                "settings": {
+                    "builtin:basic": {"brightness": 12, "gamma": 1},
+                    "plugin:com.example.x:sharp": {"amount": 3},
+                },
+            }
+        }
+    )
+    assert config.filters["pipe"] == ["builtin:basic", "plugin:com.example.x:sharp"]
+    assert config.filters["settings"]["builtin:basic"]["brightness"] == 12
+    assert config.filters["settings"]["builtin:basic"]["contrast"] == 0
+    assert config.filters["settings"]["builtin:basic"]["gamma"] == 1.0
+    assert "plugin:com.example.x:sharp" not in config.filters["settings"]

@@ -15,6 +15,7 @@ sys.path[:] = [path for path in sys.path if Path(path).resolve() != _TESTS]
 import pytest
 
 from ez_co.plugins.manager import reset_plugin_manager
+from ez_co.filters.registry import reset_filter_registry
 from ez_co.utils import data_location, path_utils
 from ez_co.utils.database import CONFIG_DB_NAME, resolve_database_path
 
@@ -37,9 +38,11 @@ def isolate_app_data(tmp_path, monkeypatch):
     data_location._data_root = None
     data_location.set_data_root(data_root)
     reset_plugin_manager()
+    reset_filter_registry()
     assert resolve_database_path().resolve() != _REPO_CONFIG_DB.resolve()
     yield
     reset_plugin_manager()
+    reset_filter_registry()
     data_location._data_root = None
     data_location._consent_version_cache = None
 

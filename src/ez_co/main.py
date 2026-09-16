@@ -312,6 +312,8 @@ def connect_plugin_session(window, *, bootstrap=True) -> PluginSession:
         reload_open_files=window._reload_open_files_after_plugin_change,
         rebuild_menu=window.rebuild_menu,
         save_profile=window.save_plugin_profile_config,
+        refresh_display=window.update_image,
+        after_plugin_config=window._on_plugin_filter_config_changed,
     )
     return session
 

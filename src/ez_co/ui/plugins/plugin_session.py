@@ -35,6 +35,7 @@ class PluginSession:
         self._sidebar_menu = None
         self._setup_shortcuts = None
         self._reload_open_files = None
+        self._refresh_display = None
 
     def consent_accepted(self) -> bool:
         """導入同意済みか。起動時に一度だけ user.json を見る。"""
@@ -86,6 +87,8 @@ class PluginSession:
         reload_open_files=None,
         rebuild_menu=None,
         save_profile=None,
+        refresh_display=None,
+        after_plugin_config=None,
     ) -> None:
         """ホストをこのウィンドウに結び、UI を有効化する。ロードはしない。"""
         self._window = window
@@ -99,6 +102,7 @@ class PluginSession:
         self._sidebar_menu = sidebar_menu
         self._setup_shortcuts = setup_shortcuts
         self._reload_open_files = reload_open_files
+        self._refresh_display = refresh_display
         if rebuild_menu is not None:
             self._rebuild_menu = rebuild_menu
         if save_profile is not None:
@@ -116,8 +120,11 @@ class PluginSession:
             unmount_sidebar=self.unmount_sidebar,
             toggle_sidebar=self.toggle_sidebar,
             sidebar_visible=self.sidebar_visible,
+            after_plugin_config=after_plugin_config,
         )
         manager.activate_ui(config)
+        if self._rebuild_menu is not None:
+            self._rebuild_menu()
         if restore_docks is not None:
             restore_docks()
         else:
@@ -162,8 +169,12 @@ class PluginSession:
             if self._setup_shortcuts is not None:
                 self._setup_shortcuts()
         manager.activate_ui(config)
+        if self._rebuild_menu is not None:
+            self._rebuild_menu()
         if self._reload_open_files is not None:
             self._reload_open_files()
+        elif self._refresh_display is not None:
+            self._refresh_display()
         self.notify_current_changed()
 
     def mount_sidebar(self, plugin_id: str, sidebar_id: str, title: str, widget) -> None:

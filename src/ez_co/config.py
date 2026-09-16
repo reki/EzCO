@@ -2,6 +2,7 @@ import locale
 from PySide6.QtGui import QFontDatabase
 from typing import Dict, Any, List
 from ez_co.enums.arrows import Arrow
+from ez_co.filters.builtin import BUILTIN_FILTER_ID, default_basic_settings, normalize_basic_settings
 from ez_co.enums.archives import ArchiveInfo, ArchiveType
 from ez_co.enums.actions import Actions
 from ez_co.enums.mouse_buttons import MouseButtons
@@ -26,6 +27,45 @@ class OverrideDict(dict):
         if self._config.is_runtime_overridden(key_path):
             return self._config.get_runtime_override(key_path)
         return super().get(key, default)
+
+
+def default_filters() -> dict:
+    return {
+        "pipe": [],
+        "settings": {
+            BUILTIN_FILTER_ID: default_basic_settings(),
+        },
+    }
+
+
+def normalize_filter_pipe(raw) -> list:
+    if not isinstance(raw, list):
+        return []
+    seen = set()
+    pipe = []
+    for item in raw:
+        public_id = str(item or "").strip()
+        if not public_id or public_id in seen:
+            continue
+        seen.add(public_id)
+        pipe.append(public_id)
+    return pipe
+
+
+def normalize_filter_settings(raw) -> dict:
+    incoming = raw if isinstance(raw, dict) else {}
+    return {
+        BUILTIN_FILTER_ID: normalize_basic_settings(incoming.get(BUILTIN_FILTER_ID)),
+    }
+
+
+def normalize_filters(raw) -> dict:
+    data = raw if isinstance(raw, dict) else {}
+    return {
+        "pipe": normalize_filter_pipe(data.get("pipe")),
+        "settings": normalize_filter_settings(data.get("settings")),
+    }
+
 
 class Config:
     def __init__(self):
@@ -173,6 +213,7 @@ class Config:
             "enabled": {},
             "source_choice": {},
         }
+        self.filters = default_filters()
         
         # 設定辞書をオーバーライド対応に変換
         self._apply_override_proxies()
@@ -198,6 +239,7 @@ class Config:
         self.ui_font = OverrideDict(self.ui_font, self, "ui_font")
         self.image_list = OverrideDict(self.image_list, self, "image_list")
         self.plugins = OverrideDict(self.plugins, self, "plugins")
+        self.filters = OverrideDict(self.filters, self, "filters")
     
     @classmethod
     def get_default_config(cls) -> Dict[str, Any]:
@@ -403,6 +445,8 @@ class Config:
                 },
                 "source_choice": normalized_choice,
             })
+        if "filters" in merged_data:
+            config.filters.update(normalize_filters(merged_data.get("filters")))
         
         # 設定辞書をオーバーライド対応に変換
         config._apply_override_proxies()
@@ -432,6 +476,7 @@ class Config:
             "ui_font": get_original_dict(self.ui_font),
             "image_list": get_original_dict(self.image_list),
             "plugins": get_original_dict(self.plugins),
+            "filters": get_original_dict(self.filters),
         }
         
         return result
@@ -495,7 +540,7 @@ class Config:
         runtime = dict(self.runtime_overrides)
         section_names = (
             "window", "viewer", "cache", "history", "language",
-            "debug", "archive", "ui_font", "image_list", "plugins",
+            "debug", "archive", "ui_font", "image_list", "plugins", "filters",
         )
         for name in section_names:
             current = getattr(self, name)

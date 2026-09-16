@@ -41,6 +41,7 @@
                                 <li><a href="#zoom" class="toc-link">ズーム機能</a></li>
                                 <li><a href="#rotation" class="toc-link">画像回転</a></li>
                                 <li><a href="#comic-view" class="toc-link">コミック表示（両開き）</a></li>
+                                <li><a href="#filters" class="toc-link">フィルター</a></li>
                                 <li><a href="#tabs" class="toc-link">タブ</a></li>
                             </ul>
                         </li>
@@ -417,6 +418,44 @@
                                 <li><strong>スライダー方向:</strong> 単ページと両開き（右）は右が先頭。両開き（左）のみ左が先頭です</li>
                                 <li><strong>切替の優先:</strong> 設定ダイアログの全般→ビューアで「前回の選択を維持」「右を優先」「左を優先」を選べます</li>
                                 <li><strong>ショートカット:</strong> 単ページ／両開き（右）／両開き（左）／両開き切替は初期未割り当てです。ショートカット設定から割り当てできます</li>
+                            </ul>
+                        </div>
+
+                        <h3 id="filters">フィルター</h3>
+                        <p>メニューバーの<code>フィルター</code>（機能／拡張とプロファイルの間）から、表示中の画像だけを補正します。サムネイルと画像リストは原画のままです。有効にした順に適用し、現在のプロファイルへ保存されます。</p>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>項目</th>
+                                        <th>説明</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>基本補正</td>
+                                        <td>明るさ・コントラスト・ガンマ・グレースケール。設定は1つのダイアログです</td>
+                                    </tr>
+                                    <tr>
+                                        <td>プラグインのフィルター</td>
+                                        <td>プラグインが ON で <code>register_filter</code> したときだけ出ます。設定はプラグイン設定と同じダイアログです</td>
+                                    </tr>
+                                    <tr>
+                                        <td>有効</td>
+                                        <td>表示画像の pipe に入れます。プラグイン自体の ON/OFF とは別です</td>
+                                    </tr>
+                                    <tr>
+                                        <td>設定</td>
+                                        <td>pipe に入っているときだけ見た目に即反映します。先に有効にしてください</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="info-box">
+                            <h3>💡 プラグイン ON とフィルター</h3>
+                            <ul>
+                                <li>プラグインを OFF にしても、フィルターの有効記憶（pipe）は残ります。再び ON すれば同じ順で戻ります</li>
+                                <li>拡張子やサイドバーだけ使いたいときは、プラグインは ON のまま、フィルターの有効だけ外してください</li>
                             </ul>
                         </div>
 

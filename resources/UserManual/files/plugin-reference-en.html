@@ -49,6 +49,8 @@
                                 <li><a href="#unregister-sidebar" class="toc-link">unregister_sidebar</a></li>
                                 <li><a href="#register-action" class="toc-link">register_action</a></li>
                                 <li><a href="#unregister-action" class="toc-link">unregister_action</a></li>
+                                <li><a href="#register-filter" class="toc-link">register_filter</a></li>
+                                <li><a href="#unregister-filter" class="toc-link">unregister_filter</a></li>
                                 <li><a href="#register-config" class="toc-link">register_config</a></li>
                                 <li><a href="#get-config" class="toc-link">get_config</a></li>
                                 <li><a href="#set-config" class="toc-link">set_config</a></li>
@@ -184,10 +186,11 @@
                                 <span class="api-field-meta">object</span>
                                 <span class="api-field-meta">optional</span>
                             </div>
-                            <p>Manifest permissions. The host reads them; plugins cannot pass them through APIs. Unknown keys are ignored. Today only <code>inactive_callback</code>. Values must be JSON <code>true</code> / <code>false</code> (the string <code>"false"</code> or <code>1</code> fails to load). Set <code>true</code> to receive <code>current_changed</code> while all sidebars are hidden. This is not an OS sandbox.</p>
+                            <p>Manifest permissions. The host reads them; plugins cannot pass them through APIs. Unknown keys are ignored. Today <code>inactive_callback</code> and <code>filter</code>. Values must be JSON <code>true</code> / <code>false</code> (the string <code>"false"</code> or <code>1</code> fails to load). Set <code>inactive_callback: true</code> to receive <code>current_changed</code> while all sidebars are hidden. <code>register_filter</code> requires <code>filter: true</code>. This is not an OS sandbox.</p>
 <pre class="api-example">{
   "permissions": {
-    "inactive_callback": true
+    "inactive_callback": true,
+    "filter": true
   }
 }</pre>
                         </div>
@@ -341,7 +344,7 @@ class _Entry:
                         <article id="setup-teardown" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>setup() / teardown()</code></div>
                             <div class="api-body">
-                                <p>Optional. Called on enable / disable. After teardown the host removes sidebars and actions. Config schemas stay.</p>
+                                <p>Optional. Called on enable / disable. After teardown the host <code>clear_plugin</code> removes sidebars, actions, and that plugin's filter records. Pipe IDs stay. Config schemas stay. Do not rely on teardown to clean the registry.</p>
 <pre class="api-example">def setup(self):
     widget = self.host.load_ui(self.root.read_bytes("resources/sidebar.ui"))
     self.host.register_sidebar("info", self.get_text("title"), widget)
@@ -408,6 +411,26 @@ host.register_action("reload", get_text("reload"), _reload)
                             <div class="api-body">
                                 <p>Drops the action. User bindings stay in config.</p>
 <pre class="api-example">host.unregister_action("reload")</pre>
+                            </div>
+                        </article>
+
+                        <article id="register-filter" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_filter(filter_id, title, process) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p>Rewrites the displayed image. Requires <code>permissions.filter</code>. Public id is <code>plugin:{plugin_id}:{filter_id}</code>. <code>filter_id</code> cannot contain <code>:</code>. Call more than once from <code>setup()</code> with different ids. Registering does not call <code>process</code>. Only ids the user enables in the Filter menu enter the pipe; the host applies them in that order. Settings use existing <code>register_config</code> (no filter-only config API; one dialog even with several filters). v1 <code>process(image, context)</code> is synchronous and for short work. <code>context</code> is path / page / size (no Host). The original cache object is not passed in. Plugin on/off is not the same as the filter pipe.</p>
+<pre class="api-example">def _sharp(image, context):
+    return image.filter(ImageFilter.SHARPEN)
+
+host.register_filter("sharp", get_text("sharp"), _sharp)
+# Public id: plugin:com.example.x:sharp</pre>
+                            </div>
+                        </article>
+
+                        <article id="unregister-filter" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.unregister_filter(filter_id) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p>Drops that one record from the registry. Pipe ids stay (the user's enable memory). The host <code>clear_plugin</code> is the real cleanup.</p>
+<pre class="api-example">host.unregister_filter("sharp")</pre>
                             </div>
                         </article>
 

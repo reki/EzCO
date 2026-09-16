@@ -42,6 +42,7 @@
                                 <li><a href="#zoom" class="toc-link">Zoom Features</a></li>
                                 <li><a href="#rotation" class="toc-link">Image Rotation</a></li>
                                 <li><a href="#comic-view" class="toc-link">Comic View (Spread)</a></li>
+                                <li><a href="#filters" class="toc-link">Filters</a></li>
                                 <li><a href="#tabs" class="toc-link">Tabs</a></li>
                             </ul>
                         </li>
@@ -416,6 +417,44 @@
                                 <li><strong>Slider direction:</strong> Right is first for single page and spread (right). Left is first only for spread (left)</li>
                                 <li><strong>Toggle preference:</strong> In Settings → General → Viewer, choose Keep previous, Prefer right, or Prefer left</li>
                                 <li><strong>Shortcuts:</strong> Single / Spread (right) / Spread (left) / Toggle spread are unassigned by default. Assign them in Shortcut Settings</li>
+                            </ul>
+                        </div>
+
+                        <h3 id="filters">Filters</h3>
+                        <p>The <code>Filter</code> menu (between Features / Extensions and Profile) adjusts only the image on screen. Thumbnails and the image list stay original. Filters apply in the order you enable them and are saved in the current profile.</p>
+                        <div class="control-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Basic adjustment</td>
+                                        <td>Brightness, contrast, gamma, grayscale in one dialog</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Plugin filters</td>
+                                        <td>Shown only while the plugin is on and called <code>register_filter</code>. Settings use the same dialog as Plugin Settings</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Enabled</td>
+                                        <td>Puts the filter in the display pipe. This is not the plugin's own on/off</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Settings</td>
+                                        <td>Live preview only when the filter is in the pipe. Enable it first to see changes</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="info-box">
+                            <h3>💡 Plugin on vs filter pipe</h3>
+                            <ul>
+                                <li>Turning a plugin off keeps the filter enable list (pipe). Turning it back on restores the same order</li>
+                                <li>To keep extensions or a sidebar without altering the picture, leave the plugin on and uncheck Enabled on the filter</li>
                             </ul>
                         </div>
 

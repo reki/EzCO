@@ -69,6 +69,22 @@ def test_parse_manifest_reads_inactive_callback_false():
     assert manifest.permissions["inactive_callback"] is False
 
 
+def test_parse_manifest_reads_filter_permission():
+    manifest = parse_manifest(_valid(permissions={"filter": True}))
+    assert manifest.permissions["filter"] is True
+
+
+def test_parse_manifest_reads_filter_permission_false():
+    manifest = parse_manifest(_valid(permissions={"filter": False}))
+    assert manifest.permissions["filter"] is False
+
+
+@pytest.mark.parametrize("value", ["false", "true", 1, 0, None])
+def test_parse_manifest_rejects_non_bool_filter_permission(value):
+    with pytest.raises(ValueError, match="must be a bool"):
+        parse_manifest(_valid(permissions={"filter": value}))
+
+
 def test_parse_manifest_ignores_unknown_permission_keys():
     manifest = parse_manifest(
         _valid(permissions={"inactive_callback": True, "location": True, "not-a-perm": 1})

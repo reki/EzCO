@@ -61,6 +61,19 @@ sequenceDiagram
 
 同期 `get_image_at` は、推定サイズが上限を超えても画像は返し、キャッシュには入れません。先読み `_load_image` は超過時に `image.close()` して捨てます。
 
+### 表示フィルター
+
+Decode 後の原画は `image_cache` のままです。表示時だけ [`MainWindow._get_display_image`](../src/ez_co/ui/main_window.py) が [`apply_pipe`](../src/ez_co/filters/pipeline.py) します。見開きは各ページに pipe してから `combine_spread_images` します。原画キャッシュは加工画像で上書きしません。先読みワーカーは原画のみです。空 pipe、または台帳に載るのが `builtin:basic` の identity だけなら同一オブジェクトです（copy / `process` なし）。プラグインへは working copy を渡します。サムネイル／画像リストは原画のままです。回転・ズームは `ImageView` の QImage 側です。
+
+```mermaid
+flowchart LR
+  decode[Decode]
+  orig[OriginalCache]
+  pipe[FilterPipe]
+  view[ImageView]
+  decode --> orig --> pipe --> view
+```
+
 ### アーカイブ metadata
 
 `archive_metadata_cache` のキーは解決済みアーカイブパスです。値は `fingerprint = (st_mtime_ns, st_size)` とエントリ一覧です。fingerprint が一致すれば ZIP / RAR / 7z / TAR の同期読込で namelist を省略します。

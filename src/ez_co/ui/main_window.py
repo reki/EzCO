@@ -18,6 +18,9 @@ from PySide6.QtGui import (
     QFont, QCursor, QKeySequence,
 )
 from ez_co.config import Config
+from ez_co.filters.builtin import BUILTIN_FILTER_ID, register_builtin
+from ez_co.filters.pipeline import apply_pipe
+from ez_co.filters.registry import get_filter_registry
 from ez_co.handlers.file_handler import FileHandler
 from ez_co.utils.database import DatabaseManager
 from ez_co.ui.viewer.viewer_pane import ViewerPane
@@ -571,6 +574,8 @@ class MainWindow(QMainWindow):
         # セパレータ
         extensions_menu.addSeparator()
 
+        self._setup_filter_menu(menubar)
+
         # プロファイルメニュー
         self._setup_profile_menu(menubar)
         
@@ -1115,8 +1120,8 @@ class MainWindow(QMainWindow):
             return None
         if self._has_spread_pair():
             start = self._spread_display_start(self.file_handler.current_index)
-            first_image = self.file_handler.get_image_at(start)
-            second_image = self.file_handler.get_image_at(start + 1)
+            first_image = self._piped_image_at(start)
+            second_image = self._piped_image_at(start + 1)
             if first_image and second_image:
                 page_mode = self.config.viewer.get("page_mode", "spread_right")
                 if page_mode == "spread_right":
@@ -1124,7 +1129,89 @@ class MainWindow(QMainWindow):
                     return self.image_view.combine_spread_images(second_image, first_image)
                 return self.image_view.combine_spread_images(first_image, second_image)
             return first_image or second_image
-        return self.file_handler.get_current_image()
+        current = self.file_handler.get_current_image()
+        index = self.file_handler.current_index if self.file_handler else -1
+        return self._apply_display_pipe(current, index)
+
+    def _piped_image_at(self, index: int):
+        if not self.file_handler:
+            return None
+        return self._apply_display_pipe(self.file_handler.get_image_at(index), index)
+
+    def _apply_display_pipe(self, image, page_index: int):
+        if image is None:
+            return None
+        path = ""
+        files = self.file_handler.current_files if self.file_handler else []
+        if 0 <= page_index < len(files):
+            path = str(files[page_index])
+        filters = self.config.filters if self.config else {}
+        return apply_pipe(
+            image,
+            filters.get("pipe") or [],
+            path=path,
+            page=page_index + 1,
+            builtin_settings=(filters.get("settings") or {}).get(BUILTIN_FILTER_ID),
+        )
+
+    def _setup_filter_menu(self, menubar):
+        """フィルターメニューを台帳から組み立てる。"""
+        register_builtin()
+        menu = menubar.addMenu(get_text("ui.filter_menu"))
+        pipe = [str(item) for item in (self.config.filters.get("pipe") or [])]
+        from ez_co.plugins.manager import get_plugin_manager
+        host = get_plugin_manager().host
+        for record in get_filter_registry().iter():
+            title = get_text("ui.filter_basic") if record.public_id == BUILTIN_FILTER_ID else record.title
+            submenu = menu.addMenu(title or record.public_id)
+            enable = QAction(get_text("ui.filter_enable"), self)
+            enable.setCheckable(True)
+            enable.setChecked(record.public_id in pipe)
+            enable.triggered.connect(
+                lambda checked, public_id=record.public_id: self._set_filter_enabled(public_id, checked)
+            )
+            submenu.addAction(enable)
+            has_settings = record.has_settings
+            if record.plugin_id:
+                has_settings = bool(host.configs_for(record.plugin_id))
+            if has_settings:
+                settings_action = QAction(get_text("ui.filter_settings"), self)
+                settings_action.triggered.connect(
+                    lambda _checked=False, rec=record: self._open_filter_settings(rec)
+                )
+                submenu.addAction(settings_action)
+
+    def _set_filter_enabled(self, public_id: str, enabled: bool) -> None:
+        public_id = str(public_id or "").strip()
+        if not public_id or not self.config:
+            return
+        pipe = [str(item) for item in (self.config.filters.get("pipe") or [])]
+        if enabled:
+            if public_id not in pipe:
+                pipe.append(public_id)
+        else:
+            pipe = [item for item in pipe if item != public_id]
+        self.config.filters["pipe"] = pipe
+        self.save_config()
+        self.update_image()
+
+    def _open_filter_settings(self, record) -> None:
+        if not record.plugin_id or record.public_id == BUILTIN_FILTER_ID:
+            from ez_co.ui.dialogs.filter_dialog import FilterDialog
+            FilterDialog(self, self).exec()
+            return
+        from ez_co.plugins.manager import get_plugin_manager
+        from ez_co.ui.plugins.plugin_config_dialog import PluginConfigDialog
+        manager = get_plugin_manager()
+        plugin = manager.get_plugin(record.plugin_id)
+        name = plugin.name if plugin is not None else record.plugin_id
+        PluginConfigDialog(manager.host, record.plugin_id, name, self).exec()
+
+    def _on_plugin_filter_config_changed(self, plugin_id: str) -> None:
+        prefix = f"plugin:{plugin_id}:"
+        pipe = [str(item) for item in (self.config.filters.get("pipe") or [])]
+        if any(item.startswith(prefix) for item in pipe):
+            self.update_image()
 
     def next_comic(self):
         """次のコミック（ファイル）"""
