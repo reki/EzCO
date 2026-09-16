@@ -15,14 +15,8 @@ EzCo 本体は [MIT License](LICENSE) です。以下は `pyproject.toml` の依
 | PySide6 / PySide6-Essentials / PySide6-Addons / shiboken6 | LGPL-3.0 **または** GPL-2.0 / GPL-3.0 | なし（LGPL として使う場合） |
 | py7zr | LGPL-2.1-or-later | なし |
 | inflate64 / pybcj / pyppmd / multivolumefile（py7zr 依存） | LGPL-2.1-or-later | なし |
-| pynput | LGPLv3 | なし |
-| pystray | LGPLv3 | なし |
-| pytray | LGPLv3+ | なし |
 | pillow | MIT-CMU | なし |
-| click | BSD-3-Clause | なし |
-| numpy | BSD | なし |
-| torch | BSD-3-Clause | なし |
-| setuptools | MIT | なし |
+| packaging | Apache-2.0 OR BSD-2-Clause | なし |
 | tomli | MIT | なし |
 | PyYAML | MIT | なし |
 | humanfriendly | MIT | なし |
@@ -42,9 +36,9 @@ LGPL 利用時の典型的な注意:
 - バイナリ配布時は LGPL 条文の添付と、利用者が LGPL ライブラリを差し替えられる手段（動的リンク、または再リンク用オブジェクト等）が求められることがある
 - Nuitka の onefile は静的に近い束ね方になるため、**公開配布する段階**では Qt の LGPL 遵守方法を別途確認すること
 
-### py7zr 一式・pynput・pystray・pytray
+### py7zr 一式
 
-いずれも LGPL。リンクして使う分には本体の公開義務はない。ライブラリを改変して配布する場合だけ、その改変ソースが対象になる。
+LGPL。リンクして使う分には本体の公開義務はない。ライブラリを改変して配布する場合だけ、その改変ソースが対象になる。
 
 ### rarfile と UnRAR
 

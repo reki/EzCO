@@ -33,7 +33,7 @@ def parse_provider_id(value: str) -> tuple[str, Optional[str]]:
 
 def version_sort_key(version: str):
     try:
-        from packaging.version import InvalidVersion, Version
+        from packaging.version import Version
         return (0, Version(str(version)))
     except Exception:
         return (1, str(version or ""))

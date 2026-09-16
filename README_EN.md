@@ -155,16 +155,19 @@ This project has been developed and tested in the following environment:
 - **Python**: 3.10 or higher
 - **.NET Framework**: 4.8 or higher (usually pre-installed on Windows)
 
+Launch names for develop / run / build are documented in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ### Installation
 
 #### Automated Setup (Recommended)
 
+From Run and Debug (`F5`) in Cursor / VS Code, choose **“▶ 初期化 (poetry run init-env)”**, or run the **“EzCo: 初期化”** task. From a terminal:
+
 ```bash
-# Use initialization script (recommended)
-./init.sh
+poetry run init-env
 ```
 
-The `init.sh` script automatically performs the following:
+`init-env` automatically performs the following:
 - Install Poetry dependencies
 - Check and configure C++ compiler
 - Automatic MinGW-w64 download (if needed)
@@ -194,13 +197,13 @@ poetry run python -m ez_co.main
 poetry run python src/ez_co/main.py
 ```
 
-#### Running in VS Code
+#### Running in Cursor / VS Code
 
-1. Open the project in VS Code
+1. Open the project
 2. Press `F5` or select "Python: EzCo" from the "Run and Debug" panel
 3. The application will start
 
-※ Debug execution in development mode is possible with VS Code's `launch.json` configuration
+※ Debug execution in development mode is possible with `launch.json`
 
 ## Build
 
@@ -210,17 +213,19 @@ This project supports build and execution on Windows only.
 
 #### Automated Build (Recommended)
 
+Use Launch **“▶ ビルド (poetry run build)”** / **“▶ ビルド (--safe-mode)”**, or from a terminal:
+
 ```bash
 # Standard build (with optimizations)
-./build.sh
+poetry run build
 
 # Safe mode build (no optimizations)
-./build.sh --safe-mode
+poetry run build -- --safe-mode
 ```
 
-#### Build Script Features
+#### Build Contents
 
-The `build.sh` script automatically performs the following:
+`poetry run build` performs the following:
 
 ##### Standard Build (with optimizations)
 - **LTO (Link Time Optimization)**: Improves runtime performance
@@ -239,16 +244,13 @@ The `build.sh` script automatically performs the following:
 Before executing the build, please verify the following:
 
 ```bash
-# Run initialization script (first time only)
-./init.sh
+# Initialize (first time only)
+poetry run init-env
 ```
 
 #### Manual Build
 
-```bash
-# Run Nuitka command directly
-poetry run python -m nuitka --standalone --onefile --windows-icon-from-ico="resources/icon.ico" --windows-console-mode=disable --assume-yes-for-downloads --enable-plugin=pyside6 --include-package=ez_co --include-package=PIL --include-package=yaml --include-data-dir="src/ez_co/resources=ez_co/resources" --output-dir="build" --output-filename="EzCo.exe" src/ez_co/main.py
-```
+Usually unnecessary. See `tooling/build_cli.py` for the Nuitka flags used by `poetry run build`.
 
 #### Build Output
 
@@ -258,8 +260,8 @@ poetry run python -m nuitka --standalone --onefile --windows-icon-from-ico="reso
 #### Troubleshooting
 
 ##### When Build Errors Occur
-1. **Run initialization**: Execute `./init.sh` to verify setup
-2. **Safe mode**: Try `./build.sh --safe-mode`
+1. **Run initialization**: Execute `poetry run init-env` to verify setup
+2. **Safe mode**: Try `poetry run build -- --safe-mode`
 3. **Dependencies**: Reinstall dependencies with `poetry install --with dev`
 
 ##### When Compiler Errors Occur
@@ -267,7 +269,7 @@ poetry run python -m nuitka --standalone --onefile --windows-icon-from-ico="reso
    - Download from [official site](https://aka.ms/buildtools)
    - Select and install "C++ build tools"
 2. **MinGW-w64** (Lightweight option)
-   - Can be automatically installed with `./init.sh`
+   - Can be automatically installed with `poetry run init-env`
    - Manual installation also possible
 
 ##### When Memory Shortage Errors Occur
@@ -289,10 +291,10 @@ Recommended procedure for first-time project setup:
 
 ```bash
 # 1. Initialize (dependency and compiler setup)
-./init.sh
+poetry run init-env
 
 # 2. Execute build
-./build.sh
+poetry run build
 
 # 3. Run application
 ./EzCo.exe
@@ -308,10 +310,10 @@ poetry run python -m ez_co.main
 poetry run python src/ez_co/main.py
 
 # Release build
-./build.sh
+poetry run build
 
 # Safe build when issues occur
-./build.sh --safe-mode
+poetry run build -- --safe-mode
 ```
 
 ## Configuration
@@ -870,4 +872,4 @@ The following formats always have appropriate handle management:
 
 EzCo itself is under the [MIT License](LICENSE). See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for third-party licenses and the GPL/LGPL notes.
 
-There is no standalone GPL/AGPL among runtime dependencies. Copyleft libraries are LGPL (PySide6, py7zr, pynput, pystray, and others). LGPL typically does not require publishing EzCo's source. pylint is GPL but is a development-only tool and is not shipped with the app. 
+There is no standalone GPL/AGPL among runtime dependencies. Copyleft libraries are LGPL (PySide6, py7zr, and others). LGPL typically does not require publishing EzCo's source. pylint is GPL but is a development-only tool and is not shipped with the app. 

@@ -157,16 +157,19 @@
 - **Python**: 3.10以上
 - **.NET Framework**: 4.8以上（通常はWindows標準搭載）
 
+開発・実行・ビルドの Launch 一覧は [CONTRIBUTING.md](CONTRIBUTING.md) が正です。
+
 ### インストール
 
 #### 自動セットアップ（推奨）
 
+Cursor / VS Code の実行とデバッグ（`F5`）から **「▶ 初期化 (poetry run init-env)」** を選ぶか、タスク **「EzCo: 初期化」** を実行します。ターミナルから同じことをする場合：
+
 ```bash
-# 初期化スクリプトを使用（推奨）
-./init.sh
+poetry run init-env
 ```
 
-`init.sh`スクリプトは以下の処理を自動的に実行します：
+`init-env` は以下を実行します：
 - Poetry依存関係のインストール
 - C++コンパイラの確認と設定
 - MinGW-w64の自動ダウンロード（必要に応じて）
@@ -196,13 +199,13 @@ poetry run python -m ez_co.main
 poetry run python src/ez_co/main.py
 ```
 
-#### VSCodeでの実行
+#### Cursor / VS Code での実行
 
-1. VSCodeでプロジェクトを開く
+1. プロジェクトを開く
 2. `F5`キーを押すか、「実行とデバッグ」パネルから「Python: EzCo」を選択
 3. アプリケーションが起動します
 
-※ VSCodeの`launch.json`設定により、開発モードでのデバッグ実行が可能です
+※ `launch.json` により、開発モードでのデバッグ実行が可能です
 
 ## ビルド
 
@@ -212,17 +215,19 @@ poetry run python src/ez_co/main.py
 
 #### 自動ビルド（推奨）
 
+Launch の **「▶ ビルド (poetry run build)」** / **「▶ ビルド (--safe-mode)」**、またはターミナル：
+
 ```bash
 # 標準ビルド（最適化あり）
-./build.sh
+poetry run build
 
 # セーフモードビルド（最適化なし）
-./build.sh --safe-mode
+poetry run build -- --safe-mode
 ```
 
-#### ビルドスクリプトの機能
+#### ビルドの内容
 
-`build.sh`スクリプトは以下の処理を自動的に実行します：
+`poetry run build` は以下を実行します：
 
 ##### 標準ビルド（最適化あり）
 - **LTO（Link Time Optimization）**: 実行時パフォーマンスを向上
@@ -241,16 +246,13 @@ poetry run python src/ez_co/main.py
 ビルドを実行する前に、以下を確認してください：
 
 ```bash
-# 初期化スクリプトの実行（初回のみ）
-./init.sh
+# 初期化（初回のみ）
+poetry run init-env
 ```
 
 #### 手動ビルド
 
-```bash
-# Nuitkaコマンドを直接実行
-poetry run python -m nuitka --standalone --onefile --windows-icon-from-ico="resources/icon.ico" --windows-console-mode=disable --assume-yes-for-downloads --enable-plugin=pyside6 --include-package=ez_co --include-package=PIL --include-package=yaml --include-data-dir="src/ez_co/resources=ez_co/resources" --output-dir="build" --output-filename="EzCo.exe" src/ez_co/main.py
-```
+通常は不要です。Nuitka を直接叩く場合の例は `tooling/build_cli.py` を見てください。
 
 #### ビルド出力
 
@@ -260,16 +262,16 @@ poetry run python -m nuitka --standalone --onefile --windows-icon-from-ico="reso
 #### トラブルシューティング
 
 ##### ビルドエラーが発生する場合
-1. **初期化の実行**: `./init.sh`を実行してセットアップを確認
-2. **セーフモード**: `./build.sh --safe-mode`を試行
-3. **依存関係**: `poetry install --with dev`で依存関係を再インストール
+1. **初期化の実行**: `poetry run init-env` でセットアップを確認
+2. **セーフモード**: `poetry run build -- --safe-mode` を試行
+3. **依存関係**: `poetry install --with dev` で依存関係を再インストール
 
 ##### コンパイラエラーが発生する場合
 1. **Microsoft Visual Studio Build Tools**（推奨）
    - [公式サイト](https://aka.ms/buildtools)からダウンロード
    - 「C++ build tools」を選択してインストール
 2. **MinGW-w64**（軽量オプション）
-   - `./init.sh`で自動インストール可能
+   - `poetry run init-env` で自動インストール可能
    - 手動インストールも可能
 
 ##### メモリ不足エラーの場合
@@ -291,10 +293,10 @@ poetry run python -m nuitka --standalone --onefile --windows-icon-from-ico="reso
 
 ```bash
 # 1. 初期化（依存関係とコンパイラのセットアップ）
-./init.sh
+poetry run init-env
 
 # 2. ビルド実行
-./build.sh
+poetry run build
 
 # 3. アプリケーション実行
 ./EzCo.exe
@@ -310,10 +312,10 @@ poetry run python -m ez_co.main
 poetry run python src/ez_co/main.py
 
 # リリースビルド
-./build.sh
+poetry run build
 
 # 問題が発生した場合のセーフビルド
-./build.sh --safe-mode
+poetry run build -- --safe-mode
 ```
 
 ## 設定
@@ -701,7 +703,7 @@ debug:
 
 このプロジェクト本体は[MIT License](LICENSE)です。第三者ライブラリの一覧と GPL / LGPL の整理は [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) を見てください。
 
-実行時依存に GPL / AGPL 単独はありません。コピーレフトは LGPL（PySide6、py7zr、pynput、pystray など）です。LGPL は一般に、EzCo 本体のソース公開を求めません。開発専用の pylint だけが GPL ですが、アプリには同梱しません。
+実行時依存に GPL / AGPL 単独はありません。コピーレフトは LGPL（PySide6、py7zr など）です。LGPL は一般に、EzCo 本体のソース公開を求めません。開発専用の pylint だけが GPL ですが、アプリには同梱しません。
 
 ## 仮想パス機能について
 

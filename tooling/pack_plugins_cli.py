@@ -8,6 +8,8 @@ import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from packaging.version import InvalidVersion, Version
+
 from ez_co.plugins.api import HOST_API_VERSION
 from ez_co.plugins.manifest import KNOWN_PERMISSIONS, parse_manifest
 
@@ -38,10 +40,6 @@ def zip_name_for(folder_name: str, version: str) -> str:
 
 
 def _lint_version(version: str) -> None:
-    try:
-        from packaging.version import InvalidVersion, Version
-    except ImportError as exc:
-        raise ValueError("packaging が無く version を検証できない") from exc
     try:
         Version(version)
     except InvalidVersion as exc:

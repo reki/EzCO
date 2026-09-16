@@ -66,7 +66,7 @@ cover/
 logs/
 
 plugins/product_info
-dist-sample-plugins/product_info.zip
+dist-sample-plugins/*.zip
 
 # Translations
 *.mo
@@ -192,7 +192,7 @@ cython_debug/
 poetry.lock
 
 # EzCO Release Build Files
-# Generated executable from build.sh
+# Generated executable from poetry run build
 EzCo.exe
 EzCo(Debug).exe
 
