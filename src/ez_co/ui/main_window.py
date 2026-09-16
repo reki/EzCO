@@ -1524,7 +1524,6 @@ class MainWindow(QMainWindow):
             self._zoom_overlay_label.hide()
         if self.file_handler and self.file_handler.current_files:
             self.update_image()
-            self._update_page_slider_dialog()
             self._update_image_list_dialog()
             self._update_image_slide_sidebar()
             self._notify_plugin_current_changed()
@@ -1532,6 +1531,7 @@ class MainWindow(QMainWindow):
             if comic is not None and hasattr(self, "bookmark_toolbar"):
                 self.set_current_file(str(comic), self.current_page)
             self.update_extensions_menu_actions()
+        self._update_page_slider_dialog()
         self.update_title()
         self._refresh_tab_list()
 
@@ -2390,24 +2390,23 @@ class MainWindow(QMainWindow):
 
     def show_page_slider_dialog(self):
         """ページスライダーダイアログを表示"""
-        if not self.file_handler or not self.file_handler.current_files:
-            return
-        
-        # 既にダイアログが開いている場合は前面に出す
+        # 既にダイアログが開いている場合は前面に出して現在タブに合わせる
         if self.page_slider_dialog and not self.page_slider_dialog.isHidden():
             self.page_slider_dialog.raise_()
             self.page_slider_dialog.activateWindow()
+            self._update_page_slider_dialog()
             return
         
-        # 新しいダイアログを作成
+        # 新しいダイアログを作成（空タブでも出す。操作は無効）
         from ez_co.ui.dialogs.page_slider_dialog import PageSliderDialog
         self.page_slider_dialog = PageSliderDialog(self, self.file_handler)
         
         self.page_slider_dialog.show()  # モードレスダイアログとして表示
 
     def _update_page_slider_dialog(self):
-        """ページスライダーダイアログを更新"""
+        """ページスライダーダイアログを現在タブの handler で更新"""
         if self.page_slider_dialog and not self.page_slider_dialog.isHidden():
+            self.page_slider_dialog.file_handler = self.file_handler
             self.page_slider_dialog.refresh()
 
     def _update_image_list_dialog(self):
@@ -3009,6 +3008,7 @@ class MainWindow(QMainWindow):
         pane = self.current_pane
         if pane is not None:
             pane.show_center_message(message)
+        self._update_page_slider_dialog()
         self._update_save_session_action()
 
     def hide_center_message(self):

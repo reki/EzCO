@@ -662,7 +662,7 @@ The Page Slider Dialog provides intuitive page navigation through a modeless dia
 
 ### How to Display
 - **Shortcut**: Configurable (no default)
-- **Menu**: View → Page Slider (when available in menu)
+- **Menu**: Features / Extensions → Page Slider
 
 ### Features
 - **Real-time Slider**: Intuitive page selection via slider
@@ -673,8 +673,8 @@ The Page Slider Dialog provides intuitive page navigation through a modeless dia
 ### Dialog Characteristics
 - **Modeless**: Can operate simultaneously with main window
 - **Compact Design**: Small 300x100px window
-- **Always Current**: Automatic updates when files change
-- **State Persistence**: Settings maintained until dialog is closed
+- **Always Current**: Automatic updates when files change. Stays open and follows the current tab
+- **Empty tab**: Remains visible but cannot be used. Does not keep the closed book's page info
 
 ### Control Elements
 - **Page Information**: Display of current page/total pages

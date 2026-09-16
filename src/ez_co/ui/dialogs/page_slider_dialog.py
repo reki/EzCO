@@ -86,10 +86,23 @@ class PageSliderDialog(QDialog):
         self.first_button.clicked.connect(self.go_to_first_page)
         self.last_button.clicked.connect(self.go_to_last_page)
     
+    def _clear_empty_state(self):
+        """本がないときの表示。操作は不可、閉じた本の数字は残さない。"""
+        self._updating = True
+        try:
+            self.page_slider.setMaximum(1)
+            self.page_spinbox.setMaximum(1)
+            self.page_slider.setValue(1)
+            self.page_spinbox.setValue(1)
+            self.page_info_label.setText("")
+            self.setEnabled(False)
+        finally:
+            self._updating = False
+
     def update_from_handler(self):
         """ファイルハンドラーから現在の状態を更新"""
         if not self.file_handler or not self.file_handler.current_files:
-            self.setEnabled(False)
+            self._clear_empty_state()
             return
         
         self._updating = True
