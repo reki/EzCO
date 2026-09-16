@@ -1505,9 +1505,8 @@ class FileHandler:
                 logger.warning(get_log_text("debug_next_file_not_accessible", target_index=target_index))
                 return False
             logger.info(get_log_text("debug_next_file_updating_index", old_index=self.current_index, new_index=target_index))
-            self.current_index = target_index
             logger.info(get_log_text("debug_next_file_calling_open_current_file", target_index=target_index))
-            result = self._open_current_file()
+            result = self._move_to_index(target_index)
             logger.info(get_log_text("debug_next_file_open_result", result=result, target_index=target_index))
             return result
         logger.info(get_log_text("debug_next_file_at_end", current_index=self.current_index, total_files=len(self.current_files)))
@@ -1521,8 +1520,7 @@ class FileHandler:
             logger.info(get_log_text("debug_prev_file_accessibility_check", target_index=target_index, accessible=accessible))
             if not accessible:
                 return False
-            self.current_index = target_index
-            return self._open_current_file()
+            return self._move_to_index(target_index)
         return False
     def get_current_archive_path(self) -> Optional[Path]:
         """現在開いているアーカイブファイルのパスを取得"""
@@ -1800,18 +1798,22 @@ class FileHandler:
     def get_total_pages(self) -> int:
         """総ページ数を取得"""
         return len(self.current_files) if self.current_files else 0
+
+    def _move_to_index(self, index: int) -> bool:
+        """index を更新して開き、現在位置を中心に先読みする。"""
+        self.current_index = index
+        result = self._open_current_file()
+        if result:
+            self._prefetch_around(self.current_index)
+            logger.info(get_log_text("debug_go_to_page_prefetch_started", page_index=self.current_index))
+        return result
+
     def go_to_page(self, page_index: int) -> bool:
         """指定されたページに移動（0ベースのインデックス）"""
         if not self.current_files:
             return False
         if 0 <= page_index < len(self.current_files):
-            self.current_index = page_index
-            result = self._open_current_file()
-            if result:
-                # ページ移動後にプリフェッチを実行
-                self._prefetch_around(self.current_index)
-                logger.info(get_log_text("debug_go_to_page_prefetch_started", page_index=page_index))
-            return result
+            return self._move_to_index(page_index)
         return False 
     def _create_temp_dir(self):
         """一時ディレクトリを作成"""
