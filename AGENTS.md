@@ -21,7 +21,7 @@
 - `FileHandler` を変えるときは cache / prefetch / session を一緒に見る
 - プラグインはコールバック側。`import ez_co` しない。本体 Config を上書きしない
 - プラグインの入口は `src/plugin.py`
-- 本体がゲートする力は `manifest.permissions`。形式は `formats`、サイドバーは `sidebar`
+- 権限は `manifest.permissions`。形式は `formats`、サイドバーは `sidebar`
 - テストは 1ソース n ファイル。本番の `%APPDATA%` とリポジトリの `config.db` は触らない
 - クラッシュは推測で直さない。先に呼び出しとスレッドが残る調査ログ
 - manifest / host API を変えたら `docs/plugins.md` とユーザーマニュアル（日英）を直す

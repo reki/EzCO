@@ -146,6 +146,7 @@
     "plugin_supported_extensions": "Extensions",
     "plugin_status_ok": "Loaded",
     "plugin_status_error": "Failed: {error}",
+    "plugin_register_not_permitted": "A registration without permission",
     "plugin_status_duplicate": "Not loaded because the id is duplicated (selected: {selected})",
     "plugin_status_not_selected": "Not loaded because Don't load was chosen at startup",
     "plugin_conflict_title": "Duplicate plugin selection",

@@ -19,7 +19,7 @@ from ez_co.plugins.api import (
     version_sort_key,
 )
 from ez_co.plugins.backends import DllBackend, ZipPythonBackend
-from ez_co.plugins.host import PluginHost
+from ez_co.plugins.host import PluginHost, PluginRegistrationDenied
 from ez_co.plugins.manifest import PluginManifest
 from ez_co.utils.error_logger import report_error
 from ez_co.utils.language_manager import get_log_text
@@ -419,6 +419,10 @@ class PluginManager:
                     path=item.path,
                 )
             )
+        except PluginRegistrationDenied as exc:
+            self.failed.append((item.path, str(exc)))
+            logger.warning(get_log_text(exc.log_key, plugin_id=exc.plugin_id))
+            report_error("load", exc, plugin_id=str(item.path.name))
         except Exception as exc:
             self.failed.append((item.path, str(exc)))
             logger.warning(get_log_text("plugin_load_failed", path=item.path, error=exc))
@@ -555,6 +559,13 @@ class PluginManager:
         if callable(setup):
             try:
                 setup()
+            except PluginRegistrationDenied as exc:
+                plugin.error = str(exc)
+                plugin.ui_active = False
+                self.host.clear_plugin(plugin.plugin_id)
+                logger.warning(get_log_text(exc.log_key, plugin_id=exc.plugin_id))
+                report_error("setup", exc, plugin_id=plugin.plugin_id)
+                return
             except Exception as exc:
                 plugin.error = str(exc)
                 plugin.ui_active = False

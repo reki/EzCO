@@ -114,11 +114,11 @@
 
 ### Current decision
 
-担当形式は `manifest.json` の `formats`。本体がロード時に読む。プラグイン API に `register_format` は無い。サイドバーの有無は `sidebar`。`register_sidebar` は宣言済みだけ通す。未宣言は読み込み失敗。
+担当形式は `manifest.json` の `formats`。本体がロード時に読む。プラグイン API に `register_format` は無い。サイドバーの有無は `sidebar`。`register_sidebar` は宣言済みだけ通す。未宣言は読み込み失敗。プラグイン設定の状態は「失敗: 権限がない登録がありました」。
 
 ### Why
 
-本体が実行前にゲートするため。`workflow.mdc` / `plugins.mdc`。権限（`permissions`）と混ぜない。
+本体が実行前に知るため。`workflow.mdc` / `plugins.mdc`。権限（`permissions`）と混ぜない。
 
 ### Consequences
 
@@ -138,7 +138,7 @@
 
 ### Current decision
 
-本体がゲートする力は `manifest.permissions`。既知キーは `inactive_callback` と `filter`。値は JSON の `true` / `false` だけ。文字列や数値は読み込み失敗。プラグイン API の引数では受け取らない。サイドバーを登録したプラグインは、ドックが全部非表示なら `current_changed` を受け取らない。非表示でも欲しいときだけ `inactive_callback: true`。表示画像を書き換える `register_filter` は `filter: true` が必須。
+権限は `manifest.permissions`。既知キーは `inactive_callback` と `filter`。値は JSON の `true` / `false` だけ。文字列や数値は読み込み失敗。プラグイン API の引数では受け取らない。サイドバーを登録したプラグインは、ドックが全部非表示なら `current_changed` を受け取らない。非表示でも欲しいときだけ `inactive_callback: true`。表示画像を書き換える `register_filter` は `filter: true` が必須。無ければ読み込み失敗。プラグイン設定の状態は「失敗: 権限がない登録がありました」。
 
 ### Why
 

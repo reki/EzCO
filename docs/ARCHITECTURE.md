@@ -145,7 +145,7 @@ flowchart TD
 6. 開くファイルは `resolve` / `resolve_extension`。`plugins.extension_handlers` と旧 `archive.*` を見る
 7. 新しい ZIP／フォルダの追加・削除は再起動が要る。ON/OFF と担当の付け替えは設定の OK / 適用で足りる
 
-**なぜ（短く）:** プラグインはコールバック側です。`import ez_co` を禁じるのは結合事故防止であり、サンドボックスではありません。提供物（`formats` / `sidebar`）と権限（`permissions`）は manifest が正で、本体が実行前にゲートします。詳細は [DECISIONS.md](DECISIONS.md) です。
+**なぜ（短く）:** プラグインはコールバック側です。`import ez_co` を禁じるのは結合事故防止であり、サンドボックスではありません。提供物（`formats` / `sidebar`）と権限（`permissions`）は manifest が正で、本体が実行前に読みます。詳細は [DECISIONS.md](DECISIONS.md) です。
 
 ---
 

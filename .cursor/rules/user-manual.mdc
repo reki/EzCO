@@ -9,4 +9,5 @@ alwaysApply: false
 - 検索は `.section` だけでなく `.config-section` と API（`.api-member` / `.api-sig` / `.api-field`）も索引する
 - プラグインリファレンスのメソッド（host / FileLoader / root）は a-z。目次も本文も同じ順。対になる register/unregister でもアルファベット順を崩さない
 - 対になるメソッド（register/unregister、get/set/delete_config など）は本文に相互リンクを付ける
+- ユーザー向け文言に「ゲート」は使わない
 - 日英があるページは両方直す

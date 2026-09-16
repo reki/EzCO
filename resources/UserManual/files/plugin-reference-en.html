@@ -102,7 +102,7 @@
                         </ul>
                         <div class="api-index">
                             <a href="#roles"><div class="api-index-name">Roles</div><div class="api-index-desc">Loader / sidebar / filter. Combine freely</div></a>
-                            <a href="#permissions"><div class="api-index-name">permissions</div><div class="api-index-desc">Powers the host gates</div></a>
+                            <a href="#permissions"><div class="api-index-name">permissions</div><div class="api-index-desc">Permissions declared in the manifest</div></a>
                             <a href="#loader"><div class="api-index-name">FileLoader</div><div class="api-index-desc">Image / archive loader contract</div></a>
                             <a href="#host"><div class="api-index-name">host</div><div class="api-index-desc">Register, config, dialogs, actions</div></a>
                             <a href="#gettext"><div class="api-index-name">get_text</div><div class="api-index-desc">Localized strings</div></a>
@@ -231,7 +231,7 @@
                                 <span class="api-field-meta">object</span>
                                 <span class="api-field-meta">optional</span>
                             </div>
-                            <p>Powers the host gates. See <a href="#permissions">Manifest permissions</a>. You cannot pass them through plugin APIs.</p>
+                            <p>Permissions the host reads from the manifest. See <a href="#permissions">Manifest permissions</a>. You cannot pass them through plugin APIs.</p>
                         </div>
                         <div class="api-field">
                             <div class="api-field-head">
@@ -250,7 +250,7 @@
                                 <span class="api-field-meta">bool</span>
                                 <span class="api-field-meta">optional</span>
                             </div>
-                            <p>Declare that this plugin uses a sidebar. Do not list widget or sidebar ids. The widget is passed from <code>setup()</code> via <a href="#register-sidebar"><code>register_sidebar</code></a>. Registration without this flag fails.</p>
+                            <p>Declare that this plugin uses a sidebar. Do not list widget or sidebar ids. The widget is passed from <code>setup()</code> via <a href="#register-sidebar"><code>register_sidebar</code></a>. Without this flag the plugin fails to load. Plugin Settings status becomes "Failed: A registration without permission".</p>
 <pre class="api-example">{
   "sidebar": true
 }</pre>
@@ -325,7 +325,7 @@
                             <tbody>
                                 <tr>
                                     <td><code>filter</code></td>
-                                    <td><a href="#register-filter"><code>register_filter</code></a> fails the load</td>
+                                    <td><a href="#register-filter"><code>register_filter</code></a> fails the load. Plugin Settings status becomes "Failed: A registration without permission"</td>
                                     <td>The plugin may put display filters on the registry. Registering does not run <code>process</code>. Only ids the user enables in the Filter menu enter the pipe</td>
                                 </tr>
                                 <tr>
@@ -518,7 +518,7 @@ title = widget.findChild(QLabel, "titleLabel")</pre>
                         <article id="on-off" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.on(event, callback) / host.off(event, callback=None)</code></div>
                             <div class="api-body">
-                                <p><code>current_changed</code> and <code>config_changed</code>. Omitting <code>callback</code> on <code>off</code> removes all of this plugin's handlers for that event. For plugins that registered a sidebar, <code>current_changed</code> is delivered only while a dock is visible or <code>permissions.inactive_callback</code> is set. <code>config_changed</code> is not gated.</p>
+                                <p><code>current_changed</code> and <code>config_changed</code>. Omitting <code>callback</code> on <code>off</code> removes all of this plugin's handlers for that event. For plugins that registered a sidebar, <code>current_changed</code> is delivered only while a dock is visible or <code>permissions.inactive_callback</code> is set. <code>config_changed</code> is always delivered.</p>
 <pre class="api-example">def _on_current(payload):
     self._refresh(payload.get("folder"))
 
@@ -578,7 +578,7 @@ host.register_config(
                         <article id="register-filter" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.register_filter(filter_id, title, process) -&gt; None</code></div>
                             <div class="api-body">
-                                <p>Rewrites the displayed image. Requires <a href="#permissions"><code>permissions.filter: true</code></a> first (you cannot pass it through the API). Public id is <code>plugin:{plugin_id}:{filter_id}</code>. <code>filter_id</code> cannot contain <code>:</code>. Call more than once from <code>setup()</code> with different ids. Registering does not call <code>process</code>. Only ids the user enables in the Filter menu enter the pipe; the host applies them in that order. Settings use existing <a href="#register-config"><code>register_config</code></a> (no filter-only config API; one dialog even with several filters). v1 <code>process(image, context)</code> is synchronous and for short work. <code>context</code> is path / page / size (no Host). The original cache object is not passed in. Plugin on/off is not the same as the filter pipe.</p>
+                                <p>Rewrites the displayed image. Requires <a href="#permissions"><code>permissions.filter: true</code></a> first (you cannot pass it through the API). Without it the plugin fails to load. Plugin Settings status becomes "Failed: A registration without permission". Public id is <code>plugin:{plugin_id}:{filter_id}</code>. <code>filter_id</code> cannot contain <code>:</code>. Call more than once from <code>setup()</code> with different ids. Registering does not call <code>process</code>. Only ids the user enables in the Filter menu enter the pipe; the host applies them in that order. Settings use existing <a href="#register-config"><code>register_config</code></a> (no filter-only config API; one dialog even with several filters). v1 <code>process(image, context)</code> is synchronous and for short work. <code>context</code> is path / page / size (no Host). The original cache object is not passed in. Plugin on/off is not the same as the filter pipe.</p>
 <pre class="api-example">def _sharp(image, context):
     return image.filter(ImageFilter.SHARPEN)
 
@@ -590,7 +590,7 @@ host.register_filter("sharp", get_text("sharp"), _sharp)
                         <article id="register-sidebar" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None) -&gt; None</code></div>
                             <div class="api-body">
-                                <p>Set <code>manifest.sidebar</code> to <code>true</code> first (do not list widget or ids in the manifest). Then call this from <code>setup()</code>. Without the flag it fails. <code>QWidget</code> or <code>QLayout</code>. The host docks it and auto-registers <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code>. The dock title and sidebar menu use <code>title</code>; shortcut / gesture labels become <code>Show/Hide {title} Sidebar</code>. <code>aliases</code> are old shortcut ids. Do not pass permissions here.</p>
+                                <p>Set <code>manifest.sidebar</code> to <code>true</code> first (do not list widget or ids in the manifest). Then call this from <code>setup()</code>. Without the flag the plugin fails to load. Plugin Settings status becomes "Failed: A registration without permission". <code>QWidget</code> or <code>QLayout</code>. The host docks it and auto-registers <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code>. The dock title and sidebar menu use <code>title</code>; shortcut / gesture labels become <code>Show/Hide {title} Sidebar</code>. <code>aliases</code> are old shortcut ids. Do not pass permissions here.</p>
 <pre class="api-example">widget = QWidget()
 host.register_sidebar("info", get_text("title"), widget)
 # Public id: plugin:com.example.sidebar:sidebar:info

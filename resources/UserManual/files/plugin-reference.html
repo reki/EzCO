@@ -102,7 +102,7 @@
                         </ul>
                         <div class="api-index">
                             <a href="#roles"><div class="api-index-name">種類</div><div class="api-index-desc">ローダー／サイドバー／フィルター。兼ねてよい</div></a>
-                            <a href="#permissions"><div class="api-index-name">permissions</div><div class="api-index-desc">本体がゲートする力</div></a>
+                            <a href="#permissions"><div class="api-index-name">permissions</div><div class="api-index-desc">マニフェストに書く権限</div></a>
                             <a href="#loader"><div class="api-index-name">FileLoader</div><div class="api-index-desc">画像／アーカイブの読み込み契約</div></a>
                             <a href="#host"><div class="api-index-name">host</div><div class="api-index-desc">登録・設定・ダイアログ・アクション</div></a>
                             <a href="#gettext"><div class="api-index-name">get_text</div><div class="api-index-desc">多言語文言</div></a>
@@ -231,7 +231,7 @@
                                 <span class="api-field-meta">object</span>
                                 <span class="api-field-meta">任意</span>
                             </div>
-                            <p>本体がゲートする力です。詳細は <a href="#permissions">マニフェスト権限</a>。プラグイン API では渡せません。</p>
+                            <p>本体がマニフェストから読む権限です。詳細は <a href="#permissions">マニフェスト権限</a>。プラグイン API では渡せません。</p>
                         </div>
                         <div class="api-field">
                             <div class="api-field-head">
@@ -250,7 +250,7 @@
                                 <span class="api-field-meta">bool</span>
                                 <span class="api-field-meta">任意</span>
                             </div>
-                            <p>サイドバーを使う宣言です。widget や ID は書きません。実体は <code>setup()</code> の <a href="#register-sidebar"><code>register_sidebar</code></a> です。このフラグなしの登録はエラーです。</p>
+                            <p>サイドバーを使う宣言です。widget や ID は書きません。実体は <code>setup()</code> の <a href="#register-sidebar"><code>register_sidebar</code></a> です。マニフェストに無ければ読み込み失敗です。プラグイン設定の状態は「失敗: 権限がない登録がありました」になります。</p>
 <pre class="api-example">{
   "sidebar": true
 }</pre>
@@ -325,7 +325,7 @@
                             <tbody>
                                 <tr>
                                     <td><code>filter</code></td>
-                                    <td><a href="#register-filter"><code>register_filter</code></a> は読み込み失敗</td>
+                                    <td><a href="#register-filter"><code>register_filter</code></a> は読み込み失敗。プラグイン設定の状態は「失敗: 権限がない登録がありました」</td>
                                     <td>表示画像を加工するフィルターを台帳へ載せられる。登録しただけでは動かない。ユーザーがフィルターメニューで有効化した ID だけが pipe に入る</td>
                                 </tr>
                                 <tr>
@@ -578,7 +578,7 @@ host.register_config(
                         <article id="register-filter" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.register_filter(filter_id, title, process) -&gt; None</code></div>
                             <div class="api-body">
-                                <p>表示画像の加工。先に <a href="#permissions"><code>permissions.filter: true</code></a> が必須（API では渡せない）。公開 ID は <code>plugin:{plugin_id}:{filter_id}</code>。<code>filter_id</code> に <code>:</code> は使えません。<code>setup()</code> で複数回呼んでよい（違う <code>filter_id</code> は別枝）。登録しただけでは <code>process</code> は呼ばれません。ユーザーがフィルターメニューで有効化した ID だけが pipe に入り、本体が順に呼びます。設定は既存の <a href="#register-config"><code>register_config</code></a>（フィルター専用 API はありません。複数フィルターでも設定ダイアログは1つ）。<code>process(image, context)</code> の v1 は同期・短時間向け。<code>context</code> は path / page / size（Host は入りません）。原画キャッシュのオブジェクトは渡しません。プラグイン ON とフィルター pipe は別です。</p>
+                                <p>表示画像の加工。先に <a href="#permissions"><code>permissions.filter: true</code></a> が必須（API では渡せない）。無ければ読み込み失敗です。プラグイン設定の状態は「失敗: 権限がない登録がありました」。公開 ID は <code>plugin:{plugin_id}:{filter_id}</code>。<code>filter_id</code> に <code>:</code> は使えません。<code>setup()</code> で複数回呼んでよい（違う <code>filter_id</code> は別枝）。登録しただけでは <code>process</code> は呼ばれません。ユーザーがフィルターメニューで有効化した ID だけが pipe に入り、本体が順に呼びます。設定は既存の <a href="#register-config"><code>register_config</code></a>（フィルター専用 API はありません。複数フィルターでも設定ダイアログは1つ）。<code>process(image, context)</code> の v1 は同期・短時間向け。<code>context</code> は path / page / size（Host は入りません）。原画キャッシュのオブジェクトは渡しません。プラグイン ON とフィルター pipe は別です。</p>
 <pre class="api-example">def _sharp(image, context):
     return image.filter(ImageFilter.SHARPEN)
 
@@ -590,7 +590,7 @@ host.register_filter("sharp", get_text("sharp"), _sharp)
                         <article id="register-sidebar" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None) -&gt; None</code></div>
                             <div class="api-body">
-                                <p>先に <code>manifest.sidebar</code> を <code>true</code> にします（widget や ID はマニフェストに書かない）。そのうえで <code>setup()</code> から呼びます。フラグなしはエラーです。<code>QWidget</code> または <code>QLayout</code>。ドック化は本体。開閉アクション <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code> を自動登録します。ドックの題名とサイドバーメニューは <code>title</code>、ショートカット／ジェスチャーの表示は本体が <code>{title}サイドバー表示/非表示</code> にします。<code>aliases</code> は旧ショートカット ID など。権限は引数では渡しません。</p>
+                                <p>先に <code>manifest.sidebar</code> を <code>true</code> にします（widget や ID はマニフェストに書かない）。そのうえで <code>setup()</code> から呼びます。マニフェストに無ければ読み込み失敗です。プラグイン設定の状態は「失敗: 権限がない登録がありました」。<code>QWidget</code> または <code>QLayout</code>。ドック化は本体。開閉アクション <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code> を自動登録します。ドックの題名とサイドバーメニューは <code>title</code>、ショートカット／ジェスチャーの表示は本体が <code>{title}サイドバー表示/非表示</code> にします。<code>aliases</code> は旧ショートカット ID など。権限は引数では渡しません。</p>
 <pre class="api-example">widget = QWidget()
 host.register_sidebar("info", get_text("title"), widget)
 # 公開 ID: plugin:com.example.sidebar:sidebar:info

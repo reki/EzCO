@@ -6,7 +6,8 @@ import inspect
 import pytest
 
 from ez_co.plugins.api import FileKind, FormatSpec
-from ez_co.plugins.host import PluginHost
+from ez_co.plugins.host import PluginHost, PluginRegistrationDenied
+from ez_co.utils.language_manager import get_text
 
 
 def test_formats_come_from_manifest_provides():
@@ -19,8 +20,9 @@ def test_formats_come_from_manifest_provides():
 
 def test_register_sidebar_requires_manifest_flag():
     host = PluginHost()
-    with pytest.raises(ValueError, match="com.example.ui"):
+    with pytest.raises(PluginRegistrationDenied, match=get_text("ui.plugin_register_not_permitted")):
         host.scoped("com.example.ui").register_sidebar("main", "Title", object())
+    assert not host.sidebars_for("com.example.ui")
 
 
 def test_register_sidebar_accepts_declared_flag():

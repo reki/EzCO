@@ -1,4 +1,4 @@
-"""対象: ez_co.plugins.host — current_changed の非表示ゲート。"""
+"""対象: ez_co.plugins.host — current_changed を非表示のとき止める。"""
 from __future__ import annotations
 
 import inspect

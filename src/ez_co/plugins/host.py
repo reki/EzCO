@@ -40,6 +40,15 @@ _SYNC_CONFIG_TYPES = ("int", "float", "int_range", "float_range")
 _COLOR_FALLBACK = "#000000"
 
 
+class PluginRegistrationDenied(Exception):
+    """マニフェストに無い register_sidebar / register_filter。このプラグインは使わない。"""
+
+    def __init__(self, plugin_id: str, log_key: str):
+        self.plugin_id = plugin_id
+        self.log_key = log_key
+        super().__init__(get_text("ui.plugin_register_not_permitted"))
+
+
 def make_plugin_action_id(plugin_id: str, action_id: str) -> str:
     return f"plugin:{plugin_id}:{action_id}"
 
@@ -750,7 +759,7 @@ class PluginHost:
 
     def _register_sidebar(self, plugin_id: str, sidebar_id: str, title: str, widget_or_layout, aliases=None) -> None:
         if not self._declared_sidebar.get(plugin_id):
-            raise ValueError(get_log_text("plugin_sidebar_not_declared", plugin_id=plugin_id))
+            raise PluginRegistrationDenied(plugin_id, "plugin_sidebar_not_declared")
         sidebar_id = str(sidebar_id or "").strip() or "main"
         widget = self._as_widget(widget_or_layout)
         record = SidebarRegistration(plugin_id, sidebar_id, str(title or sidebar_id), widget)
@@ -799,7 +808,7 @@ class PluginHost:
 
     def _register_filter(self, plugin_id: str, filter_id: str, title: str, process) -> None:
         if not self.has_manifest_permission(plugin_id, "filter"):
-            raise ValueError(get_log_text("plugin_filter_not_permitted", plugin_id=plugin_id))
+            raise PluginRegistrationDenied(plugin_id, "plugin_filter_not_permitted")
         local_id = normalize_local_filter_id(filter_id)
         if not local_id or not callable(process):
             raise ValueError(get_log_text("plugin_filter_invalid", plugin_id=plugin_id, filter_id=filter_id))
