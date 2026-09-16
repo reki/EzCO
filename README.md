@@ -8,6 +8,8 @@
 
 このプログラムの大半のコードはAI（Claude-4-Sonnet）によって実装されています。AIアシスタントとの協力により、効率的で高品質なソフトウェア開発を実現しています。
 
+開発者向けの全体構造は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) です。画像読み込みは [docs/IMAGE_LOADING.md](docs/IMAGE_LOADING.md)、設計判断は [docs/DECISIONS.md](docs/DECISIONS.md)、開発時の注意は [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)、環境構築は [CONTRIBUTING.md](CONTRIBUTING.md) です。
+
 ## 機能
 
 ### 基本機能
@@ -107,7 +109,7 @@
 - **既定**: ビルドインが知っている拡張子はビルドイン優先。プラグイン専用拡張子はそのプラグインが担当
 - **ファイルダイアログ**: 有効なプラグインの拡張子は「対応しているファイル」と「プラグイン形式」に入る。フォルダを開いたときのスキャン対象にも含まれる
 - **サンプル**: ソースは `plugins/`、配布 ZIP は [`dist-sample-plugins/`](dist-sample-plugins/)（PNG / ZIP / テキスト画像 / 商品情報サイドバー）
-- **開発者向け**: [プラグインマニュアル](docs/plugins.md)、ユーザーマニュアルの [プラグインリファレンス](resources/UserManual/files/plugin-reference.html)、各プラグインの `README.md`、[plugins/README.md](plugins/README.md)
+- **開発者向け**: [プラグインマニュアル](docs/plugins.md)、[本体の構造](docs/ARCHITECTURE.md)、ユーザーマニュアルの [プラグインリファレンス](resources/UserManual/files/plugin-reference.html)、各プラグインの `README.md`、[plugins/README.md](plugins/README.md)
 
 ## 開発環境のセットアップ
 

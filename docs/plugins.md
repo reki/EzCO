@@ -1,6 +1,6 @@
 # EzCo プラグインマニュアル
 
-ファイル読み込みプラグインの開発者向けリファレンスです。エンドユーザー向けの配置手順は [plugins/README.md](../plugins/README.md) を参照してください。ブラウザ向けの API 一覧はユーザーマニュアルの [プラグインリファレンス](../resources/UserManual/files/plugin-reference.html) です。同梱プラグインごとの説明は各フォルダの `README.md` にあります。
+ファイル読み込みプラグインの開発者向けリファレンスです。エンドユーザー向けの配置手順は [plugins/README.md](../plugins/README.md) を参照してください。ブラウザ向けの API 一覧はユーザーマニュアルの [プラグインリファレンス](../resources/UserManual/files/plugin-reference.html) です。同梱プラグインごとの説明は各フォルダの `README.md` にあります。本体側の発見・有効化・拡張子解決は [ARCHITECTURE.md](ARCHITECTURE.md)、なぜその境界かは [DECISIONS.md](DECISIONS.md) です。
 
 - **API バージョン**: `1`（`manifest.json` の `api_version` と一致必須）
 - **配置場所**: データフォルダの `plugins/` のみ（設定の「データの置き場」。既定はこのユーザーのデータフォルダ）
