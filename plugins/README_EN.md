@@ -2,7 +2,7 @@
 
 Put a ZIP, or an unpacked folder with `manifest.json`, in the data folder `plugins/` (Settings → Data location; default is this user's data folder) to add image or archive formats and sidebars. To use this repo folder while developing, set the data location to the same folder as the executable.
 
-Developer contract and APIs: [docs/plugins.md](../docs/plugins.md) and the [Plugin Reference](../resources/UserManual/files/plugin-reference-en.html). Each plugin has a `README_EN.md`. Packaged ZIPs are in [dist-sample-plugins/](../dist-sample-plugins/). Japanese: [README.md](README.md).
+Developer contract and APIs: [docs/plugins.md](../docs/plugins.md) and the [Plugin Reference](../resources/UserManual/files/plugin-reference-en.html). Each plugin has a `README_EN.md`. Packaged ZIPs are in [dist-sample-plugins/](../dist-sample-plugins/). Rebuild with task **“EzCo: プラグインZIP”** or `poetry run pack-plugins`. Japanese: [README.md](README.md).
 
 ## Notice
 

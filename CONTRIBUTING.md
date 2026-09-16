@@ -39,6 +39,7 @@ EzCoへの貢献をありがとうございます。開発・実行・ビルド�
 | ▶ インストーラ (poetry run installer) | Inno Setup インストーラ作成（PATH に ISCC） |
 | ▶ 初期化 (poetry run init-env) | 環境初期化 |
 | ▶ テスト (poetry run pytest) | テスト実行 |
+| ▶ プラグインZIP (poetry run pack-plugins) | `plugins/` を `dist-sample-plugins/<名前>-<version>.zip` にする |
 | py-spy: top / record … | プロファイラ |
 
 ターミナルから同じことをする場合の例（通常は不要）:
@@ -50,6 +51,7 @@ poetry run build
 poetry run build -- --safe-mode
 poetry run collect
 poetry run installer
+poetry run pack-plugins
 poetry run pytest
 ```
 
@@ -71,7 +73,7 @@ poetry run pytest
 4. **「Python: EzCo」** で手動確認する。自動テストは **「▶ テスト」** またはタスク **「EzCo: テスト」**。配布物を見るときだけ **「▶ ビルド」** または **「▶ ビルド (--safe-mode)」**
 5. [Pull Request](../../compare) で変更内容を説明する
 
-プラグインを触る場合は [docs/plugins.md](docs/plugins.md) と [plugins/README.md](plugins/README.md) を見てください。開発中は `plugins/` のフォルダがそのまま読めます。配布するときだけ [`dist-sample-plugins/`](dist-sample-plugins/) の `.zip` を作り直します。新しい ZIP／フォルダを置いたあとは再起動、ON/OFF や読み込み方式はプラグイン設定の OK / 適用で足ります。本体は中身を検査しません。全体構造は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)、開発時の注意（データ場所・テスト配置・py-spy）は [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) です。
+プラグインを触る場合は [docs/plugins.md](docs/plugins.md) と [plugins/README.md](plugins/README.md) を見てください。開発中は `plugins/` のフォルダがそのまま読めます。配布するときだけ **「EzCo: プラグインZIP」** または `poetry run pack-plugins` で [`dist-sample-plugins/`](dist-sample-plugins/) の `.zip` を作り直します。新しい ZIP／フォルダを置いたあとは再起動、ON/OFF や読み込み方式はプラグイン設定の OK / 適用で足ります。本体は中身を検査しません。全体構造は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)、開発時の注意（データ場所・テスト配置・py-spy）は [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) です。
 
 ## コードスタイル
 
@@ -125,6 +127,7 @@ Requires Windows, Python 3.10+ (3.12 recommended), and [Poetry](https://python-p
 | ▶ インストーラ (poetry run installer) | Inno Setup installer (ISCC on PATH) |
 | ▶ 初期化 (poetry run init-env) | Environment setup |
 | ▶ テスト (poetry run pytest) | Run tests |
+| ▶ プラグインZIP (poetry run pack-plugins) | Pack `plugins/` into `dist-sample-plugins/<name>-<version>.zip` |
 | py-spy: top / record … | Profiler |
 
 CLI equivalents (optional):
@@ -136,6 +139,7 @@ poetry run build
 poetry run build -- --safe-mode
 poetry run collect
 poetry run installer
+poetry run pack-plugins
 poetry run pytest
 ```
 
@@ -155,7 +159,7 @@ Use [Feature Request Issue](../../issues/new?template=feature_request.md). Expla
 4. Verify with **“Python: EzCo”**. Run tests with **“▶ テスト”** or the **“EzCo: テスト”** task. Use **“▶ ビルド”** or **“▶ ビルド (--safe-mode)”** only when you need a packaged build.
 5. Open a [Pull Request](../../compare) and describe the change.
 
-For plugins, see [docs/plugins.md](docs/plugins.md) and [plugins/README.md](plugins/README.md). Folders under `plugins/` load as-is while developing. Rebuild the `.zip` in [`dist-sample-plugins/`](dist-sample-plugins/) only when distributing. Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Local notes (data dir, tests, py-spy): [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+For plugins, see [docs/plugins.md](docs/plugins.md) and [plugins/README.md](plugins/README.md). Folders under `plugins/` load as-is while developing. Rebuild the `.zip` in [`dist-sample-plugins/`](dist-sample-plugins/) with **“EzCo: プラグインZIP”** or `poetry run pack-plugins` only when distributing. Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Local notes (data dir, tests, py-spy): [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Code Style
 

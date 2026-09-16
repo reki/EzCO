@@ -103,6 +103,25 @@
             "problemMatcher": []
         },
         {
+            "label": "EzCo: プラグインZIP",
+            "type": "shell",
+            "command": "poetry",
+            "args": [
+                "run",
+                "pack-plugins"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "EzCo: テスト",
             "type": "shell",
             "command": "poetry",

@@ -23,7 +23,7 @@ EzCo は Windows 向けのコミックビュワーです。利用者が指した
 | `resources/` | ユーザーマニュアル、About など。本体 UI 文言は `src/ez_co/resources/langs/` |
 | `docs/` | 開発者向け資料 |
 | `.cursor/rules/` | Cursor 向けの常時ルール |
-| `tooling/` | ビルド・collect 用 CLI |
+| `tooling/` | ビルド・collect・プラグイン ZIP 用 CLI |
 
 ---
 

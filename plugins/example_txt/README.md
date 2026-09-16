@@ -7,7 +7,7 @@
 | ID | `com.ezco.example_txt` |
 | バージョン | `1.0.0` |
 | 種別 | ファイル（アーカイブ） |
-| ZIP | `dist-sample-plugins/example_txt.zip` |
+| ZIP | `dist-sample-plugins/example_txt-1.0.0.zip` |
 | 入口 | `plugin:TextImagePlugin` |
 | LICENSE | ルートの `LICENSE.md`（Markdown 表示の確認用） |
 

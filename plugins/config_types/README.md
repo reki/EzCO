@@ -7,7 +7,7 @@
 | ID | `com.ezco.config_types` |
 | バージョン | `1.0.0` |
 | 種別 | サイドバー |
-| ZIP | `dist-sample-plugins/config_types.zip` |
+| ZIP | `dist-sample-plugins/config_types-1.0.0.zip` |
 | 入口 | `plugin:ConfigTypesPlugin` |
 | LICENSE | ルートの `LICENSE.md` |
 

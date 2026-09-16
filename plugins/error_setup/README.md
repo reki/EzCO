@@ -7,7 +7,7 @@
 | ID | `com.ezco.error_setup` |
 | バージョン | `1.0.0` |
 | 種別 | サイドバー（setup のみ） |
-| ZIP | `dist-sample-plugins/error_setup.zip` |
+| ZIP | `dist-sample-plugins/error_setup-1.0.0.zip` |
 | 入口 | `plugin:ErrorSetupPlugin` |
 | LICENSE | `LICENSE.md` / `LICENSE.txt` / `LICENSE` を同梱。表示は `LICENSE.md` になること |
 

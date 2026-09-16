@@ -8,24 +8,12 @@
 
 | ファイル | 内容 |
 | --- | --- |
-| `example_png.zip` | `.png` をプラグイン経由で開く確認用。ルートは `LICENSE`（拡張子なし） |
-| `example_zip.zip` | `.zip` をプラグイン経由で開く確認用。ルートは `LICENSE.txt` |
-| `example_txt.zip` | `.txt` をページ画像として開く。ルートは `LICENSE.md` |
-| `product_info.zip` | 商品情報サイドバー。LICENSE なし |
-| `error_setup.zip` | `setup()` で例外を出す確認用。LICENSE 3種あり、表示は md |
-| `error_callback.zip` | コールバック例外の確認用。txt と無印あり、表示は txt |
-| `config_types.zip` | 設定種別の確認用。bool / string / int / float / color / date / datetime / choice / font |
+| `example_png-1.0.0.zip` | `.png` をプラグイン経由で開く確認用。ルートは `LICENSE`（拡張子なし） |
+| `example_zip-1.1.0.zip` | `.zip` をプラグイン経由で開く確認用。ルートは `LICENSE.txt` |
+| `example_txt-1.0.0.zip` | `.txt` をページ画像として開く。ルートは `LICENSE.md` |
+| `product_info-1.0.0.zip` | 商品情報サイドバー。LICENSE なし |
+| `error_setup-1.0.0.zip` | `setup()` で例外を出す確認用。LICENSE 3種あり、表示は md |
+| `error_callback-1.0.0.zip` | コールバック例外の確認用。txt と無印あり、表示は txt |
+| `config_types-1.0.0.zip` | 設定種別の確認用。bool / string / int / float / color / date / datetime / choice / font |
 
-ソースから ZIP を作る例:
-
-```python
-from pathlib import Path
-import zipfile
-
-src = Path("plugins/example_txt")
-dst = Path("dist-sample-plugins/example_txt.zip")
-with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zf:
-    for path in sorted(src.rglob("*")):
-        if path.is_file() and "__pycache__" not in path.parts:
-            zf.write(path, path.relative_to(src).as_posix())
-```
+ソースから ZIP を作り直すときは、タスク **「EzCo: プラグインZIP」** または `poetry run pack-plugins` です。1 件だけなら `poetry run pack-plugins example_txt` です。出力は `<フォルダ>-<version>.zip`。manifest が不正なものはログしてスキップし、最後に成功／失敗件数を出します。

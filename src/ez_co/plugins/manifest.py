@@ -9,7 +9,8 @@ from typing import Any, Optional
 from ez_co.plugins.api import FormatSpec, normalize_formats
 
 _EMPTY_PERMISSIONS: Mapping[str, bool] = MappingProxyType({})
-_KNOWN_PERMISSIONS = frozenset({"inactive_callback"})
+KNOWN_PERMISSIONS = frozenset({"inactive_callback"})
+_KNOWN_PERMISSIONS = KNOWN_PERMISSIONS
 
 
 @dataclass(frozen=True)

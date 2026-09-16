@@ -50,6 +50,7 @@ build = "tooling.build_cli:main"
 collect = "tooling.collect_cli:main"
 installer = "tooling.installer_cli:main"
 init-env = "tooling.init_cli:main"
+pack-plugins = "tooling.pack_plugins_cli:main"
 
 [tool.poetry]
 name = "ez_co"

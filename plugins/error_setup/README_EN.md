@@ -7,7 +7,7 @@ Test plugin. `setup()` always raises. Not for production.
 | ID | `com.ezco.error_setup` |
 | Version | `1.0.0` |
 | Kind | Sidebar (setup only) |
-| ZIP | `dist-sample-plugins/error_setup.zip` |
+| ZIP | `dist-sample-plugins/error_setup-1.0.0.zip` |
 | Entry | `plugin:ErrorSetupPlugin` |
 | LICENSE | Ships `LICENSE.md`, `LICENSE.txt`, and `LICENSE`. The viewer must show `LICENSE.md` |
 

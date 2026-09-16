@@ -7,13 +7,13 @@ Sample archive plugin. Opens `.zip` through the plugin and shows images inside a
 | ID | `com.ezco.example.zip` |
 | Version | `1.1.0` |
 | Kind | File (archive) |
-| ZIP | `dist-sample-plugins/example_zip.zip` |
+| ZIP | `dist-sample-plugins/example_zip-1.1.0.zip` |
 | Entry | `loader:FileLoader` |
 | LICENSE | Root `LICENSE.txt` (plain-text display check) |
 
 ## Usage
 
-1. Put `example_zip.zip` in the `plugins/` folder next to the executable
+1. Put `example_zip-1.1.0.zip` in the `plugins/` folder next to the executable
 2. Start EzCo (restart if it was already running)
 3. Enable the plugin in Plugin Settings
 4. Set the `.zip` loader to this plugin (Built-in is the default)

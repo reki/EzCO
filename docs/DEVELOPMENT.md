@@ -76,7 +76,7 @@ SVG の出力先はリポジトリ直下の `py-spy-ezco.svg` です（スクリ
 
 ## ビルド
 
-Nuitka の Launch（「▶ ビルド」「▶ ビルド (--safe-mode)」「▶ 頒布用zip」「▶ インストーラ」）に任せます。`collect` で実行中の `EzCo.exe` が消せなくても失敗にしない、は `workflow.mdc` です。
+Nuitka の Launch（「▶ ビルド」「▶ ビルド (--safe-mode)」「▶ 頒布用zip」「▶ インストーラ」）に任せます。`collect` で実行中の `EzCo.exe` が消せなくても失敗にしない、は `workflow.mdc` です。サンプルプラグインの ZIP は **「EzCo: プラグインZIP」** または `poetry run pack-plugins` です。出力は `<フォルダ>-<version>.zip`。manifest の誤りはログしてスキップし、最後に成功／失敗件数を出します。
 
 ---
 

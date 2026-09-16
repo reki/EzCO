@@ -7,7 +7,7 @@ Test plugin. The sidebar Error button raises in a callback. Not for production.
 | ID | `com.ezco.error_callback` |
 | Version | `1.0.0` |
 | Kind | Sidebar |
-| ZIP | `dist-sample-plugins/error_callback.zip` |
+| ZIP | `dist-sample-plugins/error_callback-1.0.0.zip` |
 | Entry | `plugin:ErrorCallbackPlugin` |
 | LICENSE | Ships `LICENSE.txt` and `LICENSE` (no md). The viewer must show `LICENSE.txt` |
 

@@ -120,6 +120,18 @@
             "preLaunchTask": "EzCo: 初期化"
         },
         {
+            "name": "▶ プラグインZIP (poetry run pack-plugins)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tooling/noop.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "preLaunchTask": "EzCo: プラグインZIP"
+        },
+        {
             "name": "▶ テスト (poetry run pytest)",
             "type": "debugpy",
             "request": "launch",

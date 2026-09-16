@@ -7,7 +7,7 @@ Test plugin. Registers every host config type and shows the stored values in a s
 | ID | `com.ezco.config_types` |
 | Version | `1.0.0` |
 | Kind | Sidebar |
-| ZIP | `dist-sample-plugins/config_types.zip` |
+| ZIP | `dist-sample-plugins/config_types-1.0.0.zip` |
 | Entry | `plugin:ConfigTypesPlugin` |
 | LICENSE | Root `LICENSE.md` |
 

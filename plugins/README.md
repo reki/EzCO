@@ -39,17 +39,7 @@
 | `error_callback/` | 確認用。サイドバーの「エラー」ボタンでコールバック例外を出す。[README](error_callback/README.md) |
 | `config_types/` | 確認用。設定種別（bool / string / int / float / color / date / datetime / choice / font）を全部登録する。[README](config_types/README.md) |
 
-```python
-from pathlib import Path
-import zipfile
-
-src = Path("plugins/example_zip")
-dst = Path("dist-sample-plugins/example_zip.zip")
-with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zf:
-    for path in sorted(src.rglob("*")):
-        if path.is_file() and "__pycache__" not in path.parts:
-            zf.write(path, path.relative_to(src).as_posix())
-```
+配布 ZIP の作り直しはタスク **「EzCo: プラグインZIP」** または `poetry run pack-plugins` です。出力先は [`dist-sample-plugins/`](../dist-sample-plugins/) です。
 
 サンプルの色重ねは確認用です。本番プラグインでは不要です。
 

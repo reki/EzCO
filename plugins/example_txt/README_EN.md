@@ -7,7 +7,7 @@ A general-purpose sample that opens `.txt` as image pages. The body is wrapped i
 | ID | `com.ezco.example_txt` |
 | Version | `1.0.0` |
 | Kind | File (archive) |
-| ZIP | `dist-sample-plugins/example_txt.zip` |
+| ZIP | `dist-sample-plugins/example_txt-1.0.0.zip` |
 | Entry | `plugin:TextImagePlugin` |
 | LICENSE | Root `LICENSE.md` (Markdown display check) |
 

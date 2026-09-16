@@ -7,7 +7,7 @@
 | ID | `com.ezco.error_callback` |
 | バージョン | `1.0.0` |
 | 種別 | サイドバー |
-| ZIP | `dist-sample-plugins/error_callback.zip` |
+| ZIP | `dist-sample-plugins/error_callback-1.0.0.zip` |
 | 入口 | `plugin:ErrorCallbackPlugin` |
 | LICENSE | `LICENSE.txt` と `LICENSE` を同梱（md なし）。表示は `LICENSE.txt` になること |
 

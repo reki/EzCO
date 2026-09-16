@@ -7,13 +7,13 @@
 | ID | `com.ezco.example.zip` |
 | バージョン | `1.1.0` |
 | 種別 | ファイル（アーカイブ） |
-| ZIP | `dist-sample-plugins/example_zip.zip` |
+| ZIP | `dist-sample-plugins/example_zip-1.1.0.zip` |
 | 入口 | `loader:FileLoader` |
 | LICENSE | ルートの `LICENSE.txt`（プレーンテキスト表示の確認用） |
 
 ## 使い方
 
-1. `example_zip.zip` を実行ファイル旁の `plugins/` 直下に置く
+1. `example_zip-1.1.0.zip` を実行ファイル旁の `plugins/` 直下に置く
 2. EzCo を起動（追加したあとは再起動）
 3. プラグイン設定でこのプラグインを有効にする
 4. `.zip` の読み込み方式をこのプラグインにする（既定はビルドイン）

@@ -65,19 +65,7 @@ my_plugin.zip  または  my_plugin/
 
 ルート直下の `LICENSE.md`（Markdown）/ `LICENSE.txt` / `LICENSE`（テキスト）があると、プラグイン設定のライセンス列から読めます。複数あれば上だけ。表示は保証ではありません。起動時には出しません。
 
-開発中は `plugins/example_zip/` のように展開フォルダを `plugins/` 直下に置けば、そのまま読み込まれます。配布用 ZIP は [`dist-sample-plugins/`](../dist-sample-plugins/) です。同じ `id` が複数あるときは起動時にどれを読むか選びます。
-
-```python
-from pathlib import Path
-import zipfile
-
-src = Path("plugins/example_zip")
-dst = Path("dist-sample-plugins/example_zip.zip")
-with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zf:
-    for path in sorted(src.rglob("*")):
-        if path.is_file() and "__pycache__" not in path.parts:
-            zf.write(path, path.relative_to(src).as_posix())
-```
+開発中は `plugins/example_zip/` のように展開フォルダを `plugins/` 直下に置けば、そのまま読み込まれます。配布用 ZIP は [`dist-sample-plugins/`](../dist-sample-plugins/) です。作り直しはタスク **「EzCo: プラグインZIP」** または `poetry run pack-plugins` です。出力名は `<フォルダ>-<manifest.version>.zip` です。`manifest.json` の構文・契約・バージョン形式・権限がおかしいものはログしてスキップし、最後に成功／失敗件数を出します。同じ `id` が複数あるときは起動時にどれを読むか選びます。
 
 ---
 
