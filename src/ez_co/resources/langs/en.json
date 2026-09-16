@@ -363,7 +363,6 @@
     "image_load_failed": "Failed to load image",
     "pid_label": "PID",
     "extensions": "Features / Extensions",
-    "comic": "Comic",
     "comic_single_page": "Single Page",
     "comic_spread_left": "Spread (Left)",
     "comic_spread_right": "Spread (Right)",

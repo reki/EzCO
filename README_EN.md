@@ -81,7 +81,7 @@ Most of the code in this program was implemented with the assistance of AI (Clau
 - **State files**: Save open tabs to a `.ezs` file and restore them by opening or dropping it
 
 ### Comic Display
-- **Single page / Spread (right) / Spread (left)**: Switch from the Comic menu
+- **Single page / Spread (right) / Spread (left)**: Switch from the View menu
 - **Spread (right)**: Right page is axis N, left is N+1 (right-bound)
 - **Spread (left)**: Left page is axis N, right is N+1 (left-bound)
 - **Spread-unit navigation**: Next/previous moves two pages. The last odd page is shown alone

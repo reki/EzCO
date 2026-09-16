@@ -453,8 +453,7 @@ class MainWindow(QMainWindow):
         self._apply_action_shortcut(self.rotate_left_action, Actions.ROTATE_LEFT.value)
         view_menu.addAction(self.rotate_left_action)
 
-        # コミックメニュー
-        comic_menu = menubar.addMenu(get_text("ui.comic"))
+        view_menu.addSeparator()
         self.comic_page_mode_group = QActionGroup(self)
         self.comic_page_mode_group.setExclusive(True)
 
@@ -463,21 +462,21 @@ class MainWindow(QMainWindow):
         self.comic_single_action.setData("single")
         self.comic_page_mode_group.addAction(self.comic_single_action)
         self._apply_action_shortcut(self.comic_single_action, Actions.PAGE_MODE_SINGLE.value)
-        comic_menu.addAction(self.comic_single_action)
+        view_menu.addAction(self.comic_single_action)
 
         self.comic_spread_right_action = QAction(get_text("ui.comic_spread_right"), self)
         self.comic_spread_right_action.setCheckable(True)
         self.comic_spread_right_action.setData("spread_right")
         self.comic_page_mode_group.addAction(self.comic_spread_right_action)
         self._apply_action_shortcut(self.comic_spread_right_action, Actions.PAGE_MODE_SPREAD_RIGHT.value)
-        comic_menu.addAction(self.comic_spread_right_action)
+        view_menu.addAction(self.comic_spread_right_action)
 
         self.comic_spread_left_action = QAction(get_text("ui.comic_spread_left"), self)
         self.comic_spread_left_action.setCheckable(True)
         self.comic_spread_left_action.setData("spread_left")
         self.comic_page_mode_group.addAction(self.comic_spread_left_action)
         self._apply_action_shortcut(self.comic_spread_left_action, Actions.PAGE_MODE_SPREAD_LEFT.value)
-        comic_menu.addAction(self.comic_spread_left_action)
+        view_menu.addAction(self.comic_spread_left_action)
 
         page_mode = self.config.viewer.get("page_mode", "single")
         if page_mode == "spread_left":
@@ -487,6 +486,8 @@ class MainWindow(QMainWindow):
         else:
             self.comic_single_action.setChecked(True)
         self.comic_page_mode_group.triggered.connect(self.on_comic_page_mode_changed)
+
+        self._setup_filter_menu(menubar)
 
         tab_menu = menubar.addMenu(get_text("ui.tab_menu"))
         new_tab_action = QAction(get_text("ui.new_tab"), self)
@@ -520,7 +521,9 @@ class MainWindow(QMainWindow):
         self._apply_action_shortcut(last_tab_action, Actions.LAST_TAB.value)
         tab_menu.addAction(last_tab_action)
         self._update_reopen_tab_action()
-        
+
+        self._setup_profile_menu(menubar)
+
         # 機能／拡張メニュー
         extensions_menu = menubar.addMenu(get_text("ui.extensions"))
         
@@ -570,15 +573,7 @@ class MainWindow(QMainWindow):
         self.page_slider_action.triggered.connect(self.show_page_slider_dialog)
         self._apply_action_shortcut(self.page_slider_action, Actions.PAGE_SLIDER_DIALOG.value)
         extensions_menu.addAction(self.page_slider_action)
-        
-        # セパレータ
-        extensions_menu.addSeparator()
 
-        self._setup_filter_menu(menubar)
-
-        # プロファイルメニュー
-        self._setup_profile_menu(menubar)
-        
         # 設定メニュー
         settings_menu = menubar.addMenu(get_text("ui.settings"))
         self.settings_action = QAction(get_text("ui.settings"), self)
@@ -641,7 +636,7 @@ class MainWindow(QMainWindow):
             self.show_tabs_in_fullscreen_action.setEnabled(False)
             self.show_tabs_in_fullscreen_action.setToolTip(get_text("ui.runtime_override_tooltip"))
         
-        # コミックページ表示モード
+        # ページ表示モード
         if self.config.is_runtime_overridden("viewer.page_mode"):
             tooltip = get_text("ui.runtime_override_tooltip")
             for action in (self.comic_single_action, self.comic_spread_left_action, self.comic_spread_right_action):
@@ -945,7 +940,7 @@ class MainWindow(QMainWindow):
             self._update_image_slide_sidebar()
 
     def _sync_comic_page_mode_menu(self, mode: str):
-        """コミックメニューのチェック状態を表示モードに合わせる"""
+        """表示メニューのページモードのチェックを合わせる"""
         if not hasattr(self, "comic_page_mode_group"):
             return
         self.comic_page_mode_group.blockSignals(True)
