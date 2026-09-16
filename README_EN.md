@@ -663,7 +663,7 @@ The page slider navigates pages. It docks at the bottom of the window by default
 ### How to Display
 - **Shortcut**: Configurable (no default)
 - **Menu**: Features / Extensions → Page Slider
-- **Fullscreen**: View → Show Page Slider in Fullscreen (hidden by default)
+- **Fullscreen**: View → Don't Hide Page Slider in Fullscreen (hidden by default)
 
 ### Features
 - **Real-time Slider**: Intuitive page selection via slider
