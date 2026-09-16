@@ -20,7 +20,22 @@ from ez_co.utils.language_manager import get_log_text, get_text
 logger = logging.getLogger(__name__)
 
 _APP_CONFIG_ALLOW = ("language", "viewer", "cache", "ui_font")
-_CONFIG_TYPES = ("bool", "string", "int", "float", "color", "date", "datetime", "choice", "font")
+_CONFIG_TYPES = (
+    "bool",
+    "string",
+    "int",
+    "float",
+    "int_range",
+    "float_range",
+    "color",
+    "date",
+    "datetime",
+    "choice",
+    "font",
+    "path",
+    "password",
+)
+_SYNC_CONFIG_TYPES = ("int", "float", "int_range", "float_range")
 _COLOR_FALLBACK = "#000000"
 
 
@@ -96,12 +111,23 @@ class ConfigField:
     label: str = ""
     description: str = ""
     choices: tuple[tuple[str, str], ...] = ()
+    minimum: Optional[float] = None
+    maximum: Optional[float] = None
+    step: Optional[float] = None
+    path_kind: str = "file"
+    path_filter: str = ""
+    sync: bool = False
+    reload: bool = False
 
 
 def normalize_config_type(value_type) -> str:
     name = str(value_type or "string").strip().lower()
     if name in ("bool", "boolean"):
         return "bool"
+    if name in ("int_range", "integer_range"):
+        return "int_range"
+    if name in ("float_range", "double_range"):
+        return "float_range"
     if name in ("int", "integer"):
         return "int"
     if name in ("float", "double", "number"):
@@ -116,7 +142,117 @@ def normalize_config_type(value_type) -> str:
         return "choice"
     if name in ("font", "font_family"):
         return "font"
+    if name in ("path", "filepath", "file_path"):
+        return "path"
+    if name in ("password", "secret"):
+        return "password"
     return "string"
+
+
+def normalize_path_kind(path_kind) -> str:
+    name = str(path_kind or "file").strip().lower()
+    if name in ("directory", "folder", "dir"):
+        return "directory"
+    return "file"
+
+
+def config_field_syncs(field: ConfigField) -> bool:
+    return bool(field.sync) and field.value_type in _SYNC_CONFIG_TYPES
+
+
+def config_field_reloads(field: ConfigField) -> bool:
+    return config_field_syncs(field) and bool(field.reload)
+
+
+def config_should_reload(fields) -> bool:
+    return any(config_field_reloads(field) for field in fields)
+
+
+def _parse_bound_number(value, as_int: bool):
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool):
+        return None
+    try:
+        if as_int:
+            if isinstance(value, int):
+                return int(value)
+            return int(float(value))
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def normalize_range_bounds(value_type, minimum=None, maximum=None, step=None):
+    kind = normalize_config_type(value_type)
+    as_int = kind == "int_range"
+    lo = _parse_bound_number(minimum, as_int)
+    hi = _parse_bound_number(maximum, as_int)
+    if lo is None and hi is None:
+        lo, hi = (0, 100) if as_int else (0.0, 1.0)
+    elif lo is None:
+        lo = 0 if as_int else 0.0
+    elif hi is None:
+        hi = 100 if as_int else 1.0
+    if lo > hi:
+        lo, hi = hi, lo
+    st = _parse_bound_number(step, as_int)
+    if st is None or st <= 0:
+        st = 1 if as_int else 0.01
+    if as_int:
+        return int(lo), int(hi), max(1, int(st))
+    return float(lo), float(hi), float(st)
+
+
+def validate_range_bounds(value_type, minimum, maximum, step, plugin_id="", key=""):
+    kind = normalize_config_type(value_type)
+    as_int = kind == "int_range"
+    lo = _parse_bound_number(minimum, as_int)
+    hi = _parse_bound_number(maximum, as_int)
+    st = _parse_bound_number(step, as_int)
+    if lo is None or hi is None or st is None or lo > hi or st <= 0:
+        raise ValueError(
+            get_log_text(
+                "plugin_config_range_invalid",
+                plugin_id=plugin_id,
+                field_key=key,
+                value_type=kind,
+            )
+        )
+    if as_int:
+        return int(lo), int(hi), int(st)
+    return float(lo), float(hi), float(st)
+
+
+def _range_step_decimals(step) -> int:
+    text = f"{float(step):.10f}".rstrip("0").rstrip(".")
+    if "." in text:
+        return min(6, max(1, len(text.split(".", 1)[1])))
+    return 0
+
+
+def snap_range_value(value, minimum, maximum, step, as_int: bool):
+    number = int(value) if as_int else float(value)
+    lo = int(minimum) if as_int else float(minimum)
+    hi = int(maximum) if as_int else float(maximum)
+    st = int(step) if as_int else float(step)
+    if number < lo:
+        number = lo
+    elif number > hi:
+        number = hi
+    if st <= 0:
+        return int(number) if as_int else float(number)
+    ticks = round((number - lo) / st)
+    snapped = lo + ticks * st
+    if not as_int:
+        snapped = round(snapped, _range_step_decimals(st))
+    if snapped < lo:
+        snapped = lo
+    elif snapped > hi:
+        snapped = hi
+    if as_int:
+        return int(round(snapped))
+    return float(snapped)
 
 
 def normalize_config_choices(choices) -> tuple[tuple[str, str], ...]:
@@ -193,7 +329,29 @@ def _date_seconds(value) -> Optional[int]:
     return int(midnight.timestamp())
 
 
-def coerce_config_value(value_type: str, value, default=None, choices=None):
+def _parse_config_int(value):
+    if isinstance(value, bool):
+        raise TypeError
+    if isinstance(value, int):
+        return int(value)
+    return int(float(value))
+
+
+def _parse_config_float(value):
+    if isinstance(value, bool):
+        raise TypeError
+    return float(value)
+
+
+def coerce_config_value(
+    value_type: str,
+    value,
+    default=None,
+    choices=None,
+    minimum=None,
+    maximum=None,
+    step=None,
+):
     kind = normalize_config_type(value_type)
     options = normalize_config_choices(choices)
     if kind == "bool":
@@ -210,20 +368,32 @@ def coerce_config_value(value_type: str, value, default=None, choices=None):
         return bool(default) if default is not None else False
     if kind == "int":
         try:
-            return int(value)
+            return _parse_config_int(value)
         except (TypeError, ValueError):
             try:
-                return int(default)
+                return _parse_config_int(default)
             except (TypeError, ValueError):
                 return 0
     if kind == "float":
         try:
-            return float(value)
+            return _parse_config_float(value)
         except (TypeError, ValueError):
             try:
-                return float(default)
+                return _parse_config_float(default)
             except (TypeError, ValueError):
                 return 0.0
+    if kind in ("int_range", "float_range"):
+        as_int = kind == "int_range"
+        lo, hi, st = normalize_range_bounds(kind, minimum, maximum, step)
+        parse = _parse_config_int if as_int else _parse_config_float
+        try:
+            raw = parse(value)
+        except (TypeError, ValueError):
+            try:
+                raw = parse(default)
+            except (TypeError, ValueError):
+                raw = lo
+        return snap_range_value(raw, lo, hi, st, as_int)
     if kind == "color":
         return _parse_hex_color(value) or _parse_hex_color(default) or _COLOR_FALLBACK
     if kind == "date":
@@ -251,9 +421,50 @@ def coerce_config_value(value_type: str, value, default=None, choices=None):
         if value is None:
             return "" if default is None else str(default)
         return str(value)
+    if kind in ("path", "password"):
+        if value is None:
+            return "" if default is None else str(default)
+        return str(value)
     if value is None:
         return "" if default is None else str(default)
     return str(value)
+
+
+def coerce_field_value(field: ConfigField, value):
+    return coerce_config_value(
+        field.value_type,
+        value,
+        default=field.default,
+        choices=field.choices,
+        minimum=field.minimum,
+        maximum=field.maximum,
+        step=field.step,
+    )
+
+
+def _password_to_stored(plain: str) -> Optional[str]:
+    from ez_co.utils.password_protect import encrypt_secret
+
+    try:
+        return encrypt_secret(str(plain or ""))
+    except Exception as exc:
+        logger.debug(get_log_text("plugin_event_failed", event="password", error=exc))
+        return None
+
+
+def _password_from_stored(token, default="") -> str:
+    if not token:
+        return "" if default is None else str(default)
+    from ez_co.utils.password_protect import decrypt_secret
+
+    try:
+        plain = decrypt_secret(str(token))
+    except Exception as exc:
+        logger.debug(get_log_text("plugin_event_failed", event="password", error=exc))
+        return "" if default is None else str(default)
+    if plain is None:
+        return "" if default is None else str(default)
+    return plain
 
 
 class _UiBridge:
@@ -670,17 +881,37 @@ class PluginHost:
         label=None,
         description=None,
         choices=None,
+        minimum=None,
+        maximum=None,
+        step=None,
+        path_kind=None,
+        path_filter=None,
+        sync=False,
+        reload=False,
     ) -> None:
         field_key = str(key or "").strip()
         if not field_key:
             return
+        kind = normalize_config_type(value_type)
+        lo = hi = st = None
+        if kind in ("int_range", "float_range"):
+            lo, hi, st = validate_range_bounds(
+                kind, minimum, maximum, step, plugin_id=plugin_id, key=field_key
+            )
         field = ConfigField(
             key=field_key,
-            value_type=normalize_config_type(value_type),
+            value_type=kind,
             default=default,
             label=str(label or ""),
             description=str(description or ""),
             choices=normalize_config_choices(choices),
+            minimum=lo,
+            maximum=hi,
+            step=st,
+            path_kind=normalize_path_kind(path_kind),
+            path_filter=str(path_filter or ""),
+            sync=bool(sync),
+            reload=bool(reload),
         )
         rows = [item for item in self._config_fields.get(plugin_id, []) if item.key != field_key]
         rows.append(field)
@@ -699,24 +930,31 @@ class PluginHost:
         if self._db is None:
             value = default
         else:
-            value = self._db.get_plugin_setting(plugin_id, key, default)
+            value = self._db.get_plugin_setting(plugin_id, key, None)
+            if value is None:
+                value = default
+            elif field is not None and field.value_type == "password":
+                fallback = "" if default is None else str(default)
+                value = _password_from_stored(value, fallback)
         if field is not None:
-            return coerce_config_value(field.value_type, value, field.default, field.choices)
+            return coerce_field_value(field, value)
         return value
 
     def _set_plugin_config(self, plugin_id: str, key: str, value, notify: bool = True) -> bool:
         field = self._field_for(plugin_id, key)
-        stored = (
-            coerce_config_value(field.value_type, value, field.default, field.choices)
-            if field is not None
-            else value
-        )
+        plain = coerce_field_value(field, value) if field is not None else value
+        stored = plain
+        if field is not None and field.value_type == "password":
+            token = _password_to_stored(plain)
+            if token is None:
+                return False
+            stored = token
         if self._db is None:
             ok = False
         else:
             ok = bool(self._db.set_plugin_setting(plugin_id, key, stored))
         if notify:
-            self.emit("config_changed", {"key": str(key or ""), "value": stored}, plugin_id=plugin_id)
+            self.emit("config_changed", {"key": str(key or ""), "value": plain}, plugin_id=plugin_id)
         return ok
 
     def _delete_plugin_config(self, plugin_id: str, key: str) -> bool:
@@ -877,6 +1115,13 @@ class ScopedPluginHost:
         label=None,
         description=None,
         choices=None,
+        minimum=None,
+        maximum=None,
+        step=None,
+        path_kind=None,
+        path_filter=None,
+        sync=False,
+        reload=False,
     ) -> None:
         self._host._register_config(
             self._plugin_id,
@@ -886,6 +1131,13 @@ class ScopedPluginHost:
             label,
             description,
             choices,
+            minimum,
+            maximum,
+            step,
+            path_kind,
+            path_filter,
+            sync,
+            reload,
         )
 
     def get_config(self, key: str, default: Any = None):

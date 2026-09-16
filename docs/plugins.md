@@ -313,7 +313,7 @@ class _Entry:
 - `host.register_action(action_id, label, callback, aliases=None)` — 独自アクション。ショートカット／ジェスチャーから呼ばれる
 - `host.unregister_action(action_id)`
 - `host.load_ui(bytes_or_path)` — Designer の `.ui` を `QUiLoader` で読む
-- `host.register_config(key, value_type, default=None, label=None, description=None, choices=None)` — プラグイン設定ダイアログ用。`value_type` は `"bool"` / `"string"` / `"int"` / `"float"` / `"color"` / `"date"` / `"datetime"` / `"choice"` / `"font"`。`choice` は `choices`（値の列、または `(value, label)`）。`color` は `#RRGGBB` 文字列。`date` / `datetime` は UTC の Unix 秒（int。`date` はその日 00:00:00）。無効化してもスキーマは残るので `__init__` で登録してよい
+- `host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False)` — プラグイン設定ダイアログ用。`value_type` は `"bool"` / `"string"` / `"int"` / `"float"` / `"int_range"` / `"float_range"` / `"path"` / `"password"` / `"color"` / `"date"` / `"datetime"` / `"choice"` / `"font"`。`choice` は `choices`（値の列、または `(value, label)`）。`int_range` / `float_range` は範囲付きの単一値で `minimum` / `maximum` / `step` が必須（欠落・逆転・`step <= 0` はエラー。ダイアログはスライダー+スピン。項目名の末尾に範囲を付ける。`float_range` は `step` も付ける）。`path` は `path_kind` が `"file"`（省略時）または `"directory"`。`password` は画面マスク、DB は DPAPI、`get_config` は平文。`sync=True` は数値のみ。最後の変更から 500ms 動かなくなってから保存し `config_changed`。`reload=True`（`sync` と併用）のときだけ `reload_current`。キャンセルはプレビューした値を開き時点（または最後の適用）へ戻し、`reload` 項目なら画像も戻す。`color` は `#RRGGBB` 文字列。`date` / `datetime` は UTC の Unix 秒（int。`date` はその日 00:00:00）。無効化してもスキーマは残るので `__init__` で登録してよい
 
 状態:
 
@@ -324,11 +324,11 @@ class _Entry:
 
 自プラグイン設定（DB の `plugin_id` はハッシュ化。他プラグインの行は読めない）:
 
-- `host.get_config(key, default=None)` — 未保存ならスキーマの `default`。`date` / `datetime` は Unix 秒の int、`color` は `#RRGGBB`
+- `host.get_config(key, default=None)` — 未保存ならスキーマの `default`。`date` / `datetime` は Unix 秒の int、`color` は `#RRGGBB`、`password` は平文、`path` は文字列
 - `host.set_config(key, value)` — 型を正規化して保存し、そのプラグインへ `"config_changed"`（`{key, value}`）
 - `host.delete_config(key)`
 
-プラグイン設定の一覧にスキーマがある行は「設定」ボタンが出ます。そこでパネルを開き OK / 適用すると、本体ダイアログの OK を待たずに DB へ保存して通知します。ユーザーマニュアルの [プラグインリファレンス（コンフィグ）](../resources/UserManual/files/plugin-reference.html#plugin-config) に、スキーマ・保存場所・ダイアログの扱いをまとめています。
+プラグイン設定の一覧にスキーマがある行は「設定」ボタンが出ます。そこでパネルを開き OK / 適用すると、本体ダイアログの OK を待たずに DB へ保存して通知します。初期化はスキーマの default に戻します。`sync=True` の数値は 500ms のアイドル後に保存します。`reload=True` ならそのとき現在画像を開き直します。キャンセルはそのプレビューも戻します。ユーザーマニュアルの [プラグインリファレンス（コンフィグ）](../resources/UserManual/files/plugin-reference.html#plugin-config) に、スキーマ・保存場所・ダイアログの扱いをまとめています。
 
 UI の再接続用に任意の `setup()` / `teardown()` を実装できます。無効化すると本体はサイドバーと登録アクションを外します。
 

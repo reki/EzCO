@@ -11,7 +11,7 @@
 | 入口 | `plugin:ConfigTypesPlugin` |
 | LICENSE | ルートの `LICENSE.md` |
 
-登録する型は `bool` / `string` / `int` / `float` / `color` / `date` / `datetime` / `choice` / `font` です。`date` と `datetime` の保存値は Unix 秒（数値）、`color` は `#RRGGBB` 文字列です。
+登録する型は `bool` / `string` / `int` / `float` / `int_range` / `float_range` / `path` / `password` / `color` / `date` / `datetime` / `choice` / `font` です。`date` と `datetime` の保存値は Unix 秒（数値）、`color` は `#RRGGBB` 文字列、`password` は DPAPI です。`int_range` は `sync=True`（`reload` なし）の例です。
 
 ## 使い方
 

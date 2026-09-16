@@ -412,9 +412,9 @@ host.register_action("reload", get_text("reload"), _reload)
                         </article>
 
                         <article id="register-config" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_config(key, value_type, default=None, label=None, description=None, choices=None) -&gt; None</code></div>
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False) -&gt; None</code></div>
                             <div class="api-body">
-                                <p><code>value_type</code> は <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code>。無効化してもスキーマは残るので <code>__init__</code> で登録してよい。一覧に「設定」ボタンが出ます。保存とプロファイルの扱いの全体は <a href="#plugin-config">プラグイン設定（コンフィグ）</a> です。</p>
+                                <p><code>value_type</code> は <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"int_range"</code> / <code>"float_range"</code> / <code>"path"</code> / <code>"password"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code>。無効化してもスキーマは残るので <code>__init__</code> で登録してよい。一覧に「設定」ボタンが出ます。保存とプロファイルの扱いの全体は <a href="#plugin-config">プラグイン設定（コンフィグ）</a> です。</p>
 <pre class="api-example">host.register_config(
     "fetch_web",
     "bool",
@@ -428,6 +428,17 @@ host.register_config(
     default="horizontal",
     label=get_text("writing"),
     choices=[("horizontal", "横書き"), ("vertical", "縦書き")],
+)
+host.register_config(
+    "strength",
+    "int_range",
+    default=50,
+    label=get_text("strength"),
+    minimum=0,
+    maximum=100,
+    step=1,
+    sync=True,
+    reload=True,
 )</pre>
                             </div>
                         </article>
@@ -435,7 +446,7 @@ host.register_config(
                         <article id="get-config" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.get_config(key, default=None) -&gt; Any</code></div>
                             <div class="api-body">
-                                <p>自プラグインの保存値。未保存ならスキーマの default。他プラグインの行は読めません。<code>date</code> / <code>datetime</code> は Unix 秒の int、<code>color</code> は <code>#RRGGBB</code> です。</p>
+                                <p>自プラグインの保存値。未保存ならスキーマの default。他プラグインの行は読めません。<code>date</code> / <code>datetime</code> は Unix 秒の int、<code>color</code> は <code>#RRGGBB</code>、<code>password</code> は平文、<code>path</code> は文字列です。</p>
 <pre class="api-example">if host.get_config("fetch_web", True):
     self._fetch(folder)</pre>
                             </div>
@@ -552,8 +563,12 @@ if password is None:
 
                         <h4>スキーマ</h4>
                         <ul>
-                            <li><code>__init__</code> で <code>host.register_config(key, value_type, default, label, description, choices=None)</code> を呼びます。無効化してもスキーマは残るので、ここで登録してかまいません。</li>
-                            <li><code>value_type</code> は <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code> です。</li>
+                            <li><code>__init__</code> で <code>host.register_config(key, value_type, default, label, description, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False)</code> を呼びます。無効化してもスキーマは残るので、ここで登録してかまいません。</li>
+                            <li><code>value_type</code> は <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"int_range"</code> / <code>"float_range"</code> / <code>"path"</code> / <code>"password"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code> です。</li>
+                            <li><code>int_range</code> / <code>float_range</code> は範囲付きの単一値です。<code>minimum</code> / <code>maximum</code> / <code>step</code> は必須です。欠落・逆転・<code>step &lt;= 0</code> はエラーです。ダイアログはスライダーとスピンを並べ、項目名の末尾に範囲を付けます。<code>float_range</code> は <code>step</code> も付けます。</li>
+                            <li><code>path</code> は文字列。<code>path_kind</code> は <code>"file"</code>（省略時）または <code>"directory"</code>。<code>path_filter</code> はファイルダイアログのフィルタです。</li>
+                            <li><code>password</code> は画面ではマスクします。DB は Windows DPAPI。プラグインの <code>get_config</code> は平文です。</li>
+                            <li><code>sync=True</code> は数値（<code>int</code> / <code>float</code> / <code>int_range</code> / <code>float_range</code>）だけ効きます。最後の変更から 500ms 動かなくなってから保存し <code>config_changed</code> します。<code>reload=True</code>（<code>sync</code> と併用）のときだけ現在画像を <code>reload_current</code> します。キャンセル（Esc / × 含む）はプレビュー値を、ダイアログを開いた時点（または最後の適用）へ戻します。<code>reload</code> 項目なら画像も戻します。</li>
                             <li><code>color</code> は <code>#RRGGBB</code> の文字列。<code>date</code> / <code>datetime</code> は UTC の Unix 秒（数値）。<code>date</code> はその日の 00:00:00 UTC です。</li>
                             <li><code>choice</code> は <code>choices</code>（値の列、または <code>(value, label)</code>）が必要です。省略すると1行入力になります。</li>
                             <li><code>label</code> は設定ダイアログの項目名、<code>description</code> はツールチップです。省略するとキー名だけが出ます。</li>
@@ -576,15 +591,16 @@ if password is None:
                             <li>キーはプラグインが決めた短い名前（例 <code>fetch_web</code>）です。<code>manifest.json</code> の <code>version</code> を上げても、<code>id</code> が同じなら同じ行を読みます。</li>
                             <li>拡張子の担当に使う <code>id(ver:version)</code> とは別です。あちらは本体の <code>plugins.extension_handlers</code> です。</li>
                             <li>YAML エクスポートには出ません。本体設定のエクスポート／インポートではコピーされません。</li>
-                            <li><code>plugin_settings.value</code> は JSON です。<code>date</code> / <code>datetime</code> / <code>int</code> / <code>float</code> は数値、<code>color</code> は文字列です。</li>
+                            <li><code>plugin_settings.value</code> は JSON です。<code>date</code> / <code>datetime</code> / <code>int</code> / <code>float</code> / <code>int_range</code> / <code>float_range</code> は数値、<code>color</code> / <code>path</code> は文字列です。<code>password</code> は DPAPI した文字列です。</li>
                         </ul>
 
                         <h4>設定ダイアログ</h4>
                         <ul>
                             <li>一覧の「設定」を開くと、登録した項目だけの小さなダイアログが出ます。</li>
                             <li>そのダイアログの OK / 適用は、すぐ DB へ書きます。本体のプラグイン設定ダイアログの OK を待ちません。</li>
-                            <li>キャンセルは、そのダイアログでまだ保存していない変更だけ捨てます。</li>
-                            <li>値を変えたあとは <code>config_changed</code> を聞いて、サイドバーなどを更新してください。</li>
+                            <li>初期化はスキーマの <code>default</code> にウィジェットを戻します。非 sync はまだ保存しません。<code>sync</code> の数値はすぐ保存します。<code>reload=True</code> なら画像を開き直します。</li>
+                            <li>キャンセルは、そのダイアログでまだ保存していない変更を捨てます。<code>sync</code> で先に書いたプレビューも、開いた時点（最後の適用）へ戻します。<code>reload</code> 項目なら画像も開き直します。Esc / × も同じです。</li>
+                            <li>値を変えたあとは <code>config_changed</code> を聞いて、サイドバーなどを更新してください。<code>reload=True</code> のソース開き直しはホストがやるので、重ねて <code>reload_current</code> しないでください。</li>
                         </ul>
 <pre class="api-example">def __init__(self, root, get_text, host):
     host.register_config(

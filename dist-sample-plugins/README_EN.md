@@ -14,6 +14,6 @@ For development, use the unpacked folders under `plugins/` in the repo. Point th
 | `product_info-1.0.0.zip` | Product info sidebar. No LICENSE |
 | `error_setup-1.0.0.zip` | Raises in `setup()`. All three LICENSE files; viewer shows md |
 | `error_callback-1.0.0.zip` | Raises from a callback. txt and bare LICENSE; viewer shows txt |
-| `config_types-1.0.0.zip` | Registers every config type (bool / string / int / float / color / date / datetime / choice / font) |
+| `config_types-1.0.0.zip` | Registers every config type (bool / string / int / float / int_range / float_range / path / password / color / date / datetime / choice / font) |
 
 Rebuild from source with task **“EzCo: プラグインZIP”** or `poetry run pack-plugins`. One folder: `poetry run pack-plugins example_txt`. Output is `<folder>-<version>.zip`. Invalid manifests are logged and skipped; the command prints success / fail counts.

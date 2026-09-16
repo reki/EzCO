@@ -11,7 +11,7 @@ Test plugin. Registers every host config type and shows the stored values in a s
 | Entry | `plugin:ConfigTypesPlugin` |
 | LICENSE | Root `LICENSE.md` |
 
-Types: `bool` / `string` / `int` / `float` / `color` / `date` / `datetime` / `choice` / `font`. `date` and `datetime` store Unix seconds (number). `color` stores `#RRGGBB`.
+Types: `bool` / `string` / `int` / `float` / `int_range` / `float_range` / `path` / `password` / `color` / `date` / `datetime` / `choice` / `font`. `date` and `datetime` store Unix seconds (number). `color` stores `#RRGGBB`. `password` uses DPAPI. `int_range` is an example of `sync=True` without `reload`.
 
 ## Usage
 

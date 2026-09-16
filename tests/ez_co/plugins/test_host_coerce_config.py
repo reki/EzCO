@@ -1,4 +1,4 @@
-"""対象: ez_co.plugins.host — coerce_config_value（bool / int / color / date / choice）。"""
+"""対象: ez_co.plugins.host — coerce_config_value（bool / int / color / date / choice / range）。"""
 from datetime import datetime, timezone
 
 from ez_co.plugins.host import coerce_config_value
@@ -37,3 +37,33 @@ def test_coerce_choice():
     assert coerce_config_value("choice", "b", choices=choices) == "b"
     assert coerce_config_value("choice", "z", default="a", choices=choices) == "a"
     assert coerce_config_value("choice", "z", choices=choices) == "a"
+
+
+def test_coerce_int_range_clamps_and_snaps():
+    assert coerce_config_value("int_range", 150, minimum=0, maximum=100, step=1) == 100
+    assert coerce_config_value("int_range", -4, minimum=0, maximum=100, step=1) == 0
+    assert coerce_config_value("int_range", 5, minimum=0, maximum=10, step=3) == 6
+
+
+def test_coerce_int_range_missing_bounds_defaults():
+    assert coerce_config_value("int_range", 200) == 100
+    assert coerce_config_value("int_range", "nope", default=12) == 12
+
+
+def test_coerce_float_range_snaps():
+    value = coerce_config_value(
+        "float_range", 1.03, minimum=0.2, maximum=3.0, step=0.05
+    )
+    assert value == 1.05
+
+
+def test_coerce_float_range_rounds_to_step_decimals():
+    assert coerce_config_value("float_range", 1.19, minimum=0.0, maximum=3.0, step=0.05) == 1.2
+    assert coerce_config_value("float_range", 1.21, minimum=0.0, maximum=3.0, step=0.05) == 1.2
+    assert coerce_config_value("float_range", 1.2, minimum=0.0, maximum=3.0, step=0.05) == 1.2
+
+
+def test_coerce_path_and_password_are_strings():
+    assert coerce_config_value("path", None, default="/tmp") == "/tmp"
+    assert coerce_config_value("password", None) == ""
+    assert coerce_config_value("password", 12) == "12"

@@ -11,6 +11,8 @@ alwaysApply: false
 - 本体の `Config` / `profile_settings` / YAML エクスポートはプラグインが書いてはいけない。可変な `Config` を渡さない。`set_app_config` のような口を足さない
 - `host.get_app_config()` は読み取り専用。今は `language` / `viewer` / `cache` / `ui_font` だけ。返した dict を書き換えても本体へ戻さない
 - プラグイン固有値は `host.register_config` / `get_config` / `set_config` / `delete_config` だけ。保存先は `plugin_settings`。`plugin_id` はハッシュ。他プラグインの行は読めない。他プラグインの id を渡す引数を足さない
+- `password` 型の DB 値は Windows DPAPI。`get_config` / `config_changed` は平文。ログに出さない
+- `sync=True` は数値の即時保存（debounce）。`reload_current` は `reload=True` のときだけ。Config API からフィルター処理を呼ばない
 - 拡張子の優先・ON/OFF・重複選択・同意バージョン（`user.json`）は本体の設定。プラグインから書き換えない
 - 入口はコンストラクタの `ScopedPluginHost` だけ。そこから外れて DB / `Config` に届かないようにする
 - 開いているフォルダやファイルへ勝手に書き込まない（商品情報の Web 取得もディスクには書かない）

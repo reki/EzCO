@@ -412,9 +412,9 @@ host.register_action("reload", get_text("reload"), _reload)
                         </article>
 
                         <article id="register-config" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_config(key, value_type, default=None, label=None, description=None, choices=None) -&gt; None</code></div>
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False) -&gt; None</code></div>
                             <div class="api-body">
-                                <p><code>value_type</code> is <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code>. Schema survives disable, so <code>__init__</code> is fine. Adds a Settings button on the plugin row. Storage and profile rules are in <a href="#plugin-config">Plugin config</a>.</p>
+                                <p><code>value_type</code> is <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"int_range"</code> / <code>"float_range"</code> / <code>"path"</code> / <code>"password"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code>. Schema survives disable, so <code>__init__</code> is fine. Adds a Settings button on the plugin row. Storage and profile rules are in <a href="#plugin-config">Plugin config</a>.</p>
 <pre class="api-example">host.register_config(
     "fetch_web",
     "bool",
@@ -428,6 +428,17 @@ host.register_config(
     default="horizontal",
     label=get_text("writing"),
     choices=[("horizontal", "Horizontal"), ("vertical", "Vertical")],
+)
+host.register_config(
+    "strength",
+    "int_range",
+    default=50,
+    label=get_text("strength"),
+    minimum=0,
+    maximum=100,
+    step=1,
+    sync=True,
+    reload=True,
 )</pre>
                             </div>
                         </article>
@@ -435,7 +446,7 @@ host.register_config(
                         <article id="get-config" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.get_config(key, default=None) -&gt; Any</code></div>
                             <div class="api-body">
-                                <p>This plugin's stored value, or the schema default. Other plugins' rows are not readable. <code>date</code> / <code>datetime</code> are Unix seconds as int; <code>color</code> is <code>#RRGGBB</code>.</p>
+                                <p>This plugin's stored value, or the schema default. Other plugins' rows are not readable. <code>date</code> / <code>datetime</code> are Unix seconds as int; <code>color</code> is <code>#RRGGBB</code>; <code>password</code> is plaintext; <code>path</code> is a string.</p>
 <pre class="api-example">if host.get_config("fetch_web", True):
     self._fetch(folder)</pre>
                             </div>
@@ -552,8 +563,12 @@ if password is None:
 
                         <h4>Schema</h4>
                         <ul>
-                            <li>Call <code>host.register_config(key, value_type, default, label, description, choices=None)</code> in <code>__init__</code>. Schema survives disable, so that is the right place.</li>
-                            <li><code>value_type</code> is <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code>.</li>
+                            <li>Call <code>host.register_config(key, value_type, default, label, description, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False)</code> in <code>__init__</code>. Schema survives disable, so that is the right place.</li>
+                            <li><code>value_type</code> is <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"int_range"</code> / <code>"float_range"</code> / <code>"path"</code> / <code>"password"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code>.</li>
+                            <li><code>int_range</code> / <code>float_range</code> are a single number in a range. <code>minimum</code> / <code>maximum</code> / <code>step</code> are required. Missing values, a reversed range, or <code>step &lt;= 0</code> raise an error. The dialog shows a slider and a spin box, and appends the range to the item name. <code>float_range</code> also appends <code>step</code>.</li>
+                            <li><code>path</code> is a string. <code>path_kind</code> is <code>"file"</code> (default) or <code>"directory"</code>. <code>path_filter</code> is the file-dialog filter.</li>
+                            <li><code>password</code> is masked in the dialog. Storage uses Windows DPAPI. <code>get_config</code> still returns plaintext to the plugin.</li>
+                            <li><code>sync=True</code> applies only to numeric types (<code>int</code> / <code>float</code> / <code>int_range</code> / <code>float_range</code>). After 500ms idle the host stores the value and emits <code>config_changed</code>. <code>reload=True</code> (with <code>sync</code>) also calls <code>reload_current</code>. Cancel (including Esc / the window close button) restores previewed values to the snapshot from when the dialog opened, or from the last Apply. <code>reload</code> fields also restore the image.</li>
                             <li><code>color</code> is a <code>#RRGGBB</code> string. <code>date</code> / <code>datetime</code> are Unix seconds in UTC (number). <code>date</code> is midnight UTC of that day.</li>
                             <li><code>choice</code> needs <code>choices</code> (values, or <code>(value, label)</code> pairs). Without it the field is a one-line edit.</li>
                             <li><code>label</code> is the row name in the settings dialog; <code>description</code> is the tooltip. If omitted, the key is shown.</li>
@@ -576,15 +591,16 @@ if password is None:
                             <li>Keys are short names you choose (for example <code>fetch_web</code>). Bumping <code>manifest.json</code> <code>version</code> does not change the row if <code>id</code> stays the same.</li>
                             <li>That is separate from <code>id(ver:version)</code> used in <code>plugins.extension_handlers</code>.</li>
                             <li>They are not written to the YAML export of host settings. Import / export of host config does not copy them.</li>
-                            <li><code>plugin_settings.value</code> is JSON. <code>date</code> / <code>datetime</code> / <code>int</code> / <code>float</code> are numbers; <code>color</code> is a string.</li>
+                            <li><code>plugin_settings.value</code> is JSON. <code>date</code> / <code>datetime</code> / <code>int</code> / <code>float</code> / <code>int_range</code> / <code>float_range</code> are numbers; <code>color</code> / <code>path</code> are strings. <code>password</code> is a DPAPI token string.</li>
                         </ul>
 
                         <h4>Settings dialog</h4>
                         <ul>
                             <li>Settings on the plugin row opens a small dialog with only the registered fields.</li>
                             <li>OK / Apply on that dialog writes to the database immediately. It does not wait for OK on the host Plugin Settings dialog.</li>
-                            <li>Cancel drops only unsaved edits in that dialog.</li>
-                            <li>Listen for <code>config_changed</code> and update the sidebar or other UI.</li>
+                            <li>Reset restores widgets to the schema <code>default</code>. Non-sync fields are not stored yet. Numeric <code>sync</code> fields are stored immediately. <code>reload=True</code> also reopens the image.</li>
+                            <li>Cancel drops unsaved edits. It also restores any <code>sync</code> preview writes to the snapshot from when the dialog opened, or from the last Apply. <code>reload</code> fields also reopen the image. Esc and the window close button do the same.</li>
+                            <li>Listen for <code>config_changed</code> and update the sidebar or other UI. The host reopens the source only for <code>reload=True</code>; do not also call <code>reload_current</code> for those.</li>
                         </ul>
 <pre class="api-example">def __init__(self, root, get_text, host):
     host.register_config(

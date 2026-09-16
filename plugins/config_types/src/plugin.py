@@ -7,15 +7,19 @@ _DATE_DEFAULT = 1789344000  # 2026-09-14 00:00:00 UTC
 _DATETIME_DEFAULT = 1789387200  # 2026-09-14 12:00:00 UTC
 
 _FIELDS = (
-    ("flag", "bool", True, None),
-    ("label", "string", "sample", None),
-    ("count", "int", 3, None),
-    ("ratio", "float", 1.25, None),
-    ("tint", "color", "#3366cc", None),
-    ("day", "date", _DATE_DEFAULT, None),
-    ("moment", "datetime", _DATETIME_DEFAULT, None),
-    ("mode", "choice", "plain", (("plain", "mode_plain"), ("bold", "mode_bold"))),
-    ("face", "font", "Segoe UI", None),
+    ("flag", "bool", True, None, None),
+    ("label", "string", "sample", None, None),
+    ("count", "int", 3, None, None),
+    ("ratio", "float", 1.25, None, None),
+    ("strength", "int_range", 50, None, {"minimum": 0, "maximum": 100, "step": 1, "sync": True}),
+    ("gamma", "float_range", 1.0, None, {"minimum": 0.2, "maximum": 3.0, "step": 0.05, "sync": True}),
+    ("lut", "path", "", None, {"path_kind": "file"}),
+    ("secret", "password", "", None, None),
+    ("tint", "color", "#3366cc", None, None),
+    ("day", "date", _DATE_DEFAULT, None, None),
+    ("moment", "datetime", _DATETIME_DEFAULT, None, None),
+    ("mode", "choice", "plain", (("plain", "mode_plain"), ("bold", "mode_bold")), None),
+    ("face", "font", "Segoe UI", None, None),
 )
 
 
@@ -28,8 +32,8 @@ class ConfigTypesPlugin:
         self._values = {}
         self._raw = {}
         self._listening = False
-        for key, value_type, default, choices in _FIELDS:
-            kwargs = {}
+        for key, value_type, default, choices, extra in _FIELDS:
+            kwargs = dict(extra or {})
             if choices:
                 kwargs["choices"] = [
                     (value, self.get_text(label_key)) for value, label_key in choices
@@ -47,7 +51,7 @@ class ConfigTypesPlugin:
         if self.widget is None:
             self.widget = QWidget()
             layout = QFormLayout(self.widget)
-            for key, _value_type, _default, _choices in _FIELDS:
+            for key, _value_type, _default, _choices, _extra in _FIELDS:
                 value_label = QLabel()
                 value_label.setWordWrap(True)
                 raw_label = QLabel()
@@ -76,11 +80,17 @@ class ConfigTypesPlugin:
         self._refresh()
 
     def _refresh(self):
-        for key, value_type, default, _choices in _FIELDS:
+        for key, value_type, default, _choices, _extra in _FIELDS:
             value = self.host.get_config(key, default)
             label = self._values.get(key)
             raw = self._raw.get(key)
             if label is None or raw is None:
+                continue
+            if value_type == "password":
+                shown = "••••••••" if value else ""
+                label.setText(shown)
+                raw.setText(shown)
+                label.setStyleSheet("")
                 continue
             label.setText(_display(value_type, value))
             raw.setText(repr(value))
