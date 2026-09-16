@@ -5,5 +5,6 @@
   "api_version": 1,
   "entry": "loader:FileLoader",
   "description": "Sample .png loader. Overlays color and the Japanese label プラグイン読み込み表示 on purpose so it is obvious the plugin handled the file.",
-  "author": "EzCo"
+  "author": "EzCo",
+  "formats": [[".png", "image"]]
 }

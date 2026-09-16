@@ -6,7 +6,6 @@
 このサンプルは get_text だけ使う。host は受け取って保持する。
 
 ホストが呼ぶ必須メソッド:
-    supported_formats() -> [(".png", "image"), ...]
     get_file_count(path) -> int
     list_entries(path) -> [エントリ名, ...]
     read_entry(path, index) -> オブジェクト(name, data: bytes)
@@ -22,9 +21,6 @@ class FileLoader:
         self.root = root
         self.get_text = get_text
         self.host = host
-
-    def supported_formats(self):
-        return [(".png", "image")]
 
     def get_file_count(self, file_path):
         return 1

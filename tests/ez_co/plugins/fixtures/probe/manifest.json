@@ -3,5 +3,6 @@
   "name": "Probe",
   "version": "1.0.0",
   "api_version": 1,
-  "entry": "plugin:ProbePlugin"
+  "entry": "plugin:ProbePlugin",
+  "formats": [[".probe", "image"]]
 }

@@ -17,6 +17,8 @@ def test_peek_manifest_from_directory():
     assert info["id"] == "com.ezco.test.probe"
     assert info["name"] == "Probe"
     assert info["version"] == "1.0.0"
+    assert info["formats"] == [[".probe", "image"]]
+    assert info["sidebar"] is False
 
 
 def test_peek_manifest_from_zip():

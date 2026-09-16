@@ -5,5 +5,7 @@
   "api_version": 1,
   "entry": "plugin:TextImagePlugin",
   "description": "Sample .txt loader. Renders the text as image pages. Sidebar controls font, colors, and horizontal / vertical reading.",
-  "author": "EzCo"
+  "author": "EzCo",
+  "formats": [[".txt", "archive"]],
+  "sidebar": true
 }

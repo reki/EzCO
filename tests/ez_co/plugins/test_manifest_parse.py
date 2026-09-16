@@ -29,6 +29,8 @@ def test_parse_manifest_reads_required_fields():
     assert manifest.description == "d"
     assert manifest.author == "a"
     assert dict(manifest.permissions) == {}
+    assert manifest.formats == ()
+    assert manifest.sidebar is False
 
 
 @pytest.mark.parametrize(
@@ -78,3 +80,28 @@ def test_parse_manifest_permissions_come_from_json_only():
     with pytest.raises(TypeError):
         manifest.permissions["inactive_callback"] = True
     assert dict(manifest.permissions) == {}
+
+
+def test_parse_manifest_reads_formats_and_sidebar():
+    from ez_co.plugins.api import FileKind
+
+    manifest = parse_manifest(
+        _valid(formats=[[".TXT", "arch"], {"ext": "png", "type": "image"}], sidebar=True)
+    )
+    assert [(item.extension, item.kind) for item in manifest.formats] == [
+        (".txt", FileKind.ARCHIVE),
+        (".png", FileKind.IMAGE),
+    ]
+    assert manifest.sidebar is True
+
+
+def test_parse_manifest_rejects_invalid_formats():
+    with pytest.raises(ValueError, match="manifest.formats"):
+        parse_manifest(_valid(formats="zip"))
+    with pytest.raises(ValueError, match="manifest.formats"):
+        parse_manifest(_valid(formats=[{"no": "kind"}]))
+
+
+def test_parse_manifest_rejects_invalid_sidebar():
+    with pytest.raises(ValueError, match="manifest.sidebar"):
+        parse_manifest(_valid(sidebar="yes"))

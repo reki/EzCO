@@ -76,7 +76,14 @@ def test_config_changed_is_not_gated():
 
 
 def test_format_plugin_with_hidden_sidebar_is_gated():
+    from ez_co.plugins.api import FileKind, FormatSpec
+
     host = PluginHost()
+    host.set_manifest_provides(
+        "hybrid.plugin",
+        [FormatSpec(".txt", FileKind.ARCHIVE)],
+        sidebar=True,
+    )
     host.scoped("hybrid.plugin").register_format(".txt", "archive")
     _add_sidebar(host, "hybrid.plugin")
     host.bind(parent=None, sidebar_visible=lambda pid: False)

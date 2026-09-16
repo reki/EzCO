@@ -36,7 +36,6 @@
                         <li><a href="#loader" class="toc-link">FileLoader</a>
                             <ul class="toc-sublist">
                                 <li><a href="#loader-init" class="toc-link">__init__</a></li>
-                                <li><a href="#supported-formats" class="toc-link">supported_formats</a></li>
                                 <li><a href="#get-file-count" class="toc-link">get_file_count</a></li>
                                 <li><a href="#list-entries" class="toc-link">list_entries</a></li>
                                 <li><a href="#read-entry" class="toc-link">read_entry</a></li>
@@ -192,6 +191,28 @@
   }
 }</pre>
                         </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">formats</span>
+                                <span class="api-field-meta">array</span>
+                                <span class="api-field-meta">optional</span>
+                            </div>
+                            <p>Formats this plugin handles. The host reads them. Use <code>[[".zip", "archive"]]</code> or <code>{extension, kind}</code>. <code>image</code> is one page; <code>archive</code> lists inner images. <code>register_format</code> for an undeclared pair fails.</p>
+<pre class="api-example">{
+  "formats": [[".txt", "archive"]]
+}</pre>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">sidebar</span>
+                                <span class="api-field-meta">bool</span>
+                                <span class="api-field-meta">optional</span>
+                            </div>
+                            <p>Declare that this plugin uses a sidebar. Do not list widget or sidebar ids. <code>register_sidebar</code> without this flag fails.</p>
+<pre class="api-example">{
+  "sidebar": true
+}</pre>
+                        </div>
 
                         <p class="api-caption">Sample (image loader)</p>
 <pre class="api-example">{
@@ -201,7 +222,8 @@
   "api_version": 1,
   "entry": "loader:FileLoader",
   "description": "Sample .png loader.",
-  "author": "Example"
+  "author": "Example",
+  "formats": [[".png", "image"]]
 }</pre>
                         <p class="api-caption">Sample (sidebar)</p>
 <pre class="api-example">{
@@ -211,7 +233,8 @@
   "api_version": 1,
   "entry": "plugin:MyPlugin",
   "description": "Shows info for the current folder.",
-  "author": "Example"
+  "author": "Example",
+  "sidebar": true
 }</pre>
                         <p class="api-caption">Sample (current_changed while hidden)</p>
 <pre class="api-example">{
@@ -222,6 +245,7 @@
   "entry": "plugin:MyPlugin",
   "description": "Shows info for the current folder.",
   "author": "Example",
+  "sidebar": true,
   "permissions": {
     "inactive_callback": true
   }
@@ -274,17 +298,6 @@ class _Entry:
     self.host = host
     host.register_format(".zip", "archive")
     host.register_config("strict", "bool", default=True, label="Strict")</pre>
-                            </div>
-                        </article>
-
-                        <article id="supported-formats" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>supported_formats() -&gt; sequence</code></div>
-                            <div class="api-body">
-                                <p>Legacy. New plugins should call <code>host.register_format</code>. The host collects registrations first, then this method.</p>
-                                <p><code>image</code> is one page; <code>archive</code> lists inner images.</p>
-<pre class="api-example">def supported_formats(self):
-    return [(".png", "image")]
-    # or [{"extension": ".zip", "kind": "archive"}]</pre>
                             </div>
                         </article>
 

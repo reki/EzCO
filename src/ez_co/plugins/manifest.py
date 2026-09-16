@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, Optional
 
+from ez_co.plugins.api import FormatSpec, normalize_formats
+
 _EMPTY_PERMISSIONS: Mapping[str, bool] = MappingProxyType({})
 _KNOWN_PERMISSIONS = frozenset({"inactive_callback"})
 
@@ -20,6 +22,8 @@ class PluginManifest:
     description: str = ""
     author: str = ""
     permissions: Mapping[str, bool] = field(default=_EMPTY_PERMISSIONS, hash=False)
+    formats: tuple[FormatSpec, ...] = ()
+    sidebar: bool = False
 
     @property
     def entry_module(self) -> str:
@@ -50,6 +54,26 @@ def parse_permissions(raw: Any) -> Mapping[str, bool]:
     if not granted:
         return _EMPTY_PERMISSIONS
     return MappingProxyType(granted)
+
+
+def parse_formats(raw: Any) -> tuple[FormatSpec, ...]:
+    """本体が読む担当形式。解釈できない要素だけなら失敗。"""
+    if raw is None:
+        return ()
+    if not isinstance(raw, list):
+        raise ValueError("manifest.formats must be an array")
+    specs = tuple(normalize_formats(raw))
+    if raw and not specs:
+        raise ValueError("manifest.formats has no valid entries")
+    return specs
+
+
+def parse_sidebar(raw: Any) -> bool:
+    if raw is None:
+        return False
+    if not isinstance(raw, bool):
+        raise ValueError("manifest.sidebar must be a bool")
+    return raw
 
 
 def parse_manifest(data: Any) -> PluginManifest:
@@ -83,4 +107,6 @@ def parse_manifest(data: Any) -> PluginManifest:
         description=str(data.get("description") or ""),
         author=str(data.get("author") or ""),
         permissions=parse_permissions(data.get("permissions")),
+        formats=parse_formats(data.get("formats")),
+        sidebar=parse_sidebar(data.get("sidebar")),
     )

@@ -14,8 +14,8 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
-from ez_co.plugins.api import HOST_API_VERSION, normalize_formats
-from ez_co.plugins.manifest import PluginManifest, parse_manifest
+from ez_co.plugins.api import HOST_API_VERSION
+from ez_co.plugins.manifest import PluginManifest, parse_formats, parse_manifest, parse_sidebar
 from ez_co.plugins.root import PluginRoot, open_plugin_source
 from ez_co.utils.language_manager import get_log_text
 
@@ -206,8 +206,8 @@ def peek_license(path: Path) -> dict[str, str] | None:
     return None
 
 
-def peek_manifest(path: Path) -> dict[str, str]:
-    """実体化せず manifest.json から id / name / version だけ読む。"""
+def peek_manifest(path: Path) -> dict:
+    """実体化せず manifest.json から id / name / version / 提供物を読む。"""
     path = Path(path)
     source = open_plugin_source(path)
     try:
@@ -224,7 +224,14 @@ def peek_manifest(path: Path) -> dict[str, str]:
         raise ValueError("manifest.id is required")
     name = str(raw.get("name") or "").strip() or path.name
     version = str(raw.get("version") or "").strip()
-    return {"id": plugin_id, "name": name, "version": version}
+    formats = parse_formats(raw.get("formats"))
+    return {
+        "id": plugin_id,
+        "name": name,
+        "version": version,
+        "formats": [[spec.extension, spec.kind.value] for spec in formats],
+        "sidebar": parse_sidebar(raw.get("sidebar")),
+    }
 
 
 def _instantiate(module: ModuleType, class_name: str, root: PluginRoot, get_text, host) -> Any:
@@ -265,6 +272,7 @@ def load_plugin(path: Path, host=None) -> tuple[PluginManifest, Any, PluginRoot,
         shared = host or PluginHost()
         if isinstance(shared, PluginHost):
             shared.set_manifest_permissions(manifest.plugin_id, manifest.permissions)
+            shared.set_manifest_provides(manifest.plugin_id, manifest.formats, manifest.sidebar)
         if isinstance(shared, ScopedPluginHost):
             scoped = shared
         elif hasattr(shared, "scoped"):
@@ -285,16 +293,9 @@ def load_plugin(path: Path, host=None) -> tuple[PluginManifest, Any, PluginRoot,
             sys.modules[prefix] = pkg
         module = importlib.import_module(f"{prefix}.{manifest.entry_module}")
         instance = _instantiate(module, manifest.entry_class, root, get_text_fn, scoped)
-        formats = []
-        if hasattr(scoped, "registered_formats"):
-            formats = list(scoped.registered_formats())
-        if not formats:
-            supported = getattr(instance, "supported_formats", None)
-            if callable(supported):
-                formats = normalize_formats(supported())
-        has_sidebar = bool(getattr(scoped, "has_pending_sidebars", lambda: False)())
+        formats = list(manifest.formats)
         has_setup = callable(getattr(instance, "setup", None))
-        if not formats and not has_sidebar and not has_setup:
+        if not formats and not manifest.sidebar and not has_setup:
             raise ValueError(get_log_text("plugin_no_formats", plugin_id=manifest.plugin_id))
         instance._ezco_formats = formats
         return manifest, instance, root, source.archive

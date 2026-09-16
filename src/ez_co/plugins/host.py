@@ -324,6 +324,8 @@ class PluginHost:
         self._scoped: dict[str, "ScopedPluginHost"] = {}
         self._config_fields: dict[str, list[ConfigField]] = {}
         self._permissions: dict[str, MappingProxyType] = {}
+        self._declared_formats: dict[str, tuple[FormatSpec, ...]] = {}
+        self._declared_sidebar: dict[str, bool] = {}
 
     def scoped(self, plugin_id: str) -> "ScopedPluginHost":
         key = str(plugin_id or "")
@@ -409,6 +411,19 @@ class PluginHost:
             except (TypeError, ValueError):
                 raw = {}
         self._permissions[key] = parse_permissions(raw)
+
+    def set_manifest_provides(self, plugin_id: str, formats=(), sidebar: bool = False) -> None:
+        """本体のロード経路だけが呼ぶ。プラグイン API には出さない。"""
+        key = str(plugin_id or "")
+        if not key:
+            return
+        if formats and isinstance(formats[0], FormatSpec):
+            specs = tuple(formats)
+        else:
+            specs = tuple(normalize_formats(formats))
+        self._declared_formats[key] = specs
+        self._declared_sidebar[key] = bool(sidebar)
+        self._formats[key] = list(specs)
 
     def has_manifest_permission(self, plugin_id: str, name: str) -> bool:
         granted = self._permissions.get(str(plugin_id))
@@ -508,16 +523,34 @@ class PluginHost:
         for event, rows in list(self._listeners.items()):
             self._listeners[event] = [item for item in rows if item[0] != plugin_id]
 
+    def _format_is_declared(self, plugin_id: str, spec: FormatSpec) -> bool:
+        return any(
+            item.extension == spec.extension and item.kind == spec.kind
+            for item in self._declared_formats.get(plugin_id, ())
+        )
+
     def _register_format(self, plugin_id: str, extension, kind) -> None:
         specs = normalize_formats([(extension, kind if not isinstance(kind, str) else parse_file_kind(kind) or kind)])
         if not specs and isinstance(kind, FileKind):
             specs = normalize_formats([(extension, kind)])
+        for spec in specs:
+            if not self._format_is_declared(plugin_id, spec):
+                raise ValueError(
+                    get_log_text(
+                        "plugin_format_not_declared",
+                        plugin_id=plugin_id,
+                        extension=spec.extension,
+                        kind=spec.kind.value,
+                    )
+                )
         bucket = self._formats.setdefault(plugin_id, [])
         for spec in specs:
             if not any(item.extension == spec.extension and item.kind == spec.kind for item in bucket):
                 bucket.append(spec)
 
     def _register_sidebar(self, plugin_id: str, sidebar_id: str, title: str, widget_or_layout, aliases=None) -> None:
+        if not self._declared_sidebar.get(plugin_id):
+            raise ValueError(get_log_text("plugin_sidebar_not_declared", plugin_id=plugin_id))
         sidebar_id = str(sidebar_id or "").strip() or "main"
         widget = self._as_widget(widget_or_layout)
         record = SidebarRegistration(plugin_id, sidebar_id, str(title or sidebar_id), widget)

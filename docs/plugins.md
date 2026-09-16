@@ -132,6 +132,8 @@ with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as zf:
 | `description` | `string` | いいえ | 説明。ホストは現状ログ以外では使わない |
 | `author` | `string` | いいえ | 作者 |
 | `permissions` | `object` | いいえ | マニフェスト権限。本体だけが読む。未知キーは無視。今は `inactive_callback`（`bool`）のみ |
+| `formats` | `array` | いいえ | 担当形式。`[[".zip", "archive"]]` または `{extension, kind}`。本体だけが読む |
+| `sidebar` | `bool` | いいえ | サイドバーを使う。widget や ID は書かない |
 
 サイドバーを登録したプラグインは、ドックが全部非表示のとき `"current_changed"` を受け取りません。非表示でも受け取りたいときだけ `permissions.inactive_callback` を `true` にします。拡張子だけのプラグインは書きません。`register_sidebar` などプラグイン API では権限を渡せません。
 
@@ -156,7 +158,20 @@ pkg.mod:MyLoader      →  src/pkg/mod.py の MyLoader
   "api_version": 1,
   "entry": "loader:FileLoader",
   "description": "Sample .zip loader.",
-  "author": "EzCo"
+  "author": "EzCo",
+  "formats": [[".zip", "archive"]]
+}
+```
+
+```json
+{
+  "id": "com.ezco.example_txt",
+  "name": "Example Text Pages",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "plugin:TextImagePlugin",
+  "formats": [[".txt", "archive"]],
+  "sidebar": true
 }
 ```
 
@@ -199,19 +214,9 @@ class FileLoader:
 | --- | --- |
 | `root` | プラグイン ZIP 内のファイル。`read_bytes` / `exists` |
 | `get_text` | 文言。`get_text("plugin.watermark")` |
-| `host` | 登録・設定・状態参照。`host.register_format` / `register_sidebar` / `register_action` / `get_config` |
+| `host` | 登録・設定・状態参照。`host.register_format`（manifest の `formats` にある組だけ） / `register_sidebar`（`sidebar: true` のときだけ） / `register_action` / `get_config` |
 
----
-
-### `supported_formats()`
-
-互換用です。新規は `__init__` で `host.register_format(extension, kind)` してください。ホストは掃引直後に `register_format` の結果を集め、無ければこのメソッドを呼びます。
-
-**戻り値:** 次のいずれかのシーケンス
-
-- `[(".zip", "archive"), (".png", "image")]`
-- `[{"extension": ".zip", "kind": "archive"}]`
-- `[{"ext": ".png", "type": "image"}]`
+担当形式は `manifest.json` の `formats` が正です。`host.register_format` はそこに書いた組だけ通します。未宣言・種別違いは読み込み失敗です。
 
 | 要素 | 説明 |
 | --- | --- |
@@ -220,8 +225,6 @@ class FileLoader:
 
 - `image`: ファイル自体を 1 枚の画像として開く
 - `archive`: 中の画像一覧をページとして開く
-
-**例外:** 空、または解釈不能な要素だけだと読み込み失敗。
 
 ---
 
@@ -292,7 +295,7 @@ class _Entry:
 
 | 操作 | 呼ばれるメソッド |
 | --- | --- |
-| プラグイン読み込み | `register_format` または `supported_formats`。UI はあとで `setup` |
+| プラグイン読み込み | `manifest.formats`。UI はあとで `setup` |
 | 画像ファイルを開く | `read_entry(path, 0)` |
 | アーカイブを開く | `list_entries` → 仮想パスを作る |
 | ページ表示／プリフェッチ | `list_entries` のあと `read_entry(path, index)` |
@@ -315,8 +318,8 @@ class _Entry:
 
 登録（`__init__` または `setup`）:
 
-- `host.register_format(extension, kind)` — `kind` は `"image"` / `"archive"`
-- `host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None)` — `QWidget` または `QLayout`。ドック化は本体。開閉アクションも自動登録され、ショートカット／ジェスチャーに出せる。メニューは `{title}`、ショートカット／ジェスチャーの表示名は `{title}サイドバー表示/非表示`。`aliases` は旧アクション ID など。権限はここへ渡さない
+- `host.register_format(extension, kind)` — `kind` は `"image"` / `"archive"`。`manifest.formats` にある組だけ。未宣言はエラー
+- `host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None)` — `QWidget` または `QLayout`。ドック化は本体。開閉アクションも自動登録され、ショートカット／ジェスチャーに出せる。メニューは `{title}`、ショートカット／ジェスチャーの表示名は `{title}サイドバー表示/非表示`。`aliases` は旧アクション ID など。権限はここへ渡さない。`manifest.sidebar` が `true` のときだけ。未宣言はエラー
 - `host.unregister_sidebar(sidebar_id)`
 - `host.register_action(action_id, label, callback, aliases=None)` — 独自アクション。ショートカット／ジェスチャーから呼ばれる
 - `host.unregister_action(action_id)`

@@ -66,4 +66,4 @@ my_plugin/   または my_plugin.zip
 └── LICENSE.md   # 任意。LICENSE.txt / LICENSE でも可。設定から表示
 ```
 
-ファイルローダーは `supported_formats`（または `host.register_format`）と `read_entry` などを実装します。サイドバーは `setup` で `host.load_ui` / `host.register_sidebar` します。開閉は自動でアクション登録されます。旧ショートカット ID を残すときは `aliases` を渡します。独自処理は `host.register_action` です。コンストラクタは `Class(root, get_text, host)` です。`ez_co` は import できません（結合事故防止であり、サンドボックスではありません）。設定上の正体は `manifest.id(ver:version)` です。ダイアログの ID 列はバージョンなしの `id` だけです。同じ `id` は同時に1つだけロードします。詳細はマニュアルを見てください。
+ファイルローダーは `manifest.json` の `formats` と `read_entry` などを実装します。サイドバーは `sidebar: true` を書いたうえで `setup` で `host.load_ui` / `host.register_sidebar` します。未宣言の登録はエラーです。開閉は自動でアクション登録されます。旧ショートカット ID を残すときは `aliases` を渡します。独自処理は `host.register_action` です。コンストラクタは `Class(root, get_text, host)` です。`ez_co` は import できません（結合事故防止であり、サンドボックスではありません）。設定上の正体は `manifest.id(ver:version)` です。ダイアログの ID 列はバージョンなしの `id` だけです。同じ `id` は同時に1つだけロードします。詳細はマニュアルを見てください。

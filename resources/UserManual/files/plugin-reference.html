@@ -36,7 +36,6 @@
                         <li><a href="#loader" class="toc-link">FileLoader</a>
                             <ul class="toc-sublist">
                                 <li><a href="#loader-init" class="toc-link">__init__</a></li>
-                                <li><a href="#supported-formats" class="toc-link">supported_formats</a></li>
                                 <li><a href="#get-file-count" class="toc-link">get_file_count</a></li>
                                 <li><a href="#list-entries" class="toc-link">list_entries</a></li>
                                 <li><a href="#read-entry" class="toc-link">read_entry</a></li>
@@ -192,6 +191,28 @@
   }
 }</pre>
                         </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">formats</span>
+                                <span class="api-field-meta">array</span>
+                                <span class="api-field-meta">任意</span>
+                            </div>
+                            <p>担当形式。本体だけが読みます。<code>[[".zip", "archive"]]</code> または <code>{extension, kind}</code>。<code>image</code> は1枚、<code>archive</code> は中身をページにします。未宣言の <code>register_format</code> はエラーです。</p>
+<pre class="api-example">{
+  "formats": [[".txt", "archive"]]
+}</pre>
+                        </div>
+                        <div class="api-field">
+                            <div class="api-field-head">
+                                <span class="api-field-name">sidebar</span>
+                                <span class="api-field-meta">bool</span>
+                                <span class="api-field-meta">任意</span>
+                            </div>
+                            <p>サイドバーを使うことだけ書きます。widget や ID は書きません。未宣言の <code>register_sidebar</code> はエラーです。</p>
+<pre class="api-example">{
+  "sidebar": true
+}</pre>
+                        </div>
 
                         <p class="api-caption">サンプル（画像ローダー）</p>
 <pre class="api-example">{
@@ -201,7 +222,8 @@
   "api_version": 1,
   "entry": "loader:FileLoader",
   "description": "Sample .png loader.",
-  "author": "Example"
+  "author": "Example",
+  "formats": [[".png", "image"]]
 }</pre>
                         <p class="api-caption">サンプル（サイドバー）</p>
 <pre class="api-example">{
@@ -211,7 +233,8 @@
   "api_version": 1,
   "entry": "plugin:MyPlugin",
   "description": "Shows info for the current folder.",
-  "author": "Example"
+  "author": "Example",
+  "sidebar": true
 }</pre>
                         <p class="api-caption">サンプル（非表示でも current_changed）</p>
 <pre class="api-example">{
@@ -222,6 +245,7 @@
   "entry": "plugin:MyPlugin",
   "description": "Shows info for the current folder.",
   "author": "Example",
+  "sidebar": true,
   "permissions": {
     "inactive_callback": true
   }
@@ -274,17 +298,6 @@ class _Entry:
     self.host = host
     host.register_format(".zip", "archive")
     host.register_config("strict", "bool", default=True, label="Strict")</pre>
-                            </div>
-                        </article>
-
-                        <article id="supported-formats" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>supported_formats() -&gt; sequence</code></div>
-                            <div class="api-body">
-                                <p>互換用。新規は <code>host.register_format</code> を使います。ホストは掃引直後に登録結果を集め、無ければこのメソッドを呼びます。</p>
-                                <p><code>image</code> は1枚、<code>archive</code> は中身をページにします。</p>
-<pre class="api-example">def supported_formats(self):
-    return [(".png", "image")]
-    # または [{"extension": ".zip", "kind": "archive"}]</pre>
                             </div>
                         </article>
 

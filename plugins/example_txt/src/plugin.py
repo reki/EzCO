@@ -4,7 +4,6 @@
     TextImagePlugin(root, get_text, host)
 
 ホストが呼ぶ必須メソッド:
-    supported_formats() -> [(".txt", "archive"), ...]
     get_file_count(path) -> int
     list_entries(path) -> [エントリ名, ...]
     read_entry(path, index) -> オブジェクト(name, data: bytes)
@@ -82,9 +81,6 @@ class TextImagePlugin:
                 label=self.get_text(key),
                 **kwargs,
             )
-
-    def supported_formats(self):
-        return [(".txt", "archive")]
 
     def get_file_count(self, file_path):
         return len(self.list_entries(file_path))

@@ -11,7 +11,6 @@
         ask_password / show_dialog / run_action。
 
 ホストが呼ぶ必須メソッド:
-    supported_formats() -> [(".zip", "archive"), ...]
     get_file_count(path) -> int
     list_entries(path) -> [エントリ名, ...]
     read_entry(path, index) -> オブジェクト(name, data: bytes)
@@ -33,9 +32,6 @@ class FileLoader:
         self.get_text = get_text
         self.host = host
         self._passwords = {}
-
-    def supported_formats(self):
-        return [(".zip", "archive")]
 
     def get_file_count(self, file_path):
         return len(self.list_entries(file_path))

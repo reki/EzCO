@@ -401,12 +401,7 @@ class PluginManager:
             if loaded is None:
                 return
             manifest, instance, _root, archive = loaded
-            formats = list(getattr(instance, "_ezco_formats", []))
-            if not formats:
-                supported = getattr(instance, "supported_formats", None)
-                if callable(supported):
-                    from ez_co.plugins.api import normalize_formats
-                    formats = normalize_formats(supported())
+            formats = list(manifest.formats) or list(getattr(instance, "_ezco_formats", []))
             plugin = LoadedPlugin(
                 manifest=manifest,
                 instance=instance,

@@ -87,6 +87,8 @@ def write_dir_plugin(
         "api_version": 1,
         "entry": "plugin:ProbePlugin",
     }
+    if "formats" not in body:
+        body["formats"] = [[extension, kind]]
     if manifest_extra:
         body.update(manifest_extra)
     (root / "manifest.json").write_text(json.dumps(body), encoding="utf-8")
@@ -101,8 +103,6 @@ def write_dir_plugin(
                 "class ProbePlugin:",
                 "    def __init__(self, root, get_text, host):",
                 "        self.root = root",
-                f"    def supported_formats(self):",
-                f"        return [({extension!r}, {kind!r})]",
                 "    def setup(self):",
                 "        if 'COUNTER' in globals():",
                 "            from pathlib import Path",

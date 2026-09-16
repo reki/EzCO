@@ -950,6 +950,8 @@
     "plugin_api_version_unsupported": "Unsupported plugin API version: {plugin_id} api={api_version} host={host_api_version}",
     "plugin_import_blocked": "Plugin import is not allowed: {name} ({plugin_id})",
     "plugin_no_formats": "Plugin registered neither formats nor a sidebar: {plugin_id}",
+    "plugin_format_not_declared": "Format is not declared in the manifest: {plugin_id} {extension} {kind}",
+    "plugin_sidebar_not_declared": "Manifest has no sidebar: {plugin_id}",
     "plugin_setup_failed": "Plugin setup failed: {plugin_id} {error}",
     "plugin_teardown_failed": "Plugin teardown failed: {plugin_id} {error}",
     "plugin_sidebar_mount_failed": "Failed to mount sidebar: {error}",
