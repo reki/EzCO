@@ -8,7 +8,7 @@
 | バージョン | `1.0.0` |
 | 種別 | ファイル（画像） |
 | ZIP | `dist-sample-plugins/example_png-1.0.0.zip` |
-| 入口 | `loader:FileLoader` |
+| 入口 | `plugin:FileLoader` |
 | LICENSE | ルートの `LICENSE`（拡張子なし・プレーンテキスト表示の確認用） |
 
 ## 使い方

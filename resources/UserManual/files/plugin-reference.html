@@ -106,7 +106,7 @@
 <pre class="api-example">my_plugin.zip
 ├── manifest.json
 ├── src/                 # import ルート
-│   └── loader.py
+│   └── plugin.py
 ├── langs/               # 任意 ja.json / en.json
 ├── resources/           # 任意。root.read_bytes
 └── LICENSE.md           # 任意。設定のライセンス。.md → .txt → 無印</pre>
@@ -162,7 +162,7 @@
                                 <span class="api-field-meta">string</span>
                                 <span class="api-field-meta">必須</span>
                             </div>
-                            <p><code>モジュール:クラス</code> です。<code>src/</code> を import ルートとして読みます。例: <code>loader:FileLoader</code> は <code>src/loader.py</code> の <code>FileLoader</code>。</p>
+                            <p><code>モジュール:クラス</code> です。<code>src/</code> を import ルートとして読みます。例: <code>plugin:FileLoader</code> は <code>src/plugin.py</code> の <code>FileLoader</code>。リポジトリのサンプルと新規プラグインの入口は <code>src/plugin.py</code> に揃えます。</p>
                         </div>
                         <div class="api-field">
                             <div class="api-field-head">
@@ -223,7 +223,7 @@
   "name": "Example PNG Loader",
   "version": "1.0.0",
   "api_version": 1,
-  "entry": "loader:FileLoader",
+  "entry": "plugin:FileLoader",
   "description": "Sample .png loader.",
   "author": "Example",
   "formats": [[".png", "image"]]
@@ -271,7 +271,7 @@
                     <section id="loader" class="config-section">
                         <h3>FileLoader</h3>
                         <p>ホストが <code>manifest.entry</code> のクラスを生成し、決まった名前のメソッドを呼びます。<code>ez_co.plugins.api</code> は import しません。サイドバーだけのプラグインでも同じコンストラクタです。</p>
-                        <p class="api-caption">画像ローダーの最小例（<code>src/loader.py</code>）</p>
+                        <p class="api-caption">画像ローダーの最小例（<code>src/plugin.py</code>）</p>
 <pre class="api-example">class FileLoader:
     def __init__(self, root, get_text, host):
         self.root = root

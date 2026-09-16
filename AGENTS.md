@@ -14,10 +14,12 @@
 ## 守ること
 
 - 既存設計を見てから変える。頼まれていない大規模リファクタはしない
+- 同じ役割の提供物は横並びで名前と置き場を揃える
 - コミットと push は指示があるまでしない
 - GUI 操作と `QWidget` の変更は GUI スレッド。worker から触らない
 - `FileHandler` を変えるときは cache / prefetch / session を一緒に見る
 - プラグインはコールバック側。`import ez_co` しない。本体 Config を上書きしない
+- プラグインの入口は `src/plugin.py`
 - 本体がゲートする力は `manifest.permissions`。形式は `formats`、サイドバーは `sidebar`
 - テストは 1ソース n ファイル。本番の `%APPDATA%` とリポジトリの `config.db` は触らない
 - クラッシュは推測で直さない。先に呼び出しとスレッドが残る調査ログ

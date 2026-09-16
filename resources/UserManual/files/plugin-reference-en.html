@@ -106,7 +106,7 @@
 <pre class="api-example">my_plugin.zip
 ├── manifest.json
 ├── src/                 # import root
-│   └── loader.py
+│   └── plugin.py
 ├── langs/               # optional ja.json / en.json
 ├── resources/           # optional; root.read_bytes
 └── LICENSE.md           # optional. Settings → License. .md then .txt then bare</pre>
@@ -162,7 +162,7 @@
                                 <span class="api-field-meta">string</span>
                                 <span class="api-field-meta">required</span>
                             </div>
-                            <p><code>module:Class</code>. <code>src/</code> is the import root. Example: <code>loader:FileLoader</code> loads <code>FileLoader</code> from <code>src/loader.py</code>.</p>
+                            <p><code>module:Class</code>. <code>src/</code> is the import root. Example: <code>plugin:FileLoader</code> loads <code>FileLoader</code> from <code>src/plugin.py</code>. Samples and new plugins in this repo use <code>src/plugin.py</code>.</p>
                         </div>
                         <div class="api-field">
                             <div class="api-field-head">
@@ -223,7 +223,7 @@
   "name": "Example PNG Loader",
   "version": "1.0.0",
   "api_version": 1,
-  "entry": "loader:FileLoader",
+  "entry": "plugin:FileLoader",
   "description": "Sample .png loader.",
   "author": "Example",
   "formats": [[".png", "image"]]
@@ -271,7 +271,7 @@
                     <section id="loader" class="config-section">
                         <h3>FileLoader</h3>
                         <p>The host constructs the class from <code>manifest.entry</code> and calls fixed method names. Do not import <code>ez_co.plugins.api</code>. Sidebar-only plugins use the same constructor.</p>
-                        <p class="api-caption">Minimal image loader (<code>src/loader.py</code>)</p>
+                        <p class="api-caption">Minimal image loader (<code>src/plugin.py</code>)</p>
 <pre class="api-example">class FileLoader:
     def __init__(self, root, get_text, host):
         self.root = root

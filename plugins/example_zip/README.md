@@ -8,7 +8,7 @@
 | バージョン | `1.1.0` |
 | 種別 | ファイル（アーカイブ） |
 | ZIP | `dist-sample-plugins/example_zip-1.1.0.zip` |
-| 入口 | `loader:FileLoader` |
+| 入口 | `plugin:FileLoader` |
 | LICENSE | ルートの `LICENSE.txt`（プレーンテキスト表示の確認用） |
 
 ## 使い方

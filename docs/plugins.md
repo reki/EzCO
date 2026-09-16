@@ -53,7 +53,7 @@ ZIP または展開フォルダのルート直下に次を置きます。余分�
 my_plugin.zip  または  my_plugin/
 ├── manifest.json          # 必須
 ├── src/                   # 必須。import ルート
-│   ├── loader.py          # entry で指定するモジュール
+│   ├── plugin.py          # entry。サンプルと新規はここ
 │   └── mark.py            # 任意のサブモジュール
 ├── langs/                 # 任意。ja.json / en.json
 │   ├── ja.json
@@ -128,11 +128,11 @@ my_plugin.zip  または  my_plugin/
 ### `entry` の解釈
 
 ```
-loader:FileLoader     →  src/loader.py の FileLoader
+plugin:FileLoader     →  src/plugin.py の FileLoader
 pkg.mod:MyLoader      →  src/pkg/mod.py の MyLoader
 ```
 
-`モジュール:クラス` が必須です。クラス名の省略や、ホスト側でのクラス探索はありません。
+`モジュール:クラス` が必須です。クラス名の省略や、ホスト側でのクラス探索はありません。リポジトリのサンプルと新規プラグインの入口は `src/plugin.py`（`entry` は `plugin:クラス名`）に揃えます。ホストは他のモジュール名も受け付けますが、同じ役割のファイル名をサンプル間で混ぜません。
 
 `.py` 接尾辞と `/` 区切りも受け付け、内部でドットパスに正規化します。
 
@@ -144,7 +144,7 @@ pkg.mod:MyLoader      →  src/pkg/mod.py の MyLoader
   "name": "Example ZIP Loader",
   "version": "1.1.0",
   "api_version": 1,
-  "entry": "loader:FileLoader",
+  "entry": "plugin:FileLoader",
   "description": "Sample .zip loader.",
   "author": "EzCo",
   "formats": [[".zip", "archive"]]
@@ -666,7 +666,7 @@ UI は「プラグイン設定」ダイアログです。ON/OFF と読み込み�
 | `plugins/config_types/` | 確認用。設定種別を全部登録し、保存値をサイドバーに出す |
 | `plugins/example_filter/` | 確認用。表示フィルター。色とラベルを重ね、文字サイズを `int_range`（`sync` と `reload`）で変える |
 
-ソースの `loader.py` / `plugin.py` 先頭にホスト契約のコメントがあります。確認するときはプラグイン設定で当該拡張子の読み込み方式をサンプル側にして OK / 適用してください。フィルターはプラグインを ON にしたあと、フィルターメニューで有効にしてください。開いているファイルはすぐ再読み込みされます。新しく ZIP やフォルダを置いた直後だけ再起動してください。
+ソースの `plugin.py` 先頭にホスト契約のコメントがあります。確認するときはプラグイン設定で当該拡張子の読み込み方式をサンプル側にして OK / 適用してください。フィルターはプラグインを ON にしたあと、フィルターメニューで有効にしてください。開いているファイルはすぐ再読み込みされます。新しく ZIP やフォルダを置いた直後だけ再起動してください。
 
 色と「プラグイン読み込み表示」「フィルター加工表示」はサンプル固有です。本番のローダーは画像バイトをそのまま返し、本番のフィルターは必要な加工だけにしてください。
 

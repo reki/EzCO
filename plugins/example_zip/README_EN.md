@@ -8,7 +8,7 @@ Sample archive plugin. Opens `.zip` through the plugin and shows images inside a
 | Version | `1.1.0` |
 | Kind | File (archive) |
 | ZIP | `dist-sample-plugins/example_zip-1.1.0.zip` |
-| Entry | `loader:FileLoader` |
+| Entry | `plugin:FileLoader` |
 | LICENSE | Root `LICENSE.txt` (plain-text display check) |
 
 ## Usage

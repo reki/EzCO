@@ -8,7 +8,7 @@ Sample image plugin. Opens `.png` through the plugin and overlays a color tint p
 | Version | `1.0.0` |
 | Kind | File (image) |
 | ZIP | `dist-sample-plugins/example_png-1.0.0.zip` |
-| Entry | `loader:FileLoader` |
+| Entry | `plugin:FileLoader` |
 | LICENSE | Root `LICENSE` (no extension; plain-text display check) |
 
 ## Usage

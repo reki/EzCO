@@ -3,7 +3,7 @@
   "name": "Example PNG Loader",
   "version": "1.0.0",
   "api_version": 1,
-  "entry": "loader:FileLoader",
+  "entry": "plugin:FileLoader",
   "description": "Sample .png loader. Overlays color and the Japanese label プラグイン読み込み表示 on purpose so it is obvious the plugin handled the file.",
   "author": "EzCo",
   "formats": [[".png", "image"]]

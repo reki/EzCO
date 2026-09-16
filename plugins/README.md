@@ -50,11 +50,11 @@
 my_plugin/   または my_plugin.zip
 ├── manifest.json
 ├── src/
-│   └── loader.py
+│   └── plugin.py
 ├── langs/
     ├── ja.json
     └── en.json
 └── LICENSE.md   # 任意。LICENSE.txt / LICENSE でも可。設定から表示
 ```
 
-ファイルローダーは `manifest.json` の `formats` と `read_entry` などを実装します。サイドバーは `sidebar: true` を書いたうえで `setup` で `host.load_ui` / `host.register_sidebar` します。表示フィルターは `permissions.filter: true` を書いたうえで `setup` で `host.register_filter` します。未宣言の登録はエラーです。開閉は自動でアクション登録されます。旧ショートカット ID を残すときは `aliases` を渡します。独自処理は `host.register_action` です。コンストラクタは `Class(root, get_text, host)` です。`ez_co` は import できません（結合事故防止であり、サンドボックスではありません）。設定上の正体は `manifest.id(ver:version)` です。ダイアログの ID 列はバージョンなしの `id` だけです。同じ `id` は同時に1つだけロードします。詳細はマニュアルを見てください。
+ファイルローダーは `manifest.json` の `formats` と `read_entry` などを実装します。入口は `src/plugin.py` で、`entry` は `plugin:クラス名` です。サイドバーは `sidebar: true` を書いたうえで `setup` で `host.load_ui` / `host.register_sidebar` します。表示フィルターは `permissions.filter: true` を書いたうえで `setup` で `host.register_filter` します。未宣言の登録はエラーです。開閉は自動でアクション登録されます。旧ショートカット ID を残すときは `aliases` を渡します。独自処理は `host.register_action` です。コンストラクタは `Class(root, get_text, host)` です。`ez_co` は import できません（結合事故防止であり、サンドボックスではありません）。設定上の正体は `manifest.id(ver:version)` です。ダイアログの ID 列はバージョンなしの `id` だけです。同じ `id` は同時に1つだけロードします。詳細はマニュアルを見てください。
