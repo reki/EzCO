@@ -1,6 +1,6 @@
 [project]
 name = "ez_co"
-version = "1.1.0"
+version = "1.1.1"
 description = "お手軽なコミックビューワー"
 license = {text = "MIT"}
 authors = [
@@ -48,7 +48,7 @@ pack-plugins = "tooling.pack_plugins_cli:main"
 
 [tool.poetry]
 name = "ez_co"
-version = "1.1.0"
+version = "1.1.1"
 description = "お手軽なコミックビューワー"
 authors = ["reki <old.time.missing@gmail.com>"]
 readme = "README.md"
