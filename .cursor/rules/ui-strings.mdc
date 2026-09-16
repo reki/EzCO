@@ -1,0 +1,13 @@
+---
+description: UI 文言は langs JSON。画面に %APPDATA% を出さない。About の説明は英語のみ。
+globs: src/ez_co/resources/langs/**/*.json,src/ez_co/ui/**/*.py,src/ez_co/resources/about/**
+alwaysApply: false
+---
+
+# 文言と表示
+
+- メニュー名・ダイアログ・設定の表示文字列は `src/ez_co/resources/langs/ja.json` と `en.json` で管理する。コードへ日本語／英語を直書きしない
+- 新しいキーは ja / en の両方に足す。`get_text` / `get_log_text` のプレースホルダと kwargs を一致させる
+- UI には `%APPDATA%` や `AppData` を出さない。場所の名前は「このユーザーのデータフォルダ」
+- About / アプリ説明（`resources/about/info.json` の `description`）は言語を分けず英語のみ
+- プラグイン向け `get_text` は、同じキーならプラグイン内 `langs` を本体より優先する
