@@ -379,7 +379,7 @@ class _Entry:
                                     <tbody>
                                         <tr><td><code>root</code></td><td>Files in the plugin: <code>read_bytes</code> / <code>exists</code></td></tr>
                                         <tr><td><code>get_text</code></td><td>Strings</td></tr>
-                                        <tr><td><code>host</code></td><td>Register, config, state</td></tr>
+                                        <tr><td><code>host</code></td><td>Register, config, state. Call methods as <code>self.host.ask_password</code>. Do not use <code>getattr</code></td></tr>
                                     </tbody>
                                 </table>
 <pre class="api-example">def __init__(self, root, get_text, host):
@@ -444,7 +444,7 @@ def teardown(self):
 
                     <section id="host" class="config-section">
                         <h3>host</h3>
-                        <p>Third constructor argument. The same names are also injected as builtins. Plugins do not call <code>bind</code>. Register APIs pair with the manifest.</p>
+                        <p>Third constructor argument. The same names are also injected as builtins. Plugins do not call <code>bind</code>. Register APIs pair with the manifest. Call methods as <code>self.host.ask_password</code>. Do not probe with <code>getattr</code> / <code>hasattr</code> / <code>setattr</code>. Missing APIs belong on host.</p>
                         <table>
                             <thead><tr><th>API</th><th>Declare first in the manifest</th></tr></thead>
                             <tbody>

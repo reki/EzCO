@@ -21,3 +21,4 @@ alwaysApply: false
 - 同じフォルダでも商品 ID が変わったら Web 取得の cache を共用しない。古い fetch 結果は捨てる。動いている QThread は捨てない
 - 担当形式は `manifest.formats`。サイドバーは `sidebar: true` のうえ `register_sidebar`。`permissions` と混ぜない。未宣言の `register_sidebar` / `register_filter` は `PluginRegistrationDenied`。プラグインは使わない。設定画面の状態は「失敗: 権限がない登録がありました」
 - 非表示の `current_changed` は本体が止める。対象はサイドバーを登録したプラグイン。非表示でも受け取りたいときだけ `permissions.inactive_callback`
+- `host` のメソッドと属性は `self.host.ask_password` のように直接書く。`getattr` / `hasattr` / `setattr` で探さない。足りないものは host に足す

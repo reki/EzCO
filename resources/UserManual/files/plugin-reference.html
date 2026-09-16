@@ -379,7 +379,7 @@ class _Entry:
                                     <tbody>
                                         <tr><td><code>root</code></td><td>プラグイン内ファイル。<code>read_bytes</code> / <code>exists</code></td></tr>
                                         <tr><td><code>get_text</code></td><td>文言</td></tr>
-                                        <tr><td><code>host</code></td><td>登録・設定・状態</td></tr>
+                                        <tr><td><code>host</code></td><td>登録・設定・状態。メソッドは <code>self.host.ask_password</code> のように直接呼ぶ。<code>getattr</code> は使わない</td></tr>
                                     </tbody>
                                 </table>
 <pre class="api-example">def __init__(self, root, get_text, host):
@@ -444,7 +444,7 @@ def teardown(self):
 
                     <section id="host" class="config-section">
                         <h3>host</h3>
-                        <p>コンストラクタ第 3 引数。同じ名前はモジュール組み込みにも渡ります。プラグインから <code>bind</code> は呼びません。登録 API はマニフェストの宣言と対です。</p>
+                        <p>コンストラクタ第 3 引数。同じ名前はモジュール組み込みにも渡ります。プラグインから <code>bind</code> は呼びません。登録 API はマニフェストの宣言と対です。メソッドは <code>self.host.ask_password</code> のように直接呼びます。<code>getattr</code> / <code>hasattr</code> / <code>setattr</code> で探さないでください。足りない API は host に足します。</p>
                         <table>
                             <thead><tr><th>API</th><th>先にマニフェストへ</th></tr></thead>
                             <tbody>

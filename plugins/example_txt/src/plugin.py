@@ -197,10 +197,15 @@ class TextImagePlugin:
             font_box.blockSignals(True)
             font_box.setCurrentFont(_qfont(resolved.font_family, resolved.font_size))
             font_box.blockSignals(False)
-            for key in ("font_size", "page_width", "page_height", "margin"):
+            for key, value in (
+                ("font_size", resolved.font_size),
+                ("page_width", resolved.page_width),
+                ("page_height", resolved.page_height),
+                ("margin", resolved.margin),
+            ):
                 box = self._fields[key]
                 box.blockSignals(True)
-                box.setValue(getattr(resolved, key) if key != "font_size" else resolved.font_size)
+                box.setValue(value)
                 box.blockSignals(False)
             self._paint_color_button(self._fields["text_color"], resolved.text_color)
             self._paint_color_button(self._fields["bg_color"], resolved.bg_color)

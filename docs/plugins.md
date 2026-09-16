@@ -334,7 +334,7 @@ class _Entry:
 | `host` | `self.host.ask_password(...)` |
 | `root` | `self.root.read_bytes("resources/icon.png")` |
 
-同じ名前はモジュールの組み込みとしても渡します。モジュール先頭の関数から `get_text(...)` や `host.ask_password(...)` と書けます。`root` や組み込みから別経路を探さないでください。
+同じ名前はモジュールの組み込みとしても渡します。モジュール先頭の関数から `get_text(...)` や `host.ask_password(...)` と書けます。`root` や組み込みから別経路を探さないでください。`host` のメソッドは `self.host.ask_password` のように直接呼びます。`getattr` / `hasattr` / `setattr` で有無を見ません。足りない API は host に足します。
 
 登録（`__init__` または `setup`）:
 
