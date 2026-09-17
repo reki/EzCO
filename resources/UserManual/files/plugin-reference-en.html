@@ -240,9 +240,9 @@
                                 <span class="api-field-meta">array</span>
                                 <span class="api-field-meta">optional</span>
                             </div>
-                            <p>Extensions this plugin handles. The host reads them; this is the source of truth. Use <code>[[".zip", "archive"]]</code> or <code>{extension, kind}</code>. <code>image</code> is one page; <code>archive</code> lists inner images.</p>
+                            <p>Extensions this plugin handles. The host reads them; this is the source of truth. Use <code>[[".zip", "archive"]]</code> or <code>{ext, kind}</code>. <code>ext</code> is a string or an array. <code>extension</code> / <code>type</code> are not read. <code>image</code> is one page; <code>archive</code> lists inner images.</p>
 <pre class="api-example">{
-  "formats": [[".txt", "archive"]]
+  "formats": [[[".txt", ".log"], "archive"]]
 }</pre>
                         </div>
                         <div class="api-field">
@@ -313,7 +313,7 @@
   "version": "1.0.0",
   "api_version": 1,
   "entry": "plugin:TextImagePlugin",
-  "formats": [[".txt", "archive"]],
+  "formats": [[[".txt", ".log"], "archive"]],
   "sidebar": true
 }</pre>
                     </section>

@@ -240,9 +240,9 @@
                                 <span class="api-field-meta">array</span>
                                 <span class="api-field-meta">任意</span>
                             </div>
-                            <p>担当する拡張子と種別。本体だけが読み、これが正です。<code>[[".zip", "archive"]]</code> または <code>{extension, kind}</code>。<code>image</code> は1枚、<code>archive</code> は中身をページにします。</p>
+                            <p>担当する拡張子と種別。本体だけが読み、これが正です。<code>[[".zip", "archive"]]</code> または <code>{ext, kind}</code>。<code>ext</code> は string または配列。<code>extension</code> / <code>type</code> は読みません。<code>image</code> は1枚、<code>archive</code> は中身をページにします。</p>
 <pre class="api-example">{
-  "formats": [[".txt", "archive"]]
+  "formats": [[[".txt", ".log"], "archive"]]
 }</pre>
                         </div>
                         <div class="api-field">
@@ -313,7 +313,7 @@
   "version": "1.0.0",
   "api_version": 1,
   "entry": "plugin:TextImagePlugin",
-  "formats": [[".txt", "archive"]],
+  "formats": [[[".txt", ".log"], "archive"]],
   "sidebar": true
 }</pre>
                     </section>

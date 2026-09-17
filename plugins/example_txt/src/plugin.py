@@ -7,8 +7,9 @@
     list_entries(path) -> [エントリ名, ...]
     read_entry(path, index) -> オブジェクト(name, data: bytes)
 
-.txt をアーカイブとして開き、折り返した本文を PNG ページにする。
+.txt / .log をアーカイブとして開き、折り返した本文を PNG ページにする。
 サイドバーの変更は即時反映し、今のページの先頭文字から再分割する。
+担当拡張子は manifest.formats と同じ並びの _SOURCE_SUFFIXES。
 """
 import os
 import threading
@@ -39,6 +40,7 @@ _DEFAULTS = {
 _INT_KEYS = ("font_size", "page_width", "page_height", "margin")
 _COLOR_KEYS = ("text_color", "bg_color")
 _DEBOUNCE_MS = 150
+_SOURCE_SUFFIXES = (".txt", ".log")
 
 
 class TextImagePlugin:
@@ -439,7 +441,12 @@ def _mtime(path: str) -> float:
         return -1
 
 
-def _txt_path(raw) -> str | None:
+def _has_source_suffix(name: str, suffixes=_SOURCE_SUFFIXES) -> bool:
+    lowered = name.lower()
+    return any(lowered.endswith(suffix) for suffix in suffixes)
+
+
+def _txt_path(raw, suffixes=_SOURCE_SUFFIXES) -> str | None:
     if not raw:
         return None
     value = str(raw)
@@ -451,9 +458,9 @@ def _txt_path(raw) -> str | None:
                 break
         if len(left) >= 3 and left[0] == "/" and left[2] == ":":
             left = left[1:]
-        if left.lower().endswith(".txt"):
+        if _has_source_suffix(left, suffixes):
             return left.replace("/", os.sep)
-    if value.lower().endswith(".txt"):
+    if _has_source_suffix(value, suffixes):
         return value
     return None
 

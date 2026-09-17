@@ -76,23 +76,44 @@ def parse_file_kind(value: Union[str, FileKind]) -> Optional[FileKind]:
     return None
 
 
+def _ext_list(raw) -> list:
+    if isinstance(raw, (list, tuple)):
+        return list(raw)
+    if raw is None:
+        return []
+    return [raw]
+
+
 def normalize_formats(raw) -> list[FormatSpec]:
     formats: list[FormatSpec] = []
+    seen: set[tuple[str, FileKind]] = set()
     if not raw:
         return formats
     for item in raw:
-        extension = ""
+        extensions = []
         kind = None
         if isinstance(item, FormatSpec):
-            formats.append(FormatSpec(normalize_extension(item.extension), item.kind))
-            continue
-        if isinstance(item, (tuple, list)) and len(item) >= 2:
-            extension = str(item[0])
+            extensions = [item.extension]
+            kind = item.kind
+        elif isinstance(item, (tuple, list)) and len(item) >= 2:
+            first = item[0]
             kind = parse_file_kind(item[1])
+            if isinstance(first, (list, tuple)):
+                extensions = list(first)
+            else:
+                extensions = [first]
         elif isinstance(item, dict):
-            extension = str(item.get("extension") or item.get("ext") or "")
-            kind = parse_file_kind(item.get("kind") or item.get("type"))
-        if not extension or kind is None:
+            extensions = _ext_list(item.get("ext"))
+            kind = parse_file_kind(item.get("kind"))
+        if kind is None:
             continue
-        formats.append(FormatSpec(normalize_extension(extension), kind))
+        for extension in extensions:
+            normalized = normalize_extension(str(extension) if extension is not None else "")
+            if not normalized:
+                continue
+            key = (normalized, kind)
+            if key in seen:
+                continue
+            seen.add(key)
+            formats.append(FormatSpec(normalized, kind))
     return formats

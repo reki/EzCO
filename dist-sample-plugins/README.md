@@ -10,7 +10,7 @@
 | --- | --- |
 | `example_png-1.0.0.zip` | `.png` をプラグイン経由で開く確認用。ルートは `LICENSE`（拡張子なし） |
 | `example_zip-1.1.0.zip` | `.zip` をプラグイン経由で開く確認用。ルートは `LICENSE.txt` |
-| `example_txt-1.0.0.zip` | `.txt` をページ画像として開く。ルートは `LICENSE.md` |
+| `example_txt-1.0.0.zip` | `.txt` / `.log` をページ画像として開く。ルートは `LICENSE.md` |
 | `product_info-1.0.0.zip` | 商品情報サイドバー。LICENSE なし |
 | `error_setup-1.0.0.zip` | `setup()` で例外を出す確認用。LICENSE 3種あり、表示は md |
 | `error_register-1.0.0.zip` | マニフェストに無い `register_sidebar`。状態は「失敗: 権限がない登録がありました」 |

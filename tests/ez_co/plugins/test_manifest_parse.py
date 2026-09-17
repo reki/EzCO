@@ -114,7 +114,7 @@ def test_parse_manifest_reads_formats_and_sidebar():
     from ez_co.plugins.api import FileKind
 
     manifest = parse_manifest(
-        _valid(formats=[[".TXT", "arch"], {"ext": "png", "type": "image"}], sidebar=True)
+        _valid(formats=[[".TXT", "arch"], {"ext": "png", "kind": "image"}], sidebar=True)
     )
     assert [(item.extension, item.kind) for item in manifest.formats] == [
         (".txt", FileKind.ARCHIVE),
@@ -123,11 +123,23 @@ def test_parse_manifest_reads_formats_and_sidebar():
     assert manifest.sidebar is True
 
 
+def test_parse_manifest_expands_format_ext_list():
+    from ez_co.plugins.api import FileKind
+
+    manifest = parse_manifest(_valid(formats=[[[".txt", ".log"], "archive"]]))
+    assert [(item.extension, item.kind) for item in manifest.formats] == [
+        (".txt", FileKind.ARCHIVE),
+        (".log", FileKind.ARCHIVE),
+    ]
+
+
 def test_parse_manifest_rejects_invalid_formats():
     with pytest.raises(ValueError, match="manifest.formats"):
         parse_manifest(_valid(formats="zip"))
     with pytest.raises(ValueError, match="manifest.formats"):
         parse_manifest(_valid(formats=[{"no": "kind"}]))
+    with pytest.raises(ValueError, match="manifest.formats"):
+        parse_manifest(_valid(formats=[{"extension": ".txt", "type": "archive"}]))
 
 
 def test_parse_manifest_rejects_invalid_sidebar():

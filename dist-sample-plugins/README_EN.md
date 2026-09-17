@@ -10,7 +10,7 @@ For development, use the unpacked folders under `plugins/` in the repo. Point th
 | --- | --- |
 | `example_png-1.0.0.zip` | Opens `.png` through a plugin. Root file is `LICENSE` (no extension) |
 | `example_zip-1.1.0.zip` | Opens `.zip` through a plugin. Root file is `LICENSE.txt` |
-| `example_txt-1.0.0.zip` | Renders `.txt` as image pages. Root file is `LICENSE.md` |
+| `example_txt-1.0.0.zip` | Renders `.txt` / `.log` as image pages. Root file is `LICENSE.md` |
 | `product_info-1.0.0.zip` | Product info sidebar. No LICENSE |
 | `error_setup-1.0.0.zip` | Raises in `setup()`. All three LICENSE files; viewer shows md |
 | `error_register-1.0.0.zip` | Calls `register_sidebar` without the manifest flag. Status is "Failed: A registration without permission" |

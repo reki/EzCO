@@ -131,7 +131,7 @@ my_plugin.zip  または  my_plugin/
 | `description` | `string` | いいえ | 説明。ホストは現状ログ以外では使わない |
 | `author` | `string` | いいえ | 作者 |
 | `permissions` | `object` | いいえ | マニフェスト権限。本体だけが読む。詳細は下 |
-| `formats` | `array` | いいえ | 担当形式。これが正。`[[".zip", "archive"]]` または `{extension, kind}` |
+| `formats` | `array` | いいえ | 担当形式。これが正。`[[".zip", "archive"]]` または `{ext, kind}`。`ext` は string または配列。`extension` / `type` は読まない |
 | `sidebar` | `bool` | いいえ | サイドバーを使う宣言。widget や ID は書かない。実体は `register_sidebar` |
 
 ### マニフェスト権限
@@ -176,7 +176,7 @@ pkg.mod:MyLoader      →  src/pkg/mod.py の MyLoader
   "version": "1.0.0",
   "api_version": 1,
   "entry": "plugin:TextImagePlugin",
-  "formats": [[".txt", "archive"]],
+  "formats": [[[".txt", ".log"], "archive"]],
   "sidebar": true
 }
 ```
@@ -239,8 +239,8 @@ class FileLoader:
 
 | 要素 | 説明 |
 | --- | --- |
-| 拡張子 | `.` 無しでもよい。内部で `.png` に正規化 |
-| 種別 | `"image"` / `"img"` または `"archive"` / `"arch"` |
+| 拡張子 | `.` 無しでもよい。内部で `.png` に正規化。オブジェクトは `ext`、配列は第1要素。どちらも string または配列 |
+| 種別 | `"image"` / `"img"` または `"archive"` / `"arch"`。オブジェクトは `kind`、配列は第2要素 |
 
 - `image`: ファイル自体を 1 枚の画像として開く
 - `archive`: 中の画像一覧をページとして開く
@@ -677,7 +677,7 @@ UI は「プラグイン設定」ダイアログです。ON/OFF と読み込み�
 | --- | --- |
 | `plugins/example_png/` | `.png` を `image` として読む。色重ねは確認用。ZIP は `dist-sample-plugins/` |
 | `plugins/example_zip/` | `.zip` を `archive` として読む。パスワードダイアログの呼び方も含む |
-| `plugins/example_txt/` | `.txt` を `archive` として読む。本文をページ画像にする。サイドバーで字体・色・縦読み／横読みを即時反映 |
+| `plugins/example_txt/` | `.txt` / `.log` を `archive` として読む。本文をページ画像にする。サイドバーで字体・色・縦読み／横読みを即時反映 |
 | `plugins/product_info/` | 商品情報サイドバー。`resources/sidebar.ui` を `load_ui` で読む。`info.json` が無くフォルダ／ファイル名が DLsite / DMM 番号なら、標準ライブラリだけで非同期取得（ディスクには書かない。設定で OFF 可） |
 | `plugins/config_types/` | 確認用。設定種別を全部登録し、保存値をサイドバーに出す |
 | `plugins/example_filter/` | 確認用。表示フィルター。色とラベルを重ね、文字サイズを `int_range`（`sync` と `reload`）で変える |
