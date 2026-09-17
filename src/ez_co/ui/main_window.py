@@ -797,6 +797,7 @@ class MainWindow(QMainWindow):
         manager = get_plugin_manager()
         if getattr(manager, "_loaded", False):
             manager.activate_ui(self.config)
+        self.refresh_plugin_language()
         self.rebuild_menu()
         self.setup_shortcuts()
         if hasattr(self, "bookmark_toolbar"):
@@ -811,6 +812,12 @@ class MainWindow(QMainWindow):
             self._update_image_list_dialog()
             self._update_image_slide_sidebar()
         self._restore_dock_state()
+
+    def refresh_plugin_language(self):
+        """アプリ言語変更後、プラグインの表示名と任意 hook だけ更新する。setup は呼ばない。"""
+        from ez_co.plugins.manager import get_plugin_manager
+
+        get_plugin_manager().refresh_language(self.config)
 
     def setup_toolbars(self):
         """ツールバーの設定"""
@@ -1184,7 +1191,12 @@ class MainWindow(QMainWindow):
         from ez_co.plugins.manager import get_plugin_manager
         host = get_plugin_manager().host
         for record in get_filter_registry().iter():
-            title = get_text("ui.filter_basic") if record.public_id == BUILTIN_FILTER_ID else record.title
+            if record.public_id == BUILTIN_FILTER_ID:
+                title = get_text("ui.filter_basic")
+            elif record.plugin_id:
+                title = host.expand_text(record.plugin_id, record.title)
+            else:
+                title = record.title
             submenu = menu.addMenu(title or record.public_id)
             enable = QAction(get_text("ui.filter_enable"), self)
             enable.setCheckable(True)

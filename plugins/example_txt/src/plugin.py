@@ -38,8 +38,6 @@ _DEFAULTS = {
     "writing": HORIZONTAL,
     "charset": "utf-8",
 }
-_INT_KEYS = ("font_size", "page_width", "page_height", "margin")
-_COLOR_KEYS = ("text_color", "bg_color")
 _DEBOUNCE_MS = 150
 _SOURCE_SUFFIXES = (".txt", ".log")
 
@@ -63,32 +61,7 @@ class TextImagePlugin:
         self.root = root
         self.get_text = get_text
         self.host = host
-        for key, default in _DEFAULTS.items():
-            if key in _INT_KEYS:
-                value_type = "int"
-            elif key in _COLOR_KEYS:
-                value_type = "color"
-            elif key == "font_family":
-                value_type = "font"
-            elif key == "writing":
-                value_type = "choice"
-            elif key == "charset":
-                value_type = "charset"
-            else:
-                value_type = "string"
-            kwargs = {}
-            if key == "writing":
-                kwargs["choices"] = [
-                    (HORIZONTAL, self.get_text("writing_horizontal")),
-                    (VERTICAL, self.get_text("writing_vertical")),
-                ]
-            self.host.register_config(
-                key,
-                value_type,
-                default,
-                label=self.get_text(key),
-                **kwargs,
-            )
+        self.host.register_config_json("fields.json")
 
     def get_file_count(self, file_path):
         return len(self.list_entries(file_path))
@@ -124,7 +97,7 @@ class TextImagePlugin:
         if not self._listening:
             self.host.on("config_changed", self._on_config)
             self._listening = True
-        self.host.register_sidebar("text_image", self.get_text("title"), self.widget)
+        self.host.register_sidebar("text_image", "{title}", self.widget)
 
     def teardown(self):
         if self._timer is not None:

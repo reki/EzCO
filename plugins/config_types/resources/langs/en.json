@@ -59,5 +59,7 @@
   "need_text": "Required text",
   "need_text_help": "required. OK / Apply stay disabled while empty",
   "need_texts": "Required text (multi)",
-  "need_texts_help": "required and multiple. Zero items is empty"
+  "need_texts_help": "required and multiple. Zero items is empty",
+  "suffix_px": "px",
+  "suffix_percent": "%"
 }

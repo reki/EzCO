@@ -41,12 +41,27 @@ def _resolved_language_codes() -> list[str]:
     return codes
 
 
+def expand_plugin_text(value, get_text: Callable[..., str]) -> str:
+    """文字列全体が {key} のときだけ get_text。それ以外はそのまま。キーは trim しない。"""
+    text = "" if value is None else str(value)
+    if len(text) < 3 or not text.startswith("{") or not text.endswith("}"):
+        return text
+    inner = text[1:-1]
+    if not inner or "{" in inner or "}" in inner:
+        return text
+    return get_text(inner)
+
+
 def _load_plugin_lang(root: ZipPluginRoot, lang_code: str) -> dict:
     cache = root._lang_cache
     if lang_code in cache:
         return cache[lang_code]
     data: dict = {}
-    for candidate in (f"langs/{lang_code}.json", f"src/langs/{lang_code}.json"):
+    for candidate in (
+        f"resources/langs/{lang_code}.json",
+        f"langs/{lang_code}.json",
+        f"src/langs/{lang_code}.json",
+    ):
         if not root.exists(candidate):
             continue
         try:

@@ -16,8 +16,11 @@ from typing import Any, Callable, Optional
 
 from ez_co.filters.registry import FilterRecord, get_filter_registry
 from ez_co.plugins.api import FormatSpec, normalize_formats
+from ez_co.plugins.config_schema import parse_config_json
+from ez_co.plugins.i18n import expand_plugin_text
 from ez_co.plugins.manifest import parse_permissions
-from ez_co.utils.language_manager import get_log_text, get_text
+from ez_co.plugins.root import resource_relative
+from ez_co.utils.language_manager import get_log_text, get_text, language_manager
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +54,7 @@ _PHASE_LOAD = "load"
 _PHASE_IDLE = "idle"
 _PHASE_SETUP = "setup"
 _PHASE_ACTIVE = "active"
+_PHASE_LANGUAGE = "language"
 _UI_REGISTER = frozenset(
     {
         "register_sidebar",
@@ -883,7 +887,12 @@ class PluginHost:
         if mount_sidebar:
             for record in list(self._sidebars.values()):
                 try:
-                    mount_sidebar(record.plugin_id, record.sidebar_id, record.title, record.widget)
+                    mount_sidebar(
+                        record.plugin_id,
+                        record.sidebar_id,
+                        self.expand_text(record.plugin_id, record.title),
+                        record.widget,
+                    )
                 except Exception as exc:
                     logger.warning(get_log_text("plugin_sidebar_mount_failed", error=exc))
 
@@ -966,6 +975,12 @@ class PluginHost:
 
     def _deny_wrong_phase(self, plugin_id: str, action: str) -> None:
         phase = self.phase_of(plugin_id)
+        if phase == _PHASE_LANGUAGE:
+            raise PluginRegistrationDenied(
+                plugin_id,
+                "plugin_register_during_language",
+                ui_key="ui.plugin_register_wrong_phase",
+            )
         if phase == _PHASE_INIT:
             raise PluginRegistrationDenied(
                 plugin_id,
@@ -1019,6 +1034,20 @@ class PluginHost:
             except Exception as exc:
                 self.report_error(name, exc, plugin_id=owner)
 
+    def expand_text(self, plugin_id: str, value) -> str:
+        return self.scoped(plugin_id).expand_text(value)
+
+    def refresh_display_titles(self) -> None:
+        """アプリ言語変更後、既存ドックのタイトルだけ差し替える。unmount しない。"""
+        if self._mount_sidebar is None:
+            return
+        for record in list(self._sidebars.values()):
+            title = self.expand_text(record.plugin_id, record.title)
+            try:
+                self._mount_sidebar(record.plugin_id, record.sidebar_id, title, record.widget)
+            except Exception as exc:
+                logger.warning(get_log_text("plugin_sidebar_mount_failed", error=exc))
+
     def configs_for(self, plugin_id: str) -> list[ConfigField]:
         return list(self._config_fields.get(plugin_id, []))
 
@@ -1041,9 +1070,10 @@ class PluginHost:
         record = self.resolve_action(action_id)
         if record is None:
             return None
+        label = self.expand_text(record.plugin_id, record.label)
         if record.kind == "sidebar":
-            return sidebar_toggle_label(record.label)
-        return record.label
+            return sidebar_toggle_label(label)
+        return label
 
     def action_ids_for(self, public_id: str) -> list[str]:
         record = self.resolve_action(public_id)
@@ -1090,7 +1120,12 @@ class PluginHost:
         self._register_sidebar_action(plugin_id, sidebar_id, record.title, aliases)
         if self._mount_sidebar is not None:
             try:
-                self._mount_sidebar(plugin_id, sidebar_id, record.title, widget)
+                self._mount_sidebar(
+                    plugin_id,
+                    sidebar_id,
+                    self.expand_text(plugin_id, record.title),
+                    widget,
+                )
             except Exception as exc:
                 logger.warning(get_log_text("plugin_sidebar_mount_failed", error=exc))
 
@@ -1290,6 +1325,17 @@ class PluginHost:
         rows.append(field)
         self._config_fields[plugin_id] = rows
 
+    def _register_config_json(self, plugin_id: str, name: str, root) -> None:
+        self._deny_wrong_phase(plugin_id, "register_config")
+        if root is None:
+            raise KeyError(name)
+        raw = root.read_bytes(resource_relative("config", name))
+        for item in parse_config_json(raw, plugin_id=plugin_id):
+            payload = dict(item)
+            field_key = payload.pop("key", "")
+            value_type = payload.pop("value_type", "string")
+            self._register_config(plugin_id, field_key, value_type, **payload)
+
     def _field_for(self, plugin_id: str, key: str) -> Optional[ConfigField]:
         for field in self._config_fields.get(plugin_id, []):
             if field.key == key:
@@ -1480,6 +1526,23 @@ class ScopedPluginHost:
     def __init__(self, host: PluginHost, plugin_id: str):
         self._host = host
         self._plugin_id = plugin_id
+        self._root = None
+        self._get_text = None
+
+    def bind_plugin(self, root, get_text) -> None:
+        self._root = root
+        self._get_text = get_text
+
+    def get_text(self, key: str, **kwargs) -> str:
+        if self._get_text is not None:
+            return self._get_text(key, **kwargs)
+        return language_manager.get_text(key, **kwargs)
+
+    def expand_text(self, value) -> str:
+        return expand_plugin_text(value, self.get_text)
+
+    def register_config_json(self, name: str) -> None:
+        self._host._register_config_json(self._plugin_id, name, self._root)
 
     def register_sidebar(self, sidebar_id: str, title: str, widget_or_layout, aliases=None) -> None:
         self._host._register_sidebar(self._plugin_id, sidebar_id, title, widget_or_layout, aliases)

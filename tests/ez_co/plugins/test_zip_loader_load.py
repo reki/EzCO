@@ -91,3 +91,51 @@ def test_missing_load_fails(tmp_path, dir_plugin):
     )
     with pytest.raises(ValueError, match="com.example.noload"):
         load_plugin(root, host=PluginHost())
+
+
+def test_register_config_json_failure_aborts_schema(tmp_path, dir_plugin):
+    root = dir_plugin(tmp_path, plugin_id="com.example.cfgjson", folder_name="cfgjson")
+    config_dir = root / "resources" / "config"
+    config_dir.mkdir(parents=True)
+    (config_dir / "fields.json").write_text(
+        '[{"key": "ok", "value_type": "bool", "default": true},'
+        ' {"key": "bad", "value_type": "int_range", "default": 1, "maximum": 10, "step": 1}]',
+        encoding="utf-8",
+    )
+    (root / "src" / "plugin.py").write_text(
+        "class ProbePlugin:\n"
+        "    def __init__(self):\n"
+        "        self.host = None\n"
+        "    def load(self, root, get_text, host):\n"
+        "        self.host = host\n"
+        '        host.register_config_json("fields.json")\n',
+        encoding="utf-8",
+    )
+    host = PluginHost()
+    with pytest.raises(ValueError, match="com.example.cfgjson"):
+        load_plugin(root, host=host)
+    assert host.configs_for("com.example.cfgjson") == []
+
+
+def test_register_config_json_keeps_template_on_load(tmp_path, dir_plugin):
+    root = dir_plugin(tmp_path, plugin_id="com.example.cfgok", folder_name="cfgok")
+    config_dir = root / "resources" / "config"
+    config_dir.mkdir(parents=True)
+    (config_dir / "fields.json").write_text(
+        '[{"key": "flag", "value_type": "bool", "default": true, "label": "{flag}"}]',
+        encoding="utf-8",
+    )
+    (root / "src" / "plugin.py").write_text(
+        "class ProbePlugin:\n"
+        "    def __init__(self):\n"
+        "        self.host = None\n"
+        "    def load(self, root, get_text, host):\n"
+        "        self.host = host\n"
+        '        host.register_config_json("fields.json")\n',
+        encoding="utf-8",
+    )
+    host = PluginHost()
+    load_plugin(root, host=host)
+    field = host.configs_for("com.example.cfgok")[0]
+    assert field.key == "flag"
+    assert field.label == "{flag}"

@@ -50,6 +50,7 @@ class PluginConfigDialog(QDialog):
         super().__init__(parent)
         self._host = host
         self._plugin_id = plugin_id
+        self._scoped = host.scoped(plugin_id)
         self._fields = list(host.configs_for(plugin_id))
         self._widgets = {}
         self._name_items = {}
@@ -67,6 +68,9 @@ class PluginConfigDialog(QDialog):
         self._setup_ui()
         self._capture_snapshot()
         self._refresh_required()
+
+    def _expand(self, value) -> str:
+        return self._scoped.expand_text(value)
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
@@ -88,10 +92,10 @@ class PluginConfigDialog(QDialog):
         table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         table.setWordWrap(False)
         table.verticalHeader().setMinimumSectionSize(36 if has_range else 32)
-        scoped = self._host.scoped(self._plugin_id)
+        scoped = self._scoped
         table.setRowCount(len(self._fields))
         for index, field in enumerate(self._fields):
-            label = config_field_display_name(field)
+            label = config_field_display_name(field, expand=self._expand)
             current = scoped.get_config(field.key, field.default)
             name_item = QTableWidgetItem(label)
             table.setItem(index, 0, name_item)
@@ -124,7 +128,7 @@ class PluginConfigDialog(QDialog):
 
     def _make_value_widget(self, field, current):
         if field.multiple and field.value_type in _DROPDOWN_TYPES and field.choices:
-            return _ChoiceMultiList(field, current)
+            return _ChoiceMultiList(field, current, expand=self._expand)
         if field.multiple:
             return _MultiRows(field, current, self)
         return self._make_single_widget(field, current)
@@ -142,7 +146,7 @@ class PluginConfigDialog(QDialog):
                 widget.setValue(int(current))
             except (TypeError, ValueError):
                 widget.setValue(0)
-            return _with_suffix(widget, field)
+            return _with_suffix(widget, field, expand=self._expand)
         if kind == "float":
             widget = QDoubleSpinBox()
             widget.setRange(-1e12, 1e12)
@@ -151,11 +155,11 @@ class PluginConfigDialog(QDialog):
                 widget.setValue(float(current))
             except (TypeError, ValueError):
                 widget.setValue(0.0)
-            return _with_suffix(widget, field)
+            return _with_suffix(widget, field, expand=self._expand)
         if kind in ("int_range", "float_range"):
-            return _with_suffix(_RangeRow(field, current), field)
+            return _with_suffix(_RangeRow(field, current), field, expand=self._expand)
         if kind == "path":
-            return _PathRow(field, current, self)
+            return _PathRow(field, current, self, expand=self._expand)
         if kind == "password":
             widget = QLineEdit()
             widget.setEchoMode(QLineEdit.EchoMode.Password)
@@ -180,7 +184,7 @@ class PluginConfigDialog(QDialog):
             widget.setDateTime(_qdatetime_from_seconds(current))
             return widget
         if kind in _DROPDOWN_TYPES and field.choices:
-            return _FilterCombo(field.choices, current)
+            return _FilterCombo(field.choices, current, expand=self._expand)
         if kind == "font":
             widget = QFontComboBox()
             family = "" if current is None else str(current)
@@ -405,12 +409,12 @@ class PluginConfigDialog(QDialog):
                     widget.setToolTip(message)
                 else:
                     widget.setStyleSheet("")
-                    widget.setToolTip(field.description or "")
+                    widget.setToolTip(self._expand(field.description) if field.description else "")
             if name_item is not None:
                 if invalid:
                     name_item.setToolTip(message)
                 elif field.description:
-                    name_item.setToolTip(field.description)
+                    name_item.setToolTip(self._expand(field.description))
                 else:
                     name_item.setToolTip("")
         blocked = bool(missing_keys)
@@ -512,9 +516,10 @@ class PluginConfigDialog(QDialog):
         return ""
 
 
-def config_field_display_name(field) -> str:
+def config_field_display_name(field, expand=None) -> str:
     """設定ダイアログの項目名。range は末尾に範囲、float_range は step も付ける。"""
-    name = str(field.label or field.key or "")
+    raw = str(field.label or field.key or "")
+    name = expand(raw) if expand is not None else raw
     kind = field.value_type
     if kind in ("int_range", "float_range"):
         if field.minimum is not None and field.maximum is not None:
@@ -548,10 +553,13 @@ def _format_range_number(value, as_int: bool, step) -> str:
     return text or "0"
 
 
-def _with_suffix(widget, field):
-    if not field.suffix or field.value_type not in _NUMERIC_TYPES:
+def _with_suffix(widget, field, expand=None):
+    suffix = field.suffix
+    if expand is not None:
+        suffix = expand(suffix)
+    if not suffix or field.value_type not in _NUMERIC_TYPES:
         return widget
-    return _SuffixRow(widget, field.suffix)
+    return _SuffixRow(widget, suffix)
 
 
 class _SuffixRow(QWidget):
@@ -570,12 +578,13 @@ class _SuffixRow(QWidget):
 
 
 class _FilterCombo(QComboBox):
-    def __init__(self, choices, current, parent=None):
+    def __init__(self, choices, current, parent=None, expand=None):
         super().__init__(parent)
         self.setEditable(True)
         self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         for value, label in choices:
-            self.addItem(label, value)
+            text = expand(label) if expand is not None else label
+            self.addItem(text, value)
         completer = self.completer()
         if completer is None:
             completer = QCompleter(self)
@@ -590,7 +599,7 @@ class _FilterCombo(QComboBox):
 class _ChoiceMultiList(QWidget):
     changed = Signal()
 
-    def __init__(self, field, current, parent=None):
+    def __init__(self, field, current, parent=None, expand=None):
         super().__init__(parent)
         self._choices = list(field.choices)
         layout = QVBoxLayout(self)
@@ -601,7 +610,8 @@ class _ChoiceMultiList(QWidget):
         self._list = QListWidget()
         self._list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         for value, label in self._choices:
-            item = QListWidgetItem(label)
+            text = expand(label) if expand is not None else label
+            item = QListWidgetItem(text)
             item.setData(Qt.ItemDataRole.UserRole, value)
             self._list.addItem(item)
         layout.addWidget(self._list)
@@ -799,10 +809,11 @@ class _RangeRow(QWidget):
 
 
 class _PathRow(QWidget):
-    def __init__(self, field, current, parent=None):
+    def __init__(self, field, current, parent=None, expand=None):
         super().__init__(parent)
         self._kind = field.path_kind
         self._filter = field.path_filter
+        self._expand = expand if expand is not None else (lambda value: "" if value is None else str(value))
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
@@ -828,7 +839,7 @@ class _PathRow(QWidget):
                 self,
                 get_text("ui.plugin_config_browse"),
                 start,
-                self._filter or "",
+                self._expand(self._filter) if self._filter else "",
             )
         if path:
             self._edit.setText(path)

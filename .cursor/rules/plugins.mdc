@@ -16,7 +16,8 @@ alwaysApply: false
 - 拡張子の優先（ビルトイン／プラグイン）は設定ダイアログで選び、DB に保存する
 - サンプルは後から読まれる。ホスト連携はコメントを厚くする。デモ用の加工表示は意図的だと分かるように残す
 - プラグインの入口は `src/plugin.py`。`manifest.entry` は `plugin:クラス名`。補助モジュールは別ファイルでよい。ホストは他のモジュール名も受け付けるが、このリポジトリのサンプルと新規プラグインは揃える
-- 入口は `Class()`。`__init__` はクラス内で完結するフィールドだけ。`root` / `get_text` / `host` は必須の `load(root, get_text, host)` で受け取る。`__init__` の `register_*` / `on` / `off` は例外。`register_config` は `load` 以降。`register_sidebar` / `register_action` / `register_filter` / `on` は `setup`
+- 静的ファイルは `resources/langs` / `ui` / `assets` / `config`。Host に渡す名称は `"{key}"` 全体。`setup` は有効化の1回。言語切替の内部更新は `language_changed` のみ
+- 入口は `Class()`。`__init__` はクラス内で完結するフィールドだけ。`root` / `get_text` / `host` は必須の `load(root, get_text, host)` で受け取る。`__init__` の `register_*` / `on` / `off` は例外。`register_config` / `register_config_json` は `load` 以降。`register_sidebar` / `register_action` / `register_filter` / `on` は `setup`
 - `load` / `setup` が例外なら、その `plugin_id` の途中の register は本体が戻す。`teardown` に失敗理由は渡さない。所有物はプラグインがフィールドの有無で止める
 - 動いている `QThread` の Python 参照を切らない（`quit()` だけで `wait()` せず捨てると落ちる）
 - マニフェスト権限は本体が `manifest.json` の `permissions` から読む。値は JSON の true/false のみ。`register_sidebar` などプラグイン API では受け取らない

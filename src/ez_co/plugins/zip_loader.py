@@ -290,6 +290,8 @@ def load_plugin(path: Path, host=None) -> tuple[PluginManifest, Any, PluginRoot,
         root = PluginRoot(path, source, get_text=lambda key, **kwargs: key, host=scoped)
         get_text_fn = make_plugin_get_text(root)
         root.get_text = get_text_fn
+        if isinstance(scoped, ScopedPluginHost):
+            scoped.bind_plugin(root, get_text_fn)
         finder = PluginSrcFinder(
             manifest.plugin_id, prefix, path, source, src_map, get_text=get_text_fn, host=scoped
         )

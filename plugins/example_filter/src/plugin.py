@@ -5,14 +5,14 @@
     root
         プラグイン ZIP 内のリソース。このサンプルでは使わない。
     get_text(key, **kwargs)
-        プラグイン langs/{言語}.json を優先し、なければ本体の文言。
+        プラグイン resources/langs/{言語}.json を優先し、なければ本体の文言。
     host
         register_filter / register_config / get_config。
         ez_co は import しない。Host は process の context には入らない。
 
 ホストが呼ぶもの:
     load(root, get_text, host)
-        引数を保持する。register_config はここでよい。
+        引数を保持する。register_config_json はここでよい。
     setup()
         台帳へフィルターを載せる。登録しただけでは process は呼ばれない。
         ユーザーがフィルターメニューで有効化した公開 ID だけが pipe に入る。
@@ -46,24 +46,13 @@ class ExampleFilterPlugin:
         self.get_text = get_text
         self.host = host
         # 無効化してもスキーマは残るので load で登録してよい。
-        self.host.register_config(
-            _FONT_SIZE_KEY,
-            "int_range",
-            default=_FONT_SIZE_DEFAULT,
-            label=self.get_text("font_size"),
-            description=self.get_text("font_size_help"),
-            minimum=_FONT_SIZE_MIN,
-            maximum=_FONT_SIZE_MAX,
-            step=1,
-            sync=True,
-            reload=True,
-        )
+        self.host.register_config_json("fields.json")
 
     def setup(self):
         # 公開 ID は plugin:com.ezco.example.filter:overlay
         self.host.register_filter(
             _FILTER_ID,
-            self.get_text("filter_title"),
+            "{filter_title}",
             self._overlay,
         )
 

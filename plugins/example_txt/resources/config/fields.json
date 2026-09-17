@@ -1,0 +1,60 @@
+[
+  {
+    "key": "font_family",
+    "value_type": "font",
+    "default": "",
+    "label": "{font_family}"
+  },
+  {
+    "key": "font_size",
+    "value_type": "int",
+    "default": 0,
+    "label": "{font_size}"
+  },
+  {
+    "key": "text_color",
+    "value_type": "color",
+    "default": "#222222",
+    "label": "{text_color}"
+  },
+  {
+    "key": "bg_color",
+    "value_type": "color",
+    "default": "#f7f2e8",
+    "label": "{bg_color}"
+  },
+  {
+    "key": "page_width",
+    "value_type": "int",
+    "default": 900,
+    "label": "{page_width}"
+  },
+  {
+    "key": "page_height",
+    "value_type": "int",
+    "default": 1200,
+    "label": "{page_height}"
+  },
+  {
+    "key": "margin",
+    "value_type": "int",
+    "default": 48,
+    "label": "{margin}"
+  },
+  {
+    "key": "writing",
+    "value_type": "choice",
+    "default": "horizontal",
+    "label": "{writing}",
+    "choices": [
+      ["horizontal", "{writing_horizontal}"],
+      ["vertical", "{writing_vertical}"]
+    ]
+  },
+  {
+    "key": "charset",
+    "value_type": "charset",
+    "default": "utf-8",
+    "label": "{charset}"
+  }
+]

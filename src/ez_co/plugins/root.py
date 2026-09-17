@@ -9,6 +9,17 @@ def _normalize(relative_path: str) -> str:
     return str(relative_path or "").replace("\\", "/").lstrip("/")
 
 
+def resource_relative(kind: str, relative_path: str) -> str:
+    """resources/{kind}/ からの相対パス。register_config_json もこれを使う（read_config は呼ばない）。"""
+    name = _normalize(relative_path)
+    if not name:
+        raise KeyError(relative_path)
+    relative = Path(name)
+    if relative.is_absolute() or relative.drive or ".." in relative.parts:
+        raise KeyError(relative_path)
+    return f"resources/{_normalize(kind)}/{name}"
+
+
 class ZipPluginSource:
     def __init__(self, archive: zipfile.ZipFile):
         self.archive = archive
@@ -37,7 +48,7 @@ class DirPluginSource:
 
     def _resolve(self, name: str) -> Path:
         relative = Path(_normalize(name))
-        if relative.is_absolute() or ".." in relative.parts:
+        if relative.is_absolute() or relative.drive or ".." in relative.parts:
             raise KeyError(name)
         return self.root.joinpath(*relative.parts)
 
@@ -84,6 +95,15 @@ class PluginRoot:
 
     def exists(self, relative_path: str) -> bool:
         return self._source.exists(_normalize(relative_path))
+
+    def read_ui(self, relative_path: str) -> bytes:
+        return self.read_bytes(resource_relative("ui", relative_path))
+
+    def read_asset(self, relative_path: str) -> bytes:
+        return self.read_bytes(resource_relative("assets", relative_path))
+
+    def read_config(self, relative_path: str) -> bytes:
+        return self.read_bytes(resource_relative("config", relative_path))
 
 
 ZipPluginRoot = PluginRoot

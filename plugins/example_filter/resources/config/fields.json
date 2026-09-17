@@ -1,0 +1,14 @@
+[
+  {
+    "key": "font_size",
+    "value_type": "int_range",
+    "default": 36,
+    "label": "{font_size}",
+    "description": "{font_size_help}",
+    "minimum": 16,
+    "maximum": 96,
+    "step": 1,
+    "sync": true,
+    "reload": true
+  }
+]

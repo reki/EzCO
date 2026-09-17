@@ -43,6 +43,7 @@
                                 <li><a href="#read-entry" class="toc-link">read_entry</a></li>
                                 <li><a href="#loader-load" class="toc-link">load</a></li>
                                 <li><a href="#setup-teardown" class="toc-link">setup / teardown</a></li>
+                                <li><a href="#language-changed" class="toc-link">language_changed</a></li>
                             </ul>
                         </li>
                         <li><a href="#host" class="toc-link">host</a>
@@ -56,6 +57,7 @@
                                 <li><a href="#on-off" class="toc-link">on / off</a></li>
                                 <li><a href="#register-action" class="toc-link">register_action</a></li>
                                 <li><a href="#register-config" class="toc-link">register_config</a></li>
+                                <li><a href="#register-config-json" class="toc-link">register_config_json</a></li>
                                 <li><a href="#register-filter" class="toc-link">register_filter</a></li>
                                 <li><a href="#register-sidebar" class="toc-link">register_sidebar</a></li>
                                 <li><a href="#reload-current" class="toc-link">reload_current</a></li>
@@ -72,7 +74,10 @@
                         <li><a href="#root" class="toc-link">root</a>
                             <ul class="toc-sublist">
                                 <li><a href="#root-exists" class="toc-link">exists</a></li>
+                                <li><a href="#root-read-asset" class="toc-link">read_asset</a></li>
                                 <li><a href="#root-read-bytes" class="toc-link">read_bytes</a></li>
+                                <li><a href="#root-read-config" class="toc-link">read_config</a></li>
+                                <li><a href="#root-read-ui" class="toc-link">read_ui</a></li>
                             </ul>
                         </li>
                         <li><a href="#events" class="toc-link">Events</a></li>
@@ -134,8 +139,8 @@
                                 </tr>
                                 <tr>
                                     <td>Settings fields</td>
-                                    <td>None (schema is in code)</td>
-                                    <td><code>load()</code> then <a href="#register-config"><code>register_config</code></a></td>
+                                    <td>None (schema is code or JSON)</td>
+                                    <td><code>load()</code> then <a href="#register-config"><code>register_config</code></a> / <a href="#register-config-json"><code>register_config_json</code></a></td>
                                 </tr>
                                 <tr>
                                     <td>Custom actions</td>
@@ -153,11 +158,11 @@
 ├── manifest.json
 ├── src/                 # import root
 │   └── plugin.py
-├── langs/               # optional ja.json / en.json
-├── resources/           # optional; root.read_bytes
+├── resources/
+│   └── langs/           # new plugins: ja.json / en.json
 └── LICENSE.md           # optional. Settings → License. .md then .txt then bare</pre>
                         <ul>
-                            <li>Do not wrap the package in an extra parent folder.</li>
+                            <li>Do not wrap the package in an extra parent folder. The minimal new-plugin tree is <code>resources/langs</code> only. Legacy <code>langs/</code> and <code>src/langs/</code> are still read, but they are not listed as options.</li>
                             <li>The same layout as a folder under <code>plugins/</code> loads without zipping.</li>
                             <li>If you have not accepted yet, a Yes / No dialog appears at startup.</li>
                             <li>After Yes, if more than one plugin has the same <code>id</code>, choose one. The choice is saved and is not asked again unless a new unresolved duplicate id appears.</li>
@@ -432,7 +437,7 @@ class _Entry:
                                 <table>
                                     <thead><tr><th>Arg</th><th>Meaning</th></tr></thead>
                                     <tbody>
-                                        <tr><td><code>root</code></td><td>Files in the plugin: <code>read_bytes</code> / <code>exists</code></td></tr>
+                                        <tr><td><code>root</code></td><td>Files in the plugin: <code>read_bytes</code> / <code>read_ui</code> / <code>read_asset</code> / <code>read_config</code> / <code>exists</code></td></tr>
                                         <tr><td><code>get_text</code></td><td>Strings</td></tr>
                                         <tr><td><code>host</code></td><td>Register, config, state. Call methods as <code>self.host.ask_password</code>. Do not use <code>getattr</code></td></tr>
                                     </tbody>
@@ -441,17 +446,17 @@ class _Entry:
     self.root = root
     self.get_text = get_text
     self.host = host
-    host.register_config("strict", "bool", default=True, label="Strict")</pre>
+    host.register_config("strict", "bool", default=True, label="{strict}")</pre>
                             </div>
                         </article>
 
                         <article id="setup-teardown" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>setup() / teardown()</code></div>
                             <div class="api-body">
-                                <p>Optional. Called on enable / disable. After teardown the host <code>clear_plugin</code> removes sidebars, actions, listeners, and that plugin's filter records. Pipe IDs stay. Config schemas stay. If <code>setup</code> raises, the host tries <code>teardown</code> then <code>clear_plugin</code>. It does not pass the failure to <code>teardown</code>. Do not call <code>off</code> / <code>unregister_*</code> from teardown. Teardown is only for plugin-owned things such as a <code>QThread</code> or timer. For a sidebar, set <code>manifest.sidebar: true</code> first. For a filter, set <code>permissions.filter: true</code> first.</p>
+                                <p>Optional. Called on enable / disable. After teardown the host <code>clear_plugin</code> removes sidebars, actions, listeners, and that plugin's filter records. Pipe IDs stay. Config schemas stay. If <code>setup</code> raises, the host tries <code>teardown</code> then <code>clear_plugin</code>. It does not pass the failure to <code>teardown</code>. Do not call <code>off</code> / <code>unregister_*</code> from teardown. Teardown is only for plugin-owned things such as a <code>QThread</code> or timer. For a sidebar, set <code>manifest.sidebar: true</code> first. For a filter, set <code>permissions.filter: true</code> first. <code>setup</code> runs once on enable. App language changes do not call it.</p>
 <pre class="api-example">def setup(self):
-    widget = self.host.load_ui(self.root.read_bytes("resources/sidebar.ui"))
-    self.host.register_sidebar("info", self.get_text("title"), widget)
+    widget = self.host.load_ui(self.root.read_ui("sidebar.ui"))
+    self.host.register_sidebar("info", "{title}", widget)
     self.host.on("current_changed", self._on_current)
 
 def teardown(self):
@@ -459,6 +464,12 @@ def teardown(self):
         self._thread.quit()
         self._thread.wait()
         self._thread = None</pre>
+                            </div>
+                        </article>
+                        <article id="language-changed" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>language_changed()</code></div>
+                            <div class="api-body">
+                                <p>Optional. Called once on ACTIVE plugins when the app language setting changes. No arguments. Use it only to refresh strings on widgets you already own. If unimplemented, nothing happens. <code>register_*</code> / <code>on</code> / <code>off</code> are denied here. Exceptions are logged per plugin; the plugin stays ACTIVE and other plugins plus the menu rebuild continue. The host does not watch the OS display language. Dock visible / area / floating / widget stay; only the title is updated.</p>
                             </div>
                         </article>
                     </section>
@@ -531,8 +542,8 @@ page = host.get_current("page")</pre>
                         <article id="load-ui" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.load_ui(bytes_or_path) -&gt; QWidget</code></div>
                             <div class="api-body">
-                                <p>Loads a Designer <code>.ui</code> with <code>QUiLoader</code>.</p>
-<pre class="api-example">widget = host.load_ui(self.root.read_bytes("resources/sidebar.ui"))
+                                <p>Loads a Designer <code>.ui</code> with <code>QUiLoader</code>. The argument is bytes or an OS path. That meaning does not change.</p>
+<pre class="api-example">widget = host.load_ui(self.root.read_ui("sidebar.ui"))
 title = widget.findChild(QLabel, "titleLabel")</pre>
                             </div>
                         </article>
@@ -559,7 +570,7 @@ host.off("current_changed")</pre>
 <pre class="api-example">def _reload():
     self._refresh(host.get_current("folder"))
 
-host.register_action("reload", get_text("reload"), _reload)
+host.register_action("reload", "{reload}", _reload)
 # Public id: plugin:com.example.sidebar:reload</pre>
                                 <p class="api-see">See also: <a href="#unregister-action"><code>unregister_action</code></a> / <a href="#run-action"><code>run_action</code></a></p>
                             </div>
@@ -567,40 +578,51 @@ host.register_action("reload", get_text("reload"), _reload)
                         <article id="register-config" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False, multiple=False, suffix=None, required=False) -&gt; None</code></div>
                             <div class="api-body">
-                                <p><code>value_type</code> is <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"int_range"</code> / <code>"float_range"</code> / <code>"path"</code> / <code>"password"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code> / <code>"charset"</code> / <code>"language"</code> / <code>"country"</code>. Schema survives disable, so register it from <code>load</code>. <code>__init__</code> raises. Adds a Settings button on the plugin row. Storage and profile rules are in <a href="#plugin-config">Plugin config</a>.</p>
+                                <p><code>value_type</code> is <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"int_range"</code> / <code>"float_range"</code> / <code>"path"</code> / <code>"password"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code> / <code>"charset"</code> / <code>"language"</code> / <code>"country"</code>. Schema survives disable, so register it from <code>load</code>. <code>__init__</code> raises. Adds a Settings button on the plugin row. Storage and profile rules are in <a href="#plugin-config">Plugin config</a>. Host-facing <code>label</code> / <code>description</code> / <code>suffix</code> / choice labels are translated at display time only when the whole string is <code>{key}</code>. The ledger keeps the template.</p>
 <pre class="api-example">host.register_config(
     "fetch_web",
     "bool",
     default=True,
-    label=get_text("config.fetch_web"),
-    description=get_text("config.fetch_web.desc"),
+    label="{config.fetch_web}",
+    description="{config.fetch_web.desc}",
 )
 host.register_config(
     "writing",
     "choice",
     default="horizontal",
-    label=get_text("writing"),
-    choices=[("horizontal", "Horizontal"), ("vertical", "Vertical")],
+    label="{writing}",
+    choices=[("horizontal", "{writing_horizontal}"), ("vertical", "{writing_vertical}")],
 )
 host.register_config(
     "style",
     "choice",
     default=Style.PLAIN,
-    label=get_text("style"),
+    label="{style}",
     choices=Style,
 )
 host.register_config(
     "strength",
     "int_range",
     default=50,
-    label=get_text("strength"),
+    label="{strength}",
     minimum=0,
     maximum=100,
     step=1,
     sync=True,
     reload=True,
 )</pre>
-                                <p class="api-see">See also: <a href="#get-config"><code>get_config</code></a> / <a href="#set-config"><code>set_config</code></a> / <a href="#delete-config"><code>delete_config</code></a></p>
+                                <p class="api-see">See also: <a href="#register-config-json"><code>register_config_json</code></a> / <a href="#get-config"><code>get_config</code></a> / <a href="#set-config"><code>set_config</code></a> / <a href="#delete-config"><code>delete_config</code></a></p>
+                            </div>
+                        </article>
+                        <article id="register-config-json" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_config_json(name) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p>Relative file name under <code>resources/config/</code>. Call it explicitly from <code>load</code>. It is not auto-loaded. It does not take bytes or a list. The file is an array of field objects with the same keys as <a href="#register-config"><code>register_config</code></a>. Unknown keys are errors. A class-name <code>choices</code> string, or <code>enum</code> / <code>enum_type</code>, is an error. Enums stay in code <code>register_config</code>. Display strings stay as <code>{key}</code> templates in the ledger and expand at display time. A mid-file failure raises from <code>load</code> and drops that plugin's schema.</p>
+<pre class="api-example">def load(self, root, get_text, host):
+    self.host = host
+    host.register_config_json("fields.json")
+    host.register_config("style", "choice", Style.PLAIN, label="{style}", choices=Style)</pre>
+                                <p class="api-see">See also: <a href="#register-config"><code>register_config</code></a></p>
                             </div>
                         </article>
                         <article id="register-filter" class="api-member">
@@ -610,7 +632,7 @@ host.register_config(
 <pre class="api-example">def _sharp(image, context):
     return image.filter(ImageFilter.SHARPEN)
 
-host.register_filter("sharp", get_text("sharp"), _sharp)
+host.register_filter("sharp", "{sharp}", _sharp)
 # Public id: plugin:com.example.x:sharp</pre>
                                 <p class="api-see">See also: <a href="#unregister-filter"><code>unregister_filter</code></a></p>
                             </div>
@@ -620,12 +642,12 @@ host.register_filter("sharp", get_text("sharp"), _sharp)
                             <div class="api-body">
                                 <p>Set <code>manifest.sidebar</code> to <code>true</code> first (do not list widget or ids in the manifest). Then call this from <code>setup()</code>. Without the flag the plugin fails to load. Plugin Settings status becomes "Failed: A registration without permission". <code>QWidget</code> or <code>QLayout</code>. The host docks it and auto-registers <code>plugin:{plugin_id}:sidebar:{sidebar_id}</code>. The dock title and sidebar menu use <code>title</code>; shortcut / gesture labels become <code>Show/Hide {title} Sidebar</code>. <code>aliases</code> are old shortcut ids. Do not pass permissions here.</p>
 <pre class="api-example">widget = QWidget()
-host.register_sidebar("info", get_text("title"), widget)
+host.register_sidebar("info", "{title}", widget)
 # Public id: plugin:com.example.sidebar:sidebar:info
 
 host.register_sidebar(
     "info",
-    get_text("title"),
+    "{title}",
     widget,
     aliases=("toggle_my_dock",),
 )</pre>
@@ -695,7 +717,7 @@ host.register_sidebar(
 
                         <h4>Schema</h4>
                         <ul>
-                            <li>Call <code>host.register_config(key, value_type, default, label, description, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False, multiple=False, suffix=None, required=False)</code> from <code>load</code>. Schema survives disable, so that is the right place. <code>__init__</code> raises.</li>
+                            <li>Call <code>host.register_config</code> or <code>host.register_config_json("fields.json")</code> from <code>load</code>. Schema survives disable, so that is the right place. <code>__init__</code> raises. JSON keys match the code API. Enums cannot be named from JSON.</li>
                             <li><code>value_type</code> is <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"int_range"</code> / <code>"float_range"</code> / <code>"path"</code> / <code>"password"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code> / <code>"charset"</code> / <code>"language"</code> / <code>"country"</code>.</li>
                             <li><code>int_range</code> / <code>float_range</code> are a single number in a range. <code>minimum</code> / <code>maximum</code> / <code>step</code> are required. Missing values, a reversed range, or <code>step &lt;= 0</code> raise an error. The dialog shows a slider and a spin box, and appends the range to the item name. <code>float_range</code> also appends <code>step</code>.</li>
                             <li><code>path</code> is a string. <code>path_kind</code> is <code>"file"</code> (default) or <code>"directory"</code>. <code>path_filter</code> is the file-dialog filter.</li>
@@ -706,7 +728,7 @@ host.register_sidebar(
                             <li><code>charset</code> / <code>language</code> / <code>country</code> lists are owned by the host. Storage is the codec name / language code / country code. Language and country labels use native names and do not follow the app UI language.</li>
                             <li><code>multiple=True</code> stores a JSON array. <code>[]</code> is kept as-is (zero items are allowed). <code>required=True</code> (default False) rejects empty values on save. An empty default may still be registered. If the type cannot represent empty, <code>required</code> has no extra effect.</li>
                             <li><code>suffix</code> is display-only to the right of numeric fields and is not stored. <code>description</code> is a tooltip only when set (no fallback to the label).</li>
-                            <li><code>label</code> is the row name in the settings dialog. If omitted, the key is shown.</li>
+                            <li><code>label</code> / <code>description</code> / <code>suffix</code> / choice labels translate at display time only when the whole string is <code>{key}</code>. <code>"A{title}B"</code> stays literal.</li>
                             <li>Registering at least one field adds a Settings button on the plugin row. Otherwise the cell is <code>-</code>.</li>
                         </ul>
 
@@ -739,13 +761,7 @@ host.register_sidebar(
                         </ul>
 <pre class="api-example">def load(self, root, get_text, host):
     self.host = host
-    host.register_config(
-        "fetch_web",
-        "bool",
-        default=True,
-        label=get_text("config.fetch_web"),
-        description=get_text("config.fetch_web.desc"),
-    )
+    host.register_config_json("fields.json")
     host.on("config_changed", self._on_config)
 
 def _on_config(self, payload):
@@ -762,8 +778,8 @@ if host.get_config("fetch_web"):
                         <article class="api-member">
                             <div class="api-sig"><span class="api-kind">func</span><code>get_text(key: str, **kwargs) -&gt; str</code></div>
                             <div class="api-body">
-                                <p>Lookup: plugin <code>langs/{lang}.json</code> → plugin ja/en → host. Plugin keys take precedence. Supports <code>str.format(**kwargs)</code>.</p>
-                                <p class="api-caption"><code>langs/en.json</code></p>
+                                <p>Lookup: plugin <code>resources/langs/{lang}.json</code> → legacy <code>langs/</code> → <code>src/langs/</code> → plugin ja/en → host. Plugin keys take precedence. Supports <code>str.format(**kwargs)</code>. Host-facing names that are a whole-string <code>{key}</code> use this <code>get_text</code> at display time.</p>
+                                <p class="api-caption"><code>resources/langs/en.json</code></p>
 <pre class="api-example">{
   "title": "Product info",
   "reload": "Reload",
@@ -781,16 +797,37 @@ status = get_text("status", count=3)</pre>
                             <div class="api-sig"><span class="api-kind">method</span><code>root.exists(relative_path: str) -&gt; bool</code></div>
                             <div class="api-body">
                                 <p>Whether that relative path exists in the plugin.</p>
-<pre class="api-example">if root.exists("resources/sidebar.ui"):
-    widget = host.load_ui(root.read_bytes("resources/sidebar.ui"))</pre>
+<pre class="api-example">if root.exists("resources/ui/sidebar.ui"):
+    widget = host.load_ui(root.read_ui("sidebar.ui"))</pre>
+                            </div>
+                        </article>
+                        <article id="root-read-asset" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>root.read_asset(relative_path: str) -&gt; bytes</code></div>
+                            <div class="api-body">
+                                <p>Relative path under <code>resources/assets/</code>. Subfolders are allowed. <code>..</code> / absolute paths / missing files raise <code>KeyError</code>.</p>
+<pre class="api-example">icon = root.read_asset("icon.png")
+beep = root.read_asset("sounds/beep.wav")</pre>
                             </div>
                         </article>
                         <article id="root-read-bytes" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>root.read_bytes(relative_path: str) -&gt; bytes</code></div>
                             <div class="api-body">
                                 <p>Read a relative path in the plugin. Missing entries raise <code>KeyError</code>.</p>
-<pre class="api-example">ui = root.read_bytes("resources/sidebar.ui")
-icon = root.read_bytes("resources/icon.png")</pre>
+<pre class="api-example">raw = root.read_bytes("resources/config/fields.json")</pre>
+                            </div>
+                        </article>
+                        <article id="root-read-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>root.read_config(relative_path: str) -&gt; bytes</code></div>
+                            <div class="api-body">
+                                <p>Relative path under <code>resources/config/</code>. <code>register_config_json</code> does not call this method.</p>
+<pre class="api-example">data = root.read_config("fields.json")</pre>
+                            </div>
+                        </article>
+                        <article id="root-read-ui" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>root.read_ui(relative_path: str) -&gt; bytes</code></div>
+                            <div class="api-body">
+                                <p>Relative path under <code>resources/ui/</code>. Turn bytes into a widget with <code>host.load_ui</code>.</p>
+<pre class="api-example">widget = host.load_ui(root.read_ui("sidebar.ui"))</pre>
                             </div>
                         </article>
                     </section>

@@ -33,10 +33,10 @@
 | できること | できないこと |
 | --- | --- |
 | 画像／アーカイブを独自に展開して画像バイトを返す | `import ez_co` / `import ez_co.*` |
-| `load` で `register_config`、`setup` でサイドバーとフィルターを登録する | 他プラグインのモジュールを import する |
+| `load` で `register_config` / `register_config_json`、`setup` でサイドバーとフィルターを登録する | 他プラグインのモジュールを import する |
 | `host.load_ui` で `.ui` を読む。PySide6 は import 可 | 他プラグインの設定を読む |
 | ホストのパスワードダイアログを呼ぶ | ドックの貼り付け／フローティングを自分で制御する |
-| プラグイン内の `langs/` `resources/` を読む | DLL プラグイン（未対応） |
+| プラグイン内の `resources/langs` と `resources/` を読む | DLL プラグイン（未対応） |
 | サードパーティ（`PIL`, `pyzipper` など本体依存）を import する | |
 
 役割はクラスを分けなくてよい。同じ入口が全部持てる。
@@ -46,7 +46,7 @@
 | ファイル読み込み | `formats` | `get_file_count` / `list_entries` / `read_entry` |
 | サイドバー | `sidebar: true` | `setup()` で `register_sidebar` |
 | 表示フィルター | `permissions.filter: true` | `setup()` で `register_filter`。有効化はフィルターメニュー |
-| 設定項目 | なし | `load()` で `register_config` |
+| 設定項目 | なし | `load()` で `register_config` / `register_config_json` |
 
 `formats` も `sidebar` も無く `setup()` も無いと読み込み失敗。フィルターだけなら `permissions.filter` と `setup()` で足りる。
 
@@ -66,13 +66,16 @@ my_plugin.zip  または  my_plugin/
 ├── src/                   # 必須。import ルート
 │   ├── plugin.py          # entry。サンプルと新規はここ
 │   └── mark.py            # 任意のサブモジュール
-├── langs/                 # 任意。ja.json / en.json
-│   ├── ja.json
-│   └── en.json
-├── resources/             # 任意。root.read_bytes で読む
+├── resources/
+│   ├── langs/             # 新規の文言。ja.json / en.json
+│   ├── ui/                # 任意。.ui。空フォルダは作らない
+│   ├── assets/            # 任意。画像・音。空フォルダは作らない
+│   └── config/            # 任意。設定 JSON。空フォルダは作らない
 ├── LICENSE.md             # 任意。設定の「ライセンス」。.md → .txt → 無印の順
 └── test/                  # 任意。ホストは読まない
 ```
+
+新規向けの最小ツリーは `resources/langs` だけです。旧 `langs/` と `src/langs/` はまだ読みますが、選択肢としては載せません。`host.load_ui` は bytes と OS パスのままです。`.ui` は `host.load_ui(self.root.read_ui("sidebar.ui"))` です。
 
 ルート直下の `LICENSE.md`（Markdown）/ `LICENSE.txt` / `LICENSE`（テキスト）があると、プラグイン設定のライセンス列から読めます。複数あれば上だけ。表示は保証ではありません。起動時には出しません。
 
@@ -233,7 +236,7 @@ class FileLoader:
 | --- | --- |
 | `root` | プラグイン ZIP 内のファイル。`read_bytes` / `exists` |
 | `get_text` | 文言。`get_text("plugin.watermark")` |
-| `host` | 登録・設定・状態参照。`register_config` は `load` 以降。`register_sidebar`（`sidebar: true` のときだけ） / `register_action` / `register_filter`（`permissions.filter` のときだけ）は `setup` |
+| `host` | 登録・設定・状態参照。`register_config` / `register_config_json` は `load` 以降。`register_sidebar`（`sidebar: true` のときだけ） / `register_action` / `register_filter`（`permissions.filter` のときだけ）は `setup` |
 
 担当形式は `manifest.json` の `formats` が正です。本体がロード時に読みます。
 
@@ -331,7 +334,7 @@ class _Entry:
 | --- | --- |
 | `get_text` | `self.get_text("plugin.watermark")` |
 | `host` | `self.host.ask_password(...)` |
-| `root` | `self.root.read_bytes("resources/icon.png")` |
+| `root` | `self.root.read_ui("sidebar.ui")` / `self.root.read_asset("icon.png")` |
 
 同じ名前はモジュールの組み込みとしても渡します。モジュール先頭の関数から `get_text(...)` や `host.ask_password(...)` と書けます。`root` や組み込みから別経路を探さないでください。`host` のメソッドは `self.host.ask_password` のように直接呼びます。`getattr` / `hasattr` / `setattr` で有無を見ません。足りない API は host に足します。
 
@@ -343,8 +346,9 @@ class _Entry:
 - `host.unregister_action(action_id)` — 有効中に1件外す。無効化は `clear_plugin`
 - `host.register_filter(filter_id, title, process)` — 表示画像の加工。`permissions.filter` が `true` のときだけ。無ければ `PluginRegistrationDenied`。プラグインは使わず、設定画面は「失敗: 権限がない登録がありました」。公開 ID は `plugin:{plugin_id}:{filter_id}`。`setup()` で複数回呼んでよい（`filter_id` が違えば別レコード）。同じ `filter_id` の再登録は上書き。値は既存の `register_config`（フィルター専用の config API は無い）。v1 の `process(image, context)` は同期・短時間向け。`context` は path / page / size。Host は入らない。登録しただけでは呼ばない。本体の pipe に載り、かつ台帳にあるときだけ
 - `host.unregister_filter(filter_id)` — 有効中に台帳からその1件を消す。pipe は触らない（ユーザーの ON 記憶を残す）。無効化は `clear_plugin`
-- `host.load_ui(bytes_or_path)` — Designer の `.ui` を `QUiLoader` で読む
-- `host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False, multiple=False, suffix=None, required=False)` — プラグイン設定ダイアログ用。`value_type` は `"bool"` / `"string"` / `"int"` / `"float"` / `"int_range"` / `"float_range"` / `"path"` / `"password"` / `"color"` / `"date"` / `"datetime"` / `"choice"` / `"font"` / `"charset"` / `"language"` / `"country"`。`choice` は `choices`（値の列、`(value, label)`、または `Enum` / member 列）。Enum を渡したときだけ `get_config` / `config_changed` は member。DB は canonical な `.name`（既存設定を残すなら member 名を変えない）。未知の name は default。複数で1件でも未知なら default 全体。`charset` / `language` / `country` は本体が一覧を持つ（表示は母語名。アプリ言語には合わせない）。`multiple=True` は JSON 配列。`[]` は補完しない（0件可）。`required=True` は empty を保存しない（`set_config` は False。プラグイン ACTIVE にはしない）。空を表現できない型では `required` は実質 no-op。`suffix` は数値の表示のみ。`description` があるときだけホバー。`int_range` / `float_range` は `minimum` / `maximum` / `step` が必須。`path` は `path_kind` が `"file"`（省略時）または `"directory"`。`password` は画面マスク、DB は DPAPI、`get_config` は平文。`sync=True` は数値のみ。`color` は `#RRGGBB`。`date` / `datetime` は UTC の Unix 秒。無効化してもスキーマは残るので `load` で登録してよい。`__init__` では例外
+- `host.load_ui(bytes_or_path)` — Designer の `.ui` を `QUiLoader` で読む。引数は bytes または OS パス。意味は変えない
+- `host.register_config_json(name)` — `resources/config/` からの相対ファイル名。`load` で明示。自動では読まない。bytes / list は受け取らない。中身はフィールド配列。キーは `register_config` と同じ。未知キーはエラー。`choices` にクラス名、`enum` / `enum_type` はエラー（Enum はコードの `register_config` だけ）。表示文字列は `{key}` テンプレートのまま台帳へ載せる。途中失敗は `load` 例外 → `abort_load`（そのプラグインのスキーマごと消える）
+- `host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False, multiple=False, suffix=None, required=False)` — プラグイン設定ダイアログ用。`value_type` は `"bool"` / `"string"` / `"int"` / `"float"` / `"int_range"` / `"float_range"` / `"path"` / `"password"` / `"color"` / `"date"` / `"datetime"` / `"choice"` / `"font"` / `"charset"` / `"language"` / `"country"`。`choice` は `choices`（値の列、`(value, label)`、または `Enum` / member 列）。Enum を渡したときだけ `get_config` / `config_changed` は member。DB は canonical な `.name`（既存設定を残すなら member 名を変えない）。未知の name は default。複数で1件でも未知なら default 全体。`charset` / `language` / `country` は本体が一覧を持つ（表示は母語名。アプリ言語には合わせない）。`multiple=True` は JSON 配列。`[]` は補完しない（0件可）。`required=True` は empty を保存しない（`set_config` は False。プラグイン ACTIVE にはしない）。空を表現できない型では `required` は実質 no-op。`suffix` は数値の表示のみ。`description` があるときだけホバー。`int_range` / `float_range` は `minimum` / `maximum` / `step` が必須。`path` は `path_kind` が `"file"`（省略時）または `"directory"`。`password` は画面マスク、DB は DPAPI、`get_config` は平文。`sync=True` は数値のみ。`color` は `#RRGGBB`。`date` / `datetime` は UTC の Unix 秒。無効化してもスキーマは残るので `load` で登録してよい。`__init__` では例外。Host に渡す `label` / `description` / `suffix` / `path_filter` / choice の label、および `register_sidebar` の title、`register_filter` の title、`register_action` の label は、文字列全体が `{key}` のときだけ表示時に `get_text` する。台帳はテンプレートのまま。`"A{title}B"` や `"{title} ({hint})"` はリテラル。`{{` `}}` のエスケープは無い。混在が要る文言は langs 側で1キーにまとめる
 
 状態:
 
@@ -361,7 +365,9 @@ class _Entry:
 
 プラグイン設定の一覧にスキーマがある行は「設定」ボタンが出ます。そこでパネルを開き OK / 適用すると、本体ダイアログの OK を待たずに DB へ保存して通知します。初期化はスキーマの default に戻します。`sync=True` の数値は 500ms のアイドル後に保存します。`reload=True` ならそのとき現在画像を開き直します。キャンセルはそのプレビューも戻します。ユーザーマニュアルの [プラグインリファレンス（コンフィグ）](../resources/UserManual/files/plugin-reference.html#plugin-config) に、スキーマ・保存場所・ダイアログの扱いをまとめています。
 
-`load(root, get_text, host)` は必須です。UI の再接続用に任意の `setup()` / `teardown()` を実装できます。`load` 失敗は UI 台帳と設定スキーマをそのプラグイン分だけ捨てます。`setup` 失敗は `teardown` を試してから `clear_plugin` します（スキーマは残す）。無効化すると本体の `clear_plugin` がサイドバー・登録アクション・`on` の listener・そのプラグインの FilterRecord を台帳から外します。**pipe の ID は残します**（次回 ON・次回起動で復元するため）。`off` / `unregister_*` は有効中に1件だけ外すとき用で、無効化の teardown には書かないでください。teardown に失敗理由は渡しません。所有物はフィールドの有無で止めてください。プラグイン設定の ON/OFF と、フィルターメニューの有効は別です。
+`load(root, get_text, host)` は必須です。UI の再接続用に任意の `setup()` / `teardown()` を実装できます。`setup()` は有効化のとき1回だけです。アプリ言語の変更では呼びません。`load` 失敗は UI 台帳と設定スキーマをそのプラグイン分だけ捨てます。`setup` 失敗は `teardown` を試してから `clear_plugin` します（スキーマは残す）。無効化すると本体の `clear_plugin` がサイドバー・登録アクション・`on` の listener・そのプラグインの FilterRecord を台帳から外します。**pipe の ID は残します**（次回 ON・次回起動で復元するため）。`off` / `unregister_*` は有効中に1件だけ外すとき用で、無効化の teardown には書かないでください。teardown に失敗理由は渡しません。所有物はフィールドの有無で止めてください。プラグイン設定の ON/OFF と、フィルターメニューの有効は別です。
+
+任意の `language_changed()` はアプリの `set_language` 適用時だけ、ACTIVE なプラグインへ1回呼ばれます。引数なし。既存ウィジェットの表示文言更新専用です。未実装なら何もしません。ここでは `register_*` / `on` / `off` を禁止します。例外はそのプラグイン単位でログし、ACTIVE のまま他プラグインとメニュー更新は続けます。OS の表示言語変更は自動では見ません。ドックの visible / area / floating / widget は維持し、タイトルだけ差し替えます。
 
 ---
 
@@ -384,12 +390,13 @@ get_text(key: str, **kwargs) -> str
 
 **探索順**
 
-1. プラグイン `langs/{現在言語}.json`
-2. プラグイン `langs/ja.json` または `en.json`（フォールバック）
+1. プラグイン `resources/langs/{現在言語}.json`
+2. プラグイン `langs/{現在言語}.json`（互換）
 3. プラグイン `src/langs/{言語}.json`（互換）
-4. 本体の言語ファイル
+4. プラグイン ja.json または en.json（フォールバック。上記と同じ配置順）
+5. 本体の言語ファイル
 
-同じキーはプラグイン側が優先されます。言語は本体の現在言語です。
+同じキーはプラグイン側が優先されます。言語は本体の現在言語です。Host に渡した名称が文字列全体 `{key}` なら、出す瞬間にこの `get_text` を使います。`"{config.fetch_web}"` のドットはキーの一部です。
 
 ---
 
@@ -422,6 +429,16 @@ exists(relative_path: str) -> bool
 ```
 
 ZIP 内にその相対パスがあるか。
+
+#### `root.read_ui(relative_path)` / `root.read_asset(relative_path)` / `root.read_config(relative_path)`
+
+```text
+read_ui("sidebar.ui") -> resources/ui/sidebar.ui
+read_asset("sounds/beep.wav") -> resources/assets/sounds/beep.wav
+read_config("fields.json") -> resources/config/fields.json
+```
+
+サブフォルダ可。`..` / 絶対パス / 欠落は `KeyError`。`register_config_json` は `read_config` を呼びません。ウィジェット化は `host.load_ui(self.root.read_ui("sidebar.ui"))`。
 
 `test/` はホストが自動では使いません。自分で `read_bytes("test/foo.bin")` すれば読めます。
 
@@ -519,8 +536,8 @@ register_action(action_id: str, label: str, callback, aliases=None) -> None
 公開 ID は `plugin:{plugin_id}:{action_id}`。`register_sidebar` の開閉は `plugin:{plugin_id}:sidebar:{sidebar_id}`。既定ショートカットは付かない。既存のショートカット ID を残したいときはプラグイン側で `aliases` を渡す。
 
 ```python
-self.host.register_sidebar("main", self.get_text("title"), self.widget, aliases=("old_toggle_id",))
-self.host.register_action("refresh", self.get_text("refresh"), self.refresh)
+self.host.register_sidebar("main", "{title}", self.widget, aliases=("old_toggle_id",))
+self.host.register_action("refresh", "{refresh}", self.refresh)
 ```
 
 ---
@@ -544,7 +561,7 @@ register_filter(filter_id: str, title: str, process) -> None
 公開 ID は `plugin:{plugin_id}:{filter_id}`。設定は `register_config`。プラグインが複数フィルターを出しても設定ダイアログは1つ。原画キャッシュのオブジェクトは渡さない（working copy）。
 
 ```python
-self.host.register_filter("sharp", self.get_text("sharp"), self._sharp)
+self.host.register_filter("sharp", "{sharp}", self._sharp)
 ```
 
 ---
@@ -594,7 +611,7 @@ password = self.host.ask_password(file_path, verify=fn)
 
 ## 7. 多言語 `get_text`
 
-`langs/ja.json` / `langs/en.json` は入れ子オブジェクトです。キーはドットで辿ります。
+`resources/langs/ja.json` / `resources/langs/en.json` は入れ子オブジェクトです。キーはドットで辿ります。
 
 ```json
 {
@@ -699,6 +716,6 @@ UI は「プラグイン設定」ダイアログです。ON/OFF と読み込み�
 | パスワードが一致しない | AES なのに標準 `zipfile` を使っていないか。`verify` の例外をログで見る |
 | ダイアログが出ない | `list_entries` より前に暗号化判定して `self.host.ask_password` しているか |
 | 件数 0 | 画像拡張子フィルタ、パスワード未解除、エントリがディレクトリだけ |
-| 文言がキーのまま | `langs/ja.json` の入れ子と `get_text` のキーが一致しているか |
+| 文言がキーのまま | `resources/langs/ja.json` の入れ子と `get_text` のキーが一致しているか |
 
 開発時は設定のデバッグモードを有効にすると、掃引・読み込み失敗・パスワード検証がログに出ます。

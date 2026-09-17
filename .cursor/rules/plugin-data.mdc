@@ -10,7 +10,7 @@ alwaysApply: false
 
 - 本体の `Config` / `profile_settings` / YAML エクスポートはプラグインが書いてはいけない。可変な `Config` を渡さない。`set_app_config` のような口を足さない
 - `host.get_app_config()` は読み取り専用。今は `language` / `viewer` / `cache` / `ui_font` だけ。返した dict を書き換えても本体へ戻さない
-- プラグイン固有値は `host.register_config` / `get_config` / `set_config` / `delete_config` だけ。`register_config` は `load` 以降（`__init__` では例外）。保存先は `plugin_settings`。`plugin_id` はハッシュ。他プラグインの行は読めない。他プラグインの id を渡す引数を足さない
+- プラグイン固有値は `host.register_config` / `host.register_config_json` / `get_config` / `set_config` / `delete_config` だけ。`register_config` は `load` 以降（`__init__` では例外）。JSON は `resources/config/` のファイル名。Enum はコード。label / description / suffix / choice label の `{key}` は全体一致・表示時。保存先は `plugin_settings`。`plugin_id` はハッシュ。他プラグインの行は読めない。他プラグインの id を渡す引数を足さない
 - `choice` に `Enum` を渡したときだけ `get_config` / `config_changed` は member。DB は canonical な `.name`。`multiple=True` の `[]` は補完しない。`required` の empty は保存しない
 - `password` 型の DB 値は Windows DPAPI。`get_config` / `config_changed` は平文。ログに出さない
 - `sync=True` は数値の即時保存（debounce）。`reload_current` は `reload=True` のときだけ。Config API からフィルター処理を呼ばない

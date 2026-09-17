@@ -551,6 +551,26 @@ class PluginManager:
             else:
                 self._deactivate_plugin(plugin)
 
+    def refresh_language(self, config=None) -> None:
+        """アプリ言語変更後。setup は呼ばず、ドックタイトルと任意の language_changed だけ。"""
+        self.host.refresh_display_titles()
+        for plugin in self.enabled_plugins(config):
+            if not plugin.ui_active:
+                continue
+            hook = getattr(plugin.instance, "language_changed", None)
+            if not callable(hook):
+                continue
+            self.host.enter_phase(plugin.plugin_id, "language")
+            try:
+                hook()
+            except Exception as exc:
+                logger.warning(
+                    get_log_text("plugin_language_changed_failed", plugin_id=plugin.plugin_id, error=exc)
+                )
+                report_error("language_changed", exc, plugin_id=plugin.plugin_id)
+            finally:
+                self.host.enter_phase(plugin.plugin_id, "active")
+
     def _activate_plugin(self, plugin: LoadedPlugin) -> None:
         if plugin.ui_active:
             return

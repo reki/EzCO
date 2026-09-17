@@ -52,9 +52,8 @@ my_plugin/   または my_plugin.zip
 ├── manifest.json
 ├── src/
 │   └── plugin.py
-├── langs/
-    ├── ja.json
-    └── en.json
+├── resources/
+│   └── langs/           # 新規はここ。ja.json / en.json
 └── LICENSE.md   # 任意。LICENSE.txt / LICENSE でも可。設定から表示
 ```
 

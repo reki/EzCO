@@ -5,7 +5,7 @@
     root
         プラグイン ZIP 内のリソース。read_bytes / exists。
     get_text(key, **kwargs)
-        プラグイン langs/{言語}.json を優先し、なければ本体の文言。
+        プラグイン resources/langs/{言語}.json を優先し、なければ本体の文言。
     host
         ask_password / show_dialog / run_action。
 

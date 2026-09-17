@@ -54,6 +54,20 @@ def test_setup_allows_config_and_ui_register():
     assert host.configs_for("com.example.x")
 
 
+def test_language_rejects_every_register():
+    host = PluginHost()
+    host.set_manifest_provides("com.example.x", sidebar=True)
+    host.set_manifest_permissions("com.example.x", {"filter": True})
+    host.enter_phase("com.example.x", "language")
+    scoped = host.scoped("com.example.x")
+    _denied(host, "com.example.x", lambda: scoped.register_config("flag", "bool", True))
+    _denied(host, "com.example.x", lambda: scoped.register_sidebar("main", "Title", object()))
+    _denied(host, "com.example.x", lambda: scoped.register_action("reload", "Reload", lambda: None))
+    _denied(host, "com.example.x", lambda: scoped.register_filter("sharp", "Sharp", lambda image, context: image))
+    _denied(host, "com.example.x", lambda: scoped.on("config_changed", lambda payload: None))
+    _denied(host, "com.example.x", lambda: scoped.off("config_changed"))
+
+
 def test_abort_load_drops_own_schema_keeps_other_plugin():
     host = PluginHost()
     host.enter_phase("com.example.keep", "load")

@@ -59,5 +59,7 @@
   "need_text": "必須文字列",
   "need_text_help": "required。空のままでは OK / 適用できない",
   "need_texts": "必須文字列（複数）",
-  "need_texts_help": "required かつ multiple。0 件は欠落"
+  "need_texts_help": "required かつ multiple。0 件は欠落",
+  "suffix_px": "px",
+  "suffix_percent": "%"
 }

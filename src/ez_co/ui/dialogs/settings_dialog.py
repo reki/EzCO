@@ -1203,9 +1203,10 @@ class SettingsDialog(QDialog):
 
         # 言語が変更された場合、即座に言語を切り替えてメニューを再構築
         if language_changed:
-            # 新しい言語を適用
             set_language(selected_language)
-            # メニューを再構築
+            parent = self.parent()
+            if parent is not None and hasattr(parent, "refresh_plugin_language"):
+                parent.refresh_plugin_language()
             if hasattr(self.parent(), 'rebuild_menu'):
                 self.parent().rebuild_menu()
 
@@ -1461,9 +1462,10 @@ class SettingsDialog(QDialog):
 
         # 言語が変更された場合、即座に言語を切り替えてメニューを再構築
         if language_changed:
-            # 新しい言語を適用
             set_language(selected_language)
-            # メニューを再構築
+            parent = self.parent()
+            if parent is not None and hasattr(parent, "refresh_plugin_language"):
+                parent.refresh_plugin_language()
             if hasattr(self.parent(), 'rebuild_menu'):
                 self.parent().rebuild_menu()
 

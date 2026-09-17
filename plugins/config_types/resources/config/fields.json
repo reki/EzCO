@@ -1,0 +1,293 @@
+[
+  {
+    "key": "flag",
+    "value_type": "bool",
+    "default": true,
+    "label": "{flag}",
+    "description": "{flag_help}"
+  },
+  {
+    "key": "label",
+    "value_type": "string",
+    "default": "sample",
+    "label": "{label}",
+    "description": "{label_help}"
+  },
+  {
+    "key": "count",
+    "value_type": "int",
+    "default": 3,
+    "label": "{count}",
+    "description": "{count_help}",
+    "suffix": "{suffix_px}"
+  },
+  {
+    "key": "ratio",
+    "value_type": "float",
+    "default": 1.25,
+    "label": "{ratio}",
+    "description": "{ratio_help}",
+    "suffix": "{suffix_percent}"
+  },
+  {
+    "key": "strength",
+    "value_type": "int_range",
+    "default": 50,
+    "label": "{strength}",
+    "description": "{strength_help}",
+    "minimum": 0,
+    "maximum": 100,
+    "step": 1,
+    "sync": true,
+    "suffix": "{suffix_px}"
+  },
+  {
+    "key": "gamma",
+    "value_type": "float_range",
+    "default": 1.0,
+    "label": "{gamma}",
+    "description": "{gamma_help}",
+    "minimum": 0.2,
+    "maximum": 3.0,
+    "step": 0.05,
+    "sync": true,
+    "suffix": "{suffix_percent}"
+  },
+  {
+    "key": "lut",
+    "value_type": "path",
+    "default": "",
+    "label": "{lut}",
+    "description": "{lut_help}",
+    "path_kind": "file"
+  },
+  {
+    "key": "secret",
+    "value_type": "password",
+    "default": "",
+    "label": "{secret}",
+    "description": "{secret_help}"
+  },
+  {
+    "key": "tint",
+    "value_type": "color",
+    "default": "#3366cc",
+    "label": "{tint}",
+    "description": "{tint_help}"
+  },
+  {
+    "key": "day",
+    "value_type": "date",
+    "default": 1789344000,
+    "label": "{day}",
+    "description": "{day_help}"
+  },
+  {
+    "key": "moment",
+    "value_type": "datetime",
+    "default": 1789387200,
+    "label": "{moment}",
+    "description": "{moment_help}"
+  },
+  {
+    "key": "mode",
+    "value_type": "choice",
+    "default": "plain",
+    "label": "{mode}",
+    "description": "{mode_help}",
+    "choices": [
+      ["plain", "{mode_plain}"],
+      ["bold", "{mode_bold}"]
+    ]
+  },
+  {
+    "key": "face",
+    "value_type": "font",
+    "default": "Segoe UI",
+    "label": "{face}",
+    "description": "{face_help}"
+  },
+  {
+    "key": "charset",
+    "value_type": "charset",
+    "default": "utf-8",
+    "label": "{charset}",
+    "description": "{charset_help}"
+  },
+  {
+    "key": "language",
+    "value_type": "language",
+    "default": "ja",
+    "label": "{language}",
+    "description": "{language_help}"
+  },
+  {
+    "key": "country",
+    "value_type": "country",
+    "default": "JP",
+    "label": "{country}",
+    "description": "{country_help}"
+  },
+  {
+    "key": "flag_multi",
+    "value_type": "bool",
+    "default": [true],
+    "label": "{flag_multi}",
+    "description": "{flag_help}",
+    "multiple": true
+  },
+  {
+    "key": "label_multi",
+    "value_type": "string",
+    "default": ["sample"],
+    "label": "{label_multi}",
+    "description": "{label_help}",
+    "multiple": true
+  },
+  {
+    "key": "count_multi",
+    "value_type": "int",
+    "default": [3],
+    "label": "{count_multi}",
+    "description": "{count_help}",
+    "suffix": "{suffix_px}",
+    "multiple": true
+  },
+  {
+    "key": "ratio_multi",
+    "value_type": "float",
+    "default": [1.25],
+    "label": "{ratio_multi}",
+    "description": "{ratio_help}",
+    "suffix": "{suffix_percent}",
+    "multiple": true
+  },
+  {
+    "key": "strength_multi",
+    "value_type": "int_range",
+    "default": [50],
+    "label": "{strength_multi}",
+    "description": "{strength_help}",
+    "minimum": 0,
+    "maximum": 100,
+    "step": 1,
+    "sync": true,
+    "suffix": "{suffix_px}",
+    "multiple": true
+  },
+  {
+    "key": "gamma_multi",
+    "value_type": "float_range",
+    "default": [1.0],
+    "label": "{gamma_multi}",
+    "description": "{gamma_help}",
+    "minimum": 0.2,
+    "maximum": 3.0,
+    "step": 0.05,
+    "sync": true,
+    "suffix": "{suffix_percent}",
+    "multiple": true
+  },
+  {
+    "key": "lut_multi",
+    "value_type": "path",
+    "default": [""],
+    "label": "{lut_multi}",
+    "description": "{lut_help}",
+    "path_kind": "file",
+    "multiple": true
+  },
+  {
+    "key": "secret_multi",
+    "value_type": "password",
+    "default": [""],
+    "label": "{secret_multi}",
+    "description": "{secret_help}",
+    "multiple": true
+  },
+  {
+    "key": "tint_multi",
+    "value_type": "color",
+    "default": ["#3366cc"],
+    "label": "{tint_multi}",
+    "description": "{tint_help}",
+    "multiple": true
+  },
+  {
+    "key": "day_multi",
+    "value_type": "date",
+    "default": [1789344000],
+    "label": "{day_multi}",
+    "description": "{day_help}",
+    "multiple": true
+  },
+  {
+    "key": "moment_multi",
+    "value_type": "datetime",
+    "default": [1789387200],
+    "label": "{moment_multi}",
+    "description": "{moment_help}",
+    "multiple": true
+  },
+  {
+    "key": "mode_multi",
+    "value_type": "choice",
+    "default": ["plain"],
+    "label": "{mode_multi}",
+    "description": "{mode_help}",
+    "choices": [
+      ["plain", "{mode_plain}"],
+      ["bold", "{mode_bold}"]
+    ],
+    "multiple": true
+  },
+  {
+    "key": "face_multi",
+    "value_type": "font",
+    "default": ["Segoe UI"],
+    "label": "{face_multi}",
+    "description": "{face_help}",
+    "multiple": true
+  },
+  {
+    "key": "charset_multi",
+    "value_type": "charset",
+    "default": ["utf-8"],
+    "label": "{charset_multi}",
+    "description": "{charset_help}",
+    "multiple": true
+  },
+  {
+    "key": "language_multi",
+    "value_type": "language",
+    "default": ["ja"],
+    "label": "{language_multi}",
+    "description": "{language_help}",
+    "multiple": true
+  },
+  {
+    "key": "country_multi",
+    "value_type": "country",
+    "default": ["JP"],
+    "label": "{country_multi}",
+    "description": "{country_help}",
+    "multiple": true
+  },
+  {
+    "key": "need_text",
+    "value_type": "string",
+    "default": "",
+    "label": "{need_text}",
+    "description": "{need_text_help}",
+    "required": true
+  },
+  {
+    "key": "need_texts",
+    "value_type": "string",
+    "default": [],
+    "label": "{need_texts}",
+    "description": "{need_texts_help}",
+    "required": true,
+    "multiple": true
+  }
+]

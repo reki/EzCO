@@ -21,8 +21,8 @@ class ErrorCallbackPlugin:
         layout.addWidget(button)
         layout.addStretch()
         self.widget = widget
-        self.host.register_sidebar("error_callback", self.get_text("title"), widget)
-        self.host.register_action("raise_error", self.get_text("error_button"), self._raise_error)
+        self.host.register_sidebar("error_callback", "{title}", widget)
+        self.host.register_action("raise_error", "{error_button}", self._raise_error)
 
     def teardown(self):
         self.widget = None
