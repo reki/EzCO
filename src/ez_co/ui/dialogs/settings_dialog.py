@@ -265,6 +265,9 @@ class SettingsDialog(QDialog):
         
         language_layout.addRow(self._form_label("language"), self.language_combo)
         self._apply_setting_tip("language", self.language_combo)
+        self.language_plugin_layout_note = QLabel(get_text("settings.language_plugin_layout_note"))
+        self.language_plugin_layout_note.setWordWrap(True)
+        language_layout.addRow(self.language_plugin_layout_note)
         language_group.setLayout(language_layout)
         layout.addWidget(language_group)
         
