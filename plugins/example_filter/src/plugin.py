@@ -7,7 +7,7 @@
     get_text(key, **kwargs)
         プラグイン resources/langs/{言語}.json を優先し、なければ本体の文言。
     host
-        register_filter / register_config / get_config。
+        register_filter / register_config_json / get_config。
         ez_co は import しない。Host は process の context には入らない。
 
 ホストが呼ぶもの:

@@ -17,7 +17,7 @@ def _plugin():
         def __init__(self):
             self.current = {}
 
-        def register_config(self, *args, **kwargs):
+        def register_config_json(self, *args, **kwargs):
             return None
 
         def get_config(self, key, default=None):
