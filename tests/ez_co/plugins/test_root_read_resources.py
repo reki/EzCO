@@ -1,4 +1,7 @@
 """対象: ez_co.plugins.root — resources 配下の read_ui / read_asset / read_config。"""
+import tempfile
+from pathlib import Path
+
 import pytest
 
 from ez_co.plugins.root import PluginRoot, resource_relative
@@ -43,10 +46,11 @@ def test_read_helpers_use_prefix_and_subfolder(tmp_path):
     assert root.read_config("fields.json") == b"[]"
 
 
-def test_resource_relative_rejects_parent_and_absolute(tmp_path):
+def test_resource_relative_rejects_parent_and_absolute():
     with pytest.raises(KeyError):
         resource_relative("ui", "../outside.ui")
-    with pytest.raises(KeyError):
-        resource_relative("config", str(tmp_path / "fields.json"))
+    with tempfile.TemporaryDirectory() as folder:
+        with pytest.raises(KeyError):
+            resource_relative("config", str(Path(folder) / "fields.json"))
     with pytest.raises(KeyError):
         resource_relative("assets", "")
