@@ -44,7 +44,7 @@
 | 役割 | マニフェスト | コード |
 | --- | --- | --- |
 | ファイル読み込み | `formats` | `get_file_count` / `list_entries` / `read_entry` |
-| サイドバー | `sidebar: true` | `setup()` で `register_sidebar` |
+| サイドバー | `sidebar: true` | `setup()` で `register_sidebar` または `register_config_sidebar` |
 | 表示フィルター | `permissions.filter: true` | `setup()` で `register_filter`。有効化はフィルターメニュー |
 | 設定項目 | なし | `load()` で `register_config` / `register_config_json` |
 
@@ -135,7 +135,7 @@ my_plugin.zip  または  my_plugin/
 | `author` | `string` | いいえ | 作者 |
 | `permissions` | `object` | いいえ | マニフェスト権限。本体だけが読む。詳細は下 |
 | `formats` | `array` | いいえ | 担当形式。これが正。`[[".zip", "archive"]]` または `{ext, kind}`。`ext` は string または配列。`extension` / `type` は読まない |
-| `sidebar` | `bool` | いいえ | サイドバーを使う宣言。widget や ID は書かない。実体は `register_sidebar` |
+| `sidebar` | `bool` | いいえ | サイドバーを使う宣言。widget や ID は書かない。実体は `register_sidebar` または `register_config_sidebar` |
 
 ### マニフェスト権限
 
@@ -236,7 +236,7 @@ class FileLoader:
 | --- | --- |
 | `root` | プラグイン ZIP 内のファイル。`read_bytes` / `exists` |
 | `get_text` | 文言。`get_text("plugin.watermark")` |
-| `host` | 登録・設定・状態参照。`register_config` / `register_config_json` は `load` 以降。`register_sidebar`（`sidebar: true` のときだけ） / `register_action` / `register_filter`（`permissions.filter` のときだけ）は `setup` |
+| `host` | 登録・設定・状態参照。`register_config` / `register_config_json` は `load` 以降。`register_sidebar` / `register_config_sidebar` / `required_setting_sidebar`（`sidebar: true` のときだけ） / `register_action` / `register_filter`（`permissions.filter` のときだけ）は `setup` |
 
 担当形式は `manifest.json` の `formats` が正です。本体がロード時に読みます。
 
@@ -341,6 +341,8 @@ class _Entry:
 登録（`load` または `setup`）:
 
 - `host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None)` — `QWidget` または `QLayout`。ドック化は本体。開閉アクションも自動登録され、ショートカット／ジェスチャーに出せる。メニューは `{title}`、ショートカット／ジェスチャーの表示名は `{title}サイドバー表示/非表示`。`aliases` は旧アクション ID など。権限はここへ渡さない。`manifest.sidebar` が `true` のときだけ。未宣言は `PluginRegistrationDenied`。プラグインは使わず、設定画面は「失敗: 権限がない登録がありました」
+- `host.required_setting_sidebar()` — 登録済み config からフォーム `QWidget` を返す。`setup` のみ。`sidebar: true` 必須。0 件なら例外。config があるだけでは自動登録しない。自前レイアウトへ埋め込むとき用。言語変更時はウィジェットの `refresh_labels()` を `language_changed` から呼ぶ
+- `host.register_config_sidebar(sidebar_id, title, aliases=None)` — 上のフォームを作って `register_sidebar` する。`setup` のみ
 - `host.unregister_sidebar(sidebar_id)` — 有効中に1件外す。無効化は `clear_plugin`
 - `host.register_action(action_id, label, callback, aliases=None)` — 独自アクション。ショートカット／ジェスチャーから呼ばれる
 - `host.unregister_action(action_id)` — 有効中に1件外す。無効化は `clear_plugin`
@@ -348,7 +350,7 @@ class _Entry:
 - `host.unregister_filter(filter_id)` — 有効中に台帳からその1件を消す。pipe は触らない（ユーザーの ON 記憶を残す）。無効化は `clear_plugin`
 - `host.load_ui(bytes_or_path)` — Designer の `.ui` を `QUiLoader` で読む。引数は bytes または OS パス。意味は変えない
 - `host.register_config_json(name)` — `resources/config/` からの相対ファイル名。`load` で明示。自動では読まない。bytes / list は受け取らない。中身はフィールド配列。キーは `register_config` と同じ。未知キーはエラー。`choices` にクラス名、`enum` / `enum_type` はエラー（Enum はコードの `register_config` だけ）。表示文字列は `{key}` テンプレートのまま台帳へ載せる。途中失敗は `load` 例外 → `abort_load`（そのプラグインのスキーマごと消える）
-- `host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False, multiple=False, suffix=None, required=False)` — プラグイン設定ダイアログ用。`value_type` は `"bool"` / `"string"` / `"int"` / `"float"` / `"int_range"` / `"float_range"` / `"path"` / `"password"` / `"color"` / `"date"` / `"datetime"` / `"choice"` / `"font"` / `"charset"` / `"language"` / `"country"`。`choice` は `choices`（値の列、`(value, label)`、または `Enum` / member 列）。Enum を渡したときだけ `get_config` / `config_changed` は member。DB は canonical な `.name`（既存設定を残すなら member 名を変えない）。未知の name は default。複数で1件でも未知なら default 全体。`charset` / `language` / `country` は本体が一覧を持つ（表示は母語名。アプリ言語には合わせない）。`multiple=True` は JSON 配列。`[]` は補完しない（0件可）。`required=True` は empty を保存しない（`set_config` は False。プラグイン ACTIVE にはしない）。空を表現できない型では `required` は実質 no-op。`suffix` は数値の表示のみ。`description` があるときだけホバー。`int_range` / `float_range` は `minimum` / `maximum` / `step` が必須。`path` は `path_kind` が `"file"`（省略時）または `"directory"`。`password` は画面マスク、DB は DPAPI、`get_config` は平文。`sync=True` は数値のみ。`color` は `#RRGGBB`。`date` / `datetime` は UTC の Unix 秒。無効化してもスキーマは残るので `load` で登録してよい。`__init__` では例外。Host に渡す `label` / `description` / `suffix` / `path_filter` / choice の label、および `register_sidebar` の title、`register_filter` の title、`register_action` の label は、文字列全体が `{key}` のときだけ表示時に `get_text` する。台帳はテンプレートのまま。`"A{title}B"` や `"{title} ({hint})"` はリテラル。`{{` `}}` のエスケープは無い。混在が要る文言は langs 側で1キーにまとめる
+- `host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False, multiple=False, suffix=None, required=False)` — プラグイン設定ダイアログ用。`value_type` は `"bool"` / `"string"` / `"int"` / `"float"` / `"int_range"` / `"float_range"` / `"path"` / `"password"` / `"color"` / `"date"` / `"datetime"` / `"choice"` / `"font"` / `"charset"` / `"language"` / `"country"`。`choice` は `choices`（値の列、`(value, label)`、または `Enum` / member 列）。Enum を渡したときだけ `get_config` / `config_changed` は member。DB は canonical な `.name`（既存設定を残すなら member 名を変えない）。未知の name は default。複数で1件でも未知なら default 全体。`charset` / `language` / `country` は本体が一覧を持つ（表示は母語名。アプリ言語には合わせない）。`multiple=True` は JSON 配列。`[]` は補完しない（0件可）。`required=True` は empty を保存しない（`set_config` は False。プラグイン ACTIVE にはしない）。空を表現できない型では `required` は実質 no-op。`suffix` は数値の表示のみ。`description` があるときだけホバー。`int_range` / `float_range` は `minimum` / `maximum` / `step` が必須。`path` は `path_kind` が `"file"`（省略時）または `"directory"`。`password` は画面マスク、DB は DPAPI、`get_config` は平文。`sync=True` は設定ダイアログの数値のみ（サイドバーは見ない）。`reload=True` はダイアログ（`sync` 併用）と生成サイドバーの両方で `reload_current()`。自前で `reload_current(page)` するプラグインは付けない。`color` は `#RRGGBB`。`date` / `datetime` は UTC の Unix 秒。無効化してもスキーマは残るので `load` で登録してよい。`__init__` では例外。Host に渡す `label` / `description` / `suffix` / `path_filter` / choice の label、および `register_sidebar` の title、`register_filter` の title、`register_action` の label は、文字列全体が `{key}` のときだけ表示時に `get_text` する。台帳はテンプレートのまま。`"A{title}B"` や `"{title} ({hint})"` はリテラル。`{{` `}}` のエスケープは無い。混在が要る文言は langs 側で1キーにまとめる
 
 状態:
 
@@ -363,11 +365,11 @@ class _Entry:
 - `host.set_config(key, value)` — 型を正規化して保存し、そのプラグインへ `"config_changed"`（`{key, value}`）。required の empty は保存せず `False`
 - `host.delete_config(key)`
 
-プラグイン設定の一覧にスキーマがある行は「設定」ボタンが出ます。そこでパネルを開き OK / 適用すると、本体ダイアログの OK を待たずに DB へ保存して通知します。初期化はスキーマの default に戻します。`sync=True` の数値は 500ms のアイドル後に保存します。`reload=True` ならそのとき現在画像を開き直します。キャンセルはそのプレビューも戻します。ユーザーマニュアルの [プラグインリファレンス（コンフィグ）](../resources/UserManual/files/plugin-reference.html#plugin-config) に、スキーマ・保存場所・ダイアログの扱いをまとめています。
+プラグイン設定の一覧にスキーマがある行は「設定」ボタンが出ます。そこでパネルを開き OK / 適用すると、本体ダイアログの OK を待たずに DB へ保存して通知します。初期化はスキーマの default に戻します。`sync=True` の数値は設定ダイアログだけで、500ms のアイドル後に保存します。`reload=True` ならそのとき現在画像を開き直します（ダイアログでは `sync` と併用）。キャンセルはそのプレビューも戻します。`register_config_sidebar` が作るサイドバーは全項目を即時保存します（数値は 500ms debounce。`sync` は見ない）。required の空は保存せず、ウィジェットは保存値へ戻します。`reload=True` だけサイドバーでも `reload_current()` します（保存できたキーだけ。リセット後は1回）。更新ボタンは無く、リセットは確認ダイアログ付きです。ユーザーマニュアルの [プラグインリファレンス（コンフィグ）](../resources/UserManual/files/plugin-reference.html#plugin-config) に、スキーマ・保存場所・ダイアログとサイドバーの扱いをまとめています。
 
 `load(root, get_text, host)` は必須です。UI の再接続用に任意の `setup()` / `teardown()` を実装できます。`setup()` は有効化のとき1回だけです。アプリ言語の変更では呼びません。`load` 失敗は UI 台帳と設定スキーマをそのプラグイン分だけ捨てます。`setup` 失敗は `teardown` を試してから `clear_plugin` します（スキーマは残す）。無効化すると本体の `clear_plugin` がサイドバー・登録アクション・`on` の listener・そのプラグインの FilterRecord を台帳から外します。**pipe の ID は残します**（次回 ON・次回起動で復元するため）。`off` / `unregister_*` は有効中に1件だけ外すとき用で、無効化の teardown には書かないでください。teardown に失敗理由は渡しません。所有物はフィールドの有無で止めてください。プラグイン設定の ON/OFF と、フィルターメニューの有効は別です。
 
-任意の `language_changed()` はアプリの `set_language` 適用時だけ、ACTIVE なプラグインへ1回呼ばれます。引数なし。既存ウィジェットの表示文言更新専用です。未実装なら何もしません。ここでは `register_*` / `on` / `off` を禁止します。例外はそのプラグイン単位でログし、ACTIVE のまま他プラグインとメニュー更新は続けます。OS の表示言語変更は自動では見ません。ドックの visible / area / floating / widget は維持し、タイトルだけ差し替えます。
+任意の `language_changed()` はアプリの `set_language` 適用時だけ、ACTIVE なプラグインへ1回呼ばれます。引数なし。既存ウィジェットの表示文言更新専用です。未実装なら何もしません。ここでは `register_*` / `on` / `off` を禁止します。例外はそのプラグイン単位でログし、ACTIVE のまま他プラグインとメニュー更新は続けます。OS の表示言語変更は自動では見ません。ドックの visible / area / floating / widget は維持し、タイトルを差し替えます。host が作った設定フォームは同じタイミングでラベルも差し替えます。`required_setting_sidebar()` を自前ウィジェットへ埋め込んだときは、`language_changed` から `refresh_labels()` を呼んでください。
 
 ---
 
@@ -694,7 +696,7 @@ UI は「プラグイン設定」ダイアログです。ON/OFF と読み込み�
 | --- | --- |
 | `plugins/example_png/` | `.png` を `image` として読む。色重ねは確認用。ZIP は `dist-sample-plugins/` |
 | `plugins/example_zip/` | `.zip` を `archive` として読む。パスワードダイアログの呼び方も含む |
-| `plugins/example_txt/` | `.txt` / `.log` を `archive` として読む。本文をページ画像にする。サイドバーで字体・色・縦読み／横読み・文字コードを即時反映 |
+| `plugins/example_txt/` | `.txt` / `.log` を `archive` として読む。本文をページ画像にする。`register_config_sidebar` で字体・色・縦読み／横読み・文字コードを即時反映 |
 | `plugins/product_info/` | 商品情報サイドバー。`resources/ui/sidebar.ui` を `load_ui` で読む。`info.json` が無くフォルダ／ファイル名が DLsite / DMM 番号なら、標準ライブラリだけで非同期取得（ディスクには書かない。設定で OFF 可） |
 | `plugins/config_types/` | 確認用。設定種別を全部登録し、保存値をサイドバーに出す |
 | `plugins/example_filter/` | 確認用。表示フィルター。色とラベルを重ね、文字サイズを `int_range`（`sync` と `reload`）で変える |

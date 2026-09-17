@@ -13,7 +13,7 @@ alwaysApply: false
 - プラグイン固有値は `host.register_config` / `host.register_config_json` / `get_config` / `set_config` / `delete_config` だけ。`register_config` は `load` 以降（`__init__` では例外）。JSON は `resources/config/` のファイル名。Enum はコード。label / description / suffix / choice label の `{key}` は全体一致・表示時。保存先は `plugin_settings`。`plugin_id` はハッシュ。他プラグインの行は読めない。他プラグインの id を渡す引数を足さない
 - `choice` に `Enum` を渡したときだけ `get_config` / `config_changed` は member。DB は canonical な `.name`。`multiple=True` の `[]` は補完しない。`required` の empty は保存しない
 - `password` 型の DB 値は Windows DPAPI。`get_config` / `config_changed` は平文。ログに出さない
-- `sync=True` は数値の即時保存（debounce）。`reload_current` は `reload=True` のときだけ。Config API からフィルター処理を呼ばない
+- `sync=True` は設定ダイアログ専用の数値即時保存（debounce）。生成サイドバーは全項目を即時保存し `sync` は見ない。`reload=True` はダイアログ（`sync` 併用）とサイドバーの両方で `reload_current`。Config API からフィルター処理を呼ばない
 - 拡張子の優先・ON/OFF・重複選択・同意バージョン（`user.json`）は本体の設定。プラグインから書き換えない
 - 入口は `load` で渡す `ScopedPluginHost` だけ。そこから外れて DB / `Config` に届かないようにする
 - 開いているフォルダやファイルへ勝手に書き込まない（商品情報の Web 取得もディスクには書かない）

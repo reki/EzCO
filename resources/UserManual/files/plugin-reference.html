@@ -58,9 +58,11 @@
                                 <li><a href="#register-action" class="toc-link">register_action</a></li>
                                 <li><a href="#register-config" class="toc-link">register_config</a></li>
                                 <li><a href="#register-config-json" class="toc-link">register_config_json</a></li>
+                                <li><a href="#register-config-sidebar" class="toc-link">register_config_sidebar</a></li>
                                 <li><a href="#register-filter" class="toc-link">register_filter</a></li>
                                 <li><a href="#register-sidebar" class="toc-link">register_sidebar</a></li>
                                 <li><a href="#reload-current" class="toc-link">reload_current</a></li>
+                                <li><a href="#required-setting-sidebar" class="toc-link">required_setting_sidebar</a></li>
                                 <li><a href="#run-action" class="toc-link">run_action</a></li>
                                 <li><a href="#set-config" class="toc-link">set_config</a></li>
                                 <li><a href="#show-dialog" class="toc-link">show_dialog</a></li>
@@ -130,7 +132,7 @@
                                 <tr>
                                     <td>サイドバー</td>
                                     <td><code>sidebar: true</code>（widget や ID は書かない）</td>
-                                    <td><code>setup()</code> で <a href="#register-sidebar"><code>register_sidebar</code></a></td>
+                                    <td><code>setup()</code> で <a href="#register-sidebar"><code>register_sidebar</code></a> または <a href="#register-config-sidebar"><code>register_config_sidebar</code></a></td>
                                 </tr>
                                 <tr>
                                     <td>表示フィルター</td>
@@ -256,7 +258,7 @@
                                 <span class="api-field-meta">bool</span>
                                 <span class="api-field-meta">任意</span>
                             </div>
-                            <p>サイドバーを使う宣言です。widget や ID は書きません。実体は <code>setup()</code> の <a href="#register-sidebar"><code>register_sidebar</code></a> です。マニフェストに無ければ読み込み失敗です。プラグイン設定の状態は「失敗: 権限がない登録がありました」になります。</p>
+                            <p>サイドバーを使う宣言です。widget や ID は書きません。実体は <code>setup()</code> の <a href="#register-sidebar"><code>register_sidebar</code></a> または <a href="#register-config-sidebar"><code>register_config_sidebar</code></a> です。マニフェストに無ければ読み込み失敗です。プラグイン設定の状態は「失敗: 権限がない登録がありました」になります。</p>
 <pre class="api-example">{
   "sidebar": true
 }</pre>
@@ -433,7 +435,7 @@ class _Entry:
                         <article id="loader-load" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>load(root, get_text, host)</code></div>
                             <div class="api-body">
-                                <p>必須。生成直後に1回、OFF でも呼びます。引数を <code>self</code> に保持します。<code>register_config</code> はここでよい。UI 系（<code>register_sidebar</code> / <code>register_action</code> / <code>register_filter</code> / <code>on</code> / <code>off</code>）は例外になり読み込み失敗です。途中で例外なら本体がそのプラグインの台帳と設定スキーマを捨てます。</p>
+                                <p>必須。生成直後に1回、OFF でも呼びます。引数を <code>self</code> に保持します。<code>register_config</code> はここでよい。UI 系（<code>register_sidebar</code> / <code>register_config_sidebar</code> / <code>required_setting_sidebar</code> / <code>register_action</code> / <code>register_filter</code> / <code>on</code> / <code>off</code>）は例外になり読み込み失敗です。途中で例外なら本体がそのプラグインの台帳と設定スキーマを捨てます。</p>
                                 <table>
                                     <thead><tr><th>引数</th><th>説明</th></tr></thead>
                                     <tbody>
@@ -469,7 +471,7 @@ def teardown(self):
                         <article id="language-changed" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>language_changed()</code></div>
                             <div class="api-body">
-                                <p>任意。アプリの言語設定を変えたときだけ、ACTIVE なプラグインへ1回呼ばれます。引数なし。プラグイン内部ウィジェットの表示文言更新専用です。未実装なら何もしません。ここでは <code>register_*</code> / <code>on</code> / <code>off</code> は禁止です。例外はそのプラグインだけログし、ACTIVE のまま他プラグインとメニュー更新は続けます。OS の表示言語変更は自動では見ません。ドックの visible / area / floating / widget は維持し、タイトルだけ差し替えます。</p>
+                                <p>任意。アプリの言語設定を変えたときだけ、ACTIVE なプラグインへ1回呼ばれます。引数なし。プラグイン内部ウィジェットの表示文言更新専用です。未実装なら何もしません。ここでは <code>register_*</code> / <code>on</code> / <code>off</code> は禁止です。例外はそのプラグインだけログし、ACTIVE のまま他プラグインとメニュー更新は続けます。OS の表示言語変更は自動では見ません。ドックの visible / area / floating / widget は維持し、タイトルを差し替えます。host が作った設定フォームは同じタイミングでラベルも差し替えます。<a href="#required-setting-sidebar"><code>required_setting_sidebar()</code></a> を自前ウィジェットへ埋め込んだときは、ここから <code>refresh_labels()</code> を呼んでください。</p>
                             </div>
                         </article>
                     </section>
@@ -481,7 +483,7 @@ def teardown(self):
                             <thead><tr><th>API</th><th>先にマニフェストへ</th></tr></thead>
                             <tbody>
                                 <tr><td>ファイル読み込みのメソッド</td><td><code>formats</code></td></tr>
-                                <tr><td><code>register_sidebar</code></td><td><code>sidebar: true</code></td></tr>
+                                <tr><td><code>register_sidebar</code> / <code>register_config_sidebar</code> / <code>required_setting_sidebar</code></td><td><code>sidebar: true</code></td></tr>
                                 <tr><td><code>register_filter</code></td><td><code>permissions.filter: true</code></td></tr>
                             </tbody>
                         </table>
@@ -625,6 +627,15 @@ host.register_config(
                                 <p class="api-see">関連: <a href="#register-config"><code>register_config</code></a></p>
                             </div>
                         </article>
+                        <article id="register-config-sidebar" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_config_sidebar(sidebar_id, title, aliases=None) -&gt; None</code></div>
+                            <div class="api-body">
+                                <p><a href="#required-setting-sidebar"><code>required_setting_sidebar()</code></a> でフォームを作り、<a href="#register-sidebar"><code>register_sidebar</code></a> します。<code>setup()</code> のみ。先に <code>manifest.sidebar: true</code> と 1 件以上の config が必要です。config があるだけでは自動登録しません。生成サイドバーは全項目を即時保存します（数値は 500ms debounce。<code>sync</code> は見ません）。<code>reload=True</code> のキーを書いたあと host が <code>reload_current()</code> します。更新ボタンは無く、リセットは確認ダイアログ付きです。自前でページ位置を保って開き直すプラグインは <code>reload</code> を付けないでください。</p>
+<pre class="api-example">def setup(self):
+    self.host.register_config_sidebar("text_image", "{title}")</pre>
+                                <p class="api-see">関連: <a href="#required-setting-sidebar"><code>required_setting_sidebar</code></a> / <a href="#register-sidebar"><code>register_sidebar</code></a></p>
+                            </div>
+                        </article>
                         <article id="register-filter" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.register_filter(filter_id, title, process) -&gt; None</code></div>
                             <div class="api-body">
@@ -651,7 +662,7 @@ host.register_sidebar(
     widget,
     aliases=("toggle_my_dock",),
 )</pre>
-                                <p class="api-see">関連: <a href="#unregister-sidebar"><code>unregister_sidebar</code></a></p>
+                                <p class="api-see">関連: <a href="#unregister-sidebar"><code>unregister_sidebar</code></a> / <a href="#register-config-sidebar"><code>register_config_sidebar</code></a></p>
                             </div>
                         </article>
                         <article id="reload-current" class="api-member">
@@ -659,6 +670,15 @@ host.register_sidebar(
                             <div class="api-body">
                                 <p>現在のファイルを開き直します。画像キャッシュも消えます。<code>page</code> は 1 始まり。省略時は今のページです。範囲外は先頭または末尾に丸めます。</p>
 <pre class="api-example">host.reload_current(3)</pre>
+                            </div>
+                        </article>
+                        <article id="required-setting-sidebar" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.required_setting_sidebar() -&gt; QWidget</code></div>
+                            <div class="api-body">
+                                <p>登録済み config から設定フォームを返します。<code>setup()</code> のみ。<code>manifest.sidebar: true</code> が必須です。0 件なら例外です。ドックへ載せるだけなら <a href="#register-config-sidebar"><code>register_config_sidebar</code></a> を使います。自前レイアウトへ埋め込むとき用です。言語変更時はウィジェットの <code>refresh_labels()</code> を <code>language_changed</code> から呼んでください。host がドックへ載せたフォームは、タイトル差し替えと同じタイミングでラベルも更新します。</p>
+<pre class="api-example">widget = self.host.required_setting_sidebar()
+layout.addWidget(widget)</pre>
+                                <p class="api-see">関連: <a href="#register-config-sidebar"><code>register_config_sidebar</code></a></p>
                             </div>
                         </article>
                         <article id="run-action" class="api-member">
@@ -722,7 +742,7 @@ host.register_sidebar(
                             <li><code>int_range</code> / <code>float_range</code> は範囲付きの単一値です。<code>minimum</code> / <code>maximum</code> / <code>step</code> は必須です。欠落・逆転・<code>step &lt;= 0</code> はエラーです。ダイアログはスライダーとスピンを並べ、項目名の末尾に範囲を付けます。<code>float_range</code> は <code>step</code> も付けます。</li>
                             <li><code>path</code> は文字列。<code>path_kind</code> は <code>"file"</code>（省略時）または <code>"directory"</code>。<code>path_filter</code> はファイルダイアログのフィルタです。</li>
                             <li><code>password</code> は画面ではマスクします。DB は Windows DPAPI。プラグインの <code>get_config</code> は平文です。</li>
-                            <li><code>sync=True</code> は数値（<code>int</code> / <code>float</code> / <code>int_range</code> / <code>float_range</code>）だけ効きます。最後の変更から 500ms 動かなくなってから保存し <code>config_changed</code> します。<code>reload=True</code>（<code>sync</code> と併用）のときだけ現在画像を <code>reload_current</code> します。キャンセル（Esc / × 含む）はプレビュー値を、ダイアログを開いた時点（または最後の適用）へ戻します。<code>reload</code> 項目なら画像も戻します。</li>
+                            <li><code>sync=True</code> は設定ダイアログ専用です。数値（<code>int</code> / <code>float</code> / <code>int_range</code> / <code>float_range</code>）だけ効きます。最後の変更から 500ms 動かなくなってから保存し <code>config_changed</code> します。<code>reload=True</code>（ダイアログでは <code>sync</code> と併用）のとき現在画像を <code>reload_current</code> します。キャンセル（Esc / × 含む）はプレビュー値を、ダイアログを開いた時点（または最後の適用）へ戻します。<code>reload</code> 項目なら画像も戻します。生成サイドバーは <code>sync</code> を見ません。</li>
                             <li><code>color</code> は <code>#RRGGBB</code> の文字列。<code>date</code> / <code>datetime</code> は UTC の Unix 秒（数値）。<code>date</code> はその日の 00:00:00 UTC です。</li>
                             <li><code>choice</code> は <code>choices</code>（値の列、<code>(value, label)</code>、または <code>Enum</code> / member 列）が必要です。省略すると1行入力になります。<code>Enum</code> を渡したときだけ <code>get_config</code> / <code>config_changed</code> は member です。DB は canonical な <code>.name</code> です。既存設定を残すなら member 名を変えないでください。未知の name は default。複数で1件でも未知なら default 全体です。</li>
                             <li><code>charset</code> / <code>language</code> / <code>country</code> は本体が一覧を持ちます。保存は codec 名 / 言語コード / 国コード。言語・国の表示は母語名で、アプリの UI 言語には合わせません。</li>
@@ -758,6 +778,14 @@ host.register_sidebar(
                             <li>初期化はスキーマの <code>default</code> にウィジェットを戻します。非 sync はまだ保存しません。<code>sync</code> の数値はすぐ保存します。<code>reload=True</code> なら画像を開き直します。</li>
                             <li>キャンセルは、そのダイアログでまだ保存していない変更を捨てます。<code>sync</code> で先に書いたプレビューも、開いた時点（最後の適用）へ戻します。<code>reload</code> 項目なら画像も開き直します。Esc / × も同じです。</li>
                             <li>値を変えたあとは <code>config_changed</code> を聞いて、サイドバーなどを更新してください。<code>reload=True</code> のソース開き直しはホストがやるので、重ねて <code>reload_current</code> しないでください。</li>
+                        </ul>
+                        <h4>設定サイドバー</h4>
+                        <ul>
+                            <li><a href="#register-config-sidebar"><code>register_config_sidebar</code></a> は <code>setup</code> で明示したときだけフォームをドックへ載せます。config があるだけでは自動登録しません。</li>
+                            <li>全項目をすぐ <code>set_config</code> します。数値だけ 500ms debounce。choice / font / color / charset / bool は変更直後です。<code>sync</code> は見ません。required の空は保存しません（ウィジェットは保存値へ戻します）。</li>
+                            <li><code>reload=True</code> のキーを書いたあと host が <code>reload_current()</code> します（保存できたときだけ。リセット後は1回）。ページ位置を自前で保つプラグインは <code>reload</code> を付けず、<code>config_changed</code> から <code>reload_current(page)</code> してください。</li>
+                            <li>更新ボタンはありません。リセットはスキーマの <code>default</code> に戻してすぐ保存します。required の空 default は保存せず、その項目は保存値のままです。確認ダイアログのあとです。</li>
+                            <li>フォームは他画面からの <code>config_changed</code> をウィジェットへ戻します。</li>
                         </ul>
 <pre class="api-example">def load(self, root, get_text, host):
     self.host = host

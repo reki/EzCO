@@ -11,18 +11,18 @@ alwaysApply: false
 - 描画・ズーム・見開き・ページ送り・キャッシュは本体。プラグインは Qt / PIL が読める画像バイトまで。アーカイブの中身を別プラグインへ回さない
 - 表示画像の書き換えは `permissions.filter` と `register_filter`。`process` は pipe かつ台帳にある ID だけ。値は既存の `register_config`。削除は `clear_plugin`（台帳のみ。pipe の ID は残す）。teardown に頼らない。v1 の `process` は同期・短時間。原画オブジェクトをプラグインに渡さない
 - 無効化の掃除は本体の `clear_plugin`（sidebar / action / listener / filter 台帳）。teardown に `off` / `unregister_*` を書かない。teardown は QThread / timer / 自前参照だけ
-- サイドバーは `register_sidebar` に widget / layout を渡すだけ。ドックの貼り付け／フローティング／`MainWindow` はいじらない
+- サイドバーは `register_sidebar` に widget / layout を渡すか、`register_config_sidebar` で host に組ませる。ドックの貼り付け／フローティング／`MainWindow` はいじらない
 - パスワードは `host.ask_password`。入力や復号成功の詳細をログに出さない
 - 拡張子の優先（ビルトイン／プラグイン）は設定ダイアログで選び、DB に保存する
 - サンプルは後から読まれる。ホスト連携はコメントを厚くする。デモ用の加工表示は意図的だと分かるように残す
 - プラグインの入口は `src/plugin.py`。`manifest.entry` は `plugin:クラス名`。補助モジュールは別ファイルでよい。ホストは他のモジュール名も受け付けるが、このリポジトリのサンプルと新規プラグインは揃える
 - 静的ファイルは `resources/langs` / `ui` / `assets` / `config`。Host に渡す名称は `"{key}"` 全体。`setup` は有効化の1回。言語切替の内部更新は `language_changed` のみ
-- 入口は `Class()`。`__init__` はクラス内で完結するフィールドだけ。`root` / `get_text` / `host` は必須の `load(root, get_text, host)` で受け取る。`__init__` の `register_*` / `on` / `off` は例外。`register_config` / `register_config_json` は `load` 以降。`register_sidebar` / `register_action` / `register_filter` / `on` は `setup`
+- 入口は `Class()`。`__init__` はクラス内で完結するフィールドだけ。`root` / `get_text` / `host` は必須の `load(root, get_text, host)` で受け取る。`__init__` の `register_*` / `on` / `off` は例外。`register_config` / `register_config_json` は `load` 以降。`register_sidebar` / `register_config_sidebar` / `required_setting_sidebar` / `register_action` / `register_filter` / `on` は `setup`
 - `load` / `setup` が例外なら、その `plugin_id` の途中の register は本体が戻す。`teardown` に失敗理由は渡さない。所有物はプラグインがフィールドの有無で止める
 - 動いている `QThread` の Python 参照を切らない（`quit()` だけで `wait()` せず捨てると落ちる）
 - マニフェスト権限は本体が `manifest.json` の `permissions` から読む。値は JSON の true/false のみ。`register_sidebar` などプラグイン API では受け取らない
 - 同じフォルダ／同じ仕事の取得を、ページ送りのたびにやり直さない
 - 同じフォルダでも商品 ID が変わったら Web 取得の cache を共用しない。古い fetch 結果は捨てる。動いている QThread は捨てない
-- 担当形式は `manifest.formats`。オブジェクトは `ext` と `kind` だけ。`extension` / `type` は読まない。`ext` は string または配列（展開後は拡張子一致）。サイドバーは `sidebar: true` のうえ `register_sidebar`。`permissions` と混ぜない。未宣言の `register_sidebar` / `register_filter` は `PluginRegistrationDenied`。プラグインは使わない。設定画面の状態は「失敗: 権限がない登録がありました」
+- 担当形式は `manifest.formats`。オブジェクトは `ext` と `kind` だけ。`extension` / `type` は読まない。`ext` は string または配列（展開後は拡張子一致）。サイドバーは `sidebar: true` のうえ `register_sidebar` または `register_config_sidebar`。`permissions` と混ぜない。未宣言の `register_sidebar` / `register_config_sidebar` / `required_setting_sidebar` / `register_filter` は `PluginRegistrationDenied`。プラグインは使わない。設定画面の状態は「失敗: 権限がない登録がありました」
 - 非表示の `current_changed` は本体が止める。対象はサイドバーを登録したプラグイン。非表示でも受け取りたいときだけ `permissions.inactive_callback`
 - `host` のメソッドと属性は `self.host.ask_password` のように直接書く。`getattr` / `hasattr` / `setattr` で探さない。足りないものは host に足す

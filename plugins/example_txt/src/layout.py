@@ -1,7 +1,5 @@
 """本文をページ画像に分ける。1文字も切らず、入らなければ分割を拒否する。"""
 from dataclasses import dataclass
-import codecs
-from encodings.aliases import aliases
 
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QRect, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter
@@ -13,8 +11,6 @@ VERTICAL = "vertical"
 _ROTATE = set("ー―‐−–—～〜…‥=＝ｰ")
 _DEFAULT_FAMILY = "Meiryo"
 _DEFAULT_SIZE = 18
-_CHARSET_HEAD = ("utf-8", "cp932", "shift_jis", "latin_1")
-_charset_names: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -27,38 +23,6 @@ class PageSettings:
     page_height: int
     margin: int
     writing: str
-
-
-def charset_names() -> tuple[str, ...]:
-    global _charset_names
-    if _charset_names is not None:
-        return _charset_names
-    found: set[str] = set()
-    candidates = set(aliases)
-    candidates.update(aliases.values())
-    candidates.update(_CHARSET_HEAD)
-    for alias in candidates:
-        try:
-            found.add(codecs.lookup(str(alias).replace("_", "-")).name)
-        except LookupError:
-            try:
-                found.add(codecs.lookup(str(alias)).name)
-            except LookupError:
-                continue
-    head: list[str] = []
-    seen: set[str] = set()
-    for name in _CHARSET_HEAD:
-        try:
-            codecs.lookup(name)
-        except LookupError:
-            continue
-        if name in seen:
-            continue
-        seen.add(name)
-        head.append(name)
-    rest = sorted(item for item in found if item not in seen)
-    _charset_names = tuple(head + rest)
-    return _charset_names
 
 
 def read_text(path: str, charset: str = "utf-8") -> str:

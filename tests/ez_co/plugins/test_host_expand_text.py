@@ -62,3 +62,22 @@ def test_refresh_display_titles_remounts_without_unmount():
     assert unmounted == []
     assert host.sidebars_for("com.example.x")[0].title == "{title}"
     assert mounted[-1][3] is widget
+
+
+def test_refresh_display_titles_calls_refresh_labels():
+    host = PluginHost()
+    host.bind(parent=None, mount_sidebar=lambda *_args: None)
+    host.set_manifest_provides("com.example.x", sidebar=True)
+    host.enter_phase("com.example.x", "setup")
+
+    class _Labeled:
+        def __init__(self):
+            self.calls = 0
+
+        def refresh_labels(self):
+            self.calls += 1
+
+    widget = _Labeled()
+    host.scoped("com.example.x").register_sidebar("main", "Title", widget)
+    host.refresh_display_titles()
+    assert widget.calls == 1

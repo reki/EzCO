@@ -59,6 +59,8 @@ _UI_REGISTER = frozenset(
     {
         "register_sidebar",
         "unregister_sidebar",
+        "register_config_sidebar",
+        "required_setting_sidebar",
         "register_action",
         "unregister_action",
         "register_filter",
@@ -1038,10 +1040,16 @@ class PluginHost:
         return self.scoped(plugin_id).expand_text(value)
 
     def refresh_display_titles(self) -> None:
-        """アプリ言語変更後、既存ドックのタイトルだけ差し替える。unmount しない。"""
+        """アプリ言語変更後、既存ドックのタイトルと設定フォームのラベルを差し替える。unmount しない。"""
         if self._mount_sidebar is None:
             return
         for record in list(self._sidebars.values()):
+            refresh = getattr(record.widget, "refresh_labels", None)
+            if callable(refresh):
+                try:
+                    refresh()
+                except Exception as exc:
+                    logger.debug(get_log_text("plugin_event_failed", event="refresh_labels", error=exc))
             title = self.expand_text(record.plugin_id, record.title)
             try:
                 self._mount_sidebar(record.plugin_id, record.sidebar_id, title, record.widget)
@@ -1128,6 +1136,22 @@ class PluginHost:
                 )
             except Exception as exc:
                 logger.warning(get_log_text("plugin_sidebar_mount_failed", error=exc))
+
+    def _required_setting_sidebar(self, plugin_id: str):
+        self._deny_wrong_phase(plugin_id, "required_setting_sidebar")
+        if not self._declared_sidebar.get(plugin_id):
+            raise PluginRegistrationDenied(plugin_id, "plugin_sidebar_not_declared")
+        fields = self.configs_for(plugin_id)
+        if not fields:
+            raise ValueError(get_log_text("plugin_config_sidebar_empty", plugin_id=plugin_id))
+        from ez_co.ui.plugins.config_form import PluginConfigForm
+
+        return PluginConfigForm(self, plugin_id)
+
+    def _register_config_sidebar(self, plugin_id: str, sidebar_id: str, title: str, aliases=None) -> None:
+        self._deny_wrong_phase(plugin_id, "register_config_sidebar")
+        widget = self._required_setting_sidebar(plugin_id)
+        self._register_sidebar(plugin_id, sidebar_id, title, widget, aliases)
 
     def _unregister_sidebar(self, plugin_id: str, sidebar_id: str) -> None:
         self._deny_wrong_phase(plugin_id, "unregister_sidebar")
@@ -1546,6 +1570,12 @@ class ScopedPluginHost:
 
     def register_sidebar(self, sidebar_id: str, title: str, widget_or_layout, aliases=None) -> None:
         self._host._register_sidebar(self._plugin_id, sidebar_id, title, widget_or_layout, aliases)
+
+    def required_setting_sidebar(self):
+        return self._host._required_setting_sidebar(self._plugin_id)
+
+    def register_config_sidebar(self, sidebar_id: str, title: str, aliases=None) -> None:
+        self._host._register_config_sidebar(self._plugin_id, sidebar_id, title, aliases)
 
     def unregister_sidebar(self, sidebar_id: str) -> None:
         self._host._unregister_sidebar(self._plugin_id, sidebar_id)

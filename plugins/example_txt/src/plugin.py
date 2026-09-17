@@ -16,9 +16,7 @@ import threading
 
 from layout import (
     HORIZONTAL,
-    VERTICAL,
     PageSettings,
-    charset_names,
     layout_fits,
     page_index_for_start,
     paginate,
@@ -39,7 +37,6 @@ _DEFAULTS = {
     "writing": HORIZONTAL,
     "charset": "utf-8",
 }
-_DEBOUNCE_MS = 150
 _SOURCE_SUFFIXES = (".txt", ".log")
 
 
@@ -48,14 +45,9 @@ class TextImagePlugin:
         self.root = None
         self.get_text = None
         self.host = None
-        self.widget = None
         self._listening = False
-        self._applying = False
         self._lock = threading.Lock()
         self._cache = {}
-        self._fields = {}
-        self._timer = None
-        self._pending_keys = set()
         self._last_txt = None
 
     def load(self, root, get_text, host):
@@ -84,216 +76,20 @@ class TextImagePlugin:
         return _Entry(_page_name(index), render_page(text, start, end, settings))
 
     def setup(self):
-        from PySide6.QtCore import QTimer
-        from PySide6.QtWidgets import QWidget
-
-        if not _alive(self.widget):
-            self.widget = QWidget()
-            self._build_sidebar(self.widget)
-            self._timer = QTimer(self.widget)
-            self._timer.setSingleShot(True)
-            self._timer.setInterval(_DEBOUNCE_MS)
-            self._timer.timeout.connect(self._flush_pending)
-        self._sync_ui_from_config()
         if not self._listening:
             self.host.on("config_changed", self._on_config)
             self._listening = True
-        self.host.register_sidebar("text_image", "{title}", self.widget)
+        self.host.register_config_sidebar("text_image", "{title}")
 
     def teardown(self):
-        if self._timer is not None:
-            self._timer.stop()
         self._listening = False
-        self.widget = None
-        self._fields = {}
-        self._timer = None
-
-    def _build_sidebar(self, widget):
-        from PySide6.QtCore import Qt
-        from PySide6.QtWidgets import (
-            QComboBox,
-            QCompleter,
-            QFontComboBox,
-            QFormLayout,
-            QPushButton,
-            QSpinBox,
-        )
-
-        layout = QFormLayout(widget)
-        font_box = QFontComboBox()
-        size = QSpinBox()
-        size.setRange(8, 96)
-        text_color = QPushButton()
-        bg_color = QPushButton()
-        width = QSpinBox()
-        width.setRange(200, 4000)
-        height = QSpinBox()
-        height.setRange(200, 4000)
-        margin = QSpinBox()
-        margin.setRange(0, 400)
-        writing = QComboBox()
-        writing.addItem(self.get_text("writing_horizontal"), HORIZONTAL)
-        writing.addItem(self.get_text("writing_vertical"), VERTICAL)
-        charset = QComboBox()
-        charset.setEditable(True)
-        charset.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        for name in charset_names():
-            charset.addItem(name, name)
-        completer = charset.completer()
-        if completer is None:
-            completer = QCompleter(charset)
-            charset.setCompleter(completer)
-        completer.setFilterMode(Qt.MatchFlag.MatchContains)
-        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-
-        layout.addRow(self.get_text("font_family"), font_box)
-        layout.addRow(self.get_text("font_size"), size)
-        layout.addRow(self.get_text("text_color"), text_color)
-        layout.addRow(self.get_text("bg_color"), bg_color)
-        layout.addRow(self.get_text("page_width"), width)
-        layout.addRow(self.get_text("page_height"), height)
-        layout.addRow(self.get_text("margin"), margin)
-        layout.addRow(self.get_text("writing"), writing)
-        layout.addRow(self.get_text("charset"), charset)
-        refresh = QPushButton(self.get_text("refresh"))
-        layout.addRow(refresh)
-
-        self._fields = {
-            "font_family": font_box,
-            "font_size": size,
-            "text_color": text_color,
-            "bg_color": bg_color,
-            "page_width": width,
-            "page_height": height,
-            "margin": margin,
-            "writing": writing,
-            "charset": charset,
-            "refresh": refresh,
-        }
-
-        font_box.currentFontChanged.connect(lambda _font: self._apply_keys(("font_family",)))
-        size.valueChanged.connect(lambda _value: self._queue_keys(("font_size",)))
-        text_color.clicked.connect(lambda: self._pick_color("text_color"))
-        bg_color.clicked.connect(lambda: self._pick_color("bg_color"))
-        width.valueChanged.connect(lambda _value: self._queue_keys(("page_width",)))
-        height.valueChanged.connect(lambda _value: self._queue_keys(("page_height",)))
-        margin.valueChanged.connect(lambda _value: self._queue_keys(("margin",)))
-        writing.currentIndexChanged.connect(lambda _index: self._apply_keys(("writing",)))
-        charset.currentIndexChanged.connect(lambda _index: self._apply_keys(("charset",)))
-        refresh.clicked.connect(self._refresh_clicked)
-
-    def _sync_ui_from_config(self):
-        if not self._fields:
-            return
-        raw = self._raw_settings()
-        resolved = self._resolved(raw)
-        self._applying = True
-        try:
-            font_box = self._fields["font_family"]
-            font_box.blockSignals(True)
-            font_box.setCurrentFont(_qfont(resolved.font_family, resolved.font_size))
-            font_box.blockSignals(False)
-            for key, value in (
-                ("font_size", resolved.font_size),
-                ("page_width", resolved.page_width),
-                ("page_height", resolved.page_height),
-                ("margin", resolved.margin),
-            ):
-                box = self._fields[key]
-                box.blockSignals(True)
-                box.setValue(value)
-                box.blockSignals(False)
-            self._paint_color_button(self._fields["text_color"], resolved.text_color)
-            self._paint_color_button(self._fields["bg_color"], resolved.bg_color)
-            writing = self._fields["writing"]
-            writing.blockSignals(True)
-            index = writing.findData(resolved.writing)
-            writing.setCurrentIndex(max(0, index))
-            writing.blockSignals(False)
-            self._select_charset(self._charset())
-        finally:
-            self._applying = False
-
-    def _read_ui(self) -> PageSettings:
-        fields = self._fields
-        writing = fields["writing"].currentData()
-        return PageSettings(
-            font_family=fields["font_family"].currentFont().family(),
-            font_size=int(fields["font_size"].value()),
-            text_color=_button_color(fields["text_color"], _DEFAULTS["text_color"]),
-            bg_color=_button_color(fields["bg_color"], _DEFAULTS["bg_color"]),
-            page_width=int(fields["page_width"].value()),
-            page_height=int(fields["page_height"].value()),
-            margin=int(fields["margin"].value()),
-            writing=VERTICAL if writing == VERTICAL else HORIZONTAL,
-        )
-
-    def _queue_keys(self, keys):
-        if self._applying:
-            return
-        self._pending_keys.update(keys)
-        if self._timer is not None:
-            self._timer.start()
-
-    def _flush_pending(self):
-        keys = tuple(self._pending_keys)
-        self._pending_keys.clear()
-        if keys:
-            self._apply_keys(keys)
-
-    def _apply_keys(self, keys):
-        if self._applying or not self._fields:
-            return
-        if self._timer is not None:
-            self._timer.stop()
-            self._pending_keys.difference_update(keys)
-        raw = self._read_ui()
-        resolved = self._resolved(raw)
-        if not layout_fits(resolved):
-            self._sync_ui_from_config()
-            return
-        snapshot = {
-            "font_family": raw.font_family,
-            "font_size": raw.font_size,
-            "text_color": raw.text_color,
-            "bg_color": raw.bg_color,
-            "page_width": raw.page_width,
-            "page_height": raw.page_height,
-            "margin": raw.margin,
-            "writing": raw.writing,
-            "charset": self._charset_from_ui(),
-        }
-        self._applying = True
-        try:
-            for key in keys:
-                self.host.set_config(key, snapshot[key])
-        finally:
-            self._applying = False
-        if "charset" in keys:
-            self._drop_text_cache()
-        self._reload_from_anchor()
-
-    def _refresh_clicked(self):
-        self._apply_keys(tuple(_DEFAULTS))
-
-    def _pick_color(self, key):
-        from PySide6.QtGui import QColor
-        from PySide6.QtWidgets import QColorDialog
-
-        current = _button_color(self._fields[key], _DEFAULTS[key])
-        color = QColorDialog.getColor(QColor(current), self.widget)
-        if not color.isValid():
-            return
-        self._paint_color_button(self._fields[key], color.name())
-        self._apply_keys((key,))
 
     def _on_config(self, payload=None):
-        if self._applying:
-            return
         if isinstance(payload, dict) and payload.get("key") == "charset":
             self._drop_text_cache()
-        self._sync_ui_from_config()
+        settings = self._resolved(self._raw_settings())
+        if not layout_fits(settings):
+            return
         self._reload_from_anchor()
 
     def _reload_from_anchor(self):
@@ -322,7 +118,6 @@ class TextImagePlugin:
         settings = self._resolved(self._raw_settings())
         pages = paginate_anchored(text, settings, anchor)
         if not pages:
-            self._sync_ui_from_config()
             return
         new_page = page_index_for_start(pages, anchor) + 1
         with self._lock:
@@ -351,28 +146,6 @@ class TextImagePlugin:
 
     def _charset(self) -> str:
         return str(self.host.get_config("charset", _DEFAULTS["charset"]) or "utf-8")
-
-    def _charset_from_ui(self) -> str:
-        box = self._fields.get("charset")
-        if box is None:
-            return self._charset()
-        value = box.currentData() or box.currentText()
-        return str(value or _DEFAULTS["charset"])
-
-    def _select_charset(self, value: str):
-        box = self._fields.get("charset")
-        if box is None:
-            return
-        name = str(value or _DEFAULTS["charset"])
-        box.blockSignals(True)
-        index = box.findData(name)
-        if index < 0:
-            index = box.findText(name)
-        if index < 0:
-            box.addItem(name, name)
-            index = box.findData(name)
-        box.setCurrentIndex(max(0, index))
-        box.blockSignals(False)
 
     def _drop_text_cache(self):
         path = self._current_txt_path()
@@ -447,14 +220,6 @@ class TextImagePlugin:
             }
         return text, pages, settings
 
-    def _paint_color_button(self, button, color: str):
-        button.setProperty("color_value", color)
-        button.setText(color)
-        fg = "#111111" if _is_light(color) else "#f5f5f5"
-        button.setStyleSheet(
-            f"background-color: {color}; color: {fg}; min-width: 72px; min-height: 22px;"
-        )
-
 
 class _Entry:
     def __init__(self, name, data):
@@ -499,39 +264,3 @@ def _txt_path(raw, suffixes=_SOURCE_SUFFIXES) -> str | None:
     if _has_source_suffix(value, suffixes):
         return value
     return None
-
-
-def _qfont(family: str, size: int):
-    from PySide6.QtGui import QFont
-
-    return QFont(family, max(1, int(size or 18)))
-
-
-def _button_color(button, fallback: str) -> str:
-    value = button.property("color_value")
-    if value:
-        return str(value)
-    return fallback
-
-
-def _is_light(color: str) -> bool:
-    value = (color or "").lstrip("#")
-    if len(value) != 6:
-        return True
-    try:
-        red = int(value[0:2], 16)
-        green = int(value[2:4], 16)
-        blue = int(value[4:6], 16)
-    except ValueError:
-        return True
-    return (red * 299 + green * 587 + blue * 114) >= 140000
-
-
-def _alive(widget):
-    if widget is None:
-        return False
-    try:
-        widget.objectName()
-        return True
-    except RuntimeError:
-        return False
