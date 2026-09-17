@@ -5,7 +5,7 @@
 - **API バージョン**: `1`（`manifest.json` の `api_version` と一致必須）
 - **配置場所**: データフォルダの `plugins/` のみ（設定の「データの置き場」。既定はこのユーザーのデータフォルダ）
 - **配布形式**: ZIP（`.zip`）または同じ構成の展開フォルダ。DLL は未対応
-- **担当範囲**: ファイル読み込み、サイドバー、表示フィルター。1つのプラグインがいくつでも持てる。入口は同じ `__init__`
+- **担当範囲**: ファイル読み込み、サイドバー、表示フィルター。1つのプラグインがいくつでも持てる。入口は `Class()` と `load(root, get_text, host)`
 - **信用**: 本体は中身を検査しない。責任は配布者と導入した使用者。詳細は [plugins/README.md](../plugins/README.md)
 
 ---
@@ -33,7 +33,7 @@
 | できること | できないこと |
 | --- | --- |
 | 画像／アーカイブを独自に展開して画像バイトを返す | `import ez_co` / `import ez_co.*` |
-| `__init__` / `setup` でサイドバーとフィルターを登録する | 他プラグインのモジュールを import する |
+| `load` で `register_config`、`setup` でサイドバーとフィルターを登録する | 他プラグインのモジュールを import する |
 | `host.load_ui` で `.ui` を読む。PySide6 は import 可 | 他プラグインの設定を読む |
 | ホストのパスワードダイアログを呼ぶ | ドックの貼り付け／フローティングを自分で制御する |
 | プラグイン内の `langs/` `resources/` を読む | DLL プラグイン（未対応） |
@@ -46,7 +46,7 @@
 | ファイル読み込み | `formats` | `get_file_count` / `list_entries` / `read_entry` |
 | サイドバー | `sidebar: true` | `setup()` で `register_sidebar` |
 | 表示フィルター | `permissions.filter: true` | `setup()` で `register_filter`。有効化はフィルターメニュー |
-| 設定項目 | なし | `__init__` で `register_config` |
+| 設定項目 | なし | `load()` で `register_config` |
 
 `formats` も `sidebar` も無く `setup()` も無いと読み込み失敗。フィルターだけなら `permissions.filter` と `setup()` で足りる。
 
@@ -210,21 +210,20 @@ pkg.mod:MyLoader      →  src/pkg/mod.py の MyLoader
 
 ## 5. ローダー契約 `FileLoader`
 
-プラグインは `ez_co.plugins.api` を import しません。ホストが `manifest.entry` のクラスを `FileLoader(root, get_text, host)` で生成し、以降は名前の決まったメソッドを呼びます。
+プラグインは `ez_co.plugins.api` を import しません。ホストが `manifest.entry` のクラスを `Class()` で生成し、必須の `load(root, get_text, host)` のあと名前の決まったメソッドを呼びます。
 
-### 5.1 コンストラクタ
+### 5.1 生成と `load`
 
-ホストは次の 1 通りだけを呼びます。
-
-```
-Class(root, get_text, host)
-```
-
-使わない引数も受け取って保持してください。ホストが渡すので、プラグイン側で探したりフォールバックしたりする必要はありません。
+ホストは `Class()` のあと、必須の `load(root, get_text, host)` を呼びます。`__init__` はクラス内で完結するフィールドだけです。`root` / `get_text` / `host` は `load` の引数で受け取ります。`__init__` で `register_*` / `on` / `off` すると読み込み失敗です。
 
 ```python
 class FileLoader:
-    def __init__(self, root, get_text, host):
+    def __init__(self):
+        self.root = None
+        self.get_text = None
+        self.host = None
+
+    def load(self, root, get_text, host):
         self.root = root
         self.get_text = get_text
         self.host = host
@@ -234,7 +233,7 @@ class FileLoader:
 | --- | --- |
 | `root` | プラグイン ZIP 内のファイル。`read_bytes` / `exists` |
 | `get_text` | 文言。`get_text("plugin.watermark")` |
-| `host` | 登録・設定・状態参照。`register_sidebar`（`sidebar: true` のときだけ） / `register_action` / `register_filter`（`permissions.filter` のときだけ） / `get_config` |
+| `host` | 登録・設定・状態参照。`register_config` は `load` 以降。`register_sidebar`（`sidebar: true` のときだけ） / `register_action` / `register_filter`（`permissions.filter` のときだけ）は `setup` |
 
 担当形式は `manifest.json` の `formats` が正です。本体がロード時に読みます。
 
@@ -326,7 +325,7 @@ class _Entry:
 
 ## 6. ホスト API
 
-`ez_co` は import できません。入口はコンストラクタ引数です。
+`ez_co` は import できません。入口は `load(root, get_text, host)` の引数です。
 
 | 引数 | 例 |
 | --- | --- |
@@ -336,7 +335,7 @@ class _Entry:
 
 同じ名前はモジュールの組み込みとしても渡します。モジュール先頭の関数から `get_text(...)` や `host.ask_password(...)` と書けます。`root` や組み込みから別経路を探さないでください。`host` のメソッドは `self.host.ask_password` のように直接呼びます。`getattr` / `hasattr` / `setattr` で有無を見ません。足りない API は host に足します。
 
-登録（`__init__` または `setup`）:
+登録（`load` または `setup`）:
 
 - `host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None)` — `QWidget` または `QLayout`。ドック化は本体。開閉アクションも自動登録され、ショートカット／ジェスチャーに出せる。メニューは `{title}`、ショートカット／ジェスチャーの表示名は `{title}サイドバー表示/非表示`。`aliases` は旧アクション ID など。権限はここへ渡さない。`manifest.sidebar` が `true` のときだけ。未宣言は `PluginRegistrationDenied`。プラグインは使わず、設定画面は「失敗: 権限がない登録がありました」
 - `host.unregister_sidebar(sidebar_id)` — 有効中に1件外す。無効化は `clear_plugin`
@@ -345,7 +344,7 @@ class _Entry:
 - `host.register_filter(filter_id, title, process)` — 表示画像の加工。`permissions.filter` が `true` のときだけ。無ければ `PluginRegistrationDenied`。プラグインは使わず、設定画面は「失敗: 権限がない登録がありました」。公開 ID は `plugin:{plugin_id}:{filter_id}`。`setup()` で複数回呼んでよい（`filter_id` が違えば別レコード）。同じ `filter_id` の再登録は上書き。値は既存の `register_config`（フィルター専用の config API は無い）。v1 の `process(image, context)` は同期・短時間向け。`context` は path / page / size。Host は入らない。登録しただけでは呼ばない。本体の pipe に載り、かつ台帳にあるときだけ
 - `host.unregister_filter(filter_id)` — 有効中に台帳からその1件を消す。pipe は触らない（ユーザーの ON 記憶を残す）。無効化は `clear_plugin`
 - `host.load_ui(bytes_or_path)` — Designer の `.ui` を `QUiLoader` で読む
-- `host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False)` — プラグイン設定ダイアログ用。`value_type` は `"bool"` / `"string"` / `"int"` / `"float"` / `"int_range"` / `"float_range"` / `"path"` / `"password"` / `"color"` / `"date"` / `"datetime"` / `"choice"` / `"font"`。`choice` は `choices`（値の列、または `(value, label)`）。`int_range` / `float_range` は範囲付きの単一値で `minimum` / `maximum` / `step` が必須（欠落・逆転・`step <= 0` はエラー。ダイアログはスライダー+スピン。項目名の末尾に範囲を付ける。`float_range` は `step` も付ける）。`path` は `path_kind` が `"file"`（省略時）または `"directory"`。`password` は画面マスク、DB は DPAPI、`get_config` は平文。`sync=True` は数値のみ。最後の変更から 500ms 動かなくなってから保存し `config_changed`。`reload=True`（`sync` と併用）のときだけ `reload_current`。キャンセルはプレビューした値を開き時点（または最後の適用）へ戻し、`reload` 項目なら画像も戻す。`color` は `#RRGGBB` 文字列。`date` / `datetime` は UTC の Unix 秒（int。`date` はその日 00:00:00）。無効化してもスキーマは残るので `__init__` で登録してよい
+- `host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False)` — プラグイン設定ダイアログ用。`value_type` は `"bool"` / `"string"` / `"int"` / `"float"` / `"int_range"` / `"float_range"` / `"path"` / `"password"` / `"color"` / `"date"` / `"datetime"` / `"choice"` / `"font"`。`choice` は `choices`（値の列、または `(value, label)`）。`int_range` / `float_range` は範囲付きの単一値で `minimum` / `maximum` / `step` が必須（欠落・逆転・`step <= 0` はエラー。ダイアログはスライダー+スピン。項目名の末尾に範囲を付ける。`float_range` は `step` も付ける）。`path` は `path_kind` が `"file"`（省略時）または `"directory"`。`password` は画面マスク、DB は DPAPI、`get_config` は平文。`sync=True` は数値のみ。最後の変更から 500ms 動かなくなってから保存し `config_changed`。`reload=True`（`sync` と併用）のときだけ `reload_current`。キャンセルはプレビューした値を開き時点（または最後の適用）へ戻し、`reload` 項目なら画像も戻す。`color` は `#RRGGBB` 文字列。`date` / `datetime` は UTC の Unix 秒（int。`date` はその日 00:00:00）。無効化してもスキーマは残るので `load` で登録してよい。`__init__` では例外
 
 状態:
 
@@ -362,7 +361,7 @@ class _Entry:
 
 プラグイン設定の一覧にスキーマがある行は「設定」ボタンが出ます。そこでパネルを開き OK / 適用すると、本体ダイアログの OK を待たずに DB へ保存して通知します。初期化はスキーマの default に戻します。`sync=True` の数値は 500ms のアイドル後に保存します。`reload=True` ならそのとき現在画像を開き直します。キャンセルはそのプレビューも戻します。ユーザーマニュアルの [プラグインリファレンス（コンフィグ）](../resources/UserManual/files/plugin-reference.html#plugin-config) に、スキーマ・保存場所・ダイアログの扱いをまとめています。
 
-UI の再接続用に任意の `setup()` / `teardown()` を実装できます。無効化すると本体の `clear_plugin` がサイドバー・登録アクション・`on` の listener・そのプラグインの FilterRecord を台帳から外します。**pipe の ID は残します**（次回 ON・次回起動で復元するため）。`off` / `unregister_*` は有効中に1件だけ外すとき用で、無効化の teardown には書かないでください。teardown は QThread / timer / 自前参照だけです。プラグイン設定の ON/OFF と、フィルターメニューの有効は別です。
+`load(root, get_text, host)` は必須です。UI の再接続用に任意の `setup()` / `teardown()` を実装できます。`load` 失敗は UI 台帳と設定スキーマをそのプラグイン分だけ捨てます。`setup` 失敗は `teardown` を試してから `clear_plugin` します（スキーマは残す）。無効化すると本体の `clear_plugin` がサイドバー・登録アクション・`on` の listener・そのプラグインの FilterRecord を台帳から外します。**pipe の ID は残します**（次回 ON・次回起動で復元するため）。`off` / `unregister_*` は有効中に1件だけ外すとき用で、無効化の teardown には書かないでください。teardown に失敗理由は渡しません。所有物はフィールドの有無で止めてください。プラグイン設定の ON/OFF と、フィルターメニューの有効は別です。
 
 ---
 

@@ -104,7 +104,9 @@ def write_dir_plugin(
         + "\n".join(
             [
                 "class ProbePlugin:",
-                "    def __init__(self, root, get_text, host):",
+                "    def __init__(self):",
+                "        self.root = None",
+                "    def load(self, root, get_text, host):",
                 "        self.root = root",
                 "    def setup(self):",
                 "        if 'COUNTER' in globals():",

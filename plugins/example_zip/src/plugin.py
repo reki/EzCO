@@ -1,7 +1,6 @@
 """EzCo 向け ZIP 読み込みサンプル。
 
-ホストは必ず次で生成する。
-    FileLoader(root, get_text, host)
+ホストは Class() のあと load(root, get_text, host) を渡す。
 
     root
         プラグイン ZIP 内のリソース。read_bytes / exists。
@@ -27,11 +26,16 @@ IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".tif", ".ti
 
 
 class FileLoader:
-    def __init__(self, root, get_text, host):
+    def __init__(self):
+        self.root = None
+        self.get_text = None
+        self.host = None
+        self._passwords = {}
+
+    def load(self, root, get_text, host):
         self.root = root
         self.get_text = get_text
         self.host = host
-        self._passwords = {}
 
     def get_file_count(self, file_path):
         return len(self.list_entries(file_path))

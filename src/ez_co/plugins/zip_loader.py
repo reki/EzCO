@@ -234,14 +234,21 @@ def peek_manifest(path: Path) -> dict:
     }
 
 
-def _instantiate(module: ModuleType, class_name: str, root: PluginRoot, get_text, host) -> Any:
+def _instantiate(module: ModuleType, class_name: str) -> Any:
     exported = vars(module)
     if class_name not in exported:
         raise ValueError(f"entry class not found in module: {class_name}")
     candidate = exported[class_name]
     if not isinstance(candidate, type):
         raise ValueError(f"entry is not a class: {class_name}")
-    return candidate(root, get_text, host)
+    return candidate()
+
+
+def _call_load(instance, root: PluginRoot, get_text, host, plugin_id: str) -> None:
+    load = getattr(instance, "load", None)
+    if not callable(load):
+        raise ValueError(get_log_text("plugin_load_missing", plugin_id=plugin_id))
+    load(root, get_text, host)
 
 
 def load_plugin(path: Path, host=None) -> tuple[PluginManifest, Any, PluginRoot, Any]:
@@ -270,6 +277,7 @@ def load_plugin(path: Path, host=None) -> tuple[PluginManifest, Any, PluginRoot,
         from ez_co.plugins.host import PluginHost, ScopedPluginHost
         from ez_co.plugins.i18n import make_plugin_get_text
         shared = host or PluginHost()
+        owner = shared._host if isinstance(shared, ScopedPluginHost) else shared
         if isinstance(shared, PluginHost):
             shared.set_manifest_permissions(manifest.plugin_id, manifest.permissions)
             shared.set_manifest_provides(manifest.plugin_id, manifest.formats, manifest.sidebar)
@@ -291,11 +299,26 @@ def load_plugin(path: Path, host=None) -> tuple[PluginManifest, Any, PluginRoot,
             pkg.__path__ = [f"{path.as_posix()}/src"]
             pkg.__package__ = prefix
             sys.modules[prefix] = pkg
-        module = importlib.import_module(f"{prefix}.{manifest.entry_module}")
-        instance = _instantiate(module, manifest.entry_class, root, get_text_fn, scoped)
+        try:
+            if isinstance(owner, PluginHost):
+                owner.enter_phase(manifest.plugin_id, "init")
+            module = importlib.import_module(f"{prefix}.{manifest.entry_module}")
+            instance = _instantiate(module, manifest.entry_class)
+            if isinstance(owner, PluginHost):
+                owner.enter_phase(manifest.plugin_id, "idle")
+                owner.enter_phase(manifest.plugin_id, "load")
+            _call_load(instance, root, get_text_fn, scoped, manifest.plugin_id)
+            if isinstance(owner, PluginHost):
+                owner.enter_phase(manifest.plugin_id, "idle")
+        except Exception:
+            if isinstance(owner, PluginHost):
+                owner.abort_load(manifest.plugin_id)
+            raise
         formats = list(manifest.formats)
         has_setup = callable(getattr(instance, "setup", None))
         if not formats and not manifest.sidebar and not has_setup:
+            if isinstance(owner, PluginHost):
+                owner.abort_load(manifest.plugin_id)
             raise ValueError(get_log_text("plugin_no_formats", plugin_id=manifest.plugin_id))
         instance._ezco_formats = formats
         return manifest, instance, root, source.archive

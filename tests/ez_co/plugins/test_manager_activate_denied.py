@@ -16,7 +16,9 @@ def _config():
 def _write_setup(root, body: str) -> None:
     (root / "src" / "plugin.py").write_text(
         "class ProbePlugin:\n"
-        "    def __init__(self, root, get_text, host):\n"
+        "    def __init__(self):\n"
+        "        self.host = None\n"
+        "    def load(self, root, get_text, host):\n"
         "        self.host = host\n"
         "    def setup(self):\n"
         f"{body}",
@@ -24,12 +26,14 @@ def _write_setup(root, body: str) -> None:
     )
 
 
-def test_load_selected_denies_undeclared_sidebar_in_init(tmp_path, dir_plugin):
+def test_load_selected_denies_register_in_init(tmp_path, dir_plugin):
     root = dir_plugin(tmp_path, plugin_id="com.example.ui", folder_name="ui")
     (root / "src" / "plugin.py").write_text(
         "class ProbePlugin:\n"
-        "    def __init__(self, root, get_text, host):\n"
-        '        host.register_sidebar("main", "Title", object())\n',
+        "    def __init__(self):\n"
+        '        host.register_sidebar("main", "Title", object())\n'
+        "    def load(self, root, get_text, host):\n"
+        "        self.host = host\n",
         encoding="utf-8",
     )
     manager = PluginManager()
@@ -37,7 +41,7 @@ def test_load_selected_denies_undeclared_sidebar_in_init(tmp_path, dir_plugin):
     manager.load_selected(_config())
     assert manager.plugins == []
     assert len(manager.failed) == 1
-    assert manager.failed[0][1] == get_text("ui.plugin_register_not_permitted")
+    assert manager.failed[0][1] == get_text("ui.plugin_register_wrong_phase")
 
 
 def test_activate_ui_denies_undeclared_sidebar(tmp_path, dir_plugin):

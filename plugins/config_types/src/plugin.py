@@ -24,14 +24,19 @@ _FIELDS = (
 
 
 class ConfigTypesPlugin:
-    def __init__(self, root, get_text, host):
-        self.root = root
-        self.get_text = get_text
-        self.host = host
+    def __init__(self):
+        self.root = None
+        self.get_text = None
+        self.host = None
         self.widget = None
         self._values = {}
         self._raw = {}
         self._listening = False
+
+    def load(self, root, get_text, host):
+        self.root = root
+        self.get_text = get_text
+        self.host = host
         for key, value_type, default, choices, extra in _FIELDS:
             kwargs = dict(extra or {})
             if choices:

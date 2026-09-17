@@ -40,13 +40,32 @@ _SYNC_CONFIG_TYPES = ("int", "float", "int_range", "float_range")
 _COLOR_FALLBACK = "#000000"
 
 
-class PluginRegistrationDenied(Exception):
-    """マニフェストに無い register_sidebar / register_filter。このプラグインは使わない。"""
+_PHASE_INIT = "init"
+_PHASE_LOAD = "load"
+_PHASE_IDLE = "idle"
+_PHASE_SETUP = "setup"
+_PHASE_ACTIVE = "active"
+_UI_REGISTER = frozenset(
+    {
+        "register_sidebar",
+        "unregister_sidebar",
+        "register_action",
+        "unregister_action",
+        "register_filter",
+        "unregister_filter",
+        "on",
+        "off",
+    }
+)
 
-    def __init__(self, plugin_id: str, log_key: str):
+
+class PluginRegistrationDenied(Exception):
+    """マニフェストに無い register、または phase 違いの register。このプラグインは使わない。"""
+
+    def __init__(self, plugin_id: str, log_key: str, ui_key: str = "ui.plugin_register_not_permitted"):
         self.plugin_id = plugin_id
         self.log_key = log_key
-        super().__init__(get_text("ui.plugin_register_not_permitted"))
+        super().__init__(get_text(ui_key))
 
 
 def make_plugin_action_id(plugin_id: str, action_id: str) -> str:
@@ -558,6 +577,7 @@ class PluginHost:
         self._config_fields: dict[str, list[ConfigField]] = {}
         self._permissions: dict[str, MappingProxyType] = {}
         self._declared_sidebar: dict[str, bool] = {}
+        self._phases: dict[str, str] = {}
 
     def scoped(self, plugin_id: str) -> "ScopedPluginHost":
         key = str(plugin_id or "")
@@ -657,6 +677,40 @@ class PluginHost:
             specs = tuple(normalize_formats(formats))
         self._declared_sidebar[key] = bool(sidebar)
         self._formats[key] = list(specs)
+
+    def enter_phase(self, plugin_id: str, phase: str) -> None:
+        """本体のロード経路だけが呼ぶ。プラグイン API には出さない。"""
+        key = str(plugin_id or "")
+        if not key:
+            return
+        self._phases[key] = str(phase or _PHASE_IDLE)
+
+    def phase_of(self, plugin_id: str) -> str:
+        return self._phases.get(str(plugin_id or ""), _PHASE_IDLE)
+
+    def abort_load(self, plugin_id: str) -> None:
+        """__init__ / load 失敗。UI 台帳と設定スキーマをその plugin_id だけ捨てる。"""
+        key = str(plugin_id or "")
+        if not key:
+            return
+        self.clear_plugin(key)
+        self._config_fields.pop(key, None)
+        self.enter_phase(key, _PHASE_IDLE)
+
+    def _deny_wrong_phase(self, plugin_id: str, action: str) -> None:
+        phase = self.phase_of(plugin_id)
+        if phase == _PHASE_INIT:
+            raise PluginRegistrationDenied(
+                plugin_id,
+                "plugin_register_during_init",
+                ui_key="ui.plugin_register_wrong_phase",
+            )
+        if phase == _PHASE_LOAD and action in _UI_REGISTER:
+            raise PluginRegistrationDenied(
+                plugin_id,
+                "plugin_register_ui_during_load",
+                ui_key="ui.plugin_register_wrong_phase",
+            )
 
     def has_manifest_permission(self, plugin_id: str, name: str) -> bool:
         granted = self._permissions.get(str(plugin_id))
@@ -759,6 +813,7 @@ class PluginHost:
         get_filter_registry().unregister_plugin(plugin_id)
 
     def _register_sidebar(self, plugin_id: str, sidebar_id: str, title: str, widget_or_layout, aliases=None) -> None:
+        self._deny_wrong_phase(plugin_id, "register_sidebar")
         if not self._declared_sidebar.get(plugin_id):
             raise PluginRegistrationDenied(plugin_id, "plugin_sidebar_not_declared")
         sidebar_id = str(sidebar_id or "").strip() or "main"
@@ -773,6 +828,7 @@ class PluginHost:
                 logger.warning(get_log_text("plugin_sidebar_mount_failed", error=exc))
 
     def _unregister_sidebar(self, plugin_id: str, sidebar_id: str) -> None:
+        self._deny_wrong_phase(plugin_id, "unregister_sidebar")
         self._unmount_sidebar_record((plugin_id, str(sidebar_id or "").strip() or "main"))
 
     def _unmount_sidebar_record(self, key: tuple[str, str]) -> None:
@@ -808,6 +864,7 @@ class PluginHost:
             return False
 
     def _register_filter(self, plugin_id: str, filter_id: str, title: str, process) -> None:
+        self._deny_wrong_phase(plugin_id, "register_filter")
         if not self.has_manifest_permission(plugin_id, "filter"):
             raise PluginRegistrationDenied(plugin_id, "plugin_filter_not_permitted")
         local_id = normalize_local_filter_id(filter_id)
@@ -826,12 +883,14 @@ class PluginHost:
         )
 
     def _unregister_filter(self, plugin_id: str, filter_id: str) -> None:
+        self._deny_wrong_phase(plugin_id, "unregister_filter")
         local_id = normalize_local_filter_id(filter_id)
         if not local_id:
             return
         get_filter_registry().unregister(make_plugin_filter_id(plugin_id, local_id))
 
     def _register_action(self, plugin_id: str, action_id, label, callback, aliases=None) -> None:
+        self._deny_wrong_phase(plugin_id, "register_action")
         local_id = normalize_local_action_id(action_id)
         if not local_id or callback is None:
             return
@@ -847,6 +906,7 @@ class PluginHost:
         )
 
     def _unregister_action(self, plugin_id: str, action_id) -> None:
+        self._deny_wrong_phase(plugin_id, "unregister_action")
         local_id = normalize_local_action_id(action_id)
         if not local_id:
             return
@@ -862,12 +922,14 @@ class PluginHost:
         return widget_or_layout
 
     def _on(self, plugin_id: str, event: str, callback: Callable) -> None:
+        self._deny_wrong_phase(plugin_id, "on")
         name = str(event or "").strip()
         if not name or callback is None:
             return
         self._listeners.setdefault(name, []).append((plugin_id, callback))
 
     def _off(self, plugin_id: str, event: str, callback: Optional[Callable] = None) -> None:
+        self._deny_wrong_phase(plugin_id, "off")
         name = str(event or "").strip()
         rows = self._listeners.get(name) or []
         if callback is None:
@@ -912,6 +974,7 @@ class PluginHost:
         sync=False,
         reload=False,
     ) -> None:
+        self._deny_wrong_phase(plugin_id, "register_config")
         field_key = str(key or "").strip()
         if not field_key:
             return

@@ -1,9 +1,8 @@
 """EzCo 向け PNG 読み込みサンプル。
 
-ホストは必ず次で生成する。
-    FileLoader(root, get_text, host)
+ホストは Class() のあと load(root, get_text, host) を渡す。
 
-このサンプルは get_text だけ使う。host は受け取って保持する。
+このサンプルは get_text だけ使う。host は load で受け取って保持する。
 
 ホストが呼ぶ必須メソッド:
     get_file_count(path) -> int
@@ -17,7 +16,12 @@ from mark import mark_image
 
 
 class FileLoader:
-    def __init__(self, root, get_text, host):
+    def __init__(self):
+        self.root = None
+        self.get_text = None
+        self.host = None
+
+    def load(self, root, get_text, host):
         self.root = root
         self.get_text = get_text
         self.host = host

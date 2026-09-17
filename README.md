@@ -511,7 +511,7 @@ EzCoでは、拡張子ごとの読み込み方式を選べます。特定の形�
 ### 開発
 - 契約・メソッド・ホスト API の詳細は [docs/plugins.md](docs/plugins.md)
 - 配置・注意・再起動の区別は [plugins/README.md](plugins/README.md)
-- プラグインから `ez_co` は import できない（結合事故防止であり、サンドボックスではない）。ホストは `FileLoader(root, get_text, host)` を渡す。ダイアログは `host.ask_password` など
+- プラグインから `ez_co` は import できない（結合事故防止であり、サンドボックスではない）。ホストは `Class()` のあと `load(root, get_text, host)` を渡す。ダイアログは `host.ask_password` など
 - ZIP の AES 暗号化は本体・サンプルとも `pyzipper` で読む
 
 ## キャッシュ設定について

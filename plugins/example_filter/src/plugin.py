@@ -1,7 +1,6 @@
 """EzCo 向け表示フィルターサンプル。
 
-ホストは必ず次で生成する。
-    ExampleFilterPlugin(root, get_text, host)
+ホストは Class() のあと load(root, get_text, host) を渡す。
 
     root
         プラグイン ZIP 内のリソース。このサンプルでは使わない。
@@ -12,6 +11,8 @@
         ez_co は import しない。Host は process の context には入らない。
 
 ホストが呼ぶもの:
+    load(root, get_text, host)
+        引数を保持する。register_config はここでよい。
     setup()
         台帳へフィルターを載せる。登録しただけでは process は呼ばれない。
         ユーザーがフィルターメニューで有効化した公開 ID だけが pipe に入る。
@@ -35,11 +36,16 @@ _FONT_SIZE_MAX = 96
 
 
 class ExampleFilterPlugin:
-    def __init__(self, root, get_text, host):
+    def __init__(self):
+        self.root = None
+        self.get_text = None
+        self.host = None
+
+    def load(self, root, get_text, host):
         self.root = root
         self.get_text = get_text
         self.host = host
-        # 無効化してもスキーマは残るので __init__ で登録してよい。
+        # 無効化してもスキーマは残るので load で登録してよい。
         self.host.register_config(
             _FONT_SIZE_KEY,
             "int_range",

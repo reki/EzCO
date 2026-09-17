@@ -41,6 +41,7 @@
                                 <li><a href="#get-file-count" class="toc-link">get_file_count</a></li>
                                 <li><a href="#list-entries" class="toc-link">list_entries</a></li>
                                 <li><a href="#read-entry" class="toc-link">read_entry</a></li>
+                                <li><a href="#loader-load" class="toc-link">load</a></li>
                                 <li><a href="#setup-teardown" class="toc-link">setup / teardown</a></li>
                             </ul>
                         </li>
@@ -93,7 +94,7 @@
 
                     <section id="overview" class="config-section">
                         <h3>概要</h3>
-                        <p>プラグインはホストから生成され、コールバックされるだけです。コンストラクタは常に <code>Class(root, get_text, host)</code> です。ファイル読み込み・サイドバー・表示フィルターは別の役割で、1つのプラグインがいくつでも持てます。詳細は <a href="#roles">プラグインの種類</a> です。</p>
+                        <p>プラグインはホストから生成され、コールバックされるだけです。入口は <code>Class()</code> のあと必須の <code>load(root, get_text, host)</code> です。ファイル読み込み・サイドバー・表示フィルターは別の役割で、1つのプラグインがいくつでも持てます。詳細は <a href="#roles">プラグインの種類</a> です。</p>
                         <ul>
                             <li><code>import ez_co</code> はできません（結合事故防止であり、サンドボックスではありません）。</li>
                             <li>本体は中身を検査しません。置いたコードはアプリと同じ権限で動きます。</li>
@@ -112,7 +113,7 @@
 
                     <section id="roles" class="config-section">
                         <h3>プラグインの種類</h3>
-                        <p>種類はクラスを分ける必要はありません。同じ <code>src/plugin.py</code> の1クラスが、マニフェストに書いた役割を全部持てます。入口はどれも <code>Class(root, get_text, host)</code> です。</p>
+                        <p>種類はクラスを分ける必要はありません。同じ <code>src/plugin.py</code> の1クラスが、マニフェストに書いた役割を全部持てます。入口はどれも <code>Class()</code> と <code>load(root, get_text, host)</code> です。</p>
                         <table>
                             <thead><tr><th>役割</th><th>マニフェスト</th><th>コード</th></tr></thead>
                             <tbody>
@@ -134,7 +135,7 @@
                                 <tr>
                                     <td>設定項目</td>
                                     <td>なし（スキーマはコード）</td>
-                                    <td><code>__init__</code> で <a href="#register-config"><code>register_config</code></a></td>
+                                    <td><code>load()</code> で <a href="#register-config"><code>register_config</code></a></td>
                                 </tr>
                                 <tr>
                                     <td>独自アクション</td>
@@ -345,10 +346,15 @@
 
                     <section id="loader" class="config-section">
                         <h3>FileLoader</h3>
-                        <p>ホストが <code>manifest.entry</code> のクラスを生成し、決まった名前のメソッドを呼びます。<code>ez_co.plugins.api</code> は import しません。サイドバーやフィルターだけのプラグインでも同じコンストラクタです。担当形式は <code>manifest.formats</code> です。</p>
+                        <p>ホストが <code>manifest.entry</code> のクラスを <code>Class()</code> で生成し、必須の <code>load(root, get_text, host)</code> のあと決まった名前のメソッドを呼びます。<code>ez_co.plugins.api</code> は import しません。サイドバーやフィルターだけのプラグインでも同じ入口です。担当形式は <code>manifest.formats</code> です。</p>
                         <p class="api-caption">画像ローダーの最小例（<code>src/plugin.py</code>）</p>
 <pre class="api-example">class FileLoader:
-    def __init__(self, root, get_text, host):
+    def __init__(self):
+        self.root = None
+        self.get_text = None
+        self.host = None
+
+    def load(self, root, get_text, host):
         self.root = root
         self.get_text = get_text
         self.host = host
@@ -371,22 +377,14 @@ class _Entry:
         self.data = data</pre>
 
                         <article id="loader-init" class="api-member">
-                            <div class="api-sig"><span class="api-kind">ctor</span><code>Class(root, get_text, host)</code></div>
+                            <div class="api-sig"><span class="api-kind">ctor</span><code>Class()</code></div>
                             <div class="api-body">
-                                <p>唯一の生成経路です。使わない引数も受け取って保持します。</p>
-                                <table>
-                                    <thead><tr><th>引数</th><th>説明</th></tr></thead>
-                                    <tbody>
-                                        <tr><td><code>root</code></td><td>プラグイン内ファイル。<code>read_bytes</code> / <code>exists</code></td></tr>
-                                        <tr><td><code>get_text</code></td><td>文言</td></tr>
-                                        <tr><td><code>host</code></td><td>登録・設定・状態。メソッドは <code>self.host.ask_password</code> のように直接呼ぶ。<code>getattr</code> は使わない</td></tr>
-                                    </tbody>
-                                </table>
-<pre class="api-example">def __init__(self, root, get_text, host):
-    self.root = root
-    self.get_text = get_text
-    self.host = host
-    host.register_config("strict", "bool", default=True, label="Strict")</pre>
+                                <p>引数なし。クラス内で完結するフィールドだけを初期化します。<code>root</code> / <code>get_text</code> / <code>host</code> は受け取りません。<code>register_*</code> / <code>on</code> / <code>off</code> は例外になり読み込み失敗です。</p>
+<pre class="api-example">def __init__(self):
+    self.root = None
+    self.get_text = None
+    self.host = None
+    self.widget = None</pre>
                             </div>
                         </article>
 
@@ -427,10 +425,30 @@ class _Entry:
                             </div>
                         </article>
 
+                        <article id="loader-load" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>load(root, get_text, host)</code></div>
+                            <div class="api-body">
+                                <p>必須。生成直後に1回、OFF でも呼びます。引数を <code>self</code> に保持します。<code>register_config</code> はここでよい。UI 系（<code>register_sidebar</code> / <code>register_action</code> / <code>register_filter</code> / <code>on</code> / <code>off</code>）は例外になり読み込み失敗です。途中で例外なら本体がそのプラグインの台帳と設定スキーマを捨てます。</p>
+                                <table>
+                                    <thead><tr><th>引数</th><th>説明</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><code>root</code></td><td>プラグイン内ファイル。<code>read_bytes</code> / <code>exists</code></td></tr>
+                                        <tr><td><code>get_text</code></td><td>文言</td></tr>
+                                        <tr><td><code>host</code></td><td>登録・設定・状態。メソッドは <code>self.host.ask_password</code> のように直接呼ぶ。<code>getattr</code> は使わない</td></tr>
+                                    </tbody>
+                                </table>
+<pre class="api-example">def load(self, root, get_text, host):
+    self.root = root
+    self.get_text = get_text
+    self.host = host
+    host.register_config("strict", "bool", default=True, label="Strict")</pre>
+                            </div>
+                        </article>
+
                         <article id="setup-teardown" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>setup() / teardown()</code></div>
                             <div class="api-body">
-                                <p>任意。有効化で <code>setup</code>、無効化で <code>teardown</code> のあと本体の <code>clear_plugin</code> がサイドバー・アクション・listener・そのプラグインのフィルター台帳を外します。pipe の ID は残します。設定スキーマは残ります。<code>off</code> / <code>unregister_*</code> は無効化用に書かないでください。teardown は QThread や timer など所有物だけです。サイドバーなら先に <code>manifest.sidebar: true</code>。フィルターなら先に <code>permissions.filter: true</code>。</p>
+                                <p>任意。有効化で <code>setup</code>、無効化で <code>teardown</code> のあと本体の <code>clear_plugin</code> がサイドバー・アクション・listener・そのプラグインのフィルター台帳を外します。pipe の ID は残します。設定スキーマは残ります。<code>setup</code> が例外なら <code>teardown</code> を試してから <code>clear_plugin</code> します。失敗理由は <code>teardown</code> に渡しません。<code>off</code> / <code>unregister_*</code> は無効化用に書かないでください。teardown は QThread や timer など所有物だけです。サイドバーなら先に <code>manifest.sidebar: true</code>。フィルターなら先に <code>permissions.filter: true</code>。</p>
 <pre class="api-example">def setup(self):
     widget = self.host.load_ui(self.root.read_bytes("resources/sidebar.ui"))
     self.host.register_sidebar("info", self.get_text("title"), widget)
@@ -549,7 +567,7 @@ host.register_action("reload", get_text("reload"), _reload)
                         <article id="register-config" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False) -&gt; None</code></div>
                             <div class="api-body">
-                                <p><code>value_type</code> は <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"int_range"</code> / <code>"float_range"</code> / <code>"path"</code> / <code>"password"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code>。無効化してもスキーマは残るので <code>__init__</code> で登録してよい。一覧に「設定」ボタンが出ます。保存とプロファイルの扱いの全体は <a href="#plugin-config">プラグイン設定（コンフィグ）</a> です。</p>
+                                <p><code>value_type</code> は <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"int_range"</code> / <code>"float_range"</code> / <code>"path"</code> / <code>"password"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code>。無効化してもスキーマは残るので <code>load</code> で登録してよい。<code>__init__</code> では例外です。一覧に「設定」ボタンが出ます。保存とプロファイルの扱いの全体は <a href="#plugin-config">プラグイン設定（コンフィグ）</a> です。</p>
 <pre class="api-example">host.register_config(
     "fetch_web",
     "bool",
@@ -670,7 +688,7 @@ host.register_sidebar(
 
                         <h4>スキーマ</h4>
                         <ul>
-                            <li><code>__init__</code> で <code>host.register_config(key, value_type, default, label, description, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False)</code> を呼びます。無効化してもスキーマは残るので、ここで登録してかまいません。</li>
+                            <li><code>load</code> で <code>host.register_config(key, value_type, default, label, description, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False)</code> を呼びます。無効化してもスキーマは残るので、ここで登録してかまいません。<code>__init__</code> では例外です。</li>
                             <li><code>value_type</code> は <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"int_range"</code> / <code>"float_range"</code> / <code>"path"</code> / <code>"password"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code> です。</li>
                             <li><code>int_range</code> / <code>float_range</code> は範囲付きの単一値です。<code>minimum</code> / <code>maximum</code> / <code>step</code> は必須です。欠落・逆転・<code>step &lt;= 0</code> はエラーです。ダイアログはスライダーとスピンを並べ、項目名の末尾に範囲を付けます。<code>float_range</code> は <code>step</code> も付けます。</li>
                             <li><code>path</code> は文字列。<code>path_kind</code> は <code>"file"</code>（省略時）または <code>"directory"</code>。<code>path_filter</code> はファイルダイアログのフィルタです。</li>
@@ -709,7 +727,8 @@ host.register_sidebar(
                             <li>キャンセルは、そのダイアログでまだ保存していない変更を捨てます。<code>sync</code> で先に書いたプレビューも、開いた時点（最後の適用）へ戻します。<code>reload</code> 項目なら画像も開き直します。Esc / × も同じです。</li>
                             <li>値を変えたあとは <code>config_changed</code> を聞いて、サイドバーなどを更新してください。<code>reload=True</code> のソース開き直しはホストがやるので、重ねて <code>reload_current</code> しないでください。</li>
                         </ul>
-<pre class="api-example">def __init__(self, root, get_text, host):
+<pre class="api-example">def load(self, root, get_text, host):
+    self.host = host
     host.register_config(
         "fetch_web",
         "bool",

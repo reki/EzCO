@@ -140,8 +140,8 @@ flowchart TD
    - `ZipPythonBackend`: `.zip` または `manifest.json` 付きフォルダ
    - `DllBackend`: `.dll` を認識するが `load` は常に `None`（未対応。警告ログ）
 3. peek で `candidates` を作る。例外は `failed` に残し、本体は落とさない
-4. `load_selected` が `plugins.source_choice` で重複 id を 1 本選ぶ。未選択は `skipped`
-5. `PluginSession.bootstrap` のあと `activate_ui` が `setup()` を呼ぶ。例外は `plugin.error` を立て、`enabled_plugins` から外す。`plugins.enabled` を自動で False にはしない
+4. `load_selected` が `plugins.source_choice` で重複 id を 1 本選ぶ。未選択は `skipped`。選んだソースは `Class()` のあと `load(root, get_text, host)`。失敗はその `plugin_id` の register を戻し、`plugins` に載せない
+5. `PluginSession.bootstrap` のあと `activate_ui` が `setup()` を呼ぶ。例外は `teardown` を試してから `clear_plugin` し、`plugin.error` を立て、`enabled_plugins` から外す。`plugins.enabled` を自動で False にはしない
 6. 開くファイルは `resolve` / `resolve_extension`。`plugins.extension_handlers` と旧 `archive.*` を見る
 7. 新しい ZIP／フォルダの追加・削除は再起動が要る。ON/OFF と担当の付け替えは設定の OK / 適用で足りる
 

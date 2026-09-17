@@ -2,11 +2,16 @@ from PySide6.QtWidgets import QPushButton, QVBoxLayout, QWidget
 
 
 class ErrorCallbackPlugin:
-    def __init__(self, root, get_text, host):
+    def __init__(self):
+        self.root = None
+        self.get_text = None
+        self.host = None
+        self.widget = None
+
+    def load(self, root, get_text, host):
         self.root = root
         self.get_text = get_text
         self.host = host
-        self.widget = None
 
     def setup(self):
         widget = QWidget()

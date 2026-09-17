@@ -1,7 +1,6 @@
 """EzCo 向けテキスト画像サンプル。
 
-ホストは必ず次で生成する。
-    TextImagePlugin(root, get_text, host)
+ホストは Class() のあと load(root, get_text, host) を渡す。
 
 ホストが呼ぶ必須メソッド:
     get_file_count(path) -> int
@@ -43,10 +42,10 @@ _DEBOUNCE_MS = 150
 
 
 class TextImagePlugin:
-    def __init__(self, root, get_text, host):
-        self.root = root
-        self.get_text = get_text
-        self.host = host
+    def __init__(self):
+        self.root = None
+        self.get_text = None
+        self.host = None
         self.widget = None
         self._listening = False
         self._applying = False
@@ -56,6 +55,11 @@ class TextImagePlugin:
         self._timer = None
         self._pending_keys = set()
         self._last_txt = None
+
+    def load(self, root, get_text, host):
+        self.root = root
+        self.get_text = get_text
+        self.host = host
         for key, default in _DEFAULTS.items():
             if key in _INT_KEYS:
                 value_type = "int"

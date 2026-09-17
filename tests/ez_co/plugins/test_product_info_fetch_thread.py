@@ -26,7 +26,9 @@ def _plugin():
         def get_current(self, key):
             return self.current.get(key)
 
-    return ProductInfoPlugin(None, lambda *args, **kwargs: "", Host())
+    plugin = ProductInfoPlugin()
+    plugin.load(None, lambda *args, **kwargs: "", Host())
+    return plugin
 
 
 def test_same_product_id_does_not_refresh_when_folder_changes():

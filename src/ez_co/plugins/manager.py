@@ -555,6 +555,7 @@ class PluginManager:
         if plugin.ui_active:
             return
         plugin.error = None
+        self.host.enter_phase(plugin.plugin_id, "setup")
         setup = getattr(plugin.instance, "setup", None)
         if callable(setup):
             try:
@@ -562,28 +563,39 @@ class PluginManager:
             except PluginRegistrationDenied as exc:
                 plugin.error = str(exc)
                 plugin.ui_active = False
-                self.host.clear_plugin(plugin.plugin_id)
+                self._rollback_setup(plugin)
                 logger.warning(get_log_text(exc.log_key, plugin_id=exc.plugin_id))
                 report_error("setup", exc, plugin_id=plugin.plugin_id)
                 return
             except Exception as exc:
                 plugin.error = str(exc)
                 plugin.ui_active = False
-                self.host.clear_plugin(plugin.plugin_id)
+                self._rollback_setup(plugin)
                 logger.warning(get_log_text("plugin_setup_failed", plugin_id=plugin.plugin_id, error=exc))
                 report_error("setup", exc, plugin_id=plugin.plugin_id)
                 return
+        self.host.enter_phase(plugin.plugin_id, "active")
         plugin.ui_active = True
 
-    def _deactivate_plugin(self, plugin: LoadedPlugin) -> None:
+    def _try_teardown(self, plugin: LoadedPlugin) -> None:
         teardown = getattr(plugin.instance, "teardown", None)
-        if callable(teardown):
-            try:
-                teardown()
-            except Exception as exc:
-                logger.debug(get_log_text("plugin_teardown_failed", plugin_id=plugin.plugin_id, error=exc))
-                report_error("teardown", exc, plugin_id=plugin.plugin_id)
+        if not callable(teardown):
+            return
+        try:
+            teardown()
+        except Exception as exc:
+            logger.debug(get_log_text("plugin_teardown_failed", plugin_id=plugin.plugin_id, error=exc))
+            report_error("teardown", exc, plugin_id=plugin.plugin_id)
+
+    def _rollback_setup(self, plugin: LoadedPlugin) -> None:
+        self._try_teardown(plugin)
         self.host.clear_plugin(plugin.plugin_id)
+        self.host.enter_phase(plugin.plugin_id, "idle")
+
+    def _deactivate_plugin(self, plugin: LoadedPlugin) -> None:
+        self._try_teardown(plugin)
+        self.host.clear_plugin(plugin.plugin_id)
+        self.host.enter_phase(plugin.plugin_id, "idle")
         plugin.ui_active = False
 
     def extension_rows(self, config=None, enabled_ids=None) -> list[ExtensionProviderRow]:
