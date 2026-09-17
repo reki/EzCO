@@ -8,7 +8,7 @@
     read_entry(path, index) -> オブジェクト(name, data: bytes)
 
 .txt / .log をアーカイブとして開き、折り返した本文を PNG ページにする。
-サイドバーの変更は即時反映し、今のページの先頭文字から再分割する。
+サイドバーの字体・色・縦読み／横読み・文字コードは即時反映し、今のページの先頭文字から再分割する。
 担当拡張子は manifest.formats と同じ並びの _SOURCE_SUFFIXES。
 """
 import os
@@ -18,6 +18,7 @@ from layout import (
     HORIZONTAL,
     VERTICAL,
     PageSettings,
+    charset_names,
     layout_fits,
     page_index_for_start,
     paginate,
@@ -108,8 +109,10 @@ class TextImagePlugin:
         self._timer = None
 
     def _build_sidebar(self, widget):
+        from PySide6.QtCore import Qt
         from PySide6.QtWidgets import (
             QComboBox,
+            QCompleter,
             QFontComboBox,
             QFormLayout,
             QPushButton,
@@ -131,6 +134,18 @@ class TextImagePlugin:
         writing = QComboBox()
         writing.addItem(self.get_text("writing_horizontal"), HORIZONTAL)
         writing.addItem(self.get_text("writing_vertical"), VERTICAL)
+        charset = QComboBox()
+        charset.setEditable(True)
+        charset.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        for name in charset_names():
+            charset.addItem(name, name)
+        completer = charset.completer()
+        if completer is None:
+            completer = QCompleter(charset)
+            charset.setCompleter(completer)
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
 
         layout.addRow(self.get_text("font_family"), font_box)
         layout.addRow(self.get_text("font_size"), size)
@@ -140,6 +155,7 @@ class TextImagePlugin:
         layout.addRow(self.get_text("page_height"), height)
         layout.addRow(self.get_text("margin"), margin)
         layout.addRow(self.get_text("writing"), writing)
+        layout.addRow(self.get_text("charset"), charset)
         refresh = QPushButton(self.get_text("refresh"))
         layout.addRow(refresh)
 
@@ -152,6 +168,7 @@ class TextImagePlugin:
             "page_height": height,
             "margin": margin,
             "writing": writing,
+            "charset": charset,
             "refresh": refresh,
         }
 
@@ -163,6 +180,7 @@ class TextImagePlugin:
         height.valueChanged.connect(lambda _value: self._queue_keys(("page_height",)))
         margin.valueChanged.connect(lambda _value: self._queue_keys(("margin",)))
         writing.currentIndexChanged.connect(lambda _index: self._apply_keys(("writing",)))
+        charset.currentIndexChanged.connect(lambda _index: self._apply_keys(("charset",)))
         refresh.clicked.connect(self._refresh_clicked)
 
     def _sync_ui_from_config(self):
@@ -193,6 +211,7 @@ class TextImagePlugin:
             index = writing.findData(resolved.writing)
             writing.setCurrentIndex(max(0, index))
             writing.blockSignals(False)
+            self._select_charset(self._charset())
         finally:
             self._applying = False
 
@@ -243,6 +262,7 @@ class TextImagePlugin:
             "page_height": raw.page_height,
             "margin": raw.margin,
             "writing": raw.writing,
+            "charset": self._charset_from_ui(),
         }
         self._applying = True
         try:
@@ -250,10 +270,12 @@ class TextImagePlugin:
                 self.host.set_config(key, snapshot[key])
         finally:
             self._applying = False
+        if "charset" in keys:
+            self._drop_text_cache()
         self._reload_from_anchor()
 
     def _refresh_clicked(self):
-        self._apply_keys(tuple(key for key in _DEFAULTS if key != "charset"))
+        self._apply_keys(tuple(_DEFAULTS))
 
     def _pick_color(self, key):
         from PySide6.QtGui import QColor
@@ -266,9 +288,11 @@ class TextImagePlugin:
         self._paint_color_button(self._fields[key], color.name())
         self._apply_keys((key,))
 
-    def _on_config(self, _payload=None):
+    def _on_config(self, payload=None):
         if self._applying:
             return
+        if isinstance(payload, dict) and payload.get("key") == "charset":
+            self._drop_text_cache()
         self._sync_ui_from_config()
         self._reload_from_anchor()
 
@@ -327,6 +351,35 @@ class TextImagePlugin:
 
     def _charset(self) -> str:
         return str(self.host.get_config("charset", _DEFAULTS["charset"]) or "utf-8")
+
+    def _charset_from_ui(self) -> str:
+        box = self._fields.get("charset")
+        if box is None:
+            return self._charset()
+        value = box.currentData() or box.currentText()
+        return str(value or _DEFAULTS["charset"])
+
+    def _select_charset(self, value: str):
+        box = self._fields.get("charset")
+        if box is None:
+            return
+        name = str(value or _DEFAULTS["charset"])
+        box.blockSignals(True)
+        index = box.findData(name)
+        if index < 0:
+            index = box.findText(name)
+        if index < 0:
+            box.addItem(name, name)
+            index = box.findData(name)
+        box.setCurrentIndex(max(0, index))
+        box.blockSignals(False)
+
+    def _drop_text_cache(self):
+        path = self._current_txt_path()
+        if not path:
+            return
+        with self._lock:
+            self._cache.pop(_norm(path), None)
 
     def _raw_settings(self) -> PageSettings:
         return PageSettings(

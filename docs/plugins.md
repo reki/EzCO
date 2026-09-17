@@ -694,7 +694,7 @@ UI は「プラグイン設定」ダイアログです。ON/OFF と読み込み�
 | --- | --- |
 | `plugins/example_png/` | `.png` を `image` として読む。色重ねは確認用。ZIP は `dist-sample-plugins/` |
 | `plugins/example_zip/` | `.zip` を `archive` として読む。パスワードダイアログの呼び方も含む |
-| `plugins/example_txt/` | `.txt` / `.log` を `archive` として読む。本文をページ画像にする。サイドバーで字体・色・縦読み／横読みを即時反映 |
+| `plugins/example_txt/` | `.txt` / `.log` を `archive` として読む。本文をページ画像にする。サイドバーで字体・色・縦読み／横読み・文字コードを即時反映 |
 | `plugins/product_info/` | 商品情報サイドバー。`resources/ui/sidebar.ui` を `load_ui` で読む。`info.json` が無くフォルダ／ファイル名が DLsite / DMM 番号なら、標準ライブラリだけで非同期取得（ディスクには書かない。設定で OFF 可） |
 | `plugins/config_types/` | 確認用。設定種別を全部登録し、保存値をサイドバーに出す |
 | `plugins/example_filter/` | 確認用。表示フィルター。色とラベルを重ね、文字サイズを `int_range`（`sync` と `reload`）で変える |
