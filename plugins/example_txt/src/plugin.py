@@ -120,10 +120,7 @@ class TextImagePlugin:
     def teardown(self):
         if self._timer is not None:
             self._timer.stop()
-        if self._listening:
-            self.host.off("config_changed", self._on_config)
-            self._listening = False
-        self.host.unregister_sidebar("text_image")
+        self._listening = False
         self.widget = None
         self._fields = {}
         self._timer = None

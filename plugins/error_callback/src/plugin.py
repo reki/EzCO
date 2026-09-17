@@ -20,8 +20,6 @@ class ErrorCallbackPlugin:
         self.host.register_action("raise_error", self.get_text("error_button"), self._raise_error)
 
     def teardown(self):
-        self.host.unregister_sidebar("error_callback")
-        self.host.unregister_action("raise_error")
         self.widget = None
 
     def _raise_error(self):

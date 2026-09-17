@@ -10,6 +10,7 @@ alwaysApply: false
 - `import ez_co` / 他プラグインの import は禁止（結合事故防止。サンドボックスではない）
 - 描画・ズーム・見開き・ページ送り・キャッシュは本体。プラグインは Qt / PIL が読める画像バイトまで。アーカイブの中身を別プラグインへ回さない
 - 表示画像の書き換えは `permissions.filter` と `register_filter`。`process` は pipe かつ台帳にある ID だけ。値は既存の `register_config`。削除は `clear_plugin`（台帳のみ。pipe の ID は残す）。teardown に頼らない。v1 の `process` は同期・短時間。原画オブジェクトをプラグインに渡さない
+- 無効化の掃除は本体の `clear_plugin`（sidebar / action / listener / filter 台帳）。teardown に `off` / `unregister_*` を書かない。teardown は QThread / timer / 自前参照だけ
 - サイドバーは `register_sidebar` に widget / layout を渡すだけ。ドックの貼り付け／フローティング／`MainWindow` はいじらない
 - パスワードは `host.ask_password`。入力や復号成功の詳細をログに出さない
 - 拡張子の優先（ビルトイン／プラグイン）は設定ダイアログで選び、DB に保存する

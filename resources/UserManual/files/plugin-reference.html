@@ -430,14 +430,17 @@ class _Entry:
                         <article id="setup-teardown" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>setup() / teardown()</code></div>
                             <div class="api-body">
-                                <p>任意。有効化で <code>setup</code>、無効化で <code>teardown</code> のあとホストの <code>clear_plugin</code> がサイドバー・アクションとそのプラグインのフィルター台帳を外します。pipe の ID は残します。設定スキーマは残ります。teardown に頼らないでください。サイドバーなら先に <code>manifest.sidebar: true</code>。フィルターなら先に <code>permissions.filter: true</code>。</p>
+                                <p>任意。有効化で <code>setup</code>、無効化で <code>teardown</code> のあと本体の <code>clear_plugin</code> がサイドバー・アクション・listener・そのプラグインのフィルター台帳を外します。pipe の ID は残します。設定スキーマは残ります。<code>off</code> / <code>unregister_*</code> は無効化用に書かないでください。teardown は QThread や timer など所有物だけです。サイドバーなら先に <code>manifest.sidebar: true</code>。フィルターなら先に <code>permissions.filter: true</code>。</p>
 <pre class="api-example">def setup(self):
     widget = self.host.load_ui(self.root.read_bytes("resources/sidebar.ui"))
     self.host.register_sidebar("info", self.get_text("title"), widget)
     self.host.on("current_changed", self._on_current)
 
 def teardown(self):
-    self.host.off("current_changed")</pre>
+    if self._thread is not None:
+        self._thread.quit()
+        self._thread.wait()
+        self._thread = None</pre>
                             </div>
                         </article>
                     </section>
@@ -518,7 +521,7 @@ title = widget.findChild(QLabel, "titleLabel")</pre>
                         <article id="on-off" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.on(event, callback) / host.off(event, callback=None)</code></div>
                             <div class="api-body">
-                                <p><code>current_changed</code> と <code>config_changed</code>。<code>off</code> で callback を省略するとそのイベントの自プラグイン分を全部外します。サイドバーを登録したプラグインへの <code>current_changed</code> は、ドックが表示中か <code>permissions.inactive_callback</code> があるときに限ります。<code>config_changed</code> は間引きません。</p>
+                                <p><code>current_changed</code> と <code>config_changed</code>。<code>off</code> で callback を省略するとそのイベントの自プラグイン分を全部外します。無効化の掃除は本体の <code>clear_plugin</code> です。<code>off</code> は有効中に外すときだけ。サイドバーを登録したプラグインへの <code>current_changed</code> は、ドックが表示中か <code>permissions.inactive_callback</code> があるときに限ります。<code>config_changed</code> は間引きません。</p>
 <pre class="api-example">def _on_current(payload):
     self._refresh(payload.get("folder"))
 
@@ -638,7 +641,7 @@ host.register_sidebar(
                         <article id="unregister-action" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.unregister_action(action_id) -&gt; None</code></div>
                             <div class="api-body">
-                                <p>独自アクションを外します。ユーザーの割り当ては設定に残ります。</p>
+                                <p>有効中に独自アクションを1件外します。ユーザーの割り当ては設定に残ります。無効化の掃除は本体の <code>clear_plugin</code> です。</p>
 <pre class="api-example">host.unregister_action("reload")</pre>
                                 <p class="api-see">関連: <a href="#register-action"><code>register_action</code></a></p>
                             </div>
@@ -646,7 +649,7 @@ host.register_sidebar(
                         <article id="unregister-filter" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.unregister_filter(filter_id) -&gt; None</code></div>
                             <div class="api-body">
-                                <p>台帳からその1件を消します。pipe の ID は残します（ユーザーの有効記憶）。掃除の正は本体の <code>clear_plugin</code> です。</p>
+                                <p>有効中に台帳からその1件を消します。pipe の ID は残します（ユーザーの有効記憶）。無効化の掃除は本体の <code>clear_plugin</code> です。</p>
 <pre class="api-example">host.unregister_filter("sharp")</pre>
                                 <p class="api-see">関連: <a href="#register-filter"><code>register_filter</code></a></p>
                             </div>
@@ -654,7 +657,7 @@ host.register_sidebar(
                         <article id="unregister-sidebar" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.unregister_sidebar(sidebar_id) -&gt; None</code></div>
                             <div class="api-body">
-                                <p>サイドバーと自動登録した開閉アクションを外します。</p>
+                                <p>有効中にサイドバーと自動登録した開閉アクションを1件外します。無効化の掃除は本体の <code>clear_plugin</code> です。</p>
 <pre class="api-example">host.unregister_sidebar("info")</pre>
                                 <p class="api-see">関連: <a href="#register-sidebar"><code>register_sidebar</code></a></p>
                             </div>

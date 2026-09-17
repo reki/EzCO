@@ -68,10 +68,7 @@ class ConfigTypesPlugin:
         self.host.register_sidebar("config_types", self.get_text("title"), self.widget)
 
     def teardown(self):
-        if self._listening:
-            self.host.off("config_changed", self._on_config)
-            self._listening = False
-        self.host.unregister_sidebar("config_types")
+        self._listening = False
         self.widget = None
         self._values = {}
         self._raw = {}

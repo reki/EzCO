@@ -21,6 +21,7 @@
 - `FileHandler` を変えるときは cache / prefetch / session を一緒に見る
 - プラグインはコールバック側。`import ez_co` しない。本体 Config を上書きしない
 - プラグインから `host` は直接アクセス。`getattr` / `hasattr` で探さない
+- 無効化の掃除は本体の `clear_plugin`。teardown に `off` / `unregister_*` を書かない
 - プラグインの入口は `src/plugin.py`
 - 権限は `manifest.permissions`。形式は `formats`、サイドバーは `sidebar`
 - テストは 1ソース n ファイル。本番の `%APPDATA%` とリポジトリの `config.db` は触らない

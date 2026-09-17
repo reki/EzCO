@@ -16,7 +16,8 @@
         台帳へフィルターを載せる。登録しただけでは process は呼ばれない。
         ユーザーがフィルターメニューで有効化した公開 ID だけが pipe に入る。
     teardown()
-        任意。掃除の正は本体の clear_plugin。ここでも unregister しておく。
+        任意。sidebar / action / listener / filter 台帳は本体の clear_plugin が外す。
+        ここには QThread や timer など所有物だけ書く。off / unregister は書かない。
 
 このサンプル固有:
     開いている画像に色とラベルを重ねる（本番では不要）。
@@ -59,9 +60,6 @@ class ExampleFilterPlugin:
             self.get_text("filter_title"),
             self._overlay,
         )
-
-    def teardown(self):
-        self.host.unregister_filter(_FILTER_ID)
 
     def _overlay(self, image, context):
         # context は path / page / size。Host は入らない。

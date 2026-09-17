@@ -339,11 +339,11 @@ class _Entry:
 登録（`__init__` または `setup`）:
 
 - `host.register_sidebar(sidebar_id, title, widget_or_layout, aliases=None)` — `QWidget` または `QLayout`。ドック化は本体。開閉アクションも自動登録され、ショートカット／ジェスチャーに出せる。メニューは `{title}`、ショートカット／ジェスチャーの表示名は `{title}サイドバー表示/非表示`。`aliases` は旧アクション ID など。権限はここへ渡さない。`manifest.sidebar` が `true` のときだけ。未宣言は `PluginRegistrationDenied`。プラグインは使わず、設定画面は「失敗: 権限がない登録がありました」
-- `host.unregister_sidebar(sidebar_id)`
+- `host.unregister_sidebar(sidebar_id)` — 有効中に1件外す。無効化は `clear_plugin`
 - `host.register_action(action_id, label, callback, aliases=None)` — 独自アクション。ショートカット／ジェスチャーから呼ばれる
-- `host.unregister_action(action_id)`
+- `host.unregister_action(action_id)` — 有効中に1件外す。無効化は `clear_plugin`
 - `host.register_filter(filter_id, title, process)` — 表示画像の加工。`permissions.filter` が `true` のときだけ。無ければ `PluginRegistrationDenied`。プラグインは使わず、設定画面は「失敗: 権限がない登録がありました」。公開 ID は `plugin:{plugin_id}:{filter_id}`。`setup()` で複数回呼んでよい（`filter_id` が違えば別レコード）。同じ `filter_id` の再登録は上書き。値は既存の `register_config`（フィルター専用の config API は無い）。v1 の `process(image, context)` は同期・短時間向け。`context` は path / page / size。Host は入らない。登録しただけでは呼ばない。本体の pipe に載り、かつ台帳にあるときだけ
-- `host.unregister_filter(filter_id)` — 台帳からその1件を消す。pipe は触らない（ユーザーの ON 記憶を残す）。掃除の正は `clear_plugin`
+- `host.unregister_filter(filter_id)` — 有効中に台帳からその1件を消す。pipe は触らない（ユーザーの ON 記憶を残す）。無効化は `clear_plugin`
 - `host.load_ui(bytes_or_path)` — Designer の `.ui` を `QUiLoader` で読む
 - `host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False)` — プラグイン設定ダイアログ用。`value_type` は `"bool"` / `"string"` / `"int"` / `"float"` / `"int_range"` / `"float_range"` / `"path"` / `"password"` / `"color"` / `"date"` / `"datetime"` / `"choice"` / `"font"`。`choice` は `choices`（値の列、または `(value, label)`）。`int_range` / `float_range` は範囲付きの単一値で `minimum` / `maximum` / `step` が必須（欠落・逆転・`step <= 0` はエラー。ダイアログはスライダー+スピン。項目名の末尾に範囲を付ける。`float_range` は `step` も付ける）。`path` は `path_kind` が `"file"`（省略時）または `"directory"`。`password` は画面マスク、DB は DPAPI、`get_config` は平文。`sync=True` は数値のみ。最後の変更から 500ms 動かなくなってから保存し `config_changed`。`reload=True`（`sync` と併用）のときだけ `reload_current`。キャンセルはプレビューした値を開き時点（または最後の適用）へ戻し、`reload` 項目なら画像も戻す。`color` は `#RRGGBB` 文字列。`date` / `datetime` は UTC の Unix 秒（int。`date` はその日 00:00:00）。無効化してもスキーマは残るので `__init__` で登録してよい
 
@@ -351,7 +351,7 @@ class _Entry:
 
 - `host.get_current(key)` — `"path"` / `"folder"` / `"page"`
 - `host.reload_current(page=None)` — 現在のファイルを開き直す（画像キャッシュも消える）。`page` は 1 始まり。省略時は今のページ
-- `host.on(event, callback)` / `host.off(event, callback)` — `"current_changed"` / `"config_changed"`。サイドバーを登録したプラグインへの `"current_changed"` は、ドックが表示中か `permissions.inactive_callback` があるときに限る。`"config_changed"` は間引かない
+- `host.on(event, callback)` / `host.off(event, callback)` — `"current_changed"` / `"config_changed"`。`off` は有効中に外すとき。無効化は `clear_plugin`。サイドバーを登録したプラグインへの `"current_changed"` は、ドックが表示中か `permissions.inactive_callback` があるときに限る。`"config_changed"` は間引かない
 - `host.get_app_config()` — `language` / `viewer` / `cache` / `ui_font` の読み取り専用
 
 自プラグイン設定（DB の `plugin_id` はハッシュ化。他プラグインの行は読めない）:
@@ -362,7 +362,7 @@ class _Entry:
 
 プラグイン設定の一覧にスキーマがある行は「設定」ボタンが出ます。そこでパネルを開き OK / 適用すると、本体ダイアログの OK を待たずに DB へ保存して通知します。初期化はスキーマの default に戻します。`sync=True` の数値は 500ms のアイドル後に保存します。`reload=True` ならそのとき現在画像を開き直します。キャンセルはそのプレビューも戻します。ユーザーマニュアルの [プラグインリファレンス（コンフィグ）](../resources/UserManual/files/plugin-reference.html#plugin-config) に、スキーマ・保存場所・ダイアログの扱いをまとめています。
 
-UI の再接続用に任意の `setup()` / `teardown()` を実装できます。無効化すると本体の `clear_plugin` がサイドバー・登録アクション・そのプラグインの FilterRecord を台帳から外します。**pipe の ID は残します**（次回 ON・次回起動で復元するため）。teardown に頼らないでください。プラグイン設定の ON/OFF と、フィルターメニューの有効は別です。
+UI の再接続用に任意の `setup()` / `teardown()` を実装できます。無効化すると本体の `clear_plugin` がサイドバー・登録アクション・`on` の listener・そのプラグインの FilterRecord を台帳から外します。**pipe の ID は残します**（次回 ON・次回起動で復元するため）。`off` / `unregister_*` は有効中に1件だけ外すとき用で、無効化の teardown には書かないでください。teardown は QThread / timer / 自前参照だけです。プラグイン設定の ON/OFF と、フィルターメニューの有効は別です。
 
 ---
 
@@ -556,7 +556,7 @@ self.host.register_filter("sharp", self.get_text("sharp"), self._sharp)
 unregister_filter(filter_id: str) -> None
 ```
 
-台帳からその1件を消す。pipe は触らない。
+有効中に台帳からその1件を消す。pipe は触らない。無効化は `clear_plugin`。
 
 ```python
 self.host.unregister_filter("sharp")

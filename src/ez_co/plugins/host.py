@@ -749,6 +749,7 @@ class PluginHost:
         return True if result is None else bool(result)
 
     def clear_plugin(self, plugin_id: str) -> None:
+        """sidebar / action / listener / filter 台帳を外す。teardown の off / unregister には頼らない。"""
         for key in [item for item in self._sidebars if item[0] == plugin_id]:
             self._unmount_sidebar_record(key)
         for public_id in [item for item, record in self._actions.items() if record.plugin_id == plugin_id]:
