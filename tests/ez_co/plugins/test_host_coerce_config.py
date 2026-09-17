@@ -39,6 +39,13 @@ def test_coerce_choice():
     assert coerce_config_value("choice", "z", choices=choices) == "a"
 
 
+def test_coerce_charset_falls_back_to_default_then_utf8():
+    choices = [("utf-8", "utf-8"), ("cp932", "cp932")]
+    assert coerce_config_value("charset", "cp932", choices=choices) == "cp932"
+    assert coerce_config_value("charset", "nope", default="cp932", choices=choices) == "cp932"
+    assert coerce_config_value("charset", "nope", choices=choices) == "utf-8"
+
+
 def test_coerce_int_range_clamps_and_snaps():
     assert coerce_config_value("int_range", 150, minimum=0, maximum=100, step=1) == 100
     assert coerce_config_value("int_range", -4, minimum=0, maximum=100, step=1) == 0

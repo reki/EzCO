@@ -1,6 +1,6 @@
 # Example Text Pages
 
-A general-purpose sample that opens `.txt` / `.log` as image pages. The body is wrapped into PNGs so Next / Previous in the host moves through the text. The sidebar sets font, colors, margins, and horizontal / vertical reading. Changes apply immediately.
+A general-purpose sample that opens `.txt` / `.log` as image pages. The body is wrapped into PNGs so Next / Previous in the host moves through the text. The sidebar sets font, colors, margins, horizontal / vertical reading, and character set. Changes apply immediately.
 
 | Field | Value |
 | --- | --- |

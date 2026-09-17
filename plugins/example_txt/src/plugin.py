@@ -36,6 +36,7 @@ _DEFAULTS = {
     "page_height": 1200,
     "margin": 48,
     "writing": HORIZONTAL,
+    "charset": "utf-8",
 }
 _INT_KEYS = ("font_size", "page_width", "page_height", "margin")
 _COLOR_KEYS = ("text_color", "bg_color")
@@ -71,6 +72,8 @@ class TextImagePlugin:
                 value_type = "font"
             elif key == "writing":
                 value_type = "choice"
+            elif key == "charset":
+                value_type = "charset"
             else:
                 value_type = "string"
             kwargs = {}
@@ -277,7 +280,7 @@ class TextImagePlugin:
         self._reload_from_anchor()
 
     def _refresh_clicked(self):
-        self._apply_keys(tuple(key for key in _DEFAULTS))
+        self._apply_keys(tuple(key for key in _DEFAULTS if key != "charset"))
 
     def _pick_color(self, key):
         from PySide6.QtGui import QColor
@@ -301,7 +304,7 @@ class TextImagePlugin:
         if not path:
             return
         try:
-            text = read_text(path)
+            text = read_text(path, self._charset())
         except OSError as exc:
             self.host.report_error("read_text", exc)
             return
@@ -329,6 +332,7 @@ class TextImagePlugin:
             self._cache[_norm(path)] = {
                 "mtime": _mtime(path),
                 "settings": settings,
+                "charset": self._charset(),
                 "text": text,
                 "pages": pages,
             }
@@ -347,6 +351,9 @@ class TextImagePlugin:
         if name and name.replace("\\", "/") in current:
             return last
         return None
+
+    def _charset(self) -> str:
+        return str(self.host.get_config("charset", _DEFAULTS["charset"]) or "utf-8")
 
     def _raw_settings(self) -> PageSettings:
         return PageSettings(
@@ -386,16 +393,18 @@ class TextImagePlugin:
         key = _norm(path)
         mtime = _mtime(path)
         settings = self._resolved(self._raw_settings())
+        charset = self._charset()
         with self._lock:
             cached = self._cache.get(key)
             if (
                 cached
                 and cached.get("mtime") == mtime
                 and cached.get("settings") == settings
+                and cached.get("charset") == charset
             ):
                 return cached["text"], cached["pages"], cached["settings"]
         try:
-            text = read_text(path)
+            text = read_text(path, charset)
         except OSError as exc:
             self.host.report_error("read_text", exc)
             return "", [(0, 0)], settings
@@ -406,6 +415,7 @@ class TextImagePlugin:
             self._cache[key] = {
                 "mtime": mtime,
                 "settings": settings,
+                "charset": charset,
                 "text": text,
                 "pages": pages,
             }

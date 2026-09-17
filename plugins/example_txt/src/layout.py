@@ -25,19 +25,17 @@ class PageSettings:
     writing: str
 
 
-def read_text(path: str) -> str:
+def read_text(path: str, charset: str = "utf-8") -> str:
     data = open(path, "rb").read()
     if data.startswith(b"\xef\xbb\xbf"):
         data = data[3:]
-    text = None
-    for encoding in ("utf-8", "cp932"):
-        try:
-            text = data.decode(encoding)
-            break
-        except UnicodeDecodeError:
-            continue
-    if text is None:
+    encoding = charset or "utf-8"
+    try:
+        text = data.decode(encoding)
+    except LookupError:
         text = data.decode("utf-8", errors="replace")
+    except UnicodeDecodeError:
+        text = data.decode(encoding, errors="replace")
     return text.replace("\r\n", "\n").replace("\r", "\n").replace("\t", "    ")
 
 

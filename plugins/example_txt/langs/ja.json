@@ -10,5 +10,6 @@
   "writing": "方向",
   "writing_horizontal": "横読み",
   "writing_vertical": "縦読み",
+  "charset": "文字コード",
   "refresh": "更新"
 }

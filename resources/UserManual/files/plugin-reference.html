@@ -506,7 +506,7 @@ if password is None:
                         <article id="get-config" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.get_config(key, default=None) -&gt; Any</code></div>
                             <div class="api-body">
-                                <p>自プラグインの保存値。未保存ならスキーマの default。他プラグインの行は読めません。<code>date</code> / <code>datetime</code> は Unix 秒の int、<code>color</code> は <code>#RRGGBB</code>、<code>password</code> は平文、<code>path</code> は文字列です。</p>
+                                <p>自プラグインの保存値。未保存ならスキーマの default。他プラグインの行は読めません。<code>date</code> / <code>datetime</code> は Unix 秒の int、<code>color</code> は <code>#RRGGBB</code>、<code>password</code> は平文、<code>path</code> は文字列です。Enum の <code>choice</code> は member。<code>multiple=True</code> は list です。</p>
 <pre class="api-example">if host.get_config("fetch_web", True):
     self._fetch(folder)</pre>
                                 <p class="api-see">関連: <a href="#register-config"><code>register_config</code></a> / <a href="#set-config"><code>set_config</code></a> / <a href="#delete-config"><code>delete_config</code></a></p>
@@ -565,9 +565,9 @@ host.register_action("reload", get_text("reload"), _reload)
                             </div>
                         </article>
                         <article id="register-config" class="api-member">
-                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False) -&gt; None</code></div>
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.register_config(key, value_type, default=None, label=None, description=None, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False, multiple=False, suffix=None, required=False) -&gt; None</code></div>
                             <div class="api-body">
-                                <p><code>value_type</code> は <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"int_range"</code> / <code>"float_range"</code> / <code>"path"</code> / <code>"password"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code>。無効化してもスキーマは残るので <code>load</code> で登録してよい。<code>__init__</code> では例外です。一覧に「設定」ボタンが出ます。保存とプロファイルの扱いの全体は <a href="#plugin-config">プラグイン設定（コンフィグ）</a> です。</p>
+                                <p><code>value_type</code> は <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"int_range"</code> / <code>"float_range"</code> / <code>"path"</code> / <code>"password"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code> / <code>"charset"</code> / <code>"language"</code> / <code>"country"</code>。無効化してもスキーマは残るので <code>load</code> で登録してよい。<code>__init__</code> では例外です。一覧に「設定」ボタンが出ます。保存とプロファイルの扱いの全体は <a href="#plugin-config">プラグイン設定（コンフィグ）</a> です。</p>
 <pre class="api-example">host.register_config(
     "fetch_web",
     "bool",
@@ -581,6 +581,13 @@ host.register_config(
     default="horizontal",
     label=get_text("writing"),
     choices=[("horizontal", "横書き"), ("vertical", "縦書き")],
+)
+host.register_config(
+    "style",
+    "choice",
+    default=Style.PLAIN,
+    label=get_text("style"),
+    choices=Style,
 )
 host.register_config(
     "strength",
@@ -643,7 +650,7 @@ host.register_sidebar(
                         <article id="set-config" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.set_config(key, value) -&gt; bool</code></div>
                             <div class="api-body">
-                                <p>型を正規化して保存し、そのプラグインへ <code>config_changed</code>（<code>{key, value}</code>）を送ります。</p>
+                                <p>型を正規化して保存し、そのプラグインへ <code>config_changed</code>（<code>{key, value}</code>）を送ります。required の empty は保存せず <code>False</code> です。Enum の <code>choice</code> は member を通知します。</p>
 <pre class="api-example">host.set_config("fetch_web", False)</pre>
                                 <p class="api-see">関連: <a href="#register-config"><code>register_config</code></a> / <a href="#get-config"><code>get_config</code></a> / <a href="#delete-config"><code>delete_config</code></a></p>
                             </div>
@@ -688,22 +695,25 @@ host.register_sidebar(
 
                         <h4>スキーマ</h4>
                         <ul>
-                            <li><code>load</code> で <code>host.register_config(key, value_type, default, label, description, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False)</code> を呼びます。無効化してもスキーマは残るので、ここで登録してかまいません。<code>__init__</code> では例外です。</li>
-                            <li><code>value_type</code> は <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"int_range"</code> / <code>"float_range"</code> / <code>"path"</code> / <code>"password"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code> です。</li>
+                            <li><code>load</code> で <code>host.register_config(key, value_type, default, label, description, choices=None, minimum=None, maximum=None, step=None, path_kind=None, path_filter=None, sync=False, reload=False, multiple=False, suffix=None, required=False)</code> を呼びます。無効化してもスキーマは残るので、ここで登録してかまいません。<code>__init__</code> では例外です。</li>
+                            <li><code>value_type</code> は <code>"bool"</code> / <code>"string"</code> / <code>"int"</code> / <code>"float"</code> / <code>"int_range"</code> / <code>"float_range"</code> / <code>"path"</code> / <code>"password"</code> / <code>"color"</code> / <code>"date"</code> / <code>"datetime"</code> / <code>"choice"</code> / <code>"font"</code> / <code>"charset"</code> / <code>"language"</code> / <code>"country"</code> です。</li>
                             <li><code>int_range</code> / <code>float_range</code> は範囲付きの単一値です。<code>minimum</code> / <code>maximum</code> / <code>step</code> は必須です。欠落・逆転・<code>step &lt;= 0</code> はエラーです。ダイアログはスライダーとスピンを並べ、項目名の末尾に範囲を付けます。<code>float_range</code> は <code>step</code> も付けます。</li>
                             <li><code>path</code> は文字列。<code>path_kind</code> は <code>"file"</code>（省略時）または <code>"directory"</code>。<code>path_filter</code> はファイルダイアログのフィルタです。</li>
                             <li><code>password</code> は画面ではマスクします。DB は Windows DPAPI。プラグインの <code>get_config</code> は平文です。</li>
                             <li><code>sync=True</code> は数値（<code>int</code> / <code>float</code> / <code>int_range</code> / <code>float_range</code>）だけ効きます。最後の変更から 500ms 動かなくなってから保存し <code>config_changed</code> します。<code>reload=True</code>（<code>sync</code> と併用）のときだけ現在画像を <code>reload_current</code> します。キャンセル（Esc / × 含む）はプレビュー値を、ダイアログを開いた時点（または最後の適用）へ戻します。<code>reload</code> 項目なら画像も戻します。</li>
                             <li><code>color</code> は <code>#RRGGBB</code> の文字列。<code>date</code> / <code>datetime</code> は UTC の Unix 秒（数値）。<code>date</code> はその日の 00:00:00 UTC です。</li>
-                            <li><code>choice</code> は <code>choices</code>（値の列、または <code>(value, label)</code>）が必要です。省略すると1行入力になります。</li>
-                            <li><code>label</code> は設定ダイアログの項目名、<code>description</code> はツールチップです。省略するとキー名だけが出ます。</li>
+                            <li><code>choice</code> は <code>choices</code>（値の列、<code>(value, label)</code>、または <code>Enum</code> / member 列）が必要です。省略すると1行入力になります。<code>Enum</code> を渡したときだけ <code>get_config</code> / <code>config_changed</code> は member です。DB は canonical な <code>.name</code> です。既存設定を残すなら member 名を変えないでください。未知の name は default。複数で1件でも未知なら default 全体です。</li>
+                            <li><code>charset</code> / <code>language</code> / <code>country</code> は本体が一覧を持ちます。保存は codec 名 / 言語コード / 国コード。言語・国の表示は母語名で、アプリの UI 言語には合わせません。</li>
+                            <li><code>multiple=True</code> は JSON 配列です。<code>[]</code> は補完しません（0件を保存できます）。<code>required=True</code>（既定 False）は empty を保存しません。空 default は登録できます。空を表現できない型では <code>required</code> は実質追加制約になりません。</li>
+                            <li><code>suffix</code> は数値入力の右に出す表示だけで、保存値には付きません。<code>description</code> があるときだけホバーします（ラベルへのフォールバックはありません）。</li>
+                            <li><code>label</code> は設定ダイアログの項目名です。省略するとキー名だけが出ます。</li>
                             <li>1つでも登録すると、プラグイン設定の一覧の設定列に「設定」ボタンが出ます。無い行は <code>-</code> です。</li>
                         </ul>
 
                         <h4>読み書き</h4>
                         <ul>
-                            <li><code>get_config(key, default)</code> は保存値を返します。未保存ならスキーマの <code>default</code>、それも無ければ引数の <code>default</code> です。型はスキーマに合わせて正規化します。</li>
-                            <li><code>set_config(key, value)</code> は型を揃えて保存し、そのプラグインだけへ <code>config_changed</code>（<code>{key, value}</code>）を送ります。他プラグインには来ません。</li>
+                            <li><code>get_config(key, default)</code> は保存値を返します。未保存ならスキーマの <code>default</code>、それも無ければ引数の <code>default</code> です。型はスキーマに合わせて正規化します。Enum の <code>choice</code> は member、<code>multiple=True</code> は list です。</li>
+                            <li><code>set_config(key, value)</code> は型を揃えて保存し、そのプラグインだけへ <code>config_changed</code>（<code>{key, value}</code>）を送ります。required の empty は保存せず <code>False</code> です。他プラグインには来ません。</li>
                             <li><code>delete_config(key)</code> は保存値だけ消します。スキーマは残るので、次の <code>get_config</code> は default に戻ります。</li>
                             <li>プラグイン API に <code>plugin_id</code> 引数はありません。渡された <code>host</code> は、そのプラグインの行だけを見ます。</li>
                             <li><code>host.get_app_config()</code> は本体の <code>language</code> / <code>viewer</code> / <code>cache</code> / <code>ui_font</code> の読み取り専用です。プラグインの値ではありません。</li>
@@ -716,7 +726,7 @@ host.register_sidebar(
                             <li>キーはプラグインが決めた短い名前（例 <code>fetch_web</code>）です。<code>manifest.json</code> の <code>version</code> を上げても、<code>id</code> が同じなら同じ行を読みます。</li>
                             <li>拡張子の担当に使う <code>id(ver:version)</code> とは別です。あちらは本体の <code>plugins.extension_handlers</code> です。</li>
                             <li>YAML エクスポートには出ません。本体設定のエクスポート／インポートではコピーされません。</li>
-                            <li><code>plugin_settings.value</code> は JSON です。<code>date</code> / <code>datetime</code> / <code>int</code> / <code>float</code> / <code>int_range</code> / <code>float_range</code> は数値、<code>color</code> / <code>path</code> は文字列です。<code>password</code> は DPAPI した文字列です。</li>
+                            <li><code>plugin_settings.value</code> は JSON です。<code>date</code> / <code>datetime</code> / <code>int</code> / <code>float</code> / <code>int_range</code> / <code>float_range</code> は数値、<code>color</code> / <code>path</code> / <code>charset</code> / <code>language</code> / <code>country</code> は文字列です。Enum の <code>choice</code> も name 文字列です。<code>multiple=True</code> は配列です。<code>password</code> は DPAPI した文字列です。</li>
                         </ul>
 
                         <h4>設定ダイアログ</h4>

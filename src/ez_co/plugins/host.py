@@ -10,6 +10,7 @@ import logging
 import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import Enum
 from types import MappingProxyType
 from typing import Any, Callable, Optional
 
@@ -35,8 +36,13 @@ _CONFIG_TYPES = (
     "font",
     "path",
     "password",
+    "charset",
+    "language",
+    "country",
 )
 _SYNC_CONFIG_TYPES = ("int", "float", "int_range", "float_range")
+_DROPDOWN_CONFIG_TYPES = ("choice", "charset", "language", "country")
+_NUMERIC_CONFIG_TYPES = ("int", "float", "int_range", "float_range")
 _COLOR_FALLBACK = "#000000"
 
 
@@ -158,6 +164,10 @@ class ConfigField:
     path_filter: str = ""
     sync: bool = False
     reload: bool = False
+    multiple: bool = False
+    suffix: str = ""
+    required: bool = False
+    enum_type: Optional[type] = None
 
 
 def normalize_config_type(value_type) -> str:
@@ -186,6 +196,12 @@ def normalize_config_type(value_type) -> str:
         return "path"
     if name in ("password", "secret"):
         return "password"
+    if name == "charset":
+        return "charset"
+    if name == "language":
+        return "language"
+    if name == "country":
+        return "country"
     return "string"
 
 
@@ -295,12 +311,117 @@ def snap_range_value(value, minimum, maximum, step, as_int: bool):
     return float(snapped)
 
 
+def _is_enum_class(value) -> bool:
+    return isinstance(value, type) and issubclass(value, Enum)
+
+
+def _enum_name(enum_type: type, value) -> Optional[str]:
+    if value is None:
+        return None
+    if isinstance(value, enum_type):
+        return value.name
+    text = str(value)
+    member = enum_type.__members__.get(text)
+    if member is None:
+        return None
+    return member.name
+
+
+def _enum_member(enum_type: type, value):
+    name = _enum_name(enum_type, value)
+    if name is None:
+        return None
+    return enum_type[name]
+
+
+def config_choice_key(value) -> str:
+    if isinstance(value, Enum):
+        return value.name
+    if value is None:
+        return ""
+    return str(value)
+
+
 def normalize_config_choices(choices) -> tuple[tuple[str, str], ...]:
+    rows, _enum_type = parse_config_choices(choices)
+    return rows
+
+
+def parse_config_choices(choices, plugin_id: str = "", key: str = "") -> tuple[tuple[tuple[str, str], ...], Optional[type]]:
+    if choices is None:
+        return (), None
+    if _is_enum_class(choices):
+        members = list(choices)
+        if not members:
+            raise ValueError(
+                get_log_text(
+                    "plugin_config_enum_invalid",
+                    plugin_id=plugin_id,
+                    field_key=key,
+                )
+            )
+        return tuple((item.name, item.name) for item in members), choices
     if not choices:
-        return ()
+        return (), None
+    items = list(choices)
+    first = items[0]
+    if isinstance(first, Enum):
+        enum_type = type(first)
+        rows = []
+        seen = set()
+        for item in items:
+            if not isinstance(item, enum_type):
+                raise ValueError(
+                    get_log_text(
+                        "plugin_config_enum_invalid",
+                        plugin_id=plugin_id,
+                        field_key=key,
+                    )
+                )
+            if item.name in seen:
+                continue
+            seen.add(item.name)
+            rows.append((item.name, item.name))
+        if not rows:
+            raise ValueError(
+                get_log_text(
+                    "plugin_config_enum_invalid",
+                    plugin_id=plugin_id,
+                    field_key=key,
+                )
+            )
+        return tuple(rows), enum_type
+    if isinstance(first, (list, tuple)) and first and isinstance(first[0], Enum):
+        enum_type = type(first[0])
+        rows = []
+        seen = set()
+        for item in items:
+            if not isinstance(item, (list, tuple)) or not item or not isinstance(item[0], enum_type):
+                raise ValueError(
+                    get_log_text(
+                        "plugin_config_enum_invalid",
+                        plugin_id=plugin_id,
+                        field_key=key,
+                    )
+                )
+            member = item[0]
+            label = str(item[1]) if len(item) > 1 else member.name
+            if member.name in seen:
+                continue
+            seen.add(member.name)
+            rows.append((member.name, label))
+        if not rows:
+            raise ValueError(
+                get_log_text(
+                    "plugin_config_enum_invalid",
+                    plugin_id=plugin_id,
+                    field_key=key,
+                )
+            )
+        return tuple(rows), enum_type
     rows = []
     seen = set()
-    for item in choices:
+    for item in items:
         if isinstance(item, (list, tuple)) and item:
             value = str(item[0])
             label = str(item[1]) if len(item) > 1 else value
@@ -311,7 +432,74 @@ def normalize_config_choices(choices) -> tuple[tuple[str, str], ...]:
             continue
         seen.add(value)
         rows.append((value, label))
-    return tuple(rows)
+    return tuple(rows), None
+
+
+def _builtin_choices(kind: str) -> tuple[tuple[str, str], ...]:
+    if kind == "charset":
+        from ez_co.plugins.charset import charset_choices
+
+        return charset_choices()
+    if kind == "language":
+        from ez_co.plugins.locale_codes import language_choices
+
+        return language_choices()
+    if kind == "country":
+        from ez_co.plugins.locale_codes import country_choices
+
+        return country_choices()
+    return ()
+
+
+def _validate_enum_default(enum_type: type, default, multiple: bool, plugin_id: str, key: str):
+    if multiple:
+        if default is None:
+            return []
+        items = list(default) if isinstance(default, (list, tuple)) else [default]
+        resolved = []
+        for item in items:
+            member = _enum_member(enum_type, item)
+            if member is None:
+                raise ValueError(
+                    get_log_text(
+                        "plugin_config_enum_invalid",
+                        plugin_id=plugin_id,
+                        field_key=key,
+                    )
+                )
+            resolved.append(member)
+        return resolved
+    if default is None:
+        return list(enum_type)[0]
+    member = _enum_member(enum_type, default)
+    if member is None:
+        raise ValueError(
+            get_log_text(
+                "plugin_config_enum_invalid",
+                plugin_id=plugin_id,
+                field_key=key,
+            )
+        )
+    return member
+
+
+def _normalize_multiple_default(default):
+    if default is None:
+        return []
+    if isinstance(default, (list, tuple)):
+        return list(default)
+    return [default]
+
+
+def _choice_fallback(options, value, default):
+    text = config_choice_key(value)
+    allowed = {item[0] for item in options}
+    if text in allowed:
+        return text
+    fallback = config_choice_key(default)
+    if fallback in allowed:
+        return fallback
+    return options[0][0]
 
 
 def _parse_hex_color(value) -> str:
@@ -448,15 +636,8 @@ def coerce_config_value(
             return parsed
         parsed = _unix_seconds(default)
         return 0 if parsed is None else parsed
-    if kind == "choice" and options:
-        text = "" if value is None else str(value)
-        allowed = {item[0] for item in options}
-        if text in allowed:
-            return text
-        fallback = "" if default is None else str(default)
-        if fallback in allowed:
-            return fallback
-        return options[0][0]
+    if kind in ("choice", "charset", "language", "country") and options:
+        return _choice_fallback(options, value, default)
     if kind == "font":
         if value is None:
             return "" if default is None else str(default)
@@ -470,7 +651,16 @@ def coerce_config_value(
     return str(value)
 
 
-def coerce_field_value(field: ConfigField, value):
+def _coerce_one(field: ConfigField, value):
+    if field.enum_type is not None:
+        member = _enum_member(field.enum_type, value)
+        if member is not None:
+            return member
+        member = _enum_member(field.enum_type, field.default)
+        if member is not None:
+            return member
+        members = list(field.enum_type)
+        return members[0] if members else value
     return coerce_config_value(
         field.value_type,
         value,
@@ -480,6 +670,83 @@ def coerce_field_value(field: ConfigField, value):
         maximum=field.maximum,
         step=field.step,
     )
+
+
+def coerce_field_value(field: ConfigField, value):
+    if not field.multiple:
+        return _coerce_one(field, value)
+    if value is None:
+        value = field.default
+    if value is None:
+        return []
+    if not isinstance(value, (list, tuple)):
+        value = [value]
+    if field.enum_type is not None:
+        members = []
+        for item in value:
+            member = _enum_member(field.enum_type, item)
+            if member is None:
+                default = field.default
+                if default is None:
+                    return []
+                if not isinstance(default, (list, tuple)):
+                    default = [default]
+                resolved = []
+                for raw in default:
+                    found = _enum_member(field.enum_type, raw)
+                    if found is None:
+                        return []
+                    resolved.append(found)
+                return resolved
+            members.append(member)
+        return members
+    if len(value) == 0:
+        return []
+    one = ConfigField(
+        key=field.key,
+        value_type=field.value_type,
+        default=None,
+        choices=field.choices,
+        minimum=field.minimum,
+        maximum=field.maximum,
+        step=field.step,
+        path_kind=field.path_kind,
+        path_filter=field.path_filter,
+        enum_type=field.enum_type,
+    )
+    return [_coerce_one(one, item) for item in value]
+
+
+def config_value_for_storage(field: ConfigField, plain):
+    if field.enum_type is None:
+        return plain
+    if field.multiple:
+        if not isinstance(plain, (list, tuple)):
+            return [] if plain is None else [config_choice_key(plain)]
+        return [config_choice_key(item) for item in plain]
+    return config_choice_key(plain)
+
+
+def is_config_empty(field: ConfigField, value) -> bool:
+    if field.multiple:
+        if value is None:
+            return True
+        return list(value) == [] if isinstance(value, (list, tuple)) else False
+    kind = field.value_type
+    if kind in ("string", "path"):
+        return str(value or "").strip() == ""
+    if kind == "password":
+        return value == ""
+    if kind in _DROPDOWN_CONFIG_TYPES:
+        if isinstance(value, Enum):
+            return False
+        text = config_choice_key(value)
+        if text == "":
+            return True
+        if field.choices and text not in {item[0] for item in field.choices}:
+            return True
+        return False
+    return False
 
 
 def _password_to_stored(plain: str) -> Optional[str]:
@@ -973,6 +1240,9 @@ class PluginHost:
         path_filter=None,
         sync=False,
         reload=False,
+        multiple=False,
+        suffix=None,
+        required=False,
     ) -> None:
         self._deny_wrong_phase(plugin_id, "register_config")
         field_key = str(key or "").strip()
@@ -984,13 +1254,26 @@ class PluginHost:
             lo, hi, st = validate_range_bounds(
                 kind, minimum, maximum, step, plugin_id=plugin_id, key=field_key
             )
+        enum_type = None
+        if kind == "choice":
+            choice_rows, enum_type = parse_config_choices(choices, plugin_id=plugin_id, key=field_key)
+        elif kind in ("charset", "language", "country"):
+            choice_rows = _builtin_choices(kind)
+        else:
+            choice_rows = ()
+        many = bool(multiple)
+        if enum_type is not None:
+            default = _validate_enum_default(enum_type, default, many, plugin_id, field_key)
+        elif many:
+            default = _normalize_multiple_default(default)
+        suffix_text = str(suffix or "") if kind in _NUMERIC_CONFIG_TYPES else ""
         field = ConfigField(
             key=field_key,
             value_type=kind,
             default=default,
             label=str(label or ""),
             description=str(description or ""),
-            choices=normalize_config_choices(choices),
+            choices=choice_rows,
             minimum=lo,
             maximum=hi,
             step=st,
@@ -998,6 +1281,10 @@ class PluginHost:
             path_filter=str(path_filter or ""),
             sync=bool(sync),
             reload=bool(reload),
+            multiple=many,
+            suffix=suffix_text,
+            required=bool(required),
+            enum_type=enum_type,
         )
         rows = [item for item in self._config_fields.get(plugin_id, []) if item.key != field_key]
         rows.append(field)
@@ -1029,7 +1316,16 @@ class PluginHost:
     def _set_plugin_config(self, plugin_id: str, key: str, value, notify: bool = True) -> bool:
         field = self._field_for(plugin_id, key)
         plain = coerce_field_value(field, value) if field is not None else value
-        stored = plain
+        if field is not None and field.required and is_config_empty(field, plain):
+            logger.debug(
+                get_log_text(
+                    "plugin_config_required_empty",
+                    plugin_id=plugin_id,
+                    field_key=str(key or ""),
+                )
+            )
+            return False
+        stored = config_value_for_storage(field, plain) if field is not None else plain
         if field is not None and field.value_type == "password":
             token = _password_to_stored(plain)
             if token is None:
@@ -1221,6 +1517,9 @@ class ScopedPluginHost:
         path_filter=None,
         sync=False,
         reload=False,
+        multiple=False,
+        suffix=None,
+        required=False,
     ) -> None:
         self._host._register_config(
             self._plugin_id,
@@ -1237,6 +1536,9 @@ class ScopedPluginHost:
             path_filter,
             sync,
             reload,
+            multiple,
+            suffix,
+            required,
         )
 
     def get_config(self, key: str, default: Any = None):

@@ -33,7 +33,7 @@
 | --- | --- |
 | `example_png/` | `.png` をプラグイン経由で開く確認用。色とラベルを重ねます。[README](example_png/README.md) |
 | `example_zip/` | `.zip` をプラグイン経由で開く確認用。パスワードダイアログの呼び出しも含みます。[README](example_zip/README.md) |
-| `example_txt/` | `.txt` / `.log` をページ画像として開く一般向けサンプル。サイドバーで字体・色・縦読み／横読みを即時反映します。[README](example_txt/README.md) |
+| `example_txt/` | `.txt` / `.log` をページ画像として開く一般向けサンプル。サイドバーで字体・色・縦読み／横読みを即時反映します。文字コードは設定の `charset`。[README](example_txt/README.md) |
 | `product_info/` | 商品情報サイドバー。`info.json` と `folder.jpg` を表示。無いときはフォルダ／ファイル名の DLsite / DMM 番号から Web 取得（設定で OFF 可。フォルダには書かない）。[README](product_info/README.md) |
 | `error_setup/` | 確認用。`setup()` で例外を出す。[README](error_setup/README.md) |
 | `error_register/` | 確認用。マニフェストに無い `register_sidebar`。[README](error_register/README.md) |
