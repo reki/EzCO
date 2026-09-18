@@ -93,7 +93,7 @@ class SettingsDialog(QDialog):
 
     def setup_ui(self):
         """UIの初期化"""
-        self.setWindowTitle(get_text("settings.title"))
+        self.setWindowTitle(get_text("ui.settings"))
         self.setFixedSize(550, 560)
         
         layout = QVBoxLayout()
@@ -206,7 +206,7 @@ class SettingsDialog(QDialog):
         
         layout = QVBoxLayout()
 
-        location_group = QGroupBox(get_text("settings.data_location_settings"))
+        location_group = QGroupBox(get_text("settings.data_location"))
         location_layout = QVBoxLayout()
         current = load_location_settings() or default_location_settings()
         self._location_group = QButtonGroup(self)
@@ -589,7 +589,7 @@ class SettingsDialog(QDialog):
         ui_font_layout.addRow(self._form_label("font_style", suffix=""), self.ui_font_variant)
         ui_font_layout.addRow(self._form_label("font_size", suffix=""), self.ui_font_size)
         ui_font_layout.addRow(self._form_label("font_color", suffix=""), self.ui_font_color_btn)
-        ui_font_layout.addRow(self._form_label("background_color_popup", suffix=""), self.ui_bg_color_btn)
+        ui_font_layout.addRow(QLabel(get_text("settings.background_color")), self.ui_bg_color_btn)
         ui_font_layout.addRow(self._form_label("transparency", suffix=""), self.ui_alpha)
         self._apply_setting_tip("font_family", self.ui_font_family)
         self._apply_setting_tip("font_style", self.ui_font_variant)
@@ -604,7 +604,7 @@ class SettingsDialog(QDialog):
         layout.addStretch()
         display_widget.setLayout(layout)
         
-        self.tab_widget.addTab(scroll_area, get_text("settings.tab_display"))
+        self.tab_widget.addTab(scroll_area, get_text("ui.view"))
 
     def create_behavior_tab(self):
         """動作タブを作成"""
@@ -647,7 +647,7 @@ class SettingsDialog(QDialog):
         self.drop_opens_combo = QComboBox()
         self.drop_opens_combo.setMaximumWidth(280)
         self.drop_opens_combo.addItem(get_text("settings.drop_open_current"), False)
-        self.drop_opens_combo.addItem(get_text("settings.drop_open_new"), True)
+        self.drop_opens_combo.addItem(get_text("ui.open_in_new_tab"), True)
         drop_index = 1 if self.config.viewer.get("drop_opens_new_tab", False) else 0
         self.drop_opens_combo.setCurrentIndex(drop_index)
         tab_layout.addRow(self._form_label("drop_opens_new_tab"), self.drop_opens_combo)
@@ -1233,14 +1233,14 @@ class SettingsDialog(QDialog):
         super().accept()
 
     def export_config(self):
-        path, _ = QFileDialog.getSaveFileName(self, get_text("ui.export"), "config_export.yaml", get_log_text("settings_dialog_yaml_file_filter"))
+        path, _ = QFileDialog.getSaveFileName(self, get_text("ui.export"), "config_export.yaml", get_text("ui.yaml_file_filter"))
         if path:
             export_data = Config.strip_profile_section(self.config.to_dict())
             with open(path, "w", encoding="utf-8") as f:
                 yaml.dump(export_data, f, allow_unicode=True)
-            QMessageBox.information(self, get_text("dialogs.information"), get_log_text("settings_dialog_config_saved", path=path))
+            QMessageBox.information(self, get_text("dialogs.information"), get_text("ui.settings_saved_to_path", path=path))
     def import_config(self):
-        path, _ = QFileDialog.getOpenFileName(self, get_text("ui.import"), "", get_log_text("settings_dialog_yaml_file_filter"))
+        path, _ = QFileDialog.getOpenFileName(self, get_text("ui.import"), "", get_text("ui.yaml_file_filter"))
         if path:
             with open(path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
@@ -1254,16 +1254,16 @@ class SettingsDialog(QDialog):
             added_items = []
             for section_name, default_section in default_config.items():
                 if section_name not in original_data:
-                    added_items.append(get_log_text("settings_dialog_section_added", section_name=section_name))
+                    added_items.append(get_text("ui.settings_section_added", section_name=section_name))
                 elif isinstance(default_section, dict) and isinstance(original_data.get(section_name), dict):
                     for key, value in default_section.items():
                         if key not in original_data[section_name]:
-                            added_items.append(get_log_text("settings_dialog_key_added", section_name=section_name, config_key=key))
+                            added_items.append(get_text("ui.settings_key_added", section_name=section_name, config_key=key))
             # 不足項目がある場合はユーザーに通知
             if added_items:
-                message = get_log_text("settings_dialog_missing_items_added", items=", ".join(added_items))
+                message = get_text("ui.missing_settings_added", items=", ".join(added_items))
                 QMessageBox.information(self, get_text("dialogs.information"), message)
-            reply = QMessageBox.question(self, get_text("dialogs.question"), get_log_text("settings_dialog_overwrite_confirm"), QMessageBox.Yes | QMessageBox.No)
+            reply = QMessageBox.question(self, get_text("dialogs.question"), get_text("ui.overwrite_current_settings"), QMessageBox.Yes | QMessageBox.No)
             if reply == QMessageBox.Yes:
                 self.config.apply_dict(merged_data)
                 self._update_ui_with_config(self.config.to_dict())
@@ -1271,7 +1271,7 @@ class SettingsDialog(QDialog):
                     self.parent().save_config()
                 if hasattr(self.parent(), 'apply_loaded_profile_config'):
                     self.parent().apply_loaded_profile_config()
-                QMessageBox.information(self, get_text("dialogs.information"), get_log_text("settings_dialog_config_imported"))
+                QMessageBox.information(self, get_text("dialogs.information"), get_text("ui.settings_imported"))
 
     def _save_settings(self):
         """設定を保存する共通処理"""

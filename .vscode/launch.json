@@ -132,6 +132,18 @@
             "preLaunchTask": "EzCo: プラグインZIP"
         },
         {
+            "name": "▶ langs チェック (poetry run langs check)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tooling/noop.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "preLaunchTask": "EzCo: langs チェック"
+        },
+        {
             "name": "▶ テスト (poetry run pytest)",
             "type": "debugpy",
             "request": "launch",

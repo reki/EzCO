@@ -586,7 +586,7 @@ class MainWindow(QMainWindow):
         self.settings_action.triggered.connect(self.show_settings_dialog)
         settings_menu.addAction(self.settings_action)
         if self._plugin_settings_visible():
-            self.plugin_settings_action = QAction(get_text("ui.plugin_settings"), self)
+            self.plugin_settings_action = QAction(get_text("ui.plugin_dialog_title"), self)
             self.plugin_settings_action.triggered.connect(self.show_plugin_dialog)
             settings_menu.addAction(self.plugin_settings_action)
         self.shortcut_action = QAction(get_text("ui.shortcut_settings"), self)
@@ -625,36 +625,36 @@ class MainWindow(QMainWindow):
         # 常に手前に表示
         if self.config.is_runtime_overridden("window.always_on_top"):
             self.always_on_top_action.setEnabled(False)
-            self.always_on_top_action.setToolTip(get_text("ui.runtime_override_tooltip"))
+            self.always_on_top_action.setToolTip(get_text("settings.runtime_override_tooltip"))
         
         # 最小縮小率
         if self.config.is_runtime_overridden("viewer.fit_to_window_minimum"):
             self.min_scale_action.setEnabled(False)
-            self.min_scale_action.setToolTip(get_text("ui.runtime_override_tooltip"))
+            self.min_scale_action.setToolTip(get_text("settings.runtime_override_tooltip"))
         
         # マウスロック
         if self.config.is_runtime_overridden("viewer.mouse_lock"):
             self.mouse_lock_action.setEnabled(False)
-            self.mouse_lock_action.setToolTip(get_text("ui.runtime_override_tooltip"))
+            self.mouse_lock_action.setToolTip(get_text("settings.runtime_override_tooltip"))
 
         if self.config.is_runtime_overridden("viewer.show_tabs_in_fullscreen"):
             self.show_tabs_in_fullscreen_action.setEnabled(False)
-            self.show_tabs_in_fullscreen_action.setToolTip(get_text("ui.runtime_override_tooltip"))
+            self.show_tabs_in_fullscreen_action.setToolTip(get_text("settings.runtime_override_tooltip"))
 
         if self.config.is_runtime_overridden("viewer.show_page_slider_in_fullscreen"):
             self.show_page_slider_in_fullscreen_action.setEnabled(False)
-            self.show_page_slider_in_fullscreen_action.setToolTip(get_text("ui.runtime_override_tooltip"))
+            self.show_page_slider_in_fullscreen_action.setToolTip(get_text("settings.runtime_override_tooltip"))
         
         # ページ表示モード
         if self.config.is_runtime_overridden("viewer.page_mode"):
-            tooltip = get_text("ui.runtime_override_tooltip")
+            tooltip = get_text("settings.runtime_override_tooltip")
             for action in (self.comic_single_action, self.comic_spread_left_action, self.comic_spread_right_action):
                 action.setEnabled(False)
                 action.setToolTip(tooltip)
 
         # プロファイル（CLI指定時は切替不可）
         if self.config.is_runtime_overridden("profile.current_profile"):
-            tooltip = get_text("ui.runtime_override_tooltip")
+            tooltip = get_text("settings.runtime_override_tooltip")
             if hasattr(self, "add_profile_action"):
                 self.add_profile_action.setEnabled(False)
                 self.add_profile_action.setToolTip(tooltip)
@@ -701,10 +701,10 @@ class MainWindow(QMainWindow):
             return
         name = name.strip()
         if not name:
-            QMessageBox.warning(self, get_text("ui.warning"), get_text("ui.profile_name_required"))
+            QMessageBox.warning(self, get_text("dialogs.warning"), get_text("ui.profile_name_required"))
             return
         if self.db_manager.profile_exists(name):
-            QMessageBox.warning(self, get_text("ui.warning"), get_text("ui.profile_name_exists"))
+            QMessageBox.warning(self, get_text("dialogs.warning"), get_text("ui.profile_name_exists"))
             return
         self.save_config()
         if self.db_manager.create_profile(name, self.config.to_dict()):
@@ -715,7 +715,7 @@ class MainWindow(QMainWindow):
             )
             self.rebuild_menu()
         else:
-            QMessageBox.critical(self, get_text("ui.error"), get_text("ui.profile_create_failed_msg"))
+            QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.profile_create_failed_msg"))
 
     def manage_profiles(self):
         """プロファイル管理ダイアログ"""
@@ -852,7 +852,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, image_slide_dock)
 
         self.page_slider = PageSlider(host=self, file_handler=self.file_handler)
-        page_slider_dock = QDockWidget(get_text("ui.page_slider_dialog_title"), self)
+        page_slider_dock = QDockWidget(get_text("ui.page_slider_dialog"), self)
         page_slider_dock.setObjectName("page_slider_dock")
         page_slider_dock.setWidget(self.page_slider)
         page_slider_dock.setAllowedAreas(Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
@@ -1186,7 +1186,7 @@ class MainWindow(QMainWindow):
             else:
                 title = record.title
             submenu = menu.addMenu(title or record.public_id)
-            enable = QAction(get_text("ui.filter_enable"), self)
+            enable = QAction(get_text("ui.plugin_enabled"), self)
             enable.setCheckable(True)
             enable.setChecked(record.public_id in pipe)
             enable.triggered.connect(
@@ -1197,7 +1197,7 @@ class MainWindow(QMainWindow):
             if record.plugin_id:
                 has_settings = bool(host.configs_for(record.plugin_id))
             if has_settings:
-                settings_action = QAction(get_text("ui.filter_settings"), self)
+                settings_action = QAction(get_text("ui.settings"), self)
                 settings_action.triggered.connect(
                     lambda _checked=False, rec=record: self._open_filter_settings(rec)
                 )
@@ -2912,7 +2912,7 @@ class MainWindow(QMainWindow):
                 # ファイルが見つからない場合はエラーメッセージを表示
                 QMessageBox.warning(
                     self,
-                    get_text("ui.error"),
+                    get_text("dialogs.error"),
                     get_text("ui.manual_not_found", file=manual_file)
                 )
                 logger.warning(get_log_text("main_window_manual_not_found", path=manual_path))
@@ -2921,7 +2921,7 @@ class MainWindow(QMainWindow):
             logger.error(get_log_text("main_window_manual_open_failed", error=str(e)))
             QMessageBox.critical(
                 self,
-                get_text("ui.error"),
+                get_text("dialogs.error"),
                 get_text("ui.manual_open_error", error=str(e))
             )
 

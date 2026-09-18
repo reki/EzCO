@@ -176,7 +176,7 @@ def maybe_import_legacy_yaml(db_manager: DatabaseManager):
         profile_name = dialog.selected_profile()
         if dialog.is_new_profile():
             if not db_manager.create_profile(profile_name, merged):
-                QMessageBox.critical(None, get_text("ui.error"), get_text("ui.profile_create_failed_msg"))
+                QMessageBox.critical(None, get_text("dialogs.error"), get_text("ui.profile_create_failed_msg"))
                 return
         else:
             db_manager.save_profile_config(profile_name, merged)
@@ -198,7 +198,7 @@ def maybe_import_legacy_yaml(db_manager: DatabaseManager):
     except Exception as e:
         error_logger = get_error_logger()
         error_logger.log_error(get_log_text("main_config_load_error", error=e), e)
-        QMessageBox.warning(None, get_text("ui.error"), get_text("ui.yaml_import_failed").format(error=e))
+        QMessageBox.warning(None, get_text("dialogs.error"), get_text("ui.yaml_import_failed").format(error=e))
 
 def load_config_from_db(db_manager: DatabaseManager) -> Config:
     """現在のプロファイルの設定をDBから読み込む"""
@@ -370,7 +370,7 @@ def main():
         initialize_error_logger()
         setup_exception_handler()
         app = create_application(sys.argv)
-        app.setApplicationName(get_text("application_name"))
+        app.setApplicationName(get_text("app_name"))
         # Qtアプリケーションの例外ハンドラーを設定
         setup_qt_exception_handler(app)
         # アイコンの設定

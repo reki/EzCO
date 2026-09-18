@@ -8,6 +8,14 @@ alwaysApply: false
 
 - メニュー名・ダイアログ・設定の表示文字列は `src/ez_co/resources/langs/ja.json` と `en.json` で管理する。コードへ日本語／英語を直書きしない
 - 新しいキーは ja / en の両方に足す。`get_text` / `get_log_text` のプレースホルダと kwargs を一致させる
+- 各セクションのキーは a-z。トップレベルは `app_name` / `language` / `language_code` のあとセクション名 a-z
+- 同じ用語は1キーにする。メニューと設定タブ、ダイアログタイトルでも、指すものが同じならまとめる
+- 同じ操作の冗長な言い換えは短い表示に寄せる（「ウィンドウを閉じる」→「閉じる」）
+- 指すものが違う同じ字は分けて残す（`ui.file` と `ui.plugin_kind_file`、「閉じる」`ui.close` / 「終了」`ui.exit` / 「タブを閉じる」`ui.close_tab`）
+- 画面向けは `ui` / `settings` / `dialogs` / `actions`。debug などの文言ログは `logging`（`get_log_text`）
+- キーの移動・統合・削除は `tooling/logs/` に残す（git 管理しない）。各件に理由を書く。確認は `poetry run langs check`（`diff` と `missing`） / `dupes` / `similar` / `sort --write`
+- 理由の種別はざっくりでよい。統合は「重複のため」、画面セクションへは「表示用のため」、`logging` へは「ログ用のため」、削除は「未使用のため」が基本。enum に無いキーなど別理由なら `--reason` で書く。抜けキーの追加は「抜けのため」
+- キーを消したら、本体 `src/` と `plugins/` の `get_text` / `get_log_text` / `{key}` が ja/en（プラグインならその langs）にあること。`poetry run langs missing` がゼロになるまで直す
 - UI には `%APPDATA%` や `AppData` を出さない。場所の名前は「このユーザーのデータフォルダ」
 - About / アプリ説明（`resources/about/info.json` の `description`）は言語を分けず英語のみ
 - プラグイン向け `get_text` は、同じキーならプラグイン内 `langs` を本体より優先する

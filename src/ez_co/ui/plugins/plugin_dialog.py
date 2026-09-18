@@ -100,7 +100,7 @@ class PluginDialog(QDialog):
         list_header = QHBoxLayout()
         list_header.addWidget(QLabel(get_text("ui.plugin_list")))
         list_header.addStretch()
-        conflict_button = QPushButton(get_text("ui.plugin_conflict_open"))
+        conflict_button = QPushButton(get_text("ui.plugin_conflict_title"))
         conflict_button.clicked.connect(self._open_conflict_dialog)
         list_header.addWidget(conflict_button)
         layout.addLayout(list_header)
@@ -109,12 +109,12 @@ class PluginDialog(QDialog):
             get_text("ui.plugin_enabled"),
             get_text("ui.plugin_name"),
             get_text("ui.plugin_id"),
-            get_text("ui.plugin_version"),
+            get_text("ui.version"),
             get_text("ui.plugin_kind"),
             get_text("ui.plugin_supported_extensions"),
             get_text("ui.plugin_status"),
-            get_text("ui.plugin_config"),
-            get_text("ui.plugin_license"),
+            get_text("ui.settings"),
+            get_text("ui.about_license"),
         ])
         self._prepare_table(self.plugin_table)
         self.plugin_table.setSortingEnabled(True)
@@ -340,13 +340,13 @@ class PluginDialog(QDialog):
         fields = self.plugin_manager.host.configs_for(plugin.plugin_id)
         license_info = peek_license(plugin.zip_path)
         if fields:
-            button = QPushButton(get_text("ui.plugin_config"))
+            button = QPushButton(get_text("ui.settings"))
             button.clicked.connect(lambda _=False, item=plugin: self._open_plugin_config(item))
             self._set_button_cell(index, "settings", button)
         else:
             self._set_dash_cells(index, "settings")
         if license_info:
-            license_button = QPushButton(get_text("ui.plugin_license"))
+            license_button = QPushButton(get_text("ui.about_license"))
             license_button.clicked.connect(
                 lambda _=False, item=plugin, info=license_info: self._open_plugin_license(item, info)
             )
@@ -430,7 +430,7 @@ class PluginDialog(QDialog):
         if provider_id == BUILTIN_PROVIDER_ID:
             return get_text("ui.plugin_handler_builtin")
         if provider_id == SKIP_PROVIDER_ID:
-            return get_text("ui.plugin_handler_skip")
+            return get_text("ui.plugin_conflict_skip")
         if plugin_name:
             return f"{plugin_name} ({provider_id})"
         return provider_id or ""

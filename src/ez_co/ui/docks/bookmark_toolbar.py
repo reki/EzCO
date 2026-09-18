@@ -175,7 +175,7 @@ class BookmarkToolbar(QWidget):
     def show_bookmark_dialog(self):
         """ブックマークダイアログを表示"""
         if not self.current_file:
-            QMessageBox.warning(self, get_text("ui.error"), get_text("ui.no_current_file"))
+            QMessageBox.warning(self, get_text("dialogs.error"), get_text("ui.no_current_file"))
             return
         dialog = BookmarkDialog(self, self.current_file, self.current_page, db_manager=self.db_manager)
         dialog.bookmark_selected.connect(self.on_bookmark_selected)
@@ -203,7 +203,7 @@ class BookmarkToolbar(QWidget):
         logger.info(get_log_text("debug_bmk_check_file_exists", file_path=file_path, exists=exists))
         if not exists:
             logger.warning(get_log_text("debug_bmk_file_not_found", file_path=file_path))
-            QMessageBox.warning(self, get_text("ui.error"), get_text("dialogs.file_not_found") + "\n" + file_path)
+            QMessageBox.warning(self, get_text("dialogs.error"), get_text("dialogs.file_not_found") + "\n" + file_path)
             return
         logger.info(get_log_text("debug_bmk_emitting_bookmark_selected", file_path=file_path, page_number=page_number))
         self.bookmark_selected.emit(file_path, page_number, new_tab)
@@ -263,7 +263,7 @@ class BookmarkToolbar(QWidget):
         bookmarks = self.db_manager.get_bookmarks(folder_id)
         subfolders = self.db_manager.get_bookmark_folders(folder_id)
         if bookmarks or subfolders:
-            QMessageBox.warning(self, get_text("ui.warning"), get_text("ui.folder_contains_items_warning").format(folder_name=folder_name))
+            QMessageBox.warning(self, get_text("dialogs.warning"), get_text("ui.folder_contains_items_warning").format(folder_name=folder_name))
             return
         reply = QMessageBox.question(
             self, get_text("ui.confirmation"), 
@@ -277,13 +277,13 @@ class BookmarkToolbar(QWidget):
                 self.refresh_bookmarks()
                 QMessageBox.information(self, get_text("ui.success"), get_text("ui.folder_deleted_success").format(folder_name=folder_name))
             else:
-                QMessageBox.critical(self, get_text("ui.error"), get_text("ui.folder_delete_failed"))
+                QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.folder_delete_failed"))
     def rename_folder(self, folder):
         """フォルダ名を変更"""
         folder_id = folder['id']
         old_name = folder['name']
         new_name, ok = QInputDialog.getText(
-            self, get_text("ui.folder_rename_dialog_title"), 
+            self, get_text("ui.rename_folder_title"), 
             get_text("ui.rename_folder_dialog"), 
             text=old_name
         )
@@ -293,17 +293,17 @@ class BookmarkToolbar(QWidget):
                 self.refresh_bookmarks()
                 QMessageBox.information(self, get_text("ui.success"), get_text("ui.folder_renamed_success").format(new_name=new_name))
             else:
-                QMessageBox.critical(self, get_text("ui.error"), get_text("ui.folder_rename_failed"))
+                QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.folder_rename_failed"))
     def create_new_folder(self):
         """新しいフォルダを作成"""
-        name, ok = QInputDialog.getText(self, get_text("ui.new_folder_dialog_title"), get_text("ui.new_folder_dialog"))
+        name, ok = QInputDialog.getText(self, get_text("ui.new_folder"), get_text("ui.new_folder_dialog"))
         if ok and name.strip():
             folder_id = self.db_manager.add_bookmark_folder(name.strip(), self.current_folder_id)
             if folder_id > 0:
                 self.refresh_bookmarks()
                 QMessageBox.information(self, get_text("ui.success"), get_text("ui.folder_created_success").format(name=name))
             else:
-                QMessageBox.critical(self, get_text("ui.error"), get_text("ui.folder_create_failed"))
+                QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.folder_create_failed"))
     def add_bookmark(self):
         """ブックマークを追加"""
         file_path = self.current_file or ""
@@ -321,7 +321,7 @@ class BookmarkToolbar(QWidget):
         try:
             page_number = int(page_text)
         except ValueError:
-            QMessageBox.warning(self, get_text("ui.error"), get_text("ui.page_number_invalid"))
+            QMessageBox.warning(self, get_text("dialogs.error"), get_text("ui.page_number_invalid"))
             return
         # タイトルの入力
         title = Path(file_path).name if file_path else ""
@@ -336,7 +336,7 @@ class BookmarkToolbar(QWidget):
             self.refresh_bookmarks()
             QMessageBox.information(self, get_text("ui.success"), get_text("ui.bookmark_add_success"))
         else:
-            QMessageBox.critical(self, get_text("ui.error"), get_text("ui.bookmark_add_failed"))
+            QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.bookmark_add_failed"))
     def delete_bookmark(self, bookmark):
         """ブックマークを削除"""
         file_path = bookmark['file_path']
@@ -352,7 +352,7 @@ class BookmarkToolbar(QWidget):
                 self.refresh_bookmarks()
                 QMessageBox.information(self, get_text("ui.success"), get_text("ui.bookmark_delete_success"))
             else:
-                QMessageBox.critical(self, get_text("ui.error"), get_text("ui.bookmark_delete_failed"))
+                QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.bookmark_delete_failed"))
     def move_bookmark_to_folder(self, bookmark):
         """ブックマークを別のフォルダに移動"""
         file_path = bookmark['file_path']
@@ -365,8 +365,8 @@ class BookmarkToolbar(QWidget):
             folder_names.append(folder['name'])
             folder_ids.append(folder['id'])
         folder_name, ok = QInputDialog.getItem(
-            self, get_text("ui.move_folder_dialog_title"), 
-            get_text("ui.move_folder_dialog"), 
+            self, get_text("ui.move_to_folder"), 
+            get_text("ui.select_destination_folder"), 
             folder_names, 0, False
         )
         if ok and folder_name:
@@ -377,7 +377,7 @@ class BookmarkToolbar(QWidget):
                 self.refresh_bookmarks()
                 QMessageBox.information(self, get_text("ui.success"), get_text("ui.bookmark_move_success"))
             else:
-                QMessageBox.critical(self, get_text("ui.error"), get_text("ui.bookmark_move_failed"))
+                QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.bookmark_move_failed"))
     def on_items_moved(self, parent, start, end, destination, row):
         """アイテムが移動された時の処理"""
         # 順序を更新する処理をここに追加 

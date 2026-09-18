@@ -61,10 +61,10 @@ class YamlImportDialog(QDialog):
         if data == NEW_PROFILE_SENTINEL:
             name = self.new_name_edit.text().strip()
             if not name:
-                QMessageBox.warning(self, get_text("ui.warning"), get_text("ui.profile_name_required"))
+                QMessageBox.warning(self, get_text("dialogs.warning"), get_text("ui.profile_name_required"))
                 return
             if name in self._profiles:
-                QMessageBox.warning(self, get_text("ui.warning"), get_text("ui.profile_name_exists"))
+                QMessageBox.warning(self, get_text("dialogs.warning"), get_text("ui.profile_name_exists"))
                 return
             self._selected_profile = name
             self._is_new = True

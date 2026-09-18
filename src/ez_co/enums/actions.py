@@ -105,6 +105,11 @@ def list_bound_actions(assigned_ids) -> list:
     return known + extra
 
 
+_ACTION_TEXT_KEYS = {
+    "close_app": "ui.exit",
+}
+
+
 def get_action_display_name(action_name: str) -> str:
     """アクションの表示名を取得"""
     host = _plugin_host()
@@ -112,6 +117,10 @@ def get_action_display_name(action_name: str) -> str:
         label = host.action_label(action_name)
         if label:
             return label
+    preferred = _ACTION_TEXT_KEYS.get(action_name, f"ui.{action_name}")
+    text = get_text(preferred)
+    if text != preferred:
+        return text
     return get_text(f"actions.{action_name}")
 
 
@@ -120,4 +129,4 @@ def get_actions_dict():
     """後方互換性のための辞書を取得（非推奨）"""
     return {action: get_action_display_name(action) for action in list_assignable_actions()}
 
-ACTIONS = {action: get_text(f"actions.{action}") for action in ACTION_LIST} 
+ACTIONS = {action: get_action_display_name(action) for action in ACTION_LIST} 

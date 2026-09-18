@@ -27,7 +27,7 @@ class AboutDialog(QDialog):
             layout.addWidget(summary)
         form = QFormLayout()
         rows = (
-            ("ui.about_version", info.get("version")),
+            ("ui.version", info.get("version")),
             ("ui.about_author", info.get("author")),
             ("ui.about_years", info.get("years")),
             ("ui.about_license", info.get("license")),

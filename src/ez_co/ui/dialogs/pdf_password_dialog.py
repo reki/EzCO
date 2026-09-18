@@ -44,7 +44,7 @@ class ArchivePasswordDialog(QDialog):
         ok_button = QPushButton(get_text("ui.ok"))
         ok_button.setDefault(True)
         ok_button.clicked.connect(self._accept)
-        close_button = QPushButton(get_text("actions.close_app"))
+        close_button = QPushButton(get_text("ui.exit"))
         close_button.clicked.connect(self._close_app)
         buttons.addWidget(ok_button)
         buttons.addWidget(close_button)

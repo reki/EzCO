@@ -28,7 +28,7 @@ class FilterDialog(QDialog):
             (self._config.filters.get("settings") or {}).get(BUILTIN_FILTER_ID)
         )
         self._snapshot = dict(settings)
-        self.setWindowTitle(get_text("ui.filter_dialog_title"))
+        self.setWindowTitle(get_text("ui.filter_basic"))
         self.setMinimumWidth(420)
         layout = QVBoxLayout(self)
         form = QFormLayout()

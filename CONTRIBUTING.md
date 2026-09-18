@@ -40,6 +40,7 @@ EzCoへの貢献をありがとうございます。開発・実行・ビルド�
 | ▶ 初期化 (poetry run init-env) | 環境初期化 |
 | ▶ テスト (poetry run pytest) | テスト実行 |
 | ▶ プラグインZIP (poetry run pack-plugins) | `plugins/` を `dist-sample-plugins/<名前>-<version>.zip` にする |
+| ▶ langs チェック (poetry run langs check) | ja/en のキー差と `get_text` の抜けを確認 |
 | py-spy: top / record … | プロファイラ |
 
 ターミナルから同じことをする場合の例（通常は不要）:
@@ -52,6 +53,7 @@ poetry run build -- --safe-mode
 poetry run collect
 poetry run installer
 poetry run pack-plugins
+poetry run langs check
 poetry run pytest
 ```
 
@@ -131,6 +133,7 @@ Requires Windows, Python 3.10+ (3.12 recommended), and [Poetry](https://python-p
 | ▶ 初期化 (poetry run init-env) | Environment setup |
 | ▶ テスト (poetry run pytest) | Run tests |
 | ▶ プラグインZIP (poetry run pack-plugins) | Pack `plugins/` into `dist-sample-plugins/<name>-<version>.zip` |
+| ▶ langs チェック (poetry run langs check) | ja/en key parity and missing `get_text` keys |
 | py-spy: top / record … | Profiler |
 
 CLI equivalents (optional):
@@ -143,6 +146,7 @@ poetry run build -- --safe-mode
 poetry run collect
 poetry run installer
 poetry run pack-plugins
+poetry run langs check
 poetry run pytest
 ```
 

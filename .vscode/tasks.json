@@ -122,6 +122,26 @@
             "problemMatcher": []
         },
         {
+            "label": "EzCo: langs チェック",
+            "type": "shell",
+            "command": "poetry",
+            "args": [
+                "run",
+                "langs",
+                "check"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "EzCo: テスト",
             "type": "shell",
             "command": "poetry",

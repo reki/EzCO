@@ -56,7 +56,7 @@ class BookmarkDialog(QDialog):
         right_layout = QVBoxLayout()
         right_widget.setLayout(right_layout)
         # 追加ラベル
-        add_label = QLabel(get_text("ui.bookmark_add"))
+        add_label = QLabel(get_text("ui.bookmark_add_title"))
         right_layout.addWidget(add_label)
         # 区切り線
         line = QFrame()
@@ -94,7 +94,7 @@ class BookmarkDialog(QDialog):
         form_layout.addRow(get_text("ui.title") + ":", self.title_edit)
         right_layout.addLayout(form_layout)
         # 追加ボタン
-        self.add_button = QPushButton(get_text("ui.bookmark_add"))
+        self.add_button = QPushButton(get_text("ui.bookmark_add_title"))
         self.add_button.clicked.connect(self.add_bookmark)
         right_layout.addWidget(self.add_button)
         right_layout.addStretch()

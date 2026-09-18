@@ -28,7 +28,7 @@ class DataLocationDialog(QDialog):
         super().__init__(parent)
         self._has_exe_settings = has_exe_settings
         self._choice = self.CHOICE_USER_NEW
-        self.setWindowTitle(get_text("ui.data_location_title"))
+        self.setWindowTitle(get_text("settings.data_location"))
         self.setup_ui()
 
     def setup_ui(self):
@@ -66,7 +66,7 @@ class DataLocationDialog(QDialog):
             desc.setStyleSheet(_note_style())
             layout.addWidget(desc)
             if warn:
-                note = QLabel(get_text("ui.data_location_exe_warning"))
+                note = QLabel(get_text("settings.data_location_exe_warning"))
                 note.setWordWrap(True)
                 note.setStyleSheet(_note_style(warning=True))
                 layout.addWidget(note)

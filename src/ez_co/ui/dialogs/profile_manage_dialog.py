@@ -71,12 +71,12 @@ class ProfileManageDialog(QDialog):
             return
         new_name = new_name.strip()
         if not new_name:
-            QMessageBox.warning(self, get_text("ui.warning"), get_text("ui.profile_name_required"))
+            QMessageBox.warning(self, get_text("dialogs.warning"), get_text("ui.profile_name_required"))
             return
         if new_name == old_name:
             return
         if self.db_manager.profile_exists(new_name):
-            QMessageBox.warning(self, get_text("ui.warning"), get_text("ui.profile_name_exists"))
+            QMessageBox.warning(self, get_text("dialogs.warning"), get_text("ui.profile_name_exists"))
             return
         if self.db_manager.rename_profile(old_name, new_name):
             self.renamed_pairs.append((old_name, new_name))
@@ -87,14 +87,14 @@ class ProfileManageDialog(QDialog):
             )
             self.refresh_list()
         else:
-            QMessageBox.critical(self, get_text("ui.error"), get_text("ui.profile_rename_failed"))
+            QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.profile_rename_failed"))
 
     def delete_selected(self):
         name = self._selected_name()
         if not name:
             return
         if self.db_manager.is_protected_profile(name):
-            QMessageBox.warning(self, get_text("ui.warning"), get_text("ui.default_profile_cannot_delete"))
+            QMessageBox.warning(self, get_text("dialogs.warning"), get_text("ui.default_profile_cannot_delete"))
             return
         reply = QMessageBox.question(
             self,
@@ -116,4 +116,4 @@ class ProfileManageDialog(QDialog):
             logger.info(get_log_text("profile_deleted", profile_name=name))
             self.refresh_list()
         else:
-            QMessageBox.critical(self, get_text("ui.error"), get_text("ui.profile_delete_failed_msg"))
+            QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.profile_delete_failed_msg"))

@@ -4,6 +4,8 @@
 /launch.json
 /test_data
 /logs
+# langs CLI などの適用記録。ソースと混ぜない
+tooling/logs/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

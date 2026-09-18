@@ -960,7 +960,7 @@ class FileHandler:
         
         is_virtual_path = self._is_virtual_file(file)
         if is_virtual_path:
-            logger.info(get_log_text("debug_processing_virtual_archive_path_in_get_current_image", file=file))
+            logger.info(get_log_text("debug_processing_virtual_archive_path_get_current", file=file))
             result = VirtualPathHandler.parse_virtual_path(file_str)
             if result:
                 archive_path, filename = result
