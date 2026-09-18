@@ -14,6 +14,7 @@ from ez_co.config import Config
 from ez_co.gestures.mouse_gesture import MouseGesture
 from ez_co.enums.actions import Actions, get_action_display_name
 from ez_co.enums.mouse_buttons import MouseButtons
+from ez_co.enums.keyboard_keys import key_to_string
 from ez_co.utils.language_manager import get_text, get_log_text
 logger = logging.getLogger(__name__)
 class ImageView(QWidget):
@@ -451,6 +452,14 @@ class ImageView(QWidget):
     def eventFilter(self, obj, event):
         if obj == self.image_label:
             if event.type() == QEvent.MouseButtonPress or event.type() == QEvent.MouseButtonDblClick:
+                mouse_text = self.mouse_to_string(event)
+                main_window = self.window()
+                if (
+                    mouse_text
+                    and hasattr(main_window, "press_temporary_mouse_lock")
+                    and main_window.press_temporary_mouse_lock(mouse_text)
+                ):
+                    return True
                 if event.button() == Qt.RightButton:
                     logger.info(get_log_text("image_view_gesture_right_pressed", pos=event.pos()))
                     self._right_press_pos = event.pos()
@@ -525,6 +534,13 @@ class ImageView(QWidget):
                     return True
                 return False
             elif event.type() == QEvent.MouseButtonRelease:
+                mouse_text = self.mouse_to_string(event)
+                main_window = self.window()
+                if (
+                    hasattr(main_window, "release_temporary_mouse_lock")
+                    and main_window.release_temporary_mouse_lock(mouse_text)
+                ):
+                    return True
                 if event.button() == Qt.RightButton:
                     logger.info(get_log_text("image_view_gesture_right_released", position=event.pos()))
                     if self._right_press_pos is not None:
@@ -1006,13 +1022,17 @@ class ImageView(QWidget):
             elif isinstance(self.config, dict):
                 shortcuts = self.config.get("shortcuts", {})
             if shortcuts:
-                key = event.text().upper() if event.text() else event.key()
+                key = key_to_string(event)
                 for act, keys in shortcuts.items():
                     if key in keys:
                         action = act
                         break
         logger.info(get_log_text("image_view_action_determined_key", action=action))
-        if action == Actions.NEXT_PAGE.value:
+        if action == Actions.HOLD_MOUSE_LOCK.value:
+            main_window = self.window()
+            if hasattr(main_window, "press_temporary_mouse_lock"):
+                main_window.press_temporary_mouse_lock(key_to_string(event))
+        elif action == Actions.NEXT_PAGE.value:
             logger.info(get_log_text("image_view_requesting_next_page_key"))
             self.next_page_requested.emit()
         elif action == Actions.PREV_PAGE.value:
@@ -1033,6 +1053,16 @@ class ImageView(QWidget):
                 super().keyPressEvent(event)
         else:
             super().keyPressEvent(event)
+
+    def keyReleaseEvent(self, event):
+        main_window = self.window()
+        if (
+            hasattr(main_window, "release_temporary_mouse_lock")
+            and main_window.release_temporary_mouse_lock(key_to_string(event))
+        ):
+            event.accept()
+            return
+        super().keyReleaseEvent(event)
     def handle_gesture(self, gesture):
         logger.info(get_log_text("image_view_gesture_handle_called", gesture=gesture))
         # ジェスチャーに応じたアクションをConfigから取得して発火

@@ -160,6 +160,7 @@ class Config:
             Actions.TOGGLE_BOOKMARK.value: [f"{ModifierKeys.CTRL.value}+{ModifierKeys.SHIFT.value}+{KeyboardKeys.B.value}"],
             Actions.NEW_WINDOW.value: [f"{ModifierKeys.CTRL.value}+{ModifierKeys.SHIFT.value}+{KeyboardKeys.N.value}"],
             Actions.TOGGLE_MOUSE_LOCK.value: [f"{ModifierKeys.CTRL.value}+{KeyboardKeys.K.value}"],
+            Actions.HOLD_MOUSE_LOCK.value: [ModifierKeys.CTRL.value, MouseButtons.MIDDLE.value],
             Actions.OPEN_FILE_IN_NEW_TAB.value: [f"{ModifierKeys.CTRL.value}+{ModifierKeys.SHIFT.value}+{KeyboardKeys.O.value}"],
             Actions.SAVE_SESSION.value: [f"{ModifierKeys.CTRL.value}+{KeyboardKeys.S.value}"],
             Actions.NEW_TAB.value: [f"{ModifierKeys.CTRL.value}+{KeyboardKeys.T.value}"],

@@ -57,6 +57,7 @@ class Actions(Enum):
     ZOOM_NAVIGATION_PAGE = "zoom_navigation_page"
     ZOOM_NAVIGATION_LEFT = "zoom_navigation_left"
     ZOOM_NAVIGATION_RIGHT = "zoom_navigation_right"
+    HOLD_MOUSE_LOCK = "hold_mouse_lock"
 
 
 ACTION_LIST = [action.value for action in Actions]
@@ -83,8 +84,26 @@ def list_assignable_actions() -> list:
     return builtin + plugin_ids
 
 
+def list_gesture_assignable_actions() -> list:
+    """押下／解放が必要なアクションを除いたジェスチャー候補。"""
+    return [action for action in list_assignable_actions() if action != Actions.HOLD_MOUSE_LOCK.value]
+
+
+def list_bound_gesture_actions(assigned_ids) -> list:
+    known = list_gesture_assignable_actions()
+    seen = set(known)
+    return known + [action for action in assigned_ids if action not in seen]
+
+
 def find_action_by_display_name(text: str):
     for action in list_assignable_actions():
+        if get_action_display_name(action) == text:
+            return action
+    return None
+
+
+def find_gesture_action_by_display_name(text: str):
+    for action in list_gesture_assignable_actions():
         if get_action_display_name(action) == text:
             return action
     return None
@@ -113,6 +132,7 @@ _ACTION_TEXT_KEYS = {
     "zoom_navigation_page": "ui.zoom_navigation_page",
     "zoom_navigation_left": "ui.zoom_navigation_left",
     "zoom_navigation_right": "ui.zoom_navigation_right",
+    "hold_mouse_lock": "ui.hold_mouse_lock",
 }
 
 

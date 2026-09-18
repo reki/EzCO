@@ -28,3 +28,8 @@ def test_zoom_navigation_actions_use_menu_labels(monkeypatch):
     }
     for action_name, text_key in expected.items():
         assert get_action_display_name(action_name) == get_text(text_key)
+
+
+def test_hold_mouse_lock_uses_ui_label(monkeypatch):
+    monkeypatch.setattr(actions, "_plugin_host", lambda: None)
+    assert get_action_display_name("hold_mouse_lock") == get_text("ui.hold_mouse_lock")

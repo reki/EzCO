@@ -22,3 +22,8 @@ def test_merge_fills_missing_viewer_keys():
 def test_merge_keeps_zoom_navigation_mode():
     merged = Config.merge_with_defaults({"viewer": {"zoom_navigation_mode": "right"}})
     assert merged["viewer"]["zoom_navigation_mode"] == "right"
+
+
+def test_fresh_config_has_temporary_mouse_lock_shortcuts():
+    config = Config()
+    assert config.shortcuts["hold_mouse_lock"] == ["Ctrl", "MouseMiddle"]

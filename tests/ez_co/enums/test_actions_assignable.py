@@ -1,6 +1,10 @@
 """対象: ez_co.enums.actions — エイリアスで本体 ID を隠す。"""
 from ez_co.enums import actions
-from ez_co.enums.actions import ACTION_LIST, list_assignable_actions
+from ez_co.enums.actions import (
+    ACTION_LIST,
+    list_assignable_actions,
+    list_gesture_assignable_actions,
+)
 
 
 class _Action:
@@ -31,3 +35,9 @@ def test_zoom_navigation_actions_are_assignable(monkeypatch):
         "zoom_navigation_left",
         "zoom_navigation_right",
     } <= set(assignable)
+
+
+def test_hold_mouse_lock_is_shortcut_only(monkeypatch):
+    monkeypatch.setattr(actions, "_plugin_host", lambda: None)
+    assert "hold_mouse_lock" in list_assignable_actions()
+    assert "hold_mouse_lock" not in list_gesture_assignable_actions()

@@ -159,6 +159,15 @@ QT_KEY_TO_KEYBOARD_KEY = {
 
 def key_to_string(event: QKeyEvent) -> str:
     """統一されたキーイベントを文字列に変換するメソッド"""
+    modifier_keys = {
+        Qt.Key_Control: ModifierKeys.CTRL.value,
+        Qt.Key_Alt: ModifierKeys.ALT.value,
+        Qt.Key_Shift: ModifierKeys.SHIFT.value,
+        Qt.Key_Meta: ModifierKeys.META.value,
+    }
+    if event.key() in modifier_keys:
+        return modifier_keys[event.key()]
+
     modifiers = []
     if event.modifiers() & Qt.ControlModifier:
         modifiers.append(ModifierKeys.CTRL.value)
