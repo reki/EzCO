@@ -56,6 +56,8 @@ class PluginConfigDialog(QDialog):
         self._snapshot = {}
         self._dirty_sync = set()
         self._previewed_sync = set()
+        self._reset_keys = set()
+        self._resetting = False
         self._sync_timer = QTimer(self)
         self._sync_timer.setSingleShot(True)
         self._sync_timer.setInterval(SYNC_RELOAD_IDLE_MS)
@@ -166,6 +168,9 @@ class PluginConfigDialog(QDialog):
             widget.toggled.connect(lambda _=None: self._refresh_required())
 
     def _on_sync_changed(self, key: str):
+        if self._resetting:
+            return
+        self._reset_keys.discard(key)
         self._dirty_sync.add(key)
         self._sync_timer.start()
 
@@ -200,6 +205,7 @@ class PluginConfigDialog(QDialog):
             field.key: read_value(field, self._widgets[field.key])
             for field in self._fields
         }
+        self._reset_keys.clear()
 
     def _center_widget(self, widget):
         holder = QWidget()
@@ -213,7 +219,11 @@ class PluginConfigDialog(QDialog):
         missing = []
         for field in self._fields:
             value = read_value(field, self._widgets[field.key])
-            if field.required and is_config_empty(field, value):
+            if (
+                field.key not in self._reset_keys
+                and field.required
+                and is_config_empty(field, value)
+            ):
                 missing.append(field)
         return missing
 
@@ -263,12 +273,19 @@ class PluginConfigDialog(QDialog):
         pending = [field for field in pending if field is not None]
         self._sync_timer.stop()
         scoped = self._host.scoped(self._plugin_id)
+        written = []
         for field in self._fields:
-            scoped.set_config(field.key, read_value(field, self._widgets[field.key]))
+            value = read_value(field, self._widgets[field.key])
+            default = coerce_field_value(field, field.default)
+            if field.key in self._reset_keys and value == default:
+                if field.key not in self._previewed_sync and scoped.reset_config(field.key):
+                    written.append(field)
+            elif scoped.set_config(field.key, value):
+                written.append(field)
         self._capture_snapshot()
         self._dirty_sync.clear()
         self._previewed_sync.clear()
-        self._reload_if_needed(pending)
+        self._reload_if_needed([*pending, *written])
         return True
 
     def _reset_to_defaults(self):
@@ -276,14 +293,18 @@ class PluginConfigDialog(QDialog):
         self._dirty_sync.clear()
         scoped = self._host.scoped(self._plugin_id)
         written = []
-        for field in self._fields:
-            value = coerce_field_value(field, field.default)
-            set_widget_value(field, self._widgets[field.key], value)
-            if config_field_syncs(field):
-                if not (field.required and is_config_empty(field, value)):
-                    scoped.set_config(field.key, value)
-                    self._previewed_sync.add(field.key)
-                    written.append(field)
+        self._resetting = True
+        try:
+            for field in self._fields:
+                value = coerce_field_value(field, field.default)
+                self._reset_keys.add(field.key)
+                set_widget_value(field, self._widgets[field.key], value)
+                if config_field_syncs(field):
+                    if scoped.reset_config(field.key):
+                        self._previewed_sync.add(field.key)
+                        written.append(field)
+        finally:
+            self._resetting = False
         self._reload_if_needed(written)
         self._refresh_required()
 
@@ -304,6 +325,7 @@ class PluginConfigDialog(QDialog):
                 scoped.set_config(field.key, original)
                 restored.append(field)
         self._previewed_sync.clear()
+        self._reset_keys.clear()
         self._reload_if_needed(restored)
 
     def _reload_if_needed(self, fields):

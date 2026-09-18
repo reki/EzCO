@@ -1424,6 +1424,20 @@ class PluginHost:
             return False
         return bool(self._db.delete_plugin_setting(plugin_id, key))
 
+    def _reset_plugin_config(self, plugin_id: str, key: str) -> bool:
+        if not self._delete_plugin_config(plugin_id, key):
+            return False
+        field = self._field_for(plugin_id, key)
+        default = field.default if field is not None else None
+        value = self._get_plugin_config(plugin_id, key, default)
+        self.emit(
+            "config_changed",
+            {"key": str(key or ""), "value": value},
+            plugin_id=plugin_id,
+        )
+        self._notify_after_plugin_config(plugin_id)
+        return True
+
     def _app_config_snapshot(self):
         raw = {}
         if self._get_app_config is not None:
@@ -1642,6 +1656,10 @@ class ScopedPluginHost:
 
     def delete_config(self, key: str) -> bool:
         return self._host._delete_plugin_config(self._plugin_id, key)
+
+    def reset_config(self, key: str) -> bool:
+        """保存済みoverrideを削除し、schema defaultへ戻して通知する。"""
+        return self._host._reset_plugin_config(self._plugin_id, key)
 
     def get_app_config(self):
         return self._host._app_config_snapshot()

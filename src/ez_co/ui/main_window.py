@@ -163,6 +163,7 @@ class MainWindow(QMainWindow):
         # マウスロック関連
         self.mouse_locked = False
         self.mouse_lock_state = MouseLockState()
+        self.mouse_lock_state.persistent = bool(config.viewer.get("mouse_lock", False))
         self.mouse_lock_center = None
         self.mouse_lock_restore_global_pos = None
         self.original_cursor = None
@@ -172,6 +173,7 @@ class MainWindow(QMainWindow):
         self.setup_ui()
         # ショートカットの設定
         self.setup_shortcuts()
+        QTimer.singleShot(0, self._sync_mouse_lock_state)
         self.gesture_overlay = GestureOverlayWidget(self)
         self.gesture_overlay.setGeometry(self.rect())
         self.gesture_overlay.raise_()
@@ -783,9 +785,7 @@ class MainWindow(QMainWindow):
 
     def apply_loaded_profile_config(self):
         """読み込んだプロファイル設定をUIへ反映する"""
-        self.mouse_lock_state.clear_temporary()
-        self.mouse_lock_state.persistent = False
-        self._sync_mouse_lock_state()
+        self._apply_mouse_lock_config()
         from ez_co.utils.language_manager import set_language
         try:
             set_language(self.config.language.get("code", "system"))
@@ -2556,7 +2556,7 @@ class MainWindow(QMainWindow):
             self.is_fullscreen = False
             # メニューバーを表示
             self.menuBar().show()
-            # フルスクリーン終了時はマウスロックを無効にする
+            # フルスクリーン由来のロック理由だけを解除する
             self.mouse_lock_state.fullscreen = False
             self._sync_mouse_lock_state()
             self._restore_after_fullscreen()
@@ -3228,8 +3228,6 @@ class MainWindow(QMainWindow):
         self.mouse_lock_state.clear_temporary()
         if self.mouse_locked:
             self.disable_mouse_lock()
-            self.config.viewer["mouse_lock"] = False
-            self.mouse_lock_action.setChecked(False)
             logger.info(get_log_text("main_window_mouse_lock_disabled_on_close"))
         self.save_config()
         super().closeEvent(event)
@@ -3686,6 +3684,11 @@ class MainWindow(QMainWindow):
         self.mouse_lock_state.clear_temporary()
         self._sync_mouse_lock_state()
 
+    def _apply_mouse_lock_config(self):
+        self.mouse_lock_state.clear_temporary()
+        self.mouse_lock_state.persistent = bool(self.config.viewer.get("mouse_lock", False))
+        self._sync_mouse_lock_state()
+
     def _sync_mouse_lock_state(self):
         if self.mouse_lock_state.locked:
             self.enable_mouse_lock()
@@ -3778,6 +3781,13 @@ class MainWindow(QMainWindow):
     def changeEvent(self, event):
         """ウィンドウ状態変更時の処理"""
         super().changeEvent(event)
+        if event.type() == QEvent.Type.ActivationChange:
+            if self.isActiveWindow():
+                QTimer.singleShot(0, self._sync_mouse_lock_state)
+            else:
+                self.mouse_lock_state.clear_temporary()
+                if self.mouse_locked:
+                    self.disable_mouse_lock()
         if event.type() == QEvent.Type.WindowStateChange:
             if not self.is_fullscreen and not self._closing:
                 if self.isMaximized() or (self.windowState() & Qt.WindowState.WindowMaximized):

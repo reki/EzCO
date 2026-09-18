@@ -166,11 +166,8 @@ class PluginConfigForm(QWidget):
         try:
             for field in self._fields:
                 value = coerce_field_value(field, field.default)
-                if field.required and is_config_empty(field, value):
-                    self._restore_widget(field)
-                    continue
                 set_widget_value(field, self._widgets[field.key], value)
-                if scoped.set_config(field.key, value):
+                if scoped.reset_config(field.key):
                     written.append(field)
         finally:
             self._applying = False

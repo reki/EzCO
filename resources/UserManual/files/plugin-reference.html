@@ -50,6 +50,7 @@
                             <ul class="toc-sublist">
                                 <li><a href="#ask-password" class="toc-link">ask_password</a></li>
                                 <li><a href="#delete-config" class="toc-link">delete_config</a></li>
+                                <li><a href="#reset-config" class="toc-link">reset_config</a></li>
                                 <li><a href="#get-app-config" class="toc-link">get_app_config</a></li>
                                 <li><a href="#get-config" class="toc-link">get_config</a></li>
                                 <li><a href="#get-current" class="toc-link">get_current</a></li>
@@ -509,6 +510,13 @@ if password is None:
                                 <p class="api-see">関連: <a href="#register-config"><code>register_config</code></a> / <a href="#get-config"><code>get_config</code></a> / <a href="#set-config"><code>set_config</code></a></p>
                             </div>
                         </article>
+                        <article id="reset-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.reset_config(key) -&gt; bool</code></div>
+                            <div class="api-body">
+                                <p>保存済みoverrideを削除し、スキーマdefaultへ戻します。成功時はeffective valueを添えて <code>config_changed</code> と設定変更後通知を送ります。</p>
+<pre class="api-example">host.reset_config("fetch_web")</pre>
+                            </div>
+                        </article>
                         <article id="get-app-config" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.get_app_config() -&gt; Mapping</code></div>
                             <div class="api-body">
@@ -757,6 +765,7 @@ layout.addWidget(widget)</pre>
                             <li><code>get_config(key, default)</code> は保存値を返します。未保存ならスキーマの <code>default</code>、それも無ければ引数の <code>default</code> です。型はスキーマに合わせて正規化します。Enum の <code>choice</code> は member、<code>multiple=True</code> は list です。</li>
                             <li><code>set_config(key, value)</code> は型を揃えて保存し、そのプラグインだけへ <code>config_changed</code>（<code>{key, value}</code>）を送ります。required の empty は保存せず <code>False</code> です。他プラグインには来ません。</li>
                             <li><code>delete_config(key)</code> は保存値だけ消します。スキーマは残るので、次の <code>get_config</code> は default に戻ります。</li>
+                            <li><code>reset_config(key)</code> は保存値を消してdefaultへ戻し、<code>config_changed</code> と設定変更後通知も送ります。</li>
                             <li>プラグイン API に <code>plugin_id</code> 引数はありません。渡された <code>host</code> は、そのプラグインの行だけを見ます。</li>
                             <li><code>host.get_app_config()</code> は本体の <code>language</code> / <code>viewer</code> / <code>cache</code> / <code>ui_font</code> の読み取り専用です。プラグインの値ではありません。</li>
                         </ul>
@@ -775,7 +784,7 @@ layout.addWidget(widget)</pre>
                         <ul>
                             <li>一覧の「設定」を開くと、登録した項目だけの小さなダイアログが出ます。</li>
                             <li>そのダイアログの OK / 適用は、すぐ DB へ書きます。本体のプラグイン設定ダイアログの OK を待ちません。</li>
-                            <li>初期化はスキーマの <code>default</code> にウィジェットを戻します。非 sync はまだ保存しません。<code>sync</code> の数値はすぐ保存します。<code>reload=True</code> なら画像を開き直します。</li>
+                            <li>初期化は保存済みoverrideを削除してスキーマの <code>default</code> に戻します。非 sync は適用時、<code>sync</code> の数値はすぐresetします。required の空defaultも未設定状態として有効です。<code>reload=True</code> なら画像を開き直します。</li>
                             <li>キャンセルは、そのダイアログでまだ保存していない変更を捨てます。<code>sync</code> で先に書いたプレビューも、開いた時点（最後の適用）へ戻します。<code>reload</code> 項目なら画像も開き直します。Esc / × も同じです。</li>
                             <li>値を変えたあとは <code>config_changed</code> を聞いて、サイドバーなどを更新してください。<code>reload=True</code> のソース開き直しはホストがやるので、重ねて <code>reload_current</code> しないでください。</li>
                         </ul>
@@ -784,7 +793,7 @@ layout.addWidget(widget)</pre>
                             <li><a href="#register-config-sidebar"><code>register_config_sidebar</code></a> は <code>setup</code> で明示したときだけフォームをドックへ載せます。config があるだけでは自動登録しません。</li>
                             <li>全項目をすぐ <code>set_config</code> します。数値だけ 500ms debounce。choice / font / color / charset / bool は変更直後です。<code>sync</code> は見ません。required の空は保存しません（ウィジェットは保存値へ戻します）。</li>
                             <li><code>reload=True</code> のキーを書いたあと host が <code>reload_current()</code> します（保存できたときだけ。リセット後は1回）。ページ位置を自前で保つプラグインは <code>reload</code> を付けず、<code>config_changed</code> から <code>reload_current(page)</code> してください。</li>
-                            <li>更新ボタンはありません。リセットはスキーマの <code>default</code> に戻してすぐ保存します。required の空 default は保存せず、その項目は保存値のままです。確認ダイアログのあとです。</li>
+                            <li>更新ボタンはありません。リセットは保存済みoverrideを削除してスキーマの <code>default</code> に戻します。required の空defaultも未設定状態として有効です。確認ダイアログのあとです。</li>
                             <li>フォームは他画面からの <code>config_changed</code> をウィジェットへ戻します。</li>
                         </ul>
 <pre class="api-example">def load(self, root, get_text, host):

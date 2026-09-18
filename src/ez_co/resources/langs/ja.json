@@ -1311,6 +1311,6 @@
     "zoom_navigation_page": "改ページ優先",
     "zoom_navigation_right": "右移動優先",
     "zoom_out": "縮小",
-    "hold_mouse_lock": "押下中マウスロック"
+    "hold_mouse_lock": "マウスロックの反転"
   }
 }

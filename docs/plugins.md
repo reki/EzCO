@@ -364,8 +364,9 @@ class _Entry:
 - `host.get_config(key, default=None)` — 未保存ならスキーマの `default`。`date` / `datetime` は Unix 秒の int、`color` は `#RRGGBB`、`password` は平文、`path` は文字列。Enum choice は member。`multiple=True` は list
 - `host.set_config(key, value)` — 型を正規化して保存し、そのプラグインへ `"config_changed"`（`{key, value}`）。required の empty は保存せず `False`
 - `host.delete_config(key)`
+- `host.reset_config(key)` — 保存済みoverrideを削除し、スキーマdefaultをeffective valueとして `"config_changed"` と設定変更後通知を送る
 
-プラグイン設定の一覧にスキーマがある行は「設定」ボタンが出ます。そこでパネルを開き OK / 適用すると、本体ダイアログの OK を待たずに DB へ保存して通知します。初期化はスキーマの default に戻します。`sync=True` の数値は設定ダイアログだけで、500ms のアイドル後に保存します。`reload=True` ならそのとき現在画像を開き直します（ダイアログでは `sync` と併用）。キャンセルはそのプレビューも戻します。`register_config_sidebar` が作るサイドバーは全項目を即時保存します（数値は 500ms debounce。`sync` は見ない）。required の空は保存せず、ウィジェットは保存値へ戻します。`reload=True` だけサイドバーでも `reload_current()` します（保存できたキーだけ。リセット後は1回）。更新ボタンは無く、リセットは確認ダイアログ付きです。ユーザーマニュアルの [プラグインリファレンス（コンフィグ）](../resources/UserManual/files/plugin-reference.html#plugin-config) に、スキーマ・保存場所・ダイアログとサイドバーの扱いをまとめています。
+プラグイン設定の一覧にスキーマがある行は「設定」ボタンが出ます。そこでパネルを開き OK / 適用すると、本体ダイアログの OK を待たずに DB へ保存して通知します。初期化は保存済みoverrideを削除してスキーマの default に戻すため、`required=True` で空のdefaultでも成立します。`sync=True` の数値は設定ダイアログだけで、500ms のアイドル後に保存します。`reload=True` ならそのとき現在画像を開き直します（ダイアログでは `sync` と併用）。キャンセルはそのプレビューも戻します。`register_config_sidebar` が作るサイドバーは全項目を即時保存します（数値は 500ms debounce。`sync` は見ない）。required の空は保存せず、ウィジェットは保存値へ戻します。`reload=True` だけサイドバーでも `reload_current()` します（保存できたキーだけ。リセット後は1回）。更新ボタンは無く、リセットは確認ダイアログ付きです。ユーザーマニュアルの [プラグインリファレンス（コンフィグ）](../resources/UserManual/files/plugin-reference.html#plugin-config) に、スキーマ・保存場所・ダイアログとサイドバーの扱いをまとめています。
 
 `load(root, get_text, host)` は必須です。UI の再接続用に任意の `setup()` / `teardown()` を実装できます。`setup()` は有効化のとき1回だけです。アプリ言語の変更では呼びません。`load` 失敗は UI 台帳と設定スキーマをそのプラグイン分だけ捨てます。`setup` 失敗は `teardown` を試してから `clear_plugin` します（スキーマは残す）。無効化すると本体の `clear_plugin` がサイドバー・登録アクション・`on` の listener・そのプラグインの FilterRecord を台帳から外します。**pipe の ID は残します**（次回 ON・次回起動で復元するため）。`off` / `unregister_*` は有効中に1件だけ外すとき用で、無効化の teardown には書かないでください。teardown に失敗理由は渡しません。所有物はフィールドの有無で止めてください。プラグイン設定の ON/OFF と、フィルターメニューの有効は別です。
 

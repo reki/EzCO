@@ -1,4 +1,4 @@
-"""仮想的なパス（archive://path|filename または archive:\path|filename）を処理するユーティリティクラス"""
+r"""仮想的なパス（archive://path|filename または archive:\path|filename）を処理するユーティリティクラス"""
 import os
 import py7zr
 import rarfile
@@ -27,7 +27,7 @@ from ez_co.enums.encodings import EncodingInfo
 from ez_co.utils.language_manager import get_text, get_log_text
 logger = logging.getLogger(__name__)
 class VirtualPathHandler:
-    """仮想的なパス（archive://path|filename または archive:\path|filename）を処理するユーティリティクラス"""
+    r"""仮想的なパス（archive://path|filename または archive:\path|filename）を処理するユーティリティクラス"""
     @staticmethod
     def is_virtual_path(path: Union[str, Path]) -> bool:
         """パスが仮想的なパスかどうかを判定"""

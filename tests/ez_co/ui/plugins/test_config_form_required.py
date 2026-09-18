@@ -21,6 +21,10 @@ class _MemoryDb:
         self.rows[(plugin_id, key)] = value
         return True
 
+    def delete_plugin_setting(self, plugin_id, key):
+        self.rows.pop((plugin_id, key), None)
+        return True
+
 
 def _form(reloads=None, **fields):
     host = PluginHost()
@@ -47,7 +51,7 @@ def test_empty_required_string_is_not_saved():
     assert form._widgets["need"].text() == "kept"
 
 
-def test_reset_skips_empty_required_default(monkeypatch):
+def test_reset_removes_override_for_empty_required_default(monkeypatch):
     monkeypatch.setattr(
         "ez_co.ui.plugins.config_form.QMessageBox.question",
         lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes,
@@ -59,8 +63,8 @@ def test_reset_skips_empty_required_default(monkeypatch):
     scoped.set_config("need", "kept")
     scoped.set_config("label", "edited")
     form._reset_to_defaults()
-    assert scoped.get_config("need") == "kept"
-    assert form._widgets["need"].text() == "kept"
+    assert scoped.get_config("need") == ""
+    assert form._widgets["need"].text() == ""
     assert scoped.get_config("label") == "x"
 
 
@@ -78,6 +82,19 @@ def test_reset_reloads_once_only_after_saved_reload_fields(monkeypatch):
     scoped.set_config("need", "kept")
     scoped.set_config("flag", True)
     form._reset_to_defaults()
-    assert scoped.get_config("need") == "kept"
+    assert scoped.get_config("need") == ""
     assert scoped.get_config("flag") is False
     assert reloads == [None]
+
+
+def test_reset_removes_override_for_empty_required_multiple(monkeypatch):
+    monkeypatch.setattr(
+        "ez_co.ui.plugins.config_form.QMessageBox.question",
+        lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes,
+    )
+    _host, scoped, form = _form(
+        needs={"value_type": "string", "default": [], "multiple": True, "required": True},
+    )
+    scoped.set_config("needs", ["x"])
+    form._reset_to_defaults()
+    assert scoped.get_config("needs") == []

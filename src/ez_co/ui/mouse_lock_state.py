@@ -1,5 +1,5 @@
 class MouseLockState:
-    """常時・全画面・押下中のマウスロック理由を集約する。"""
+    """常時・全画面の理由と、押下中の反転状態を集約する。"""
 
     def __init__(self):
         self.persistent = False
@@ -12,7 +12,7 @@ class MouseLockState:
 
     @property
     def locked(self) -> bool:
-        return self.persistent or self.fullscreen or self.temporary
+        return (self.persistent or self.fullscreen) != self.temporary
 
     def press(self, source: str) -> bool:
         if not source:

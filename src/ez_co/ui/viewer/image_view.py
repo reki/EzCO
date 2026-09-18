@@ -1032,6 +1032,8 @@ class ImageView(QWidget):
             main_window = self.window()
             if hasattr(main_window, "press_temporary_mouse_lock"):
                 main_window.press_temporary_mouse_lock(key_to_string(event))
+                event.accept()
+                return
         elif action == Actions.NEXT_PAGE.value:
             logger.info(get_log_text("image_view_requesting_next_page_key"))
             self.next_page_requested.emit()

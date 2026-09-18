@@ -13,6 +13,10 @@ class _MemoryDb:
         self.rows[(plugin_id, key)] = value
         return True
 
+    def delete_plugin_setting(self, plugin_id, key):
+        self.rows.pop((plugin_id, key), None)
+        return True
+
 
 def _scoped():
     host = PluginHost()
@@ -79,3 +83,18 @@ def test_multiple_does_not_fill_empty_list():
     assert scoped.get_config("items") == []
     scoped.register_config("flags", "bool", default=True, multiple=True)
     assert scoped.get_config("flags") == [True]
+
+
+def test_reset_config_deletes_override_and_notifies_default():
+    host, scoped = _scoped()
+    scoped.register_config("need", "string", default="", required=True)
+    assert scoped.set_config("need", "kept")
+    seen = []
+    after = []
+    scoped.on("config_changed", lambda payload: seen.append(payload))
+    host._after_plugin_config = lambda plugin_id: after.append(plugin_id)
+    assert scoped.reset_config("need")
+    assert scoped.get_config("need") == ""
+    assert ("com.example.x", "need") not in host._db.rows
+    assert seen == [{"key": "need", "value": ""}]
+    assert after == ["com.example.x"]

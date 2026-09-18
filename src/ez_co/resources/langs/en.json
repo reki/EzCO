@@ -1311,6 +1311,6 @@
     "zoom_navigation_page": "Turn Page First",
     "zoom_navigation_right": "Pan Right First",
     "zoom_out": "Zoom Out",
-    "hold_mouse_lock": "Hold Mouse Lock"
+    "hold_mouse_lock": "Invert Mouse Lock"
   }
 }

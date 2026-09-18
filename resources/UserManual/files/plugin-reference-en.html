@@ -50,6 +50,7 @@
                             <ul class="toc-sublist">
                                 <li><a href="#ask-password" class="toc-link">ask_password</a></li>
                                 <li><a href="#delete-config" class="toc-link">delete_config</a></li>
+                                <li><a href="#reset-config" class="toc-link">reset_config</a></li>
                                 <li><a href="#get-app-config" class="toc-link">get_app_config</a></li>
                                 <li><a href="#get-config" class="toc-link">get_config</a></li>
                                 <li><a href="#get-current" class="toc-link">get_current</a></li>
@@ -509,6 +510,13 @@ if password is None:
                                 <p class="api-see">See also: <a href="#register-config"><code>register_config</code></a> / <a href="#get-config"><code>get_config</code></a> / <a href="#set-config"><code>set_config</code></a></p>
                             </div>
                         </article>
+                        <article id="reset-config" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.reset_config(key) -&gt; bool</code></div>
+                            <div class="api-body">
+                                <p>Deletes the stored override and restores the schema default. On success it emits <code>config_changed</code> with the effective value and sends the post-config notification.</p>
+<pre class="api-example">host.reset_config("fetch_web")</pre>
+                            </div>
+                        </article>
                         <article id="get-app-config" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.get_app_config() -&gt; Mapping</code></div>
                             <div class="api-body">
@@ -757,6 +765,7 @@ layout.addWidget(widget)</pre>
                             <li><code>get_config(key, default)</code> returns the stored value. If none is stored, it uses the schema <code>default</code>, then the argument <code>default</code>. The value is coerced to the schema type. Enum <code>choice</code> returns the member; <code>multiple=True</code> returns a list.</li>
                             <li><code>set_config(key, value)</code> coerces, stores, and emits <code>config_changed</code> (<code>{key, value}</code>) to this plugin only. Empty required values are not stored and return <code>False</code>.</li>
                             <li><code>delete_config(key)</code> deletes the stored value. The schema stays, so the next <code>get_config</code> returns the default.</li>
+                            <li><code>reset_config(key)</code> deletes the stored override, restores the default, and sends <code>config_changed</code> plus the post-config notification.</li>
                             <li>The plugin API has no <code>plugin_id</code> argument. The <code>host</code> you receive only sees this plugin's rows.</li>
                             <li><code>host.get_app_config()</code> is a read-only snapshot of host <code>language</code> / <code>viewer</code> / <code>cache</code> / <code>ui_font</code>. It is not plugin config.</li>
                         </ul>
@@ -775,7 +784,7 @@ layout.addWidget(widget)</pre>
                         <ul>
                             <li>Settings on the plugin row opens a small dialog with only the registered fields.</li>
                             <li>OK / Apply on that dialog writes to the database immediately. It does not wait for OK on the host Plugin Settings dialog.</li>
-                            <li>Reset restores widgets to the schema <code>default</code>. Non-sync fields are not stored yet. Numeric <code>sync</code> fields are stored immediately. <code>reload=True</code> also reopens the image.</li>
+                            <li>Reset deletes stored overrides and restores the schema <code>default</code>. Non-sync fields reset on Apply; numeric <code>sync</code> fields reset immediately. An empty required default is valid as the unset state. <code>reload=True</code> also reopens the image.</li>
                             <li>Cancel drops unsaved edits. It also restores any <code>sync</code> preview writes to the snapshot from when the dialog opened, or from the last Apply. <code>reload</code> fields also reopen the image. Esc and the window close button do the same.</li>
                             <li>Listen for <code>config_changed</code> and update the sidebar or other UI. The host reopens the source only for <code>reload=True</code>; do not also call <code>reload_current</code> for those.</li>
                         </ul>
@@ -784,7 +793,7 @@ layout.addWidget(widget)</pre>
                             <li><a href="#register-config-sidebar"><code>register_config_sidebar</code></a> docks a form only when you call it from <code>setup</code>. Having config does not auto-register a sidebar.</li>
                             <li>Every field is saved with <code>set_config</code> immediately. Numeric types debounce 500ms. choice / font / color / charset / bool save on change. <code>sync</code> is ignored. Empty required values are not stored; the widget is restored to the saved value.</li>
                             <li>After writing a <code>reload=True</code> key the host calls <code>reload_current()</code> (only if the save succeeded; once after Reset). Plugins that keep the page themselves must not set <code>reload</code>; call <code>reload_current(page)</code> from <code>config_changed</code> instead.</li>
-                            <li>There is no Apply button. Reset restores schema <code>default</code> values and saves at once after a confirmation dialog. Empty required defaults are not stored; those fields keep the saved value.</li>
+                            <li>There is no Apply button. After confirmation, Reset deletes stored overrides and restores schema <code>default</code> values immediately. Empty required defaults are valid as the unset state.</li>
                             <li>The form applies <code>config_changed</code> from other screens back onto its widgets.</li>
                         </ul>
 <pre class="api-example">def load(self, root, get_text, host):

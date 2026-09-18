@@ -6,11 +6,23 @@ def test_lock_reasons_are_combined():
     state = MouseLockState()
     state.persistent = True
     state.press("Ctrl")
+    assert not state.locked
     state.release("Ctrl")
     assert state.locked
     state.persistent = False
     state.fullscreen = True
     assert state.locked
+
+
+def test_held_source_inverts_unlocked_and_fullscreen_states():
+    state = MouseLockState()
+    state.press("Ctrl")
+    assert state.locked
+    state.release("Ctrl")
+    assert not state.locked
+    state.fullscreen = True
+    state.press("Ctrl")
+    assert not state.locked
 
 
 def test_multiple_held_sources_and_auto_repeat():
