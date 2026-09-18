@@ -39,11 +39,6 @@ def set_session_password(file_path: str, password: str) -> None:
     _session_passwords[normalize_archive_path(file_path)] = password
 
 
-def supports_password(file_path: str) -> bool:
-    archive_type = ArchiveInfo.get_archive_type_by_path(file_path)
-    return archive_type in PASSWORD_ARCHIVE_TYPES
-
-
 def zip_password_bytes(file_path: str) -> Optional[bytes]:
     password = get_session_password(file_path)
     if not password:

@@ -40,10 +40,6 @@ class LoadingWidget(QWidget):
         # サムネイルサイズを設定
         self.setFixedSize(*size)
     
-    def set_size(self, size):
-        """サイズを動的に変更"""
-        self.setFixedSize(*size)
-    
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor(128, 128, 128))

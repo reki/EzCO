@@ -327,7 +327,3 @@ def load_plugin(path: Path, host=None) -> tuple[PluginManifest, Any, PluginRoot,
     except Exception:
         source.close()
         raise
-
-
-def load_zip_plugin(zip_path: Path, host=None) -> tuple[PluginManifest, Any, PluginRoot, Any]:
-    return load_plugin(zip_path, host=host)

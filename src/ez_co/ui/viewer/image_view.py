@@ -12,8 +12,7 @@ from PIL import Image
 from PIL.ImageQt import ImageQt as PILImageQt
 from ez_co.config import Config
 from ez_co.gestures.mouse_gesture import MouseGesture
-from ez_co.enums.actions import ACTIONS, Actions, get_action_display_name
-from ez_co.enums.arrows import Arrow
+from ez_co.enums.actions import Actions, get_action_display_name
 from ez_co.enums.mouse_buttons import MouseButtons
 from ez_co.utils.language_manager import get_text, get_log_text
 logger = logging.getLogger(__name__)
@@ -28,7 +27,6 @@ class ImageView(QWidget):
         super().__init__(parent)
         self.config = config
         self.setup_ui()
-        self.setup_connections()
         # 画像関連の変数
         self.current_image = None
         self.current_qimage = None  # QImageを保持
@@ -98,9 +96,6 @@ class ImageView(QWidget):
         # マウストラッキングを有効にして、マウス移動イベントを受け取れるようにする
         self.setMouseTracking(True)
         self.image_label.setMouseTracking(True)
-    def setup_connections(self):
-        """シグナルとスロットの接続"""
-        pass
     def set_image(self, image: Optional[Image.Image]):
         """画像を設定"""
         # キャッシュをクリア
@@ -713,46 +708,12 @@ class ImageView(QWidget):
         # 画像移動中の場合、背景色の変更を反映
         if self.zoom_factor > 1.0:
             self.update_image_display()
-    def set_images(self, images: list[Image.Image]):
-        """複数画像を設定"""
-        self.images = images
-        self.current_index = 0
-        self.scale = 1.0
-        self.rotation = 0
-        self.offset = QPoint(0, 0)
-        self.update()
-    def next_page(self):
-        """Next page"""
-        if self.current_index < len(self.images) - 1:
-            self.current_index += 1
-            self.rotation = 0
-            self.update()
-    def prev_page(self):
-        """Previous page"""
-        if self.current_index > 0:
-            self.current_index -= 1
-            self.rotation = 0
-            self.update()
-    def set_min_scale(self, scale: float):
-        """最小スケールを設定"""
-        self.min_scale = scale
-        if self.scale < scale:
-            self.scale = scale
-            self.update()
     def reset_zoom(self):
         """ズームをリセット"""
         self.zoom_factor = 1.0
         self.reset_image_position()  # 画像位置もリセット
         self.update_image_display()
         self.zoom_changed.emit(self.zoom_factor)
-    def reset_rotation(self):
-        """回転をリセット"""
-        self.rotation_angle = 0
-        logger.info(get_log_text("image_view_rotation_reset"))
-        # 表示キャッシュをクリア
-        self._display_cache.clear()
-        # 画像表示を更新
-        self.update_image_display()
     def zoom_in(self):
         """Zoom in"""
         self.zoom_factor *= 1.1
@@ -787,22 +748,6 @@ class ImageView(QWidget):
         """ページモード設定"""
         self.config.display.page_mode = mode
         self.update()
-    def calculate_base_zoom_factor(self):
-        """基本拡大率を計算（ウィンドウに対して画像が全表示できるのが100%）"""
-        if self.original_pixmap is None:
-            return
-        window_ratio = self.width() / self.height()
-        image_ratio = self.original_pixmap.width() / self.original_pixmap.height()
-        if window_ratio > image_ratio:
-            # ウィンドウが横長の場合
-            self.base_zoom_factor = self.height() / self.original_pixmap.height()
-        else:
-            # ウィンドウが縦長の場合
-            self.base_zoom_factor = self.width() / self.original_pixmap.width()
-        logger.info(get_log_text("image_view_base_zoom_calculated", 
-            base_zoom=f"{self.base_zoom_factor:.3f}", 
-            window_size=f"{self.width()}x{self.height()}", 
-            image_size=f"{self.original_pixmap.width()}x{self.original_pixmap.height()}"))
     def paintEvent(self, event):
         """徹底デバッグ: ウィジェット情報・描画範囲・親子関係など全てログ出力"""
         type_self = type(self)
@@ -999,14 +944,6 @@ class ImageView(QWidget):
             if hasattr(main_window, "run_window_action"):
                 main_window.run_window_action(action)
         # 必要に応じて他のアクションも追加
-    def _gesture_to_action_name(self, gesture):
-        # ジェスチャー方向→アクション名（設定から動的に取得する想定）
-        # ここでは仮でデフォルト割り当て
-        mapping = {Arrow.LEFT.value: Actions.PREV_COMIC.value, Arrow.RIGHT.value: Actions.NEXT_COMIC.value, Arrow.DOWN.value: Actions.CLOSE_APP.value}
-        if gesture in mapping:
-            action_key = mapping[gesture]
-            return f"{get_action_display_name(action_key)}：{gesture}"
-        return f"?：{gesture}"
     def _clear_gesture_display(self):
         self._gesture_direction = None
         self._gesture_action = None
@@ -1067,46 +1004,7 @@ class ImageView(QWidget):
         self.image_offset = QPoint(0, 0)
         self.last_mouse_pos = None
         self.update_image_display() 
-    
-    def move_image_by_offset(self, offset_x: int, offset_y: int):
-        """画像をオフセット分だけ移動"""
-        if not self.current_qimage:
-            return
-        
-        # 現在のオフセットに追加
-        new_offset = self.image_offset + QPoint(offset_x, offset_y)
-        
-        # 移動範囲の制限を計算
-        if self.zoom_factor > 1.0:
-            # 拡大時のみ移動範囲を制限
-            label_size = self.image_label.size()
-            rotation_angle = self.rotation_angle % 360
-            
-            # 回転を考慮した画像サイズを計算
-            original_size = self.current_qimage.size()
-            if rotation_angle in [90, 270]:
-                # 90度または270度回転時はサイズを入れ替え
-                rotated_size = QSize(original_size.height(), original_size.width())
-            else:
-                rotated_size = original_size
-            
-            # スケール後のサイズを計算
-            scaled_size = QSize(
-                int(rotated_size.width() * self.zoom_factor),
-                int(rotated_size.height() * self.zoom_factor)
-            )
-            
-            # 移動可能な範囲を計算
-            max_offset_x = max(0, (scaled_size.width() - label_size.width()) // 2)
-            max_offset_y = max(0, (scaled_size.height() - label_size.height()) // 2)
-            
-            # 範囲内に制限
-            new_offset.setX(max(-max_offset_x, min(max_offset_x, new_offset.x())))
-            new_offset.setY(max(-max_offset_y, min(max_offset_y, new_offset.y())))
-        
-        self.image_offset = new_offset
-        self.update_image_display()
-    
+     
     def _reset_image_position_to_top_right(self):
         """画像の表示位置を右上にリセット（拡大時のページ切り替え用）"""
         if not self.current_qimage or self.zoom_factor <= 1.0:

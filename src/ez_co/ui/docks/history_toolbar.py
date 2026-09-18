@@ -106,9 +106,6 @@ class HistoryToolbar(QWidget):
             return exists
         # logger.debug(get_log_text("debug_history_file_exists_check", file_path=file_path, exists=False))
         return False
-    def _is_archive_file(self, file_path: str) -> bool:
-        """ファイルがアーカイブファイルかどうかを判定"""
-        return ArchiveInfo.is_archive_file(file_path)
     def clear_history(self):
         """履歴をクリア"""
         reply = QMessageBox.question(

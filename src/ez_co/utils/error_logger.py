@@ -38,30 +38,6 @@ class ErrorLogger:
         self.logger.addHandler(self.file_handler)
         # 既存のハンドラーをクリア（重複を避けるため）
         self.logger.propagate = False
-    def log_exception(self, exc_type, exc_value, exc_traceback):
-        """
-        例外をログに記録
-        Args:
-            exc_type: 例外の型
-            exc_value: 例外の値
-            exc_traceback: トレースバック
-        """
-        try:
-            # 例外情報をログに記録
-            self.logger.error(
-                f"Unhandled exception occurred:\n"
-                f"Type: {exc_type.__name__}\n"
-                f"Value: {exc_value}\n"
-                f"Traceback:\n{''.join(traceback.format_tb(exc_traceback))}"
-            )
-        except Exception as e:
-            # ログ記録中にエラーが発生した場合のフォールバック
-            try:
-                with open(self.log_file, 'a', encoding='utf-8') as f:
-                    f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - ERROR - "
-                           f"Failed to log exception: {e}\n")
-            except:
-                pass  # 最後の手段として何もしない
     def log_error(self, message: str, exc_info: Optional[Exception] = None):
         """
         エラーメッセージをログに記録
@@ -82,13 +58,6 @@ class ErrorLogger:
                            f"Failed to log error: {e}\n")
             except:
                 pass
-    def cleanup(self):
-        """リソースをクリーンアップ"""
-        try:
-            self.file_handler.close()
-            self.logger.removeHandler(self.file_handler)
-        except:
-            pass
 # グローバルなエラーロガーインスタンス
 error_logger = None
 _error_log_enabled: Optional[Callable[[], bool]] = None

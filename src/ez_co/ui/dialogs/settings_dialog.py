@@ -1273,10 +1273,6 @@ class SettingsDialog(QDialog):
                     self.parent().apply_loaded_profile_config()
                 QMessageBox.information(self, get_text("dialogs.information"), get_log_text("settings_dialog_config_imported"))
 
-    def load_and_apply_settings(self):
-        """設定を読み込んで適用"""
-        self._save_settings()
-
     def _save_settings(self):
         """設定を保存する共通処理"""
         location = self._current_location_settings()

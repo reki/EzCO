@@ -240,10 +240,6 @@ class PluginManager:
         self._loaded = False
         self.host = PluginHost()
 
-    def scan(self, directory: Optional[Path] = None, config=None) -> None:
-        self.discover(directory)
-        self.load_selected(config)
-
     def discover(self, directory: Optional[Path] = None) -> None:
         if self.plugins:
             self.unload_loaded()
@@ -485,12 +481,6 @@ class PluginManager:
             return max(matches, key=lambda item: version_sort_key(item.version))
         return None
 
-    def knows_extension(self, extension: str, config=None) -> bool:
-        ext = normalize_extension(extension)
-        if builtin_kind_for_extension(ext) is not None:
-            return True
-        return any(plugin.offers(ext) is not None for plugin in self.enabled_plugins(config))
-
     def plugin_extensions(self, config=None) -> set[str]:
         exts: set[str] = set()
         for plugin in self.enabled_plugins(config):
@@ -678,11 +668,6 @@ class PluginManager:
             elif row.providers:
                 row.selected = row.providers[0][0]
         return [rows[key] for key in sorted(rows)]
-
-
-def disclaimer_accepted(config=None) -> bool:
-    from ez_co.utils.data_location import plugin_consent_accepted
-    return plugin_consent_accepted()
 
 
 def get_plugin_manager() -> PluginManager:

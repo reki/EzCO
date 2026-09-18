@@ -682,48 +682,6 @@ class DatabaseManager:
         except Exception as e:
             logger.error(get_log_text("database_get_bookmarks_failed", error=e))
             return []
-    def get_all_bookmarks(self) -> List[Dict[str, Any]]:
-        """すべてのブックマークを取得（現在のプロファイル）"""
-        try:
-            with self._connect() as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT file_path, page_number, title, folder_id, sort_order, entry_type, created_at
-                    FROM bookmarks
-                    WHERE profile_name = ?
-                    ORDER BY folder_id ASC, sort_order ASC
-                ''', (self.current_profile,))
-                rows = cursor.fetchall()
-                bookmark_list = [
-                    {
-                        'file_path': row[0],
-                        'page_number': row[1],
-                        'title': row[2],
-                        'folder_id': row[3],
-                        'sort_order': row[4],
-                        'entry_type': row[5] if len(row) > 5 else EntryType.FILE.value,
-                        'created_at': row[6] if len(row) > 6 else row[5]
-                    }
-                    for row in rows
-                ]
-                # アーカイブ設定に基づいてフィルタリング
-                return self._filter_entries_by_archive_settings(bookmark_list)
-        except Exception as e:
-            logger.error(get_log_text("database_get_all_bookmarks_failed", error=e))
-            return []
-    def update_bookmark_order(self, bookmark_id: int, new_order: int) -> bool:
-        """ブックマークの順序を更新"""
-        try:
-            with self._connect() as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE bookmarks SET sort_order = ? WHERE id = ?
-                ''', (new_order, bookmark_id))
-                conn.commit()
-                return True
-        except Exception as e:
-            logger.error(get_log_text("database_bookmark_order_update_failed", error=e))
-            return False
     def move_bookmark_to_folder(self, file_path: str, page_number: int, folder_id: int) -> bool:
         """ブックマークを別のフォルダに移動"""
         try:
@@ -815,8 +773,6 @@ class DatabaseManager:
             logger.error(get_log_text("database_get_stored_archive_password_failed", error=e))
             return None
 
-    def get_stored_pdf_password(self, file_path: str) -> Optional[str]:
-        return self.get_stored_archive_password(file_path)
     def get_history(self, limit: int = 20) -> List[Dict[str, Any]]:
         """履歴を取得（最新のものから、現在のプロファイル）"""
         try:

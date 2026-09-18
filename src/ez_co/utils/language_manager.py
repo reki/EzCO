@@ -185,11 +185,6 @@ class LanguageManager:
     def get_current_language(self) -> str:
         """現在の言語コードを取得"""
         return self.current_language
-    def get_current_language_name(self) -> str:
-        """現在の言語名を取得"""
-        if self.current_language in self.available_languages:
-            return self.available_languages[self.current_language]["name"]
-        return "Unknown"
 # グローバルインスタンス
 language_manager = LanguageManager()
 def get_text(key: str, **kwargs) -> str:
@@ -205,7 +200,4 @@ def reload_external_languages() -> None:
     language_manager.reload_external_languages()
 def get_log_text(key: str, **kwargs) -> str:
     """ログメッセージ用のテキストを取得する関数"""
-    return language_manager.get_text(f"logging.{key}", **kwargs)
-def get_message_text(key: str, **kwargs) -> str:
-    """メッセージ用のテキストを取得する関数"""
-    return language_manager.get_text(f"messages.{key}", **kwargs) 
+    return language_manager.get_text(f"logging.{key}", **kwargs) 

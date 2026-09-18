@@ -17,8 +17,6 @@ from pypdf import PdfReader
 
 from ez_co.handlers.archive_password import (
     get_session_password,
-    normalize_archive_path,
-    set_session_password,
 )
 from ez_co.utils.language_manager import get_log_text
 
@@ -67,20 +65,6 @@ def can_render_pages() -> bool:
         return False
     _qtpdf_available = True
     return QApplication.instance() is not None
-
-
-def normalize_pdf_path(pdf_path: str) -> str:
-    return normalize_archive_path(pdf_path)
-
-
-def is_pdf_encrypted(pdf_path: str) -> bool:
-    from ez_co.handlers.archive_password import is_encrypted
-    return is_encrypted(pdf_path)
-
-
-def try_unlock_pdf(pdf_path: str, password: str) -> bool:
-    from ez_co.handlers.archive_password import try_unlock
-    return try_unlock(pdf_path, password)
 
 
 def _open_reader(pdf_path: str) -> PdfReader:

@@ -1615,56 +1615,6 @@ class FileHandler:
     def get_current_archive_path(self) -> Optional[Path]:
         """現在開いているアーカイブファイルのパスを取得"""
         return self.current_archive_path
-    def get_current_directory_files(self) -> List[Path]:
-        """現在のファイルと同じディレクトリのファイル一覧を取得"""
-        if not self.current_files:
-            return []
-        current_file = self.current_files[self.current_index]
-        # 仮想的なパスの処理
-        if VirtualPathHandler.is_virtual_path(current_file):
-            current_dir = VirtualPathHandler.get_archive_parent_dir(current_file)
-            if not current_dir:
-                return []
-        else:
-            # 通常のファイルパスの処理
-            if isinstance(current_file, str):
-                current_file = Path(current_file)
-            current_dir = current_file.parent
-        
-        # 設定に応じてディレクトリアクセス方式を決定
-        should_keep_handles = self._should_keep_archive_handles()
-        logger.debug(get_log_text("debug_directory_listing_handle_management", 
-                                 directory=current_dir, keep_handles=should_keep_handles))
-        
-        try:
-            if should_keep_handles:
-                # 従来方式：Path.glob()を使用（ディレクトリハンドル保持）
-                return sorted([
-                    f for f in current_dir.glob('*')
-                    if f.suffix.lower() in self.SUPPORTED_IMAGE_EXTENSIONS or
-                       f.suffix.lower() in self.SUPPORTED_ARCHIVE_EXTENSIONS or
-                       f.is_dir()
-                ], key=natural_sort_key)
-            else:
-                # 新方式：os.listdir()を使用（ディレクトリハンドル即座解放）
-                import os
-                result = []
-                try:
-                    for name in os.listdir(str(current_dir)):
-                        file_path = current_dir / name
-                        # 軽量チェック
-                        if (file_path.suffix.lower() in self.SUPPORTED_IMAGE_EXTENSIONS or
-                            file_path.suffix.lower() in self.SUPPORTED_ARCHIVE_EXTENSIONS or
-                            self._is_likely_directory(file_path)):
-                            result.append(file_path)
-                except OSError as e:
-                    logger.warning(get_log_text("debug_directory_listing_failed", directory=current_dir, error=e))
-                    return []
-                return sorted(result, key=natural_sort_key)
-        except Exception as e:
-            logger.error(get_log_text("debug_directory_listing_error", directory=current_dir, error=e))
-            return []
-    
     def _is_likely_directory(self, path: Path) -> bool:
         """ディレクトリかどうかを軽量チェック（is_dir()回避）"""
         try:
@@ -1838,9 +1788,6 @@ class FileHandler:
         """暗号化ファイルのパスワードをUIから取得するコールバック。callback(file_path) -> bool"""
         self._archive_password_provider = callback
 
-    def set_pdf_password_provider(self, callback):
-        self.set_archive_password_provider(callback)
-
     def _ensure_archive_unlocked(self, file_path: str) -> bool:
         if get_session_password(file_path) is not None:
             return True
@@ -1855,36 +1802,6 @@ class FileHandler:
             return True
         return False
 
-    def _unlock_pdf(self, pdf_path: str) -> bool:
-        return self._ensure_archive_unlocked(pdf_path)
-    def _start_prefetch_thread(self):
-        """プリフェッチスレッドを開始"""
-        if self._prefetch_thread is None or not self._prefetch_thread.is_alive():
-            self._prefetch_running = True
-            self._prefetch_thread = threading.Thread(target=self._prefetch_worker, daemon=True)
-            self._prefetch_thread.start()
-    def _prefetch_worker(self):
-        """プリフェッチワーカースレッド"""
-        while self._prefetch_running:
-            try:
-                file = self._prefetch_queue.get(timeout=0.1)
-                if file is None:
-                    continue
-                cache_key = f"archive:{file}" if self.current_archive else file
-                # プリフェッチ中のファイルをチェック
-                with self._prefetch_lock:
-                    if cache_key in self._prefetch_in_progress:
-                        continue
-                    self._prefetch_in_progress.add(cache_key)
-                try:
-                    self._load_image(file, cache_key)
-                finally:
-                    with self._prefetch_lock:
-                        self._prefetch_in_progress.discard(cache_key)
-            except queue.Empty:
-                continue
-            except Exception as e:
-                logger.error(get_log_text("file_handler_prefetch_worker_error", error=e))
     def get_total_pages(self) -> int:
         """総ページ数を取得"""
         return len(self.current_files) if self.current_files else 0

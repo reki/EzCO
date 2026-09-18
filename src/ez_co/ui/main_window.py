@@ -8,8 +8,8 @@ import webbrowser
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout,
     QFileDialog, QMessageBox, QInputDialog,
-    QApplication, QSpinBox, QLabel, QDockWidget,
-    QDialog, QDialogButtonBox, QFormLayout, QColorDialog,
+    QApplication, QLabel, QDockWidget,
+    QDialog,
     QTabWidget,
 )
 from PySide6.QtCore import Qt, QTimer, QRect, QEvent, QPoint, QByteArray
@@ -46,7 +46,7 @@ from ez_co.ui.docks.page_slider import PageSlider
 from ez_co.ui.dialogs.pdf_password_dialog import CLOSE_APP_RESULT, ArchivePasswordDialog
 from ez_co.ui.viewer.viewer_tab_bar import ViewerTabBar
 from ez_co.utils.path_utils import get_project_root, is_nuitka
-from ez_co.enums.actions import get_action_display_name, Actions
+from ez_co.enums.actions import Actions
 from ez_co.enums.mouse_buttons import MouseButtons, MOUSE_BUTTON_VALUES
 from ez_co.enums.keyboard_keys import key_to_string
 from ez_co.enums.archives import ArchiveInfo
@@ -337,8 +337,6 @@ class MainWindow(QMainWindow):
         self._sync_tab_bar()
         # ツールバーの設定
         self.setup_toolbars()
-        # ステータスバーの設定
-        self.setup_status_bar()
         self._apply_window_geometry()
         
         # マウスジェスチャーの設定
@@ -607,9 +605,6 @@ class MainWindow(QMainWindow):
         self.version_action = QAction(get_text("ui.version"), self)
         self.version_action.triggered.connect(self.show_about_dialog)
         help_menu.addAction(self.version_action)
-        
-        # 初期状態で拡張メニューを無効化
-        self.update_extensions_menu_actions()
         
         # ランタイムオーバーライドが適用されている設定項目を非活性化
         self.apply_runtime_overrides_to_menu()
@@ -887,9 +882,6 @@ class MainWindow(QMainWindow):
         self._apply_sidebar_dock_corners()
         self._restore_dock_state()
         self._refresh_tab_list()
-    def setup_status_bar(self):
-        # ステータスバーは廃止
-        pass
     def update_zoom_display(self, zoom_factor):
         # ImageView上に半透明ラベルで2～3秒だけ表示
         self.show_zoom_overlay(zoom_factor)
@@ -1059,10 +1051,6 @@ class MainWindow(QMainWindow):
         if total % 2 == 1 and index == total - 1:
             return index
         return index - (index % 2)
-
-    def _align_spread_index(self, index: int) -> int:
-        """表示ペア先頭（互換用）。選択インデックスは変更しない。"""
-        return self._spread_display_start(index)
 
     def _align_current_spread_index(self):
         """選択ページは維持し、current_page だけ同期する"""
@@ -1429,49 +1417,10 @@ class MainWindow(QMainWindow):
             if self.mouse_gesture.threshold != new_threshold:
                 self.mouse_gesture.set_threshold(new_threshold)
                 logger.info(get_log_text("mouse_gesture_threshold_updated", old_threshold=self.mouse_gesture.threshold, new_threshold=new_threshold))
-    def show_display_settings(self):
-        """表示設定ダイアログを表示"""
-        dialog = QDialog(self)
-        dialog.setWindowTitle(get_text("ui.display_settings"))
-        layout = QFormLayout(dialog)
-        # 背景色
-        bg_color = QAction(get_text("ui.background_color"), self)
-        bg_color.triggered.connect(self.select_background_color)
-        layout.addRow(bg_color)
-        # 最小スケール
-        min_scale = QSpinBox()
-        min_scale.setRange(1, 100)
-        min_scale.setValue(int(self.config.display.min_scale * 100))
-        min_scale.valueChanged.connect(lambda v: self.set_min_scale(v / 100))
-        layout.addRow(get_text("ui.min_scale_percent"), min_scale)
-        # ボタン
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
-            Qt.Horizontal, dialog
-        )
-        buttons.accepted.connect(dialog.accept)
-        buttons.rejected.connect(dialog.reject)
-        layout.addRow(buttons)
-        dialog.exec()
-    def select_background_color(self):
-        """背景色を選択"""
-        color = QColorDialog.getColor(QColor(self.config.display.background_color), self)
-        if color.isValid():
-            self.config.display.background_color = color.name()
-            self.image_view.update()
-    def set_min_scale(self, scale: float):
-        """最小スケールを設定"""
-        self.config.display.min_scale = scale
-        self.image_view.set_min_scale(scale)
     def zoom_reset(self):
         """ズームをリセット"""
         self.image_view.zoom_factor = 1.0
         self.image_view.update_image_display()
-    def rotate_reset(self):
-        """回転をリセット"""
-        self.current_rotation_angle = 0
-        self.image_view.set_rotation(0)
-        logger.info(get_log_text("main_window_rotation_reset"))
     def dragEnterEvent(self, event: QDragEnterEvent):
         """ドラッグ開始イベント"""
         if event.mimeData().hasUrls():
@@ -1589,7 +1538,6 @@ class MainWindow(QMainWindow):
             comic = self._get_current_comic_path()
             if comic is not None and hasattr(self, "bookmark_toolbar"):
                 self.set_current_file(str(comic), self.current_page)
-            self.update_extensions_menu_actions()
         self._update_page_slider()
         self.update_title()
         self._refresh_tab_list()
@@ -2031,9 +1979,6 @@ class MainWindow(QMainWindow):
                 return True
             mismatch = True
 
-    def _provide_pdf_password(self, pdf_path: str) -> bool:
-        return self._provide_archive_password(pdf_path)
-
     def open_files(self, file_paths: List[str]):
         """複数のファイルを開く"""
         try:
@@ -2137,9 +2082,6 @@ class MainWindow(QMainWindow):
                 if hasattr(self, 'history_toolbar'):
                     self.history_toolbar.refresh_history()
                 
-                # 拡張メニューの状態を更新
-                self.update_extensions_menu_actions()
-                
                 self._notify_plugin_current_changed()
                 
                 self._sync_current_tab_title()
@@ -2235,10 +2177,8 @@ class MainWindow(QMainWindow):
                 current_page = self.file_handler.current_index + 1
                 current_file = self.file_handler.current_files[self.file_handler.current_index]
                 self.set_current_file(str(current_file), current_page)
-            # 商品情報ツールバーを更新
+            # プラグインへ現在位置を通知
             self._notify_plugin_current_changed()
-            # 拡張メニューの状態を更新
-            self.update_extensions_menu_actions()
         except Exception as e:
             logger.error(get_log_text("main_window_error_in_ui_update", error=e))
     def update_image(self):
@@ -2517,43 +2457,6 @@ class MainWindow(QMainWindow):
                 self.image_slide_sidebar.update_file_list(self.file_handler)
                 self.image_slide_sidebar.set_current_page(self.file_handler.current_index)
     
-    def set_page_number(self, page_number: int):
-        """指定されたページ番号に移動"""
-        if not self.file_handler or not self.file_handler.current_files:
-            return
-        # ページ番号を0ベースのインデックスに変換
-        target_index = page_number - 1
-        # インデックスの範囲チェック
-        if 0 <= target_index < len(self.file_handler.current_files):
-            self._clear_spread_force_single()
-            self.file_handler.current_index = target_index
-            self.current_page = page_number
-            self.update_image()
-            self._update_page_slider()
-            self._update_image_list_dialog()
-            self._notify_plugin_current_changed()
-            logger.info(get_log_text("main_window_page_set_to", page_number=page_number, target_index=target_index))
-        else:
-            # 指定されたページが存在しない場合は1ページ目に移動
-            if len(self.file_handler.current_files) > 0:
-                self.file_handler.current_index = 0
-                self.current_page = 1
-                self.update_image()
-                self._update_page_slider()
-                self._update_image_list_dialog()
-                self._notify_plugin_current_changed()
-                logger.info(get_log_text("main_window_page_not_found_moved_to_1", page_number=page_number))
-            else:
-                QMessageBox.warning(self, get_text("dialogs.error"), get_text("ui.page_not_exists").format(page_number=page_number))
-    def setup_window_mode(self):
-        """ウィンドウモードの設定"""
-        # フルスクリーンモードの設定
-        if self.config.window.get("mode") == "fullscreen":
-            self.showFullScreen()
-            self.is_fullscreen = True
-        else:
-            self.showNormal()
-            self.is_fullscreen = False
     def toggle_fullscreen(self):
         """フルスクリーンの切り替え"""
         if self.is_fullscreen:
@@ -2642,7 +2545,7 @@ class MainWindow(QMainWindow):
             if child.isVisible() and child is not self.image_list_dialog:
                 child.close()
         
-        # 履歴、ブックマーク、画像スライド、商品情報のドックを閉じる
+        # 履歴、ブックマーク、画像スライドのドックを閉じる
         if hasattr(self, 'bookmark_dock') and self.bookmark_dock.isVisible():
             self.bookmark_dock.hide()
             self.bookmark_action.setChecked(False)
@@ -2790,9 +2693,6 @@ class MainWindow(QMainWindow):
         # QActionへのショートカット割り当ては廃止
         # すべてkeyPressEventで判定
         # 既存のkeyPressEventで全てのショートカットを判定するのでOK
-    def get_action_name(self, action_name):
-        """アクション名を取得"""
-        return get_action_display_name(action_name)
     def keyPressEvent(self, event):
         shortcuts = self.config.shortcuts
         if not shortcuts:
@@ -3770,9 +3670,6 @@ class MainWindow(QMainWindow):
         self.gesture_active = active
         logger.info(get_log_text("main_window_mouse_lock_gesture_active", gesture_active=active))
     
-    def is_gesture_active(self) -> bool:
-        """ジェスチャーがアクティブかどうかを返す"""
-        return self.gesture_active
     def rebuild_menu(self):
         """メニューを再構築（言語変更時など）"""
         menubar = self.menuBar()
@@ -3831,109 +3728,4 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.error(get_log_text("folder_path_get_error", error=e))
             return None
-    
-    def has_info_json(self) -> bool:
-        """現在のフォルダにinfo.jsonがあるかチェック"""
-        paths_to_check = self._get_info_file_check_paths()
-        
-        for folder_path in paths_to_check:
-            info_json_path = folder_path / "info.json"
-            if info_json_path.exists():
-                return True
-        
-        return False
-    
-    def has_info_url_or_json(self) -> bool:
-        """現在のフォルダにinfo.urlまたはinfo.jsonがあるかチェック"""
-        paths_to_check = self._get_info_file_check_paths()
-        
-        for folder_path in paths_to_check:
-            info_json_path = folder_path / "info.json"
-            info_url_path = folder_path / "info.url"
-            if info_json_path.exists() or info_url_path.exists():
-                return True
-        
-        return False
-    
-    def _get_info_file_check_paths(self) -> list:
-        """info.jsonをチェックするパスのリストを取得"""
-        paths_to_check = []
-        
-        try:
-            if not self.file_handler or not self.file_handler.current_files:
-                logger.info(get_log_text("info_json_check_no_file_handler"))
-                return paths_to_check
-            
-            current_file = self.file_handler.current_files[self.file_handler.current_index]
-            logger.info(get_log_text("info_json_check_current_file", current_file=current_file))
-            
-            # virtual pathの場合（archive:\path|filename形式）
-            if isinstance(current_file, (str, Path)) and str(current_file).startswith("archive:"):
-                logger.info(get_log_text("info_json_check_virtual_path_detected", current_file=current_file))
-                from ez_co.handlers.virtual_path_handler import VirtualPathHandler
-                result = VirtualPathHandler.parse_virtual_path(str(current_file))
-                if result:
-                    archive_path, internal_path = result
-                    logger.info(get_log_text("info_json_check_archive_path_parsed", 
-                                          archive_path=archive_path, internal_path=internal_path))
-                    # アーカイブファイルと同じフォルダをチェック
-                    paths_to_check.append(archive_path.parent)
-                    logger.info(get_log_text("info_json_check_archive_folder_added", 
-                                          folder_path=archive_path.parent))
-                else:
-                    logger.warning(get_log_text("info_json_check_virtual_path_parse_failed", 
-                                             current_file=current_file))
-            
-            # アーカイブ内の場合（従来の方法）
-            elif self.file_handler.current_archive:
-                logger.info(get_log_text("info_json_check_using_current_archive", 
-                                      current_archive=self.file_handler.current_archive))
-                archive_path = self.file_handler.get_current_archive_path()
-                if archive_path:
-                    # アーカイブファイルと同じフォルダをチェック
-                    paths_to_check.append(archive_path.parent)
-                    logger.info(get_log_text("info_json_check_archive_folder_added", 
-                                          folder_path=archive_path.parent))
-            
-            # フォルダから開いた場合
-            elif self.base_dir_path:
-                logger.info(get_log_text("info_json_check_using_base_dir_path", 
-                                      base_dir_path=self.base_dir_path))
-                folder_path = Path(self.base_dir_path)
-                # フォルダ内部をチェック
-                paths_to_check.append(folder_path)
-                logger.info(get_log_text("info_json_check_folder_internal_added", 
-                                      folder_path=folder_path))
-                # フォルダと同じ階層（親フォルダ）もチェック
-                if folder_path.parent != folder_path:  # ルートディレクトリでない場合
-                    paths_to_check.append(folder_path.parent)
-                    logger.info(get_log_text("info_json_check_parent_folder_added", 
-                                          folder_path=folder_path.parent))
-            
-            # 単独ファイルの場合
-            else:
-                logger.info(get_log_text("info_json_check_single_file_processing", 
-                                      current_file=current_file))
-                # 通常のファイルの場合、ファイルと同じフォルダをチェック
-                if isinstance(current_file, str):
-                    file_path = Path(current_file)
-                else:
-                    file_path = current_file
-                paths_to_check.append(file_path.parent)
-                logger.info(get_log_text("info_json_check_file_folder_added", 
-                                      folder_path=file_path.parent))
-            
-            logger.info(get_log_text("info_json_check_paths_list", paths_to_check=paths_to_check))
-        except Exception as e:
-            logger.error(get_log_text("info_json_check_path_get_error", error=e))
-            import traceback
-            traceback.print_exc()
-        
-        return paths_to_check
-    
-    def update_extensions_menu_actions(self):
-        """拡張メニューのアクション有効状態を更新"""
-        # RJ拡張機能は削除されたため、この処理は不要
-        pass
-    
 

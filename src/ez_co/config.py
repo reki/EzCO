@@ -219,15 +219,6 @@ class Config:
         # 設定辞書をオーバーライド対応に変換
         self._apply_override_proxies()
     
-    def _get_default_profile_name(self) -> str:
-        """デフォルトプロファイル名を取得（多言語化対応）"""
-        try:
-            from ez_co.utils.language_manager import get_text
-            return get_text("ui.default")
-        except:
-            # 言語マネージャーが初期化されていない場合はフォールバック
-            return "Default"
-    
     def _apply_override_proxies(self):
         """設定辞書をオーバーライド対応プロキシに変換"""
         self.window = OverrideDict(self.window, self, "window")
@@ -513,29 +504,6 @@ class Config:
         """
         return key_path in self.runtime_overrides
     
-    def get_effective_value(self, section: str, key: str) -> Any:
-        """有効な設定値を取得する（オーバーライドがある場合はそれを優先）
-        
-        Args:
-            section: 設定セクション名
-            key: 設定キー名
-            
-        Returns:
-            有効な設定値
-        """
-        key_path = f"{section}.{key}"
-        
-        # ランタイムオーバーライドがある場合はそれを優先
-        if key_path in self.runtime_overrides:
-            return self.runtime_overrides[key_path]
-        
-        # 通常の設定値を返す
-        section_data = getattr(self, section, {})
-        if isinstance(section_data, dict):
-            return section_data.get(key)
-        
-        return None
-
     def apply_dict(self, data: Dict[str, Any]):
         """辞書の内容をこのインスタンスへ上書きする（ランタイムオーバーライドは維持）"""
         loaded = Config.from_dict(data)
