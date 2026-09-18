@@ -21,3 +21,13 @@ def test_alias_hides_builtin_action_id(monkeypatch):
     assert "plugin:com.example.x:go" in assignable
     assert "prev_page" in assignable
     assert set(ACTION_LIST) - {"next_page"} <= set(assignable)
+
+
+def test_zoom_navigation_actions_are_assignable(monkeypatch):
+    monkeypatch.setattr(actions, "_plugin_host", lambda: None)
+    assignable = list_assignable_actions()
+    assert {
+        "zoom_navigation_page",
+        "zoom_navigation_left",
+        "zoom_navigation_right",
+    } <= set(assignable)

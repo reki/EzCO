@@ -98,6 +98,7 @@ class Config:
             "mouse_repeat_acceleration_start": 100,  # ms - 加速開始時刻
             "mouse_repeat_min_interval": 30,  # ms - 最小間隔
             "page_mode": "single",  # single / spread_left / spread_right
+            "zoom_navigation_mode": "page",  # page / left / right
             "spread_selected_as_axis": False,  # 両開き時、選択ページを軸に N と N+1 を表示
             "spread_toggle_preference": "keep_previous",  # keep_previous / prefer_right / prefer_left
             "last_spread_mode": "spread_right",  # 両開き／単ページ切替用の前回両開き方向
@@ -313,6 +314,11 @@ class Config:
                 "mouse_repeat_acceleration_start": viewer_data.get("mouse_repeat_acceleration_start", 100),
                 "mouse_repeat_min_interval": viewer_data.get("mouse_repeat_min_interval", 30),
                 "page_mode": viewer_data.get("page_mode", "single") if viewer_data.get("page_mode") in ("single", "spread_left", "spread_right") else "single",
+                "zoom_navigation_mode": (
+                    viewer_data.get("zoom_navigation_mode", "page")
+                    if viewer_data.get("zoom_navigation_mode") in ("page", "left", "right")
+                    else "page"
+                ),
                 "spread_selected_as_axis": bool(
                     viewer_data.get(
                         "spread_selected_as_axis",

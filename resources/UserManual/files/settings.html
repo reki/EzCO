@@ -243,6 +243,16 @@ window:
 
                         <div class="setting-item">
                             <div class="setting-header">
+                                <span class="setting-name">拡大時挙動</span>
+                                <span class="setting-key">viewer.zoom_navigation_mode</span>
+                                <span class="setting-type">文字列</span>
+                            </div>
+                            <p>拡大画像に次／前ページ操作を行ったときの挙動です。<code>page</code> は即改ページ、<code>left</code> は右上から左へ、<code>right</code> は左上から右へ1画面ずつ移動し、端まで達してから改ページします。前ページ操作は逆順です。表示メニューからも切り替えできます。</p>
+                            <div class="setting-value">デフォルト: "page"（<code>page</code> / <code>left</code> / <code>right</code>）</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
                                 <span class="setting-name">両開き／単ページ切替の優先</span>
                                 <span class="setting-key">viewer.spread_toggle_preference</span>
                                 <span class="setting-type">文字列</span>
@@ -267,6 +277,7 @@ viewer:
   fit_to_window: true                 # 画像をウィンドウサイズに自動調整
   fit_to_window_minimum: true         # 最小縮小率を100%に制限
   page_mode: "spread_right"           # single / spread_right / spread_left
+  zoom_navigation_mode: "left"        # page / left / right
   spread_selected_as_axis: false      # スライダー選択ページを見開きの軸にする
   spread_toggle_preference: "keep_previous"  # keep_previous / prefer_right / prefer_left
   mouse_lock: false                   # マウスロック機能

@@ -1306,6 +1306,10 @@
     "yaml_import_title": "設定の取り込み",
     "zoom_factor": "倍率",
     "zoom_in": "拡大",
+    "zoom_navigation": "拡大時挙動",
+    "zoom_navigation_left": "左移動優先",
+    "zoom_navigation_page": "改ページ優先",
+    "zoom_navigation_right": "右移動優先",
     "zoom_out": "縮小"
   }
 }

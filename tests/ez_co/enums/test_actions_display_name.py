@@ -17,3 +17,14 @@ def test_next_page_display_uses_ui_key(monkeypatch):
 def test_first_page_display_uses_actions_key(monkeypatch):
     monkeypatch.setattr(actions, "_plugin_host", lambda: None)
     assert get_action_display_name("first_page") == get_text("actions.first_page")
+
+
+def test_zoom_navigation_actions_use_menu_labels(monkeypatch):
+    monkeypatch.setattr(actions, "_plugin_host", lambda: None)
+    expected = {
+        "zoom_navigation_page": "ui.zoom_navigation_page",
+        "zoom_navigation_left": "ui.zoom_navigation_left",
+        "zoom_navigation_right": "ui.zoom_navigation_right",
+    }
+    for action_name, text_key in expected.items():
+        assert get_action_display_name(action_name) == get_text(text_key)

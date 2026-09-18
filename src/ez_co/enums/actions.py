@@ -54,6 +54,9 @@ class Actions(Enum):
     PAGE_MODE_SPREAD_RIGHT = "page_mode_spread_right"
     PAGE_MODE_SPREAD_LEFT = "page_mode_spread_left"
     TOGGLE_SPREAD = "toggle_spread"
+    ZOOM_NAVIGATION_PAGE = "zoom_navigation_page"
+    ZOOM_NAVIGATION_LEFT = "zoom_navigation_left"
+    ZOOM_NAVIGATION_RIGHT = "zoom_navigation_right"
 
 
 ACTION_LIST = [action.value for action in Actions]
@@ -107,6 +110,9 @@ def list_bound_actions(assigned_ids) -> list:
 
 _ACTION_TEXT_KEYS = {
     "close_app": "ui.exit",
+    "zoom_navigation_page": "ui.zoom_navigation_page",
+    "zoom_navigation_left": "ui.zoom_navigation_left",
+    "zoom_navigation_right": "ui.zoom_navigation_right",
 }
 
 

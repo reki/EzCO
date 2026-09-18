@@ -1306,6 +1306,10 @@
     "yaml_import_title": "Import Settings",
     "zoom_factor": "Zoom Factor",
     "zoom_in": "Zoom In",
+    "zoom_navigation": "Zoomed Navigation",
+    "zoom_navigation_left": "Pan Left First",
+    "zoom_navigation_page": "Turn Page First",
+    "zoom_navigation_right": "Pan Right First",
     "zoom_out": "Zoom Out"
   }
 }

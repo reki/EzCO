@@ -16,3 +16,9 @@ def test_merge_fills_missing_viewer_keys():
     merged = Config.merge_with_defaults({"viewer": {"background_color": "#111111"}})
     assert merged["viewer"]["background_color"] == "#111111"
     assert "gesture_threshold" in merged["viewer"]
+    assert merged["viewer"]["zoom_navigation_mode"] == "page"
+
+
+def test_merge_keeps_zoom_navigation_mode():
+    merged = Config.merge_with_defaults({"viewer": {"zoom_navigation_mode": "right"}})
+    assert merged["viewer"]["zoom_navigation_mode"] == "right"

@@ -448,6 +448,26 @@ class MainWindow(QMainWindow):
         self.mouse_lock_action.triggered.connect(self.toggle_mouse_lock)
         self._apply_action_shortcut(self.mouse_lock_action, Actions.TOGGLE_MOUSE_LOCK.value)
         view_menu.addAction(self.mouse_lock_action)
+
+        self.zoom_navigation_menu = view_menu.addMenu(get_text("ui.zoom_navigation"))
+        self.zoom_navigation_group = QActionGroup(self)
+        self.zoom_navigation_group.setExclusive(True)
+        self.zoom_navigation_actions = {}
+        for mode, action_id, text_key in (
+            ("page", Actions.ZOOM_NAVIGATION_PAGE.value, "ui.zoom_navigation_page"),
+            ("left", Actions.ZOOM_NAVIGATION_LEFT.value, "ui.zoom_navigation_left"),
+            ("right", Actions.ZOOM_NAVIGATION_RIGHT.value, "ui.zoom_navigation_right"),
+        ):
+            action = QAction(get_text(text_key), self)
+            action.setCheckable(True)
+            action.setData(mode)
+            self.zoom_navigation_group.addAction(action)
+            self.zoom_navigation_menu.addAction(action)
+            self._apply_action_shortcut(action, action_id)
+            self.zoom_navigation_actions[mode] = action
+        self._sync_zoom_navigation_menu(self.config.viewer.get("zoom_navigation_mode", "page"))
+        self.zoom_navigation_group.triggered.connect(self.on_zoom_navigation_mode_changed)
+
         view_menu.addSeparator()
         # 画像回転
         self.rotate_right_action = QAction(get_text("ui.rotate_right"), self)
@@ -636,6 +656,12 @@ class MainWindow(QMainWindow):
         if self.config.is_runtime_overridden("viewer.mouse_lock"):
             self.mouse_lock_action.setEnabled(False)
             self.mouse_lock_action.setToolTip(get_text("settings.runtime_override_tooltip"))
+
+        if self.config.is_runtime_overridden("viewer.zoom_navigation_mode"):
+            tooltip = get_text("settings.runtime_override_tooltip")
+            for action in self.zoom_navigation_actions.values():
+                action.setEnabled(False)
+                action.setToolTip(tooltip)
 
         if self.config.is_runtime_overridden("viewer.show_tabs_in_fullscreen"):
             self.show_tabs_in_fullscreen_action.setEnabled(False)
@@ -935,10 +961,48 @@ class MainWindow(QMainWindow):
         self.config.viewer["fit_to_window_minimum"] = is_checked
         if is_checked:
             # オンになった瞬間100%にする
+            self.image_view.cancel_pending_zoom_navigation()
             self.image_view.zoom_factor = 1.0
             self.image_view.update_image_display()
         # 設定を保存
         self.save_config()
+
+    def on_zoom_navigation_mode_changed(self, action):
+        """拡大時の読書順ナビゲーションを変更"""
+        self.apply_zoom_navigation_mode(action.data())
+
+    def apply_zoom_navigation_mode(self, mode: str):
+        """拡大時の移動モードを適用し、メニューと設定を同期する"""
+        if mode not in ("page", "left", "right"):
+            mode = "page"
+        if not self.config or self.config.is_runtime_overridden("viewer.zoom_navigation_mode"):
+            return
+        self.config.viewer["zoom_navigation_mode"] = mode
+        for pane in self._iter_panes():
+            pane.image_view.cancel_pending_zoom_navigation()
+        self._sync_zoom_navigation_menu(mode)
+        self.save_config()
+
+    def _sync_zoom_navigation_menu(self, mode: str):
+        """拡大時挙動メニューのチェックを合わせる"""
+        if not hasattr(self, "zoom_navigation_group"):
+            return
+        if mode not in self.zoom_navigation_actions:
+            mode = "page"
+        self.zoom_navigation_group.blockSignals(True)
+        self.zoom_navigation_actions[mode].setChecked(True)
+        self.zoom_navigation_group.blockSignals(False)
+
+    def handle_zoom_navigation_action(self, action_name: str):
+        """ショートカット／ジェスチャーから拡大時挙動を切り替える"""
+        modes = {
+            Actions.ZOOM_NAVIGATION_PAGE.value: "page",
+            Actions.ZOOM_NAVIGATION_LEFT.value: "left",
+            Actions.ZOOM_NAVIGATION_RIGHT.value: "right",
+        }
+        mode = modes.get(action_name)
+        if mode:
+            self.apply_zoom_navigation_mode(mode)
 
     def on_comic_page_mode_changed(self, action):
         """コミックのページ表示モードを変更"""
@@ -1721,6 +1785,9 @@ class MainWindow(QMainWindow):
             Actions.SHOW_TAB_8.value: lambda: self.goto_tab(7),
             Actions.SHOW_TAB_9.value: lambda: self.goto_tab(8),
             Actions.TOGGLE_TAB_LIST_DOCK.value: self.toggle_tab_list_dock,
+            Actions.ZOOM_NAVIGATION_PAGE.value: lambda: self.apply_zoom_navigation_mode("page"),
+            Actions.ZOOM_NAVIGATION_LEFT.value: lambda: self.apply_zoom_navigation_mode("left"),
+            Actions.ZOOM_NAVIGATION_RIGHT.value: lambda: self.apply_zoom_navigation_mode("right"),
         }
         handler = handlers.get(action_name)
         if handler is None:
@@ -1982,6 +2049,7 @@ class MainWindow(QMainWindow):
     def open_files(self, file_paths: List[str]):
         """複数のファイルを開く"""
         try:
+            self.image_view.cancel_pending_zoom_navigation()
             # メッセージを非表示
             self.hide_center_message()
             self._clear_spread_force_single()
@@ -2104,6 +2172,7 @@ class MainWindow(QMainWindow):
     def on_file_error_occurred(self, error_type: str, error_message: str, archive_path: str):
         """ファイルエラー発生時の処理"""
         try:
+            self.image_view.cancel_pending_zoom_navigation()
             logger.error(get_log_text("main_window_file_error_occurred", error_type=error_type, error_message=error_message, archive_path=archive_path))
             
             # エラータイプに応じたユーザーフレンドリーなメッセージを生成
@@ -2145,6 +2214,7 @@ class MainWindow(QMainWindow):
         """画像が読み込まれた時の処理"""
         try:
             if not image:
+                self.image_view.cancel_pending_zoom_navigation()
                 return
             # プリフェッチ完了分で表示中ページを上書きしない
             if not self._is_loaded_file_currently_displayed(file):
@@ -2181,8 +2251,10 @@ class MainWindow(QMainWindow):
             self._notify_plugin_current_changed()
         except Exception as e:
             logger.error(get_log_text("main_window_error_in_ui_update", error=e))
-    def update_image(self):
+    def update_image(self, *, preserve_zoom_navigation: bool = False):
         """現在の画像を表示"""
+        if not preserve_zoom_navigation:
+            self.image_view.cancel_pending_zoom_navigation()
         logger.info(get_log_text("debug_update_image_called", current_index=self.file_handler.current_index if self.file_handler else -1))
         if not self.file_handler:
             logger.warning(get_log_text("main_window_no_file_handler_warning"))
@@ -2252,9 +2324,13 @@ class MainWindow(QMainWindow):
     def next_page(self):
         """次のページへ"""
         logger.info(get_log_text("debug_next_page_called", current_index=self.file_handler.current_index if self.file_handler else -1, total_files=len(self.file_handler.current_files) if self.file_handler else 0))
+        if self.image_view.try_zoom_navigation("next"):
+            return
         if not self.file_handler:
             logger.warning(get_log_text("main_window_no_file_handler_warning"))
+            self.image_view._is_loading = False
             return
+        self.image_view.prepare_page_transition("next")
         self._align_current_spread_index()
         logger.info(get_log_text("debug_next_page_calling_next_file", current_index=self.file_handler.current_index, total_files=len(self.file_handler.current_files)))
         moved = False
@@ -2270,22 +2346,27 @@ class MainWindow(QMainWindow):
             logger.info(get_log_text("debug_next_page_success", new_index=self.file_handler.current_index))
             self.current_page = self.file_handler.current_index + 1
             logger.info(get_log_text("debug_next_page_calling_update_image", current_index=self.file_handler.current_index))
-            self.update_image()
+            self.update_image(preserve_zoom_navigation=True)
             logger.info(get_log_text("debug_next_page_update_image_completed"))
             self._update_page_slider()
             self._update_image_list_dialog()
             self._update_image_slide_sidebar()
             self._notify_plugin_current_changed()
         else:
+            self.image_view.cancel_pending_zoom_navigation()
             logger.info(get_log_text("main_window_already_at_last_page"))
             logger.info(get_log_text("debug_next_page_failed", current_index=self.file_handler.current_index, total_files=len(self.file_handler.current_files)))
             # 改ページが失敗した場合は読み込みフラグをリセット
             self.image_view._is_loading = False
     def prev_page(self):
         """前のページへ"""
+        if self.image_view.try_zoom_navigation("previous"):
+            return
         if not self.file_handler:
             logger.warning(get_log_text("main_window_no_file_handler_warning"))
+            self.image_view._is_loading = False
             return
+        self.image_view.prepare_page_transition("previous")
         self._align_current_spread_index()
         moved = False
         if self._is_spread_mode():
@@ -2298,12 +2379,13 @@ class MainWindow(QMainWindow):
         if moved:
             logger.info(get_log_text("main_window_moving_to_prev_page"))
             self.current_page = self.file_handler.current_index + 1
-            self.update_image()
+            self.update_image(preserve_zoom_navigation=True)
             self._update_page_slider()
             self._update_image_list_dialog()
             self._update_image_slide_sidebar()
             self._notify_plugin_current_changed()
         else:
+            self.image_view.cancel_pending_zoom_navigation()
             logger.info(get_log_text("main_window_already_at_first_page"))
             # 改ページが失敗した場合は読み込みフラグをリセット
             self.image_view._is_loading = False

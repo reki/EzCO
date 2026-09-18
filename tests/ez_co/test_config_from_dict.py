@@ -24,6 +24,17 @@ def test_from_dict_applies_viewer_and_plugins():
     assert config.plugins["extension_handlers"][".png"] == "none"
 
 
+@pytest.mark.parametrize("mode", ["page", "left", "right"])
+def test_from_dict_keeps_zoom_navigation_mode(mode):
+    config = Config.from_dict({"viewer": {"zoom_navigation_mode": mode}})
+    assert config.viewer["zoom_navigation_mode"] == mode
+
+
+def test_from_dict_falls_back_for_invalid_zoom_navigation_mode():
+    config = Config.from_dict({"viewer": {"zoom_navigation_mode": "vertical"}})
+    assert config.viewer["zoom_navigation_mode"] == "page"
+
+
 def test_from_dict_fills_missing_sections():
     config = Config.from_dict({})
     assert "width" in config.window

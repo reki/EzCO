@@ -6,7 +6,7 @@ import os
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QSizePolicy, QApplication
 )
-from PySide6.QtCore import Qt, QPoint, QTimer, QEvent, Signal, QRect
+from PySide6.QtCore import Qt, QPoint, QSize, QTimer, QEvent, Signal, QRect
 from PySide6.QtGui import QPixmap, QImage, QMouseEvent, QWheelEvent, QPainter, QColor, QFont, QFontMetrics, QResizeEvent
 from PIL import Image
 from PIL.ImageQt import ImageQt as PILImageQt
@@ -62,6 +62,7 @@ class ImageView(QWidget):
         self._gesture_display_timer.timeout.connect(self._clear_gesture_display)
         # 画像移動関連の変数
         self.image_offset = QPoint(0, 0)  # 画像のオフセット位置
+        self._pending_zoom_navigation_direction = None
         self.last_mouse_pos = None  # 前回のマウス位置
         self.is_panning = False  # パンニング中かどうか
         try:
@@ -109,10 +110,12 @@ class ImageView(QWidget):
             self._qimage_source = rgba
             self.current_qimage = PILImageQt(rgba)
             
-            # 拡大時は画像の右上から表示を開始
-            if self.zoom_factor > 1.0:
-                logger.info(get_log_text("debug_set_image_new_page_start"))
+            if self._zoom_navigation_mode() == "page" and self.zoom_factor > 1.0:
+                # page は従来どおり、拡大した新しい画像を右上から表示する。
+                self.cancel_pending_zoom_navigation()
                 self._reset_image_position_to_top_right()
+            else:
+                self._consume_pending_zoom_navigation()
             
             self.update_image_display()
             self._is_loading = False  # 画像読み込み完了
@@ -120,6 +123,7 @@ class ImageView(QWidget):
             self._resume_mouse_repeat_if_pressed()
         else:
             logger.info(get_log_text("image_view_clearing_image"))
+            self.cancel_pending_zoom_navigation()
             self.current_qimage = None
             self._qimage_source = None
             self.image_label.clear()
@@ -170,6 +174,173 @@ class ImageView(QWidget):
         combined.paste(left, (0, 0), left)
         combined.paste(right, (left.width, 0), right)
         return combined
+
+    def _zoom_navigation_mode(self) -> str:
+        viewer = {}
+        if self.config:
+            if hasattr(self.config, "viewer") and isinstance(self.config.viewer, dict):
+                viewer = self.config.viewer
+            elif isinstance(self.config, dict):
+                viewer = self.config.get("viewer", {})
+        mode = viewer.get("zoom_navigation_mode", "page")
+        return mode if mode in ("page", "left", "right") else "page"
+
+    def _zoom_navigation_geometry(
+        self,
+        image_size: Optional[QSize] = None,
+        viewport_size: Optional[QSize] = None,
+        zoom_factor: Optional[float] = None,
+        rotation_angle: Optional[int] = None,
+    ):
+        """回転・拡大後の表示サイズと、画面座標での移動限界を返す。"""
+        if image_size is None:
+            if not self.current_qimage:
+                return QSize(), 0, 0
+            image_size = self.current_qimage.size()
+        viewport_size = viewport_size or self.image_label.size()
+        zoom_factor = self.zoom_factor if zoom_factor is None else zoom_factor
+        rotation_angle = self.rotation_angle if rotation_angle is None else rotation_angle
+        rotated_size = QSize(image_size)
+        if rotation_angle % 180:
+            rotated_size.transpose()
+        if (
+            rotated_size.width() <= 0
+            or rotated_size.height() <= 0
+            or viewport_size.width() <= 0
+            or viewport_size.height() <= 0
+        ):
+            return QSize(), 0, 0
+        target = QSize(
+            max(1, int(viewport_size.width() * zoom_factor)),
+            max(1, int(viewport_size.height() * zoom_factor)),
+        )
+        displayed_size = rotated_size.scaled(target, Qt.KeepAspectRatio)
+        max_x = max(0, (displayed_size.width() - viewport_size.width()) // 2)
+        max_y = max(0, (displayed_size.height() - viewport_size.height()) // 2)
+        return displayed_size, max_x, max_y
+
+    @staticmethod
+    def _axis_positions(start: int, end: int, span: int) -> List[int]:
+        """開始端から1画面ずつ進み、端数を終端へクランプした座標列。"""
+        if start == end:
+            return [start]
+        step = max(1, span)
+        direction = 1 if end > start else -1
+        positions = [start]
+        while positions[-1] != end:
+            candidate = positions[-1] + direction * step
+            positions.append(min(candidate, end) if direction > 0 else max(candidate, end))
+        return positions
+
+    @classmethod
+    def calculate_zoom_navigation_offset(
+        cls,
+        current: QPoint,
+        max_x: int,
+        max_y: int,
+        viewport_width: int,
+        viewport_height: int,
+        mode: str,
+        direction: str,
+    ) -> Optional[QPoint]:
+        """画像内の次位置を計算する。端なら None を返す。"""
+        if mode not in ("left", "right") or direction not in ("next", "previous"):
+            return None
+        if max_x <= 0 and max_y <= 0:
+            return None
+
+        horizontal_start = -max_x if mode == "left" else max_x
+        horizontal_end = -horizontal_start
+        xs = cls._axis_positions(horizontal_start, horizontal_end, viewport_width) if max_x else [0]
+        ys = cls._axis_positions(max_y, -max_y, viewport_height) if max_y else [0]
+        sequence = [QPoint(x, y) for y in ys for x in xs]
+        try:
+            index = sequence.index(current)
+        except ValueError:
+            index = -1
+        if index >= 0:
+            target = index + (1 if direction == "next" else -1)
+            return QPoint(sequence[target]) if 0 <= target < len(sequence) else None
+
+        # モード変更後や手動パン後の非定型位置も、現在位置から自然に進める。
+        x = max(-max_x, min(max_x, current.x())) if max_x else 0
+        y = max(-max_y, min(max_y, current.y())) if max_y else 0
+        if direction == "next":
+            x_step = 1 if mode == "left" else -1
+            if max_x and x != horizontal_end:
+                return QPoint(
+                    min(horizontal_end, x + viewport_width)
+                    if x_step > 0
+                    else max(horizontal_end, x - viewport_width),
+                    y,
+                )
+            if max_y and y != -max_y:
+                return QPoint(
+                    horizontal_start if max_x else 0,
+                    max(-max_y, y - viewport_height),
+                )
+            return None
+
+        x_step = -1 if mode == "left" else 1
+        if max_x and x != horizontal_start:
+            return QPoint(
+                max(horizontal_start, x - viewport_width)
+                if x_step < 0
+                else min(horizontal_start, x + viewport_width),
+                y,
+            )
+        if max_y and y != max_y:
+            return QPoint(
+                horizontal_end if max_x else 0,
+                min(max_y, y + viewport_height),
+            )
+        return None
+
+    def try_zoom_navigation(self, direction: str) -> bool:
+        """読書順に画像内を移動し、要求を消費した場合は True を返す。"""
+        mode = self._zoom_navigation_mode()
+        if mode == "page" or not self.current_qimage:
+            return False
+        _, max_x, max_y = self._zoom_navigation_geometry()
+        target = self.calculate_zoom_navigation_offset(
+            self.image_offset,
+            max_x,
+            max_y,
+            self.image_label.width(),
+            self.image_label.height(),
+            mode,
+            direction,
+        )
+        if target is None:
+            return False
+        self.image_offset = target
+        self._is_loading = False
+        self.update_image_display()
+        return True
+
+    def prepare_page_transition(self, direction: str):
+        """連続した次／前ページ遷移後の開始角を一度だけ予約する。"""
+        if direction in ("next", "previous") and self._zoom_navigation_mode() in ("left", "right"):
+            self._pending_zoom_navigation_direction = direction
+        else:
+            self.cancel_pending_zoom_navigation()
+
+    def cancel_pending_zoom_navigation(self):
+        self._pending_zoom_navigation_direction = None
+
+    def _consume_pending_zoom_navigation(self):
+        direction = self._pending_zoom_navigation_direction
+        self._pending_zoom_navigation_direction = None
+        if direction not in ("next", "previous") or not self.current_qimage:
+            return
+        _, max_x, max_y = self._zoom_navigation_geometry()
+        mode = self._zoom_navigation_mode()
+        if mode == "left":
+            x = -max_x if direction == "next" else max_x
+        else:
+            x = max_x if direction == "next" else -max_x
+        y = max_y if direction == "next" else -max_y
+        self.image_offset = QPoint(x, y)
 
     def update_image_display(self):
         """画像の表示を更新"""
@@ -241,8 +412,7 @@ class ImageView(QWidget):
                 label_size = self.image_label.size()
                 pixmap_size = cached_pixmap.size()
                 # 移動範囲の制限を計算
-                max_offset_x = max(0, (pixmap_size.width() - label_size.width()) // 2)
-                max_offset_y = max(0, (pixmap_size.height() - label_size.height()) // 2)
+                _, max_offset_x, max_offset_y = self._zoom_navigation_geometry()
                 logger.debug(get_log_text("debug_update_image_display_label_pixmap_size", label_size=label_size, pixmap_size=pixmap_size, max_offset_x=max_offset_x, max_offset_y=max_offset_y))
                 # オフセットを制限範囲内に収める
                 old_offset = self.image_offset
@@ -646,6 +816,10 @@ class ImageView(QWidget):
             if hasattr(main_window, 'handle_page_mode_action'):
                 main_window.handle_page_mode_action(action)
             return True
+        elif action:
+            main_window = self.window()
+            if hasattr(main_window, "run_window_action") and main_window.run_window_action(action):
+                return True
         logger.info(get_log_text("image_view_click_no_page_action"))
         return False
     def _handle_wheel_event(self, event):
@@ -691,8 +865,14 @@ class ImageView(QWidget):
                         if hasattr(main_window, 'handle_page_mode_action'):
                             main_window.handle_page_mode_action(act)
                         return True
+                    else:
+                        main_window = self.window()
+                        if hasattr(main_window, "run_window_action") and main_window.run_window_action(act):
+                            return True
         # デフォルトのズーム
         self.zoom_factor *= 1.1 if delta > 0 else 0.9
+        if self.zoom_factor <= 1.0:
+            self.cancel_pending_zoom_navigation()
         logger.info(get_log_text("image_view_zoom_factor_changed", zoom_factor=self.zoom_factor))
         self.update_image_display()
         self.zoom_changed.emit(self.zoom_factor)
@@ -710,6 +890,7 @@ class ImageView(QWidget):
             self.update_image_display()
     def reset_zoom(self):
         """ズームをリセット"""
+        self.cancel_pending_zoom_navigation()
         self.zoom_factor = 1.0
         self.reset_image_position()  # 画像位置もリセット
         self.update_image_display()
@@ -724,6 +905,7 @@ class ImageView(QWidget):
         self.zoom_factor *= 0.9
         # ズームアウトで100%以下になった場合は位置をリセット
         if self.zoom_factor <= 1.0:
+            self.cancel_pending_zoom_navigation()
             self.reset_image_position()
         self.update_image_display()
         self.zoom_changed.emit(self.zoom_factor)
@@ -797,6 +979,7 @@ class ImageView(QWidget):
         if self.current_qimage:
             self.update_image_display() 
     def set_config(self, config):
+        self.cancel_pending_zoom_navigation()
         self.config = config
         # MouseGestureの閾値を更新
         if self.mouse_gesture and config:
@@ -844,6 +1027,10 @@ class ImageView(QWidget):
             main_window = self.window()
             if hasattr(main_window, 'handle_page_mode_action'):
                 main_window.handle_page_mode_action(action)
+        elif action:
+            main_window = self.window()
+            if not hasattr(main_window, "run_window_action") or not main_window.run_window_action(action):
+                super().keyPressEvent(event)
         else:
             super().keyPressEvent(event)
     def handle_gesture(self, gesture):
@@ -1011,49 +1198,10 @@ class ImageView(QWidget):
             logger.info(get_log_text("debug_image_position_not_reset_normal_zoom", zoom_factor=self.zoom_factor))
             return
         
-        # 現在のラベルサイズを取得
-        label_size = self.image_label.size()
-        if label_size.width() == 0 or label_size.height() == 0:
-            # ラベルサイズが未確定の場合は後で処理
-            self.image_offset = QPoint(0, 0)
-            return
-        
-        # 回転を考慮した画像サイズを取得
-        img_size = self.current_qimage.size()
-        if self.rotation_angle == 90 or self.rotation_angle == 270:
-            # 90度または270度回転時はサイズを入れ替え
-            img_size = img_size.transposed()
-        
-        # スケーリング後のサイズを計算
-        scaled_size = img_size * self.zoom_factor
-        
-        # 移動可能な範囲を計算
-        max_offset_x = max(0, (scaled_size.width() - label_size.width()) // 2)
-        max_offset_y = max(0, (scaled_size.height() - label_size.height()) // 2)
-        
-        # 回転角度を考慮した右上表示のオフセットを計算
-        # 回転後の画像での「右上」を表示する
-        if self.rotation_angle == 0:
-            # 0度：通常の右上
-            offset_x = -max_offset_x  # 右端を表示
-            offset_y = max_offset_y   # 上端を表示
-        elif self.rotation_angle == 90:
-            # 90度回転：時計回りに90度回転した状態での右上
-            offset_x = -max_offset_x  # 右端を表示
-            offset_y = -max_offset_y  # 上端を表示
-        elif self.rotation_angle == 180:
-            # 180度回転：上下左右が反転した状態での右上
-            offset_x = max_offset_x   # 右端を表示
-            offset_y = -max_offset_y  # 上端を表示
-        elif self.rotation_angle == 270:
-            # 270度回転：反時計回りに90度回転した状態での右上
-            offset_x = max_offset_x   # 右端を表示
-            offset_y = max_offset_y   # 上端を表示
-        else:
-            # 他の角度の場合は0度として扱う
-            offset_x = -max_offset_x
-            offset_y = max_offset_y
-        
+        _, max_offset_x, max_offset_y = self._zoom_navigation_geometry()
+        # 回転後に画面へ描画された画像の右上。元画像座標へ戻さない。
+        offset_x = -max_offset_x
+        offset_y = max_offset_y
         self.image_offset = QPoint(offset_x, offset_y)
         logger.info(get_log_text("debug_image_position_reset_to_top_right", 
                                 zoom_factor=self.zoom_factor,
