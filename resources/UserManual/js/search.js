@@ -63,6 +63,8 @@ class ManualSearch {
         this.indexSections(document.querySelectorAll('.section, .config-section'));
         this.indexApiMembers();
         this.indexApiFields();
+        this.indexActions();
+        this.indexCodeExamples();
         console.log(`Search index built with ${this.searchIndex.length} entries`);
     }
 
@@ -128,6 +130,7 @@ class ManualSearch {
             tables.forEach((table, tableIndex) => {
                 const rows = table.querySelectorAll('tr');
                 rows.forEach((row, rowIndex) => {
+                    if (row.hasAttribute('data-action-id')) return;
                     const cells = row.querySelectorAll('td, th');
                     const rowContent = Array.from(cells).map(cell => cell.textContent.trim()).join(' ');
 
@@ -143,6 +146,43 @@ class ManualSearch {
                         });
                     }
                 });
+            });
+        });
+    }
+
+    indexActions() {
+        document.querySelectorAll('[data-action-id]').forEach(row => {
+            const actionId = row.dataset.actionId;
+            const cells = row.querySelectorAll('td');
+            const title = cells[0]?.textContent?.trim() || actionId;
+            const content = Array.from(cells).map(cell => cell.textContent.trim()).join(' ');
+            const section = row.closest('.section, .config-section');
+            this.searchIndex.push({
+                type: 'action',
+                id: `action-${actionId}`,
+                sectionId: section?.id || '',
+                title: title,
+                content: content,
+                names: [actionId],
+                element: row
+            });
+        });
+    }
+
+    indexCodeExamples() {
+        document.querySelectorAll('.config-example').forEach((example, index) => {
+            const content = example.textContent.trim();
+            if (!content) return;
+            const section = example.closest('.section, .config-section');
+            const heading = section?.querySelector('h2, h3');
+            this.searchIndex.push({
+                type: 'content',
+                id: `${section?.id || 'example'}-code-${index}`,
+                sectionId: section?.id || '',
+                title: heading?.textContent || 'Code',
+                content: content,
+                names: [],
+                element: example
             });
         });
     }
@@ -393,6 +433,7 @@ class ManualSearch {
     getTypeLabel(type) {
         const labels = {
             api: 'API',
+            action: this.isJapanese ? 'アクション' : 'Action',
             section: this.isJapanese ? 'セクション' : 'Section',
             subsection: this.isJapanese ? 'サブセクション' : 'Subsection',
             content: this.isJapanese ? 'コンテンツ' : 'Content',

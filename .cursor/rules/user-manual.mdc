@@ -11,3 +11,7 @@ alwaysApply: false
 - 対になるメソッド（register/unregister、get/set/delete_config など）は本文に相互リンクを付ける
 - ユーザー向け文言に「ゲート」は使わない
 - 日英があるページは両方直す
+- 本体 `Actions` を追加・削除・改名したら、日英の `files/action-reference*.html` も更新する。各正規IDは `data-action-id` で1回だけ載せる
+- 同じ役割の独立ページは日英を同じ構成・置き場・`-en` 命名で揃え、言語切替を相互リンクにする
+- YAML / JSON 例は `<pre><code>` で改行とインデントを保持し、実在する重複なしの短い例にする
+- 実装が確定していない予定機能はユーザーマニュアルへ掲載しない

@@ -7,16 +7,17 @@
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/theme.css">
     <link rel="stylesheet" href="../css/settings.css">
+    <link rel="icon" type="image/x-icon" href="../../icon.ico">
 </head>
 <body>
     <div class="container">
         <!-- ヘッダー -->
         <header class="header">
             <div class="header-content">
-                <h1><img src="../files/icon_32x32.png" alt="EzCo" class="logo-icon"> EzCo ユーザーマニュアル</h1>
+                <h1><img src="../../icon.ico" alt="EzCo" class="logo-icon"> EzCo ユーザーマニュアル</h1>
                 <div class="language-switch">
-                    <a href="../Manual(JP).html">日本語</a>
-                    <a href="../Manual(EN).html">English</a>
+                    <a href="settings.html" class="active">日本語</a>
+                    <a href="settings-en.html">English</a>
                 </div>
                 <div class="search-container">
                     <input type="text" id="searchBox" placeholder="検索..." />
@@ -267,8 +268,18 @@ window:
                                 <span class="setting-key">viewer.image_move_sensitivity</span>
                                 <span class="setting-type">小数</span>
                             </div>
-                            <p>画像をドラッグで移動する際の感度を設定します（0.5～2.0）。</p>
-                            <div class="setting-value">デフォルト: 1.2</div>
+                            <p>画像をドラッグで移動する際の感度を設定します（0.5～4.0）。</p>
+                            <div class="setting-value">デフォルト: 2.0</div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-header"><span class="setting-name">ジェスチャー判定距離</span><span class="setting-key">viewer.gesture_threshold</span><span class="setting-type">整数</span></div>
+                            <p>マウスジェスチャーの方向を認識する移動距離です（20～100ピクセル）。</p>
+                            <div class="setting-value">デフォルト: 50</div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-header"><span class="setting-name">マウスリピート</span><span class="setting-key">viewer.mouse_repeat_*</span><span class="setting-type">整数</span></div>
+                            <p>長押し移動の初期間隔、加速開始、最小間隔をミリ秒で指定します。</p>
+                            <div class="setting-value">デフォルト: 100 / 100 / 30ms</div>
                         </div>
 
                         <div class="yaml-example">
@@ -283,7 +294,8 @@ viewer:
   mouse_lock: false                   # マウスロック機能
   mouse_lock_hide_cursor: true        # マウスロック時にカーソルを非表示
   # shortcuts.hold_mouse_lock の既定値は Ctrl と MouseMiddle（押下中はロック状態を反転）
-  image_move_sensitivity: 1.5         # 画像移動感度（0.5～2.0）
+  image_move_sensitivity: 2.0         # 画像移動感度（0.5～4.0）
+  gesture_threshold: 50               # ジェスチャー判定距離
                         </div>
                     </section>
 
@@ -332,14 +344,23 @@ viewer:
                                 <li><strong>距離ベース削除:</strong> メモリ上限に達すると、現在のページから最も遠いページから削除</li>
                                 <li><strong>プリフェッチ優先度:</strong> 現在のページ → 次のページ → 前のページ → 前後2-3ページの順</li>
                                 <li><strong>バックグラウンド処理:</strong> 別スレッドで実行されるため、メイン表示に影響なし</li>
-                                <li><strong>適応制御:</strong> ファイルハンドル非保持モード時は一部制限される場合あり</li>
+                                <li><strong>ファイルハンドル:</strong> 非保持モードでもプリフェッチは動作します</li>
                             </ul>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header"><span class="setting-name">大画像の最適化</span><span class="setting-key">cache.optimize_large_images</span><span class="setting-type">真偽値</span></div>
+                            <p>指定したファイルサイズを超える画像を、読み込み時に最大寸法まで縮小します。</p>
+                            <div class="setting-value">デフォルト: true / 50MB / 4000px</div>
                         </div>
 
                         <div class="yaml-example">
 cache:
   memory_limit: "512MB"   # キャッシュメモリサイズ（文字列形式）
   prefetch_pages: 15      # 事前読み込みページ数（1～50）
+  optimize_large_images: true
+  optimize_threshold: "50MB"
+  optimize_max_resolution: 4000
                         </div>
                     </section>
 
@@ -468,7 +489,7 @@ language:
                                 <span class="setting-key">debug.cache_archive_metadata</span>
                                 <span class="setting-type">真偽値</span>
                             </div>
-                            <p>アーカイブファイルの構造情報をメモリにキャッシュして高速化します。（将来の機能拡張用）</p>
+                            <p>アーカイブファイルの構造情報をメモリにキャッシュして再読み込みを高速化します。</p>
                             <div class="setting-value">デフォルト: true</div>
                         </div>
 
@@ -498,6 +519,11 @@ debug:
   cache_archive_metadata: true      # アーカイブメタデータキャッシュ
   show_error_log: false              # エラー時にスタックトレースを表示する
                         </div>
+                    </section>
+
+                    <section id="filter-settings" class="config-section">
+                        <h3>フィルター設定 (filters)</h3>
+                        <p>フィルターメニューで有効化したフィルターの順序と個別設定をプロファイルごとに保存します。内蔵の向き補正に加え、有効なプラグインが登録したフィルターも並びます。</p>
                     </section>
 
                     <!-- アーカイブ設定 -->
@@ -542,9 +568,9 @@ archive:
   tar_gz: true     # TAR.GZ形式（.tar.gz, .tgz）
   tar_bz2: true    # TAR.BZ2形式（.tar.bz2, .tbz2）
   tar_xz: true     # TAR.XZ形式（.tar.xz, .txz）
-  gz: false        # GZ形式（通常は画像圧縮に使わない）
-  bz2: false       # BZ2形式（通常は画像圧縮に使わない）
-  xz: false        # XZ形式（通常は画像圧縮に使わない）
+  gz: true         # GZ形式
+  bz2: true        # BZ2形式
+  xz: true         # XZ形式
   cbz: true        # コミックブック ZIP（.cbz）
   cbr: true        # コミックブック RAR（.cbr）
   pdf: true        # PDF（.pdf）
@@ -582,7 +608,7 @@ archive:
                                 <span class="setting-type">整数</span>
                             </div>
                             <p>UIフォントのサイズをポイント単位で指定します。</p>
-                            <div class="setting-value">デフォルト: 10 (推奨範囲: 8～16)</div>
+                            <div class="setting-value">デフォルト: 10（範囲: 8～64）</div>
                         </div>
 
                         <div class="setting-item">

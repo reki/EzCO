@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アクションリファレンス - EzCo ユーザーマニュアル</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/settings.css">
+    <link rel="icon" type="image/x-icon" href="../../icon.ico">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1><img src="../../icon.ico" alt="EzCo" class="logo-icon"> EzCo ユーザーマニュアル</h1>
+                <div class="language-switch">
+                    <a href="action-reference.html" class="active">日本語</a>
+                    <a href="action-reference-en.html">English</a>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="searchBox" placeholder="検索..." />
+                    <button id="searchBtn">検索</button>
+                </div>
+            </div>
+        </header>
+        <div class="main-container">
+            <nav class="sidebar">
+                <div class="toc">
+                    <h3>目次</h3>
+                    <ul class="toc-list">
+                        <li><a href="../Manual(JP).html" class="toc-link">メインページ</a></li>
+                        <li><a href="#file" class="toc-link">ファイルとウィンドウ</a></li>
+                        <li><a href="#tabs" class="toc-link">タブ</a></li>
+                        <li><a href="#pages" class="toc-link">ページとファイル移動</a></li>
+                        <li><a href="#view" class="toc-link">表示とズーム</a></li>
+                        <li><a href="#ui" class="toc-link">サイドバーとダイアログ</a></li>
+                        <li><a href="#modes" class="toc-link">表示モード</a></li>
+                        <li><a href="#mouse-lock" class="toc-link">マウスロック</a></li>
+                        <li><a href="#plugins" class="toc-link">プラグインアクション</a></li>
+                    </ul>
+                </div>
+            </nav>
+            <main class="content">
+                <div class="content-wrapper">
+                    <div class="breadcrumb"><a href="../Manual(JP).html">ホーム</a> &gt; アクションリファレンス</div>
+                    <h1>アクションリファレンス</h1>
+                    <p>ショートカット設定やマウスジェスチャー設定で選べる本体アクションです。「既定なし」は、初期状態では入力が設定されていないことを表します。「設定先」の「両方」はショートカットとジェスチャーのどちらにも設定でき、「ショートカットのみ」はキー／マウス入力だけに設定できます。</p>
+                    <div class="info-box">
+                        <h3>既定キーの競合</h3>
+                        <p><kbd>Ctrl+0</kbd> は「ズームリセット」と「最後のタブ」、<kbd>Ctrl+T</kbd> は「常に手前」と「新しいタブ」に登録されています。現在はタブ操作が優先されます。<kbd>Ctrl+O</kbd> は設定対象外の「ファイルを開く」と「左回転」で競合します。</p>
+                    </div>
+
+                    <section id="file" class="section">
+                        <h2>ファイルとウィンドウ</h2>
+                        <div class="control-table"><table><thead><tr><th>アクション</th><th>ID</th><th>動作</th><th>既定</th><th>設定先</th></tr></thead><tbody>
+                            <tr data-action-id="new_window"><td>新規ウィンドウ</td><td><code>new_window</code></td><td>別のEzCoウィンドウを開きます。</td><td>Ctrl+Shift+N</td><td>両方</td></tr>
+                            <tr data-action-id="open_file_in_new_tab"><td>新しいタブでファイルを開く</td><td><code>open_file_in_new_tab</code></td><td>選択したファイルを新しいタブで開きます。</td><td>Ctrl+Shift+O</td><td>両方</td></tr>
+                            <tr data-action-id="open_folder"><td>フォルダを開く</td><td><code>open_folder</code></td><td>フォルダを現在のタブで開きます。</td><td>なし</td><td>両方</td></tr>
+                            <tr data-action-id="save_session"><td>状態を名前をつけて保存</td><td><code>save_session</code></td><td>開いているタブとページを状態ファイルへ保存します。</td><td>Ctrl+S</td><td>両方</td></tr>
+                            <tr data-action-id="reopen_last_file"><td>最後に開いたファイルを開く</td><td><code>reopen_last_file</code></td><td>履歴の最後のファイルを開き直します。</td><td>R／ジェスチャー ↑↓</td><td>両方</td></tr>
+                            <tr data-action-id="close_app"><td>終了</td><td><code>close_app</code></td><td>EzCoを終了します。</td><td>E／ジェスチャー ↓</td><td>両方</td></tr>
+                        </tbody></table></div>
+                        <p><strong>設定対象外:</strong> 「ファイルを開く」はメニュー専用の <kbd>Ctrl+O</kbd> です。</p>
+                    </section>
+
+                    <section id="tabs" class="section">
+                        <h2>タブ</h2>
+                        <div class="control-table"><table><thead><tr><th>アクション</th><th>ID</th><th>動作</th><th>既定</th><th>設定先</th></tr></thead><tbody>
+                            <tr data-action-id="new_tab"><td>新しいタブ</td><td><code>new_tab</code></td><td>空のタブを追加します。</td><td>Ctrl+T</td><td>両方</td></tr>
+                            <tr data-action-id="close_tab"><td>タブを閉じる</td><td><code>close_tab</code></td><td>現在のタブを閉じます。</td><td>Ctrl+W</td><td>両方</td></tr>
+                            <tr data-action-id="reopen_closed_tab"><td>タブの再表示</td><td><code>reopen_closed_tab</code></td><td>最後に閉じたタブを戻します。</td><td>Ctrl+Shift+T</td><td>両方</td></tr>
+                            <tr data-action-id="next_tab"><td>右側のタブ</td><td><code>next_tab</code></td><td>右隣のタブへ移動します。</td><td>Ctrl+PageDown</td><td>両方</td></tr>
+                            <tr data-action-id="prev_tab"><td>左側のタブ</td><td><code>prev_tab</code></td><td>左隣のタブへ移動します。</td><td>Ctrl+PageUp</td><td>両方</td></tr>
+                            <tr data-action-id="first_tab"><td>最初のタブ</td><td><code>first_tab</code></td><td>先頭のタブへ移動します。</td><td>Ctrl+Home</td><td>両方</td></tr>
+                            <tr data-action-id="last_tab"><td>最後のタブ</td><td><code>last_tab</code></td><td>末尾のタブへ移動します。</td><td>Ctrl+End、Ctrl+0</td><td>両方</td></tr>
+                            <tr data-action-id="show_tab_1"><td>1番目のタブ</td><td><code>show_tab_1</code></td><td>1番目のタブを表示します。</td><td>Ctrl+1</td><td>両方</td></tr>
+                            <tr data-action-id="show_tab_2"><td>2番目のタブ</td><td><code>show_tab_2</code></td><td>2番目のタブを表示します。</td><td>Ctrl+2</td><td>両方</td></tr>
+                            <tr data-action-id="show_tab_3"><td>3番目のタブ</td><td><code>show_tab_3</code></td><td>3番目のタブを表示します。</td><td>Ctrl+3</td><td>両方</td></tr>
+                            <tr data-action-id="show_tab_4"><td>4番目のタブ</td><td><code>show_tab_4</code></td><td>4番目のタブを表示します。</td><td>Ctrl+4</td><td>両方</td></tr>
+                            <tr data-action-id="show_tab_5"><td>5番目のタブ</td><td><code>show_tab_5</code></td><td>5番目のタブを表示します。</td><td>Ctrl+5</td><td>両方</td></tr>
+                            <tr data-action-id="show_tab_6"><td>6番目のタブ</td><td><code>show_tab_6</code></td><td>6番目のタブを表示します。</td><td>Ctrl+6</td><td>両方</td></tr>
+                            <tr data-action-id="show_tab_7"><td>7番目のタブ</td><td><code>show_tab_7</code></td><td>7番目のタブを表示します。</td><td>Ctrl+7</td><td>両方</td></tr>
+                            <tr data-action-id="show_tab_8"><td>8番目のタブ</td><td><code>show_tab_8</code></td><td>8番目のタブを表示します。</td><td>Ctrl+8</td><td>両方</td></tr>
+                            <tr data-action-id="show_tab_9"><td>9番目のタブ</td><td><code>show_tab_9</code></td><td>9番目のタブを表示します。</td><td>Ctrl+9</td><td>両方</td></tr>
+                        </tbody></table></div>
+                    </section>
+
+                    <section id="pages" class="section">
+                        <h2>ページとファイル移動</h2>
+                        <div class="control-table"><table><thead><tr><th>アクション</th><th>ID</th><th>動作</th><th>既定</th><th>設定先</th></tr></thead><tbody>
+                            <tr data-action-id="next_page"><td>次のページ</td><td><code>next_page</code></td><td>次ページへ進みます。拡大時は選択中の移動方式に従います。</td><td>左クリック、Right、Space</td><td>両方</td></tr>
+                            <tr data-action-id="prev_page"><td>前のページ</td><td><code>prev_page</code></td><td>前ページへ戻ります。</td><td>右クリック、V、Left</td><td>両方</td></tr>
+                            <tr data-action-id="first_page"><td>最初のページ</td><td><code>first_page</code></td><td>先頭ページへ移動します。</td><td>ジェスチャー →←</td><td>両方</td></tr>
+                            <tr data-action-id="last_page"><td>最後のページ</td><td><code>last_page</code></td><td>末尾ページへ移動します。</td><td>ジェスチャー ←→</td><td>両方</td></tr>
+                            <tr data-action-id="next_file"><td>次のファイル</td><td><code>next_file</code></td><td>現在の並びの次ファイルへ移動します。</td><td>Ctrl+Right</td><td>両方</td></tr>
+                            <tr data-action-id="prev_file"><td>前のファイル</td><td><code>prev_file</code></td><td>現在の並びの前ファイルへ移動します。</td><td>Ctrl+Left</td><td>両方</td></tr>
+                            <tr data-action-id="next_comic"><td>次のコミック</td><td><code>next_comic</code></td><td>同じ場所にある次のコミックを開きます。</td><td>W／ジェスチャー →</td><td>両方</td></tr>
+                            <tr data-action-id="prev_comic"><td>前のコミック</td><td><code>prev_comic</code></td><td>同じ場所にある前のコミックを開きます。</td><td>Q／ジェスチャー ←</td><td>両方</td></tr>
+                        </tbody></table></div>
+                    </section>
+
+                    <section id="view" class="section">
+                        <h2>表示とズーム</h2>
+                        <div class="control-table"><table><thead><tr><th>アクション</th><th>ID</th><th>動作</th><th>既定</th><th>設定先</th></tr></thead><tbody>
+                            <tr data-action-id="zoom_in"><td>拡大</td><td><code>zoom_in</code></td><td>画像を1段階拡大します。</td><td>MouseWheelDown</td><td>両方</td></tr>
+                            <tr data-action-id="zoom_out"><td>縮小</td><td><code>zoom_out</code></td><td>画像を1段階縮小します。</td><td>MouseWheelUp</td><td>両方</td></tr>
+                            <tr data-action-id="reset_zoom"><td>ズームリセット</td><td><code>reset_zoom</code></td><td>倍率と画像位置を初期状態へ戻します。</td><td>Ctrl+0</td><td>両方</td></tr>
+                            <tr data-action-id="rotate_right"><td>右回転</td><td><code>rotate_right</code></td><td>画像を右へ90度回転します。</td><td>Ctrl+R</td><td>両方</td></tr>
+                            <tr data-action-id="rotate_left"><td>左回転</td><td><code>rotate_left</code></td><td>画像を左へ90度回転します。</td><td>Ctrl+O</td><td>両方</td></tr>
+                            <tr data-action-id="fullscreen"><td>フルスクリーン</td><td><code>fullscreen</code></td><td>全画面表示を切り替えます。</td><td>Return／ジェスチャー ↓→</td><td>両方</td></tr>
+                            <tr data-action-id="min_scale_toggle"><td>最小縮小率</td><td><code>min_scale_toggle</code></td><td>画像を小さく表示できるモードを切り替えます。</td><td>Ctrl+M</td><td>両方</td></tr>
+                            <tr data-action-id="always_on_top"><td>常に手前</td><td><code>always_on_top</code></td><td>ウィンドウの最前面表示を切り替えます。</td><td>Ctrl+T</td><td>両方</td></tr>
+                        </tbody></table></div>
+                    </section>
+
+                    <section id="ui" class="section">
+                        <h2>サイドバーとダイアログ</h2>
+                        <div class="control-table"><table><thead><tr><th>アクション</th><th>ID</th><th>動作</th><th>既定</th><th>設定先</th></tr></thead><tbody>
+                            <tr data-action-id="image_list"><td>画像一覧</td><td><code>image_list</code></td><td>現在の画像一覧を開きます。</td><td>Ctrl+L</td><td>両方</td></tr>
+                            <tr data-action-id="page_slider_dialog"><td>ページスライダー</td><td><code>page_slider_dialog</code></td><td>ページスライダーを表示・非表示にします。</td><td>ジェスチャー ↓→←</td><td>両方</td></tr>
+                            <tr data-action-id="toggle_bookmark"><td>ブックマーク追加／削除</td><td><code>toggle_bookmark</code></td><td>現在ページのブックマークを切り替えます。</td><td>Ctrl+Shift+B</td><td>両方</td></tr>
+                            <tr data-action-id="toggle_bookmark_dock"><td>ブックマークサイドバー</td><td><code>toggle_bookmark_dock</code></td><td>ブックマークサイドバーを切り替えます。</td><td>Ctrl+B</td><td>両方</td></tr>
+                            <tr data-action-id="toggle_history_dock"><td>履歴サイドバー</td><td><code>toggle_history_dock</code></td><td>履歴サイドバーを切り替えます。</td><td>Ctrl+H</td><td>両方</td></tr>
+                            <tr data-action-id="toggle_tab_list_dock"><td>タブ一覧サイドバー</td><td><code>toggle_tab_list_dock</code></td><td>タブ一覧サイドバーを切り替えます。</td><td>なし</td><td>両方</td></tr>
+                            <tr data-action-id="image_slide_sidebar"><td>画像スライドサイドバー</td><td><code>image_slide_sidebar</code></td><td>画像スライドサイドバーを切り替えます。</td><td>なし</td><td>両方</td></tr>
+                        </tbody></table></div>
+                        <p>旧ID <code>toggle_image_slide_dock</code> は既存設定の互換用に受け付けます。新規設定では <code>image_slide_sidebar</code> を使用してください。</p>
+                    </section>
+
+                    <section id="modes" class="section">
+                        <h2>表示モード</h2>
+                        <div class="control-table"><table><thead><tr><th>アクション</th><th>ID</th><th>動作</th><th>既定</th><th>設定先</th></tr></thead><tbody>
+                            <tr data-action-id="page_mode_single"><td>単ページ</td><td><code>page_mode_single</code></td><td>単ページ表示へ切り替えます。</td><td>なし</td><td>両方</td></tr>
+                            <tr data-action-id="page_mode_spread_right"><td>両開き（右）</td><td><code>page_mode_spread_right</code></td><td>右始まりの両開きへ切り替えます。</td><td>なし</td><td>両方</td></tr>
+                            <tr data-action-id="page_mode_spread_left"><td>両開き（左）</td><td><code>page_mode_spread_left</code></td><td>左始まりの両開きへ切り替えます。</td><td>なし</td><td>両方</td></tr>
+                            <tr data-action-id="toggle_spread"><td>両開き切替</td><td><code>toggle_spread</code></td><td>単ページと優先側の両開きを切り替えます。</td><td>なし</td><td>両方</td></tr>
+                            <tr data-action-id="zoom_navigation_page"><td>改ページ優先</td><td><code>zoom_navigation_page</code></td><td>拡大中もパンせず改ページします。</td><td>なし</td><td>両方</td></tr>
+                            <tr data-action-id="zoom_navigation_left"><td>左移動優先</td><td><code>zoom_navigation_left</code></td><td>拡大中は左向きの読書順でパンします。</td><td>なし</td><td>両方</td></tr>
+                            <tr data-action-id="zoom_navigation_right"><td>右移動優先</td><td><code>zoom_navigation_right</code></td><td>拡大中は右向きの読書順でパンします。</td><td>なし</td><td>両方</td></tr>
+                        </tbody></table></div>
+                    </section>
+
+                    <section id="mouse-lock" class="section">
+                        <h2>マウスロック</h2>
+                        <div class="control-table"><table><thead><tr><th>アクション</th><th>ID</th><th>動作</th><th>既定</th><th>設定先</th></tr></thead><tbody>
+                            <tr data-action-id="toggle_mouse_lock"><td>マウスロック</td><td><code>toggle_mouse_lock</code></td><td>継続するマウスロックを切り替えます。</td><td>Ctrl+K</td><td>両方</td></tr>
+                            <tr data-action-id="hold_mouse_lock"><td>マウスロックの反転</td><td><code>hold_mouse_lock</code></td><td>1つ以上の割当入力を押している間だけ現在のロック状態を反転します。</td><td>Ctrl、MouseMiddle</td><td>ショートカットのみ</td></tr>
+                        </tbody></table></div>
+                    </section>
+
+                    <section id="plugins" class="section">
+                        <h2>プラグインアクション</h2>
+                        <p>有効なプラグインが登録したアクションも設定画面の候補へ動的に追加されます。表示名と動作は各プラグインの説明を確認してください。本体アクションのaliasを提供するプラグインが有効な場合、その本体IDは候補から置き換わります。</p>
+                    </section>
+                    <div class="pagination">
+                        <a href="settings-shortcuts.html" class="page-link">ショートカット設定</a>
+                        <a href="../Manual(JP).html" class="page-link">ホーム</a>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="../js/main.js"></script>
+    <script src="../js/search.js"></script>
+</body>
+</html>

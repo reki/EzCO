@@ -47,7 +47,7 @@ from ez_co.ui.docks.page_slider import PageSlider
 from ez_co.ui.dialogs.pdf_password_dialog import CLOSE_APP_RESULT, ArchivePasswordDialog
 from ez_co.ui.viewer.viewer_tab_bar import ViewerTabBar
 from ez_co.utils.path_utils import get_project_root, is_nuitka
-from ez_co.enums.actions import Actions
+from ez_co.enums.actions import Actions, canonical_action_id
 from ez_co.enums.mouse_buttons import MouseButtons, MOUSE_BUTTON_VALUES
 from ez_co.enums.keyboard_keys import key_to_string
 from ez_co.enums.archives import ArchiveInfo
@@ -1770,6 +1770,7 @@ class MainWindow(QMainWindow):
         session = getattr(self, "plugin_session", None)
         if session is not None and session.invoke_registered(action_name):
             return True
+        action_name = canonical_action_id(action_name)
         handlers = {
             Actions.NEW_TAB.value: self.new_tab,
             Actions.CLOSE_TAB.value: self.close_current_tab,
@@ -1781,6 +1782,7 @@ class MainWindow(QMainWindow):
             Actions.OPEN_FILE_IN_NEW_TAB.value: self.open_file_in_new_tab,
             Actions.OPEN_FOLDER.value: self.open_folder,
             Actions.SAVE_SESSION.value: self.save_session_as,
+            Actions.REOPEN_LAST_FILE.value: self.reopen_last_file,
             Actions.SHOW_TAB_1.value: lambda: self.goto_tab(0),
             Actions.SHOW_TAB_2.value: lambda: self.goto_tab(1),
             Actions.SHOW_TAB_3.value: lambda: self.goto_tab(2),
@@ -1791,6 +1793,7 @@ class MainWindow(QMainWindow):
             Actions.SHOW_TAB_8.value: lambda: self.goto_tab(7),
             Actions.SHOW_TAB_9.value: lambda: self.goto_tab(8),
             Actions.TOGGLE_TAB_LIST_DOCK.value: self.toggle_tab_list_dock,
+            Actions.IMAGE_SLIDE_SIDEBAR.value: self.toggle_image_slide_dock,
             Actions.ZOOM_NAVIGATION_PAGE.value: lambda: self.apply_zoom_navigation_mode("page"),
             Actions.ZOOM_NAVIGATION_LEFT.value: lambda: self.apply_zoom_navigation_mode("left"),
             Actions.ZOOM_NAVIGATION_RIGHT.value: lambda: self.apply_zoom_navigation_mode("right"),

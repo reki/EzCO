@@ -6,14 +6,14 @@
     <title>EzCo User Manual</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/theme.css">
-    <link rel="icon" type="image/x-icon" href="../resources/icon.ico">
+    <link rel="icon" type="image/x-icon" href="../icon.ico">
 </head>
 <body>
     <div class="container">
         <!-- Header -->
         <header class="header">
             <div class="header-content">
-                <h1><img src="../resources/icon_32x32.png" alt="EzCo" class="logo-icon"> EzCo User Manual</h1>
+                <h1><img src="../icon.ico" alt="EzCo" class="logo-icon"> EzCo User Manual</h1>
                 <div class="language-switch">
                     <a href="Manual(JP).html">日本語</a>
                     <a href="Manual(EN).html" class="active">English</a>
@@ -72,13 +72,17 @@
                                 <li><a href="files/settings-en.html#history-settings" class="toc-link toc-external" title="Opens another page">History Settings</a></li>
                                 <li><a href="files/settings-en.html#language-settings" class="toc-link toc-external" title="Opens another page">Language Settings</a></li>
                                 <li><a href="files/settings-en.html#debug-settings" class="toc-link toc-external" title="Opens another page">Debug Settings</a></li>
-                                <li><a href="files/settings-en.html#shortcuts" class="toc-link toc-external" title="Opens another page">Shortcuts</a></li>
+                                <li><a href="files/settings-en.html#archive-settings" class="toc-link toc-external" title="Opens another page">Archive Settings</a></li>
+                                <li><a href="files/settings-en.html#filter-settings" class="toc-link toc-external" title="Opens another page">Filter Settings</a></li>
+                                <li><a href="files/settings-shortcuts-en.html" class="toc-link toc-external" title="Opens another page">Shortcut Settings</a></li>
                                 <li><a href="files/settings-en.html#font-settings" class="toc-link toc-external" title="Opens another page">Font Settings</a></li>
+                                <li><a href="files/settings-en.html#imagelist-settings" class="toc-link toc-external" title="Opens another page">Image List Settings</a></li>
                                 <li><a href="files/settings-en.html#tab-settings" class="toc-link toc-external" title="Opens another page">Tab Settings</a></li>
                                 <li><a href="files/settings-en.html#plugin-settings" class="toc-link toc-external" title="Opens another page">Plugin Settings</a></li>
                                 <li><a href="files/settings-en.html#profile-settings" class="toc-link toc-external" title="Opens another page">Profile Settings</a></li>
                             </ul>
                         </li>
+                        <li><a href="files/action-reference-en.html" class="toc-link toc-external" title="Opens another page">Action Reference</a></li>
                         <li>
                             <a href="#plugin-reference" class="toc-link">Plugin Reference</a>
                             <ul class="toc-sublist">
@@ -94,7 +98,6 @@
                                 <li><a href="#common-issues" class="toc-link">Common Issues</a></li>
                             </ul>
                         </li>
-                        <li><a href="#future-features" class="toc-link">Planned Features</a></li>
                         <li><a href="#appendix" class="toc-link">Appendix</a></li>
                     </ul>
                 </div>
@@ -151,6 +154,11 @@
                                 <div class="feature-icon">🌐</div>
                                 <h3>Multi-language Support</h3>
                                 <p>Supports Japanese and English, with the ability to add custom language files. Undefined keys in external language files display the key name.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🔌</div>
+                                <h3>Plugins</h3>
+                                <p>ZIP or folder plugins can add formats, filters, sidebars, and actions.</p>
                             </div>
                         </div>
 
@@ -522,6 +530,7 @@
                         <div class="code-block">
                             <pre><code>EzCo.exe --conf:section.key=value --profile=profile_name</code></pre>
                         </div>
+                        <p>Pass a normal file or folder path, such as <code>EzCo.exe "C:\path\to\book.cbz"</code>, to open it at startup.</p>
 
                         <div class="info-box">
                             <h3>💡 Features</h3>
@@ -735,107 +744,6 @@
                         <h2>🚀 Advanced Features</h2>
                         <p>Archives, mouse gestures, bookmarks, history, virtual paths, and custom fonts/languages are documented on a dedicated page.</p>
                         <p><a href="files/advanced-features-en.html" class="page-link">Advanced features in detail →</a></p>
-                        
-                        <h3 id="archives">Archive File Support</h3>
-                        <p>EzCo supports a wide variety of archive formats, allowing you to directly view images inside compressed files without extracting them first.</p>
-                        
-                        <div class="feature-grid">
-                            <div class="method-card">
-                                <h4>📦 Supported Formats</h4>
-                                <p><strong>ZIP, 7Z, RAR, CBZ, CBR, TAR, TAR.GZ, TAR.BZ2, TAR.XZ, GZ, BZ2, XZ, PDF</strong></p>
-                            </div>
-                            <div class="method-card">
-                                <h4>⚙️ Plugin Settings</h4>
-                                <p>Choose Built-in, a plugin, or Don't load per extension in <code>Settings</code> → <code>Plugin Settings</code></p>
-                            </div>
-                        </div>
-
-                        <h3 id="gestures">Mouse Gestures</h3>
-                        <p>Mouse gestures allow you to quickly perform common actions by drawing patterns with the right mouse button.</p>
-                        
-                        <div class="info-box">
-                            <h3>🖱️ How to Use Gestures</h3>
-                            <ol>
-                                <li>Hold down the right mouse button</li>
-                                <li>Drag the mouse in the desired direction(s)</li>
-                                <li>Release the right mouse button to execute the action</li>
-                            </ol>
-                        </div>
-
-                        <div class="control-table">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Gesture</th>
-                                        <th>Action</th>
-                                        <th>Description</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>←</td>
-                                        <td>Previous Comic</td>
-                                        <td>Move to the previous comic file</td>
-                                    </tr>
-                                    <tr>
-                                        <td>→</td>
-                                        <td>Next Comic</td>
-                                        <td>Move to the next comic file</td>
-                                    </tr>
-                                    <tr>
-                                        <td>↓</td>
-                                        <td>Exit Application</td>
-                                        <td>Close EzCo</td>
-                                    </tr>
-                                    <tr>
-                                        <td>↑</td>
-                                        <td>Toggle Fullscreen</td>
-                                        <td>Switch between fullscreen and windowed mode</td>
-                                    </tr>
-                                    <tr>
-                                        <td>↑↓</td>
-                                        <td>Reopen Last File</td>
-                                        <td>Open the last opened file</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <h3 id="bookmarks">Bookmarks</h3>
-                        <p>Save your favorite pages and organize them in folders for quick access.</p>
-                        
-                        <div class="method-grid">
-                            <div class="method-card">
-                                <h4>📑 Add Bookmark</h4>
-                                <p>Press <kbd>Ctrl + Shift + B</kbd> or use the menu to bookmark the current page.</p>
-                            </div>
-                            <div class="method-card">
-                                <h4>📁 Organize Bookmarks</h4>
-                                <p>Create folders to organize your bookmarks by series or category.</p>
-                            </div>
-                        </div>
-
-                        <h3 id="history">History</h3>
-                        <p>EzCo automatically keeps track of recently viewed files and their last viewed pages.</p>
-                        
-                        <div class="tip-box">
-                            <h3>💡 History Features</h3>
-                            <ul>
-                                <li>Automatically saves the last viewed page for each file</li>
-                                <li>Configurable history limit (1-99 entries)</li>
-                                <li>Quick access through the history sidebar</li>
-                                <li>Automatic cleanup of deleted files</li>
-                            </ul>
-                        </div>
-
-                        <h3 id="virtual-path">Virtual Paths</h3>
-                        <p>Virtual paths allow you to directly reference specific files within archive files.</p>
-                        
-                        <div class="info-box">
-                            <h3>📋 Virtual Path Format</h3>
-                            <p><code>archive://path/to/archive.zip#internal/file.jpg</code></p>
-                            <p>This format allows you to create shortcuts or links that open specific images within archive files.</p>
-                        </div>
                     </section>
 
                     <!-- Settings Section -->
@@ -843,82 +751,6 @@
                         <h2>⚙️ Settings</h2>
                         <p>Window, viewer, cache, history, language, debug, shortcuts, fonts, plugins, profiles, and other items are documented on the settings page.</p>
                         <p><a href="files/settings-en.html" class="page-link">Settings in detail →</a></p>
-                        
-                        <p>EzCo provides extensive customization options through its settings system. Access settings via <code>Settings</code> → <code>Settings</code> in the menu.</p>
-
-                        <h3 id="window-settings">Window Settings</h3>
-                        <div class="control-table">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Setting</th>
-                                        <th>Description</th>
-                                        <th>Default</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Auto-resize window</td>
-                                        <td>Automatically adjust window size when loading images</td>
-                                        <td>Disabled</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Save window state</td>
-                                        <td>Remember window size and position</td>
-                                        <td>Disabled</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Always on top</td>
-                                        <td>Keep window in front of other applications</td>
-                                        <td>Disabled</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <h3 id="viewer-settings">Viewer Settings</h3>
-                        <div class="control-table">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Setting</th>
-                                        <th>Description</th>
-                                        <th>Default</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Background color</td>
-                                        <td>Color displayed behind images</td>
-                                        <td>Light green</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Fit to window</td>
-                                        <td>Automatically scale images to fit the window</td>
-                                        <td>Disabled</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <h3 id="shortcuts">Shortcut Configuration</h3>
-                        <p>Customize keyboard and mouse shortcuts for all actions through <code>Settings</code> → <code>Shortcut Settings</code>.</p>
-
-                        <h3 id="language-settings">Language Settings</h3>
-                        <p>EzCo supports multiple languages and automatic language detection.</p>
-                        
-                        <div class="info-box">
-                            <h3>🌐 Language Support</h3>
-                            <ul>
-                                <li><strong>Built-in Languages:</strong> Japanese (ja) and English (en)</li>
-                                <li><strong>Custom Languages:</strong> Add your own language files in the <code>langs</code> folder</li>
-                                <li><strong>System Default:</strong> Automatically detects your system language</li>
-                                <li><strong>Fallback Behavior:</strong> When loading external language files, undefined keys display as the key name itself</li>
-                            </ul>
-                        </div>
-
-                        <h3 id="font-settings">Font Settings</h3>
-                        <p>Customize the appearance of UI popups and overlays.</p>
                     </section>
 
                     <section id="plugin-reference" class="section">
@@ -971,43 +803,6 @@
                         </div>
                     </section>
 
-                    <!-- Planned Features Section -->
-                    <section id="future-features" class="section">
-                        <h2>🚧 Planned Features</h2>
-                        <div class="info-box">
-                            <h3>🛠️ In Development</h3>
-                            <p>The following features are planned for future versions:</p>
-                        </div>
-
-                        <div class="feature-grid">
-                            <div class="feature-card">
-                                <div class="feature-icon">📦</div>
-                                <h4>Nested Archives</h4>
-                                <p>Support for archives within archives</p>
-                            </div>
-                            <div class="feature-card">
-                                <div class="feature-icon">🌙</div>
-                                <h4>Dark Mode</h4>
-                                <p>Eye-friendly dark theme implementation</p>
-                            </div>
-                            <div class="feature-card">
-                                <div class="feature-icon">🔌</div>
-                                <h4>Plugin System</h4>
-                                <p>Python-based functionality extensions</p>
-                            </div>
-                            <div class="feature-card">
-                                <div class="feature-icon">🎯</div>
-                                <h4>Command Palette</h4>
-                                <p>Keyword-based function search and execution</p>
-                            </div>
-                        </div>
-
-                        <div class="tip-box">
-                            <h3>💡 Susie Plugin Support</h3>
-                            <p>Future support for Susie plugins will enable even more image and archive formats.</p>
-                        </div>
-                    </section>
-
                     <!-- Appendix Section -->
                     <section id="appendix" class="section">
                         <h2>📋 Appendix</h2>
@@ -1031,7 +826,7 @@
                                     <tr>
                                         <td>Archive & Compressed Files</td>
                                         <td>ZIP, 7-Zip, RAR, TAR, GZip, BZip2, XZ</td>
-                                        <td>.zip, .7z, .rar, .tar, .tar.gz, .tar.bz2, .tar.xz, .gz, .bz2, .xz</td>
+                                        <td>.zip, .7z, .rar, .tar, .tar.gz/.tgz, .tar.bz2/.tbz2, .tar.xz/.txz, .gz, .bz2, .xz</td>
                                     </tr>
                                     <tr>
                                         <td>Comic Archives</td>
@@ -1052,8 +847,8 @@
                             <h3>📁 Important Files and Folders</h3>
                             <ul>
                                 <li><strong>config.db:</strong> Database for per-profile settings, bookmarks, and history</li>
-                                <li><strong>langs/:</strong> Custom language files (external language/notation customization, undefined keys show key names)</li>
-                                <li><strong>font/:</strong> Custom TTF font files (additional UI fonts)</li>
+                                <li><strong>langs/:</strong> Custom language files in the configured data location (undefined keys show key names)</li>
+                                <li><strong>font/:</strong> Custom TTF/OTF fonts in the configured data location</li>
                                 <li><strong>logs/:</strong> Debug log files (when debug mode is enabled)</li>
                             </ul>
                         </div>

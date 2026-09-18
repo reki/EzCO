@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Action Reference - EzCo User Manual</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/settings.css">
+    <link rel="icon" type="image/x-icon" href="../../icon.ico">
+</head>
+<body>
+    <div class="container">
+        <header class="header"><div class="header-content">
+            <h1><img src="../../icon.ico" alt="EzCo" class="logo-icon"> EzCo User Manual</h1>
+            <div class="language-switch"><a href="action-reference.html">日本語</a><a href="action-reference-en.html" class="active">English</a></div>
+            <div class="search-container"><input type="text" id="searchBox" placeholder="Search..." /><button id="searchBtn">Search</button></div>
+        </div></header>
+        <div class="main-container">
+            <nav class="sidebar"><div class="toc">
+                <h3>Contents</h3>
+                <ul class="toc-list">
+                    <li><a href="../Manual(EN).html" class="toc-link">Main page</a></li>
+                    <li><a href="#file" class="toc-link">Files and Windows</a></li>
+                    <li><a href="#tabs" class="toc-link">Tabs</a></li>
+                    <li><a href="#pages" class="toc-link">Pages and Files</a></li>
+                    <li><a href="#view" class="toc-link">View and Zoom</a></li>
+                    <li><a href="#ui" class="toc-link">Sidebars and Dialogs</a></li>
+                    <li><a href="#modes" class="toc-link">View Modes</a></li>
+                    <li><a href="#mouse-lock" class="toc-link">Mouse Lock</a></li>
+                    <li><a href="#plugins" class="toc-link">Plugin Actions</a></li>
+                </ul>
+            </div></nav>
+            <main class="content"><div class="content-wrapper">
+                <div class="breadcrumb"><a href="../Manual(EN).html">Home</a> &gt; Action Reference</div>
+                <h1>Action Reference</h1>
+                <p>These built-in actions are offered by Shortcut Settings and Mouse Gesture Settings. “None” means no input is assigned initially. In “Available in,” “Both” means the action can be configured as either a shortcut or gesture; “Shortcut only” means keyboard or mouse inputs only.</p>
+                <div class="info-box"><h3>Default key conflicts</h3><p><kbd>Ctrl+0</kbd> is assigned to Reset Zoom and Last Tab, while <kbd>Ctrl+T</kbd> is assigned to Always on Top and New Tab. Tab actions currently take priority. <kbd>Ctrl+O</kbd> conflicts between the non-configurable Open File command and Rotate Left.</p></div>
+
+                <section id="file" class="section"><h2>Files and Windows</h2>
+                    <div class="control-table"><table><thead><tr><th>Action</th><th>ID</th><th>Behavior</th><th>Default</th><th>Available in</th></tr></thead><tbody>
+                        <tr data-action-id="new_window"><td>New Window</td><td><code>new_window</code></td><td>Opens another EzCo window.</td><td>Ctrl+Shift+N</td><td>Both</td></tr>
+                        <tr data-action-id="open_file_in_new_tab"><td>Open File in New Tab</td><td><code>open_file_in_new_tab</code></td><td>Opens selected files in a new tab.</td><td>Ctrl+Shift+O</td><td>Both</td></tr>
+                        <tr data-action-id="open_folder"><td>Open Folder</td><td><code>open_folder</code></td><td>Opens a folder in the current tab.</td><td>None</td><td>Both</td></tr>
+                        <tr data-action-id="save_session"><td>Save State As</td><td><code>save_session</code></td><td>Saves open tabs and pages to a state file.</td><td>Ctrl+S</td><td>Both</td></tr>
+                        <tr data-action-id="reopen_last_file"><td>Reopen Last File</td><td><code>reopen_last_file</code></td><td>Reopens the latest file in history.</td><td>R / gesture ↑↓</td><td>Both</td></tr>
+                        <tr data-action-id="close_app"><td>Exit</td><td><code>close_app</code></td><td>Exits EzCo.</td><td>E / gesture ↓</td><td>Both</td></tr>
+                    </tbody></table></div>
+                    <p><strong>Not configurable:</strong> Open File is a menu command fixed to <kbd>Ctrl+O</kbd>.</p>
+                </section>
+
+                <section id="tabs" class="section"><h2>Tabs</h2>
+                    <div class="control-table"><table><thead><tr><th>Action</th><th>ID</th><th>Behavior</th><th>Default</th><th>Available in</th></tr></thead><tbody>
+                        <tr data-action-id="new_tab"><td>New Tab</td><td><code>new_tab</code></td><td>Adds an empty tab.</td><td>Ctrl+T</td><td>Both</td></tr>
+                        <tr data-action-id="close_tab"><td>Close Tab</td><td><code>close_tab</code></td><td>Closes the current tab.</td><td>Ctrl+W</td><td>Both</td></tr>
+                        <tr data-action-id="reopen_closed_tab"><td>Reopen Tab</td><td><code>reopen_closed_tab</code></td><td>Restores the last closed tab.</td><td>Ctrl+Shift+T</td><td>Both</td></tr>
+                        <tr data-action-id="next_tab"><td>Right Tab</td><td><code>next_tab</code></td><td>Moves to the tab on the right.</td><td>Ctrl+PageDown</td><td>Both</td></tr>
+                        <tr data-action-id="prev_tab"><td>Left Tab</td><td><code>prev_tab</code></td><td>Moves to the tab on the left.</td><td>Ctrl+PageUp</td><td>Both</td></tr>
+                        <tr data-action-id="first_tab"><td>First Tab</td><td><code>first_tab</code></td><td>Moves to the first tab.</td><td>Ctrl+Home</td><td>Both</td></tr>
+                        <tr data-action-id="last_tab"><td>Last Tab</td><td><code>last_tab</code></td><td>Moves to the last tab.</td><td>Ctrl+End, Ctrl+0</td><td>Both</td></tr>
+                        <tr data-action-id="show_tab_1"><td>Tab 1</td><td><code>show_tab_1</code></td><td>Shows the first tab.</td><td>Ctrl+1</td><td>Both</td></tr>
+                        <tr data-action-id="show_tab_2"><td>Tab 2</td><td><code>show_tab_2</code></td><td>Shows the second tab.</td><td>Ctrl+2</td><td>Both</td></tr>
+                        <tr data-action-id="show_tab_3"><td>Tab 3</td><td><code>show_tab_3</code></td><td>Shows the third tab.</td><td>Ctrl+3</td><td>Both</td></tr>
+                        <tr data-action-id="show_tab_4"><td>Tab 4</td><td><code>show_tab_4</code></td><td>Shows the fourth tab.</td><td>Ctrl+4</td><td>Both</td></tr>
+                        <tr data-action-id="show_tab_5"><td>Tab 5</td><td><code>show_tab_5</code></td><td>Shows the fifth tab.</td><td>Ctrl+5</td><td>Both</td></tr>
+                        <tr data-action-id="show_tab_6"><td>Tab 6</td><td><code>show_tab_6</code></td><td>Shows the sixth tab.</td><td>Ctrl+6</td><td>Both</td></tr>
+                        <tr data-action-id="show_tab_7"><td>Tab 7</td><td><code>show_tab_7</code></td><td>Shows the seventh tab.</td><td>Ctrl+7</td><td>Both</td></tr>
+                        <tr data-action-id="show_tab_8"><td>Tab 8</td><td><code>show_tab_8</code></td><td>Shows the eighth tab.</td><td>Ctrl+8</td><td>Both</td></tr>
+                        <tr data-action-id="show_tab_9"><td>Tab 9</td><td><code>show_tab_9</code></td><td>Shows the ninth tab.</td><td>Ctrl+9</td><td>Both</td></tr>
+                    </tbody></table></div>
+                </section>
+
+                <section id="pages" class="section"><h2>Pages and Files</h2>
+                    <div class="control-table"><table><thead><tr><th>Action</th><th>ID</th><th>Behavior</th><th>Default</th><th>Available in</th></tr></thead><tbody>
+                        <tr data-action-id="next_page"><td>Next Page</td><td><code>next_page</code></td><td>Advances a page, using the selected zoomed-navigation mode.</td><td>Left click, Right, Space</td><td>Both</td></tr>
+                        <tr data-action-id="prev_page"><td>Previous Page</td><td><code>prev_page</code></td><td>Moves back a page.</td><td>Right click, V, Left</td><td>Both</td></tr>
+                        <tr data-action-id="first_page"><td>First Page</td><td><code>first_page</code></td><td>Moves to the first page.</td><td>Gesture →←</td><td>Both</td></tr>
+                        <tr data-action-id="last_page"><td>Last Page</td><td><code>last_page</code></td><td>Moves to the last page.</td><td>Gesture ←→</td><td>Both</td></tr>
+                        <tr data-action-id="next_file"><td>Next File</td><td><code>next_file</code></td><td>Moves to the next file in the current sequence.</td><td>Ctrl+Right</td><td>Both</td></tr>
+                        <tr data-action-id="prev_file"><td>Previous File</td><td><code>prev_file</code></td><td>Moves to the previous file.</td><td>Ctrl+Left</td><td>Both</td></tr>
+                        <tr data-action-id="next_comic"><td>Next Comic</td><td><code>next_comic</code></td><td>Opens the next comic in the same location.</td><td>W / gesture →</td><td>Both</td></tr>
+                        <tr data-action-id="prev_comic"><td>Previous Comic</td><td><code>prev_comic</code></td><td>Opens the previous comic.</td><td>Q / gesture ←</td><td>Both</td></tr>
+                    </tbody></table></div>
+                </section>
+
+                <section id="view" class="section"><h2>View and Zoom</h2>
+                    <div class="control-table"><table><thead><tr><th>Action</th><th>ID</th><th>Behavior</th><th>Default</th><th>Available in</th></tr></thead><tbody>
+                        <tr data-action-id="zoom_in"><td>Zoom In</td><td><code>zoom_in</code></td><td>Zooms the image in one step.</td><td>MouseWheelDown</td><td>Both</td></tr>
+                        <tr data-action-id="zoom_out"><td>Zoom Out</td><td><code>zoom_out</code></td><td>Zooms the image out one step.</td><td>MouseWheelUp</td><td>Both</td></tr>
+                        <tr data-action-id="reset_zoom"><td>Reset Zoom</td><td><code>reset_zoom</code></td><td>Restores scale and image position.</td><td>Ctrl+0</td><td>Both</td></tr>
+                        <tr data-action-id="rotate_right"><td>Rotate Right</td><td><code>rotate_right</code></td><td>Rotates the image 90 degrees clockwise.</td><td>Ctrl+R</td><td>Both</td></tr>
+                        <tr data-action-id="rotate_left"><td>Rotate Left</td><td><code>rotate_left</code></td><td>Rotates the image 90 degrees counterclockwise.</td><td>Ctrl+O</td><td>Both</td></tr>
+                        <tr data-action-id="fullscreen"><td>Fullscreen</td><td><code>fullscreen</code></td><td>Toggles fullscreen display.</td><td>Return / gesture ↓→</td><td>Both</td></tr>
+                        <tr data-action-id="min_scale_toggle"><td>Minimum Scale</td><td><code>min_scale_toggle</code></td><td>Toggles whether images may display below fit scale.</td><td>Ctrl+M</td><td>Both</td></tr>
+                        <tr data-action-id="always_on_top"><td>Always on Top</td><td><code>always_on_top</code></td><td>Toggles the always-on-top window flag.</td><td>Ctrl+T</td><td>Both</td></tr>
+                    </tbody></table></div>
+                </section>
+
+                <section id="ui" class="section"><h2>Sidebars and Dialogs</h2>
+                    <div class="control-table"><table><thead><tr><th>Action</th><th>ID</th><th>Behavior</th><th>Default</th><th>Available in</th></tr></thead><tbody>
+                        <tr data-action-id="image_list"><td>Image List</td><td><code>image_list</code></td><td>Opens the current image list.</td><td>Ctrl+L</td><td>Both</td></tr>
+                        <tr data-action-id="page_slider_dialog"><td>Page Slider</td><td><code>page_slider_dialog</code></td><td>Shows or hides the page slider.</td><td>Gesture ↓→←</td><td>Both</td></tr>
+                        <tr data-action-id="toggle_bookmark"><td>Add/Remove Bookmark</td><td><code>toggle_bookmark</code></td><td>Toggles a bookmark on the current page.</td><td>Ctrl+Shift+B</td><td>Both</td></tr>
+                        <tr data-action-id="toggle_bookmark_dock"><td>Bookmark Sidebar</td><td><code>toggle_bookmark_dock</code></td><td>Shows or hides the bookmark sidebar.</td><td>Ctrl+B</td><td>Both</td></tr>
+                        <tr data-action-id="toggle_history_dock"><td>History Sidebar</td><td><code>toggle_history_dock</code></td><td>Shows or hides the history sidebar.</td><td>Ctrl+H</td><td>Both</td></tr>
+                        <tr data-action-id="toggle_tab_list_dock"><td>Tab List Sidebar</td><td><code>toggle_tab_list_dock</code></td><td>Shows or hides the tab list sidebar.</td><td>None</td><td>Both</td></tr>
+                        <tr data-action-id="image_slide_sidebar"><td>Image Slide Sidebar</td><td><code>image_slide_sidebar</code></td><td>Shows or hides the image slide sidebar.</td><td>None</td><td>Both</td></tr>
+                    </tbody></table></div>
+                    <p>The legacy ID <code>toggle_image_slide_dock</code> remains accepted for existing settings. Use <code>image_slide_sidebar</code> for new assignments.</p>
+                </section>
+
+                <section id="modes" class="section"><h2>View Modes</h2>
+                    <div class="control-table"><table><thead><tr><th>Action</th><th>ID</th><th>Behavior</th><th>Default</th><th>Available in</th></tr></thead><tbody>
+                        <tr data-action-id="page_mode_single"><td>Single Page</td><td><code>page_mode_single</code></td><td>Switches to single-page view.</td><td>None</td><td>Both</td></tr>
+                        <tr data-action-id="page_mode_spread_right"><td>Spread (Right)</td><td><code>page_mode_spread_right</code></td><td>Switches to a right-first spread.</td><td>None</td><td>Both</td></tr>
+                        <tr data-action-id="page_mode_spread_left"><td>Spread (Left)</td><td><code>page_mode_spread_left</code></td><td>Switches to a left-first spread.</td><td>None</td><td>Both</td></tr>
+                        <tr data-action-id="toggle_spread"><td>Toggle Spread</td><td><code>toggle_spread</code></td><td>Toggles single page and the preferred spread.</td><td>None</td><td>Both</td></tr>
+                        <tr data-action-id="zoom_navigation_page"><td>Turn Page First</td><td><code>zoom_navigation_page</code></td><td>Turns pages without panning while zoomed.</td><td>None</td><td>Both</td></tr>
+                        <tr data-action-id="zoom_navigation_left"><td>Pan Left First</td><td><code>zoom_navigation_left</code></td><td>Pans leftward in reading order while zoomed.</td><td>None</td><td>Both</td></tr>
+                        <tr data-action-id="zoom_navigation_right"><td>Pan Right First</td><td><code>zoom_navigation_right</code></td><td>Pans rightward in reading order while zoomed.</td><td>None</td><td>Both</td></tr>
+                    </tbody></table></div>
+                </section>
+
+                <section id="mouse-lock" class="section"><h2>Mouse Lock</h2>
+                    <div class="control-table"><table><thead><tr><th>Action</th><th>ID</th><th>Behavior</th><th>Default</th><th>Available in</th></tr></thead><tbody>
+                        <tr data-action-id="toggle_mouse_lock"><td>Mouse Lock</td><td><code>toggle_mouse_lock</code></td><td>Toggles persistent mouse lock.</td><td>Ctrl+K</td><td>Both</td></tr>
+                        <tr data-action-id="hold_mouse_lock"><td>Invert Mouse Lock</td><td><code>hold_mouse_lock</code></td><td>Inverts the current lock while one or more assigned inputs are held.</td><td>Ctrl, MouseMiddle</td><td>Shortcut only</td></tr>
+                    </tbody></table></div>
+                </section>
+
+                <section id="plugins" class="section"><h2>Plugin Actions</h2><p>Actions registered by enabled plugins are added to the settings picker at runtime. See each plugin for its labels and behavior. A plugin alias can replace a built-in ID in the picker.</p></section>
+                <div class="pagination"><a href="settings-shortcuts-en.html" class="page-link">Shortcut Settings</a><a href="../Manual(EN).html" class="page-link">Home</a></div>
+            </div></main>
+        </div>
+    </div>
+    <script src="../js/main.js"></script>
+    <script src="../js/search.js"></script>
+</body>
+</html>

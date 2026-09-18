@@ -6,14 +6,14 @@
     <title>高度な機能 - EzCo ユーザーマニュアル</title>
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/theme.css">
-    <link rel="icon" type="image/x-icon" href="../files/icon.ico">
+    <link rel="icon" type="image/x-icon" href="../../icon.ico">
 </head>
 <body>
     <div class="container">
         <!-- ヘッダー -->
         <header class="header">
             <div class="header-content">
-                <h1><img src="../files/icon_32x32.png" alt="EzCo" class="logo-icon"> EzCo ユーザーマニュアル</h1>
+                <h1><img src="../../icon.ico" alt="EzCo" class="logo-icon"> EzCo ユーザーマニュアル</h1>
                 <div class="language-switch">
                     <a href="advanced-features.html" class="active">日本語</a>
                     <a href="advanced-features-en.html">English</a>
@@ -80,7 +80,7 @@
                     <!-- マウスジェスチャー -->
                     <section id="gestures" class="section">
                         <h2>👆 マウスジェスチャー</h2>
-                        <p>右クリックを押しながらマウスをドラッグすることで、様々な操作を素早く実行できます。下表は、プロファイルが無い初回起動（または新規プロファイル作成）のときだけ入るデフォルトです。消した割り当ては再起動しても戻りません。</p>
+                        <p>右クリックを押しながらマウスをドラッグすることで、様々な操作を素早く実行できます。下表は最初のプロファイルに入るデフォルトです。メニューから追加したプロファイルは現在の割り当てをコピーします。</p>
 
                         <div class="control-table">
                             <table>
@@ -121,6 +121,11 @@
                                         <td>→← / ←→</td>
                                         <td>最初／最後のページ</td>
                                         <td>先頭または末尾の画像へ移動</td>
+                                    </tr>
+                                    <tr>
+                                        <td>↓→←</td>
+                                        <td>ページスライダー</td>
+                                        <td>ページスライダーを表示／非表示</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -175,8 +180,8 @@
 
                         <div class="method-grid">
                             <div class="method-card">
-                                <h4>🖱️ コマンドライン起動</h4>
-                                <p><code>EzCo.exe "archive://path|file"</code></p>
+                                <h4>利用範囲</h4>
+                                <p>履歴・ブックマーク・状態ファイルから、アーカイブ内の画像を再指定するために使います。</p>
                             </div>
                             <div class="method-card">
                                 <h4>📝 ショートカット作成</h4>
@@ -194,7 +199,7 @@
                             <h3 id="custom-fonts">📝 カスタムフォント (font/ フォルダ)</h3>
                             <div class="info-box">
                                 <h4>💡 フォントのカスタマイズ</h4>
-                                <p>EzCoの実行ファイルと同じディレクトリに<code>font/</code>フォルダを作成し、TTFファイルを配置することで、独自のフォントを使用できます。</p>
+                                <p>設定した「データの置き場」に<code>font/</code>フォルダを作成し、TTF/OTFファイルを配置すると独自のフォントを使用できます。</p>
                             </div>
 
                             <div class="step-container">
@@ -202,7 +207,7 @@
                                     <div class="step-number">1</div>
                                     <div class="step-content">
                                         <h4>フォルダの作成</h4>
-                                        <p>EzCo.exeと同じディレクトリに<code>font</code>フォルダを作成します。</p>
+                                        <p>「データの置き場」に<code>font</code>フォルダを作成します。</p>
                                         <div class="code-block">EzCo.exe
 font/
 ├── MyFont.ttf
@@ -214,7 +219,7 @@ font/
                                     <div class="step-number">2</div>
                                     <div class="step-content">
                                         <h4>フォントファイルの配置</h4>
-                                        <p>TTF形式のフォントファイルを<code>font/</code>フォルダにコピーします。</p>
+                                        <p>TTFまたはOTF形式のフォントファイルを<code>font/</code>フォルダにコピーします。</p>
                                     </div>
                                 </div>
                                 <div class="step">
@@ -231,10 +236,10 @@ font/
                             <div class="warning-box">
                                 <h4>⚠️ フォントに関する注意</h4>
                                 <ul>
-                                    <li>対応形式：TTF（TrueType Font）のみ</li>
+                                    <li>対応形式：TTF（TrueType Font）、OTF（OpenType Font）</li>
                                     <li>フォント名は拡張子を除いたファイル名で指定</li>
                                     <li>日本語フォントを使用する場合は、日本語文字に対応したフォントを選択</li>
-                                    <li>フォント変更は再起動後に反映されます</li>
+                                    <li>設定ダイアログのフォント変更は適用後すぐに反映されます</li>
                                 </ul>
                             </div>
 
@@ -250,7 +255,7 @@ font/
                                     <div class="step-number">1</div>
                                     <div class="step-content">
                                         <h4>フォルダの作成</h4>
-                                        <p>EzCo.exeと同じディレクトリに<code>langs</code>フォルダを作成します。</p>
+                                        <p>「データの置き場」に<code>langs</code>フォルダを作成します。</p>
                                         <div class="code-block">EzCo.exe
 langs/
 ├── ja.json     # 日本語カスタマイズ
@@ -292,7 +297,7 @@ langs/
                             <div class="tip-box">
                                 <h4>💡 言語カスタマイズのヒント</h4>
                                 <ul>
-                                    <li><strong>部分カスタマイズ:</strong> 一部の表記のみを変更したい場合は、該当項目のみを定義</li>
+                                    <li><strong>完全な定義:</strong> 外部JSONは内蔵言語とマージされません。必要なキーをすべて定義してください</li>
                                     <li><strong>優先順位:</strong> 
                                         <ol>
                                             <li>外部言語ファイル（<code>langs/</code>フォルダ）</li>
@@ -309,8 +314,8 @@ langs/
                             <div class="method-grid">
                                 <div class="method-card">
                                     <h4>🔧 既存言語のカスタマイズ</h4>
-                                    <p>日本語や英語の一部表記を変更したい場合</p>
-                                    <div class="code-block">// langs/ja.json（部分カスタマイズ例）
+                                    <p>日本語や英語を置き換える場合も、内蔵ファイルを複製して必要な表記を変更します。</p>
+                                    <div class="code-block">// langs/ja.json（内蔵ファイルを複製）
 {
   "ui": {
     "next_page": "➡️ 次へ",
@@ -340,7 +345,7 @@ langs/
                                 <ul>
                                     <li>JSON構文エラーがあると読み込みに失敗します</li>
                                     <li>不正な言語コードを指定すると、システムデフォルト言語にフォールバック</li>
-                                    <li>言語変更は再起動後に反映されます</li>
+                                    <li>言語変更はメニューなどへすぐ反映されます。プラグインサイドバー内部は再起動が必要な場合があります</li>
                                     <li>必須項目（app_name、language_code等）は省略しないでください</li>
                                 </ul>
                             </div>

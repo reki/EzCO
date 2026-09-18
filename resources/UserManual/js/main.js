@@ -134,30 +134,24 @@ class EzCoManual {
      * Scroll Spy for Active Section Highlighting
      */
     setupScrollSpy() {
-        const sections = document.querySelectorAll('.section[id]');
-        const options = {
-            rootMargin: '-80px 0px -40% 0px',
-            threshold: 0.1
-        };
+        // 目次にある節・小節を、見出しを通過した順に追跡する
+        window.addEventListener('scroll', this.debounce(() => {
+            this.updateActiveSection();
+        }, 100));
+    }
 
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    this.setActiveSection(entry.target.id);
-                }
-            });
-        }, options);
-
-        sections.forEach(section => {
-            observer.observe(section);
+    getNavigationTargets() {
+        const targets = [];
+        const seen = new Set();
+        document.querySelectorAll('.toc-link[href^="#"]').forEach(link => {
+            const id = link.getAttribute('href').substring(1);
+            const target = document.getElementById(id);
+            if (target && !seen.has(id)) {
+                seen.add(id);
+                targets.push(target);
+            }
         });
-
-        // Fallback for browsers without IntersectionObserver
-        if (!window.IntersectionObserver) {
-            window.addEventListener('scroll', this.debounce(() => {
-                this.updateActiveSection();
-            }, 100));
-        }
+        return targets.sort((left, right) => left.offsetTop - right.offsetTop);
     }
 
     setActiveSection(sectionId) {
@@ -181,8 +175,9 @@ class EzCoManual {
     }
 
     updateActiveSection() {
-        const sections = document.querySelectorAll('.section[id]');
-        const scrollPos = window.scrollY + 100;
+        const sections = this.getNavigationTargets();
+        const headerHeight = document.querySelector('.header')?.offsetHeight || 0;
+        const scrollPos = window.scrollY + headerHeight + 24;
 
         for (let i = sections.length - 1; i >= 0; i--) {
             const section = sections[i];

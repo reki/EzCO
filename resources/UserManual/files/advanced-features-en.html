@@ -6,14 +6,14 @@
     <title>Advanced Features - EzCo User Manual</title>
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/theme.css">
-    <link rel="icon" type="image/x-icon" href="../files/icon.ico">
+    <link rel="icon" type="image/x-icon" href="../../icon.ico">
 </head>
 <body>
     <div class="container">
         <!-- Header -->
         <header class="header">
             <div class="header-content">
-                <h1><img src="../files/icon_32x32.png" alt="EzCo" class="logo-icon"> EzCo User Manual</h1>
+                <h1><img src="../../icon.ico" alt="EzCo" class="logo-icon"> EzCo User Manual</h1>
                 <div class="language-switch">
                     <a href="advanced-features.html">日本語</a>
                     <a href="advanced-features-en.html" class="active">English</a>
@@ -65,7 +65,7 @@
                         <h3 id="custom-fonts">📝 Custom Fonts (font/ folder)</h3>
                         <div class="info-box">
                             <h4>💡 Font Customization</h4>
-                            <p>Create a <code>font/</code> folder in the same directory as the EzCo executable and add TTF files to use custom fonts.</p>
+                            <p>Create a <code>font/</code> folder in the configured data location and add TTF/OTF files to use custom fonts.</p>
                         </div>
 
                         <div class="step-container">
@@ -73,7 +73,7 @@
                                 <div class="step-number">1</div>
                                 <div class="step-content">
                                     <h4>Create Folder</h4>
-                                    <p>Create a <code>font</code> folder in the same directory as EzCo.exe.</p>
+                                    <p>Create a <code>font</code> folder in the configured data location.</p>
                                     <div class="code-block">EzCo.exe
 font/
 ├── MyFont.ttf
@@ -85,7 +85,7 @@ font/
                                 <div class="step-number">2</div>
                                 <div class="step-content">
                                     <h4>Place Font Files</h4>
-                                    <p>Copy TTF format font files to the <code>font/</code> folder.</p>
+                                    <p>Copy TTF or OTF font files to the <code>font/</code> folder.</p>
                                 </div>
                             </div>
                             <div class="step">
@@ -102,10 +102,10 @@ font/
                         <div class="warning-box">
                             <h4>⚠️ Font Notes</h4>
                             <ul>
-                                <li>Supported format: TTF (TrueType Font) only</li>
+                                <li>Supported formats: TTF (TrueType Font) and OTF (OpenType Font)</li>
                                 <li>Specify font name without extension (filename)</li>
                                 <li>For Japanese fonts, choose fonts that support Japanese characters</li>
-                                <li>Font changes are applied after restart</li>
+                                <li>Font changes from Settings are applied immediately</li>
                             </ul>
                         </div>
 
@@ -121,7 +121,7 @@ font/
                                 <div class="step-number">1</div>
                                 <div class="step-content">
                                     <h4>Create Folder</h4>
-                                    <p>Create a <code>langs</code> folder in the same directory as EzCo.exe.</p>
+                                    <p>Create a <code>langs</code> folder in the configured data location.</p>
                                     <div class="code-block">EzCo.exe
 langs/
 ├── ja.json     # Japanese customization
@@ -163,7 +163,7 @@ langs/
                                                     <div class="tip-box">
                                 <h4>💡 Language Customization Tips</h4>
                                 <ul>
-                                    <li><strong>Partial customization:</strong> Define only the items you want to change</li>
+                                    <li><strong>Complete definition:</strong> External JSON is not merged with a built-in language. Define every required key</li>
                                     <li><strong>Priority:</strong> 
                                         <ol>
                                             <li>External language files (<code>langs/</code> folder)</li>
@@ -180,8 +180,8 @@ langs/
                         <div class="method-grid">
                             <div class="method-card">
                                 <h4>🔧 Customize Existing Language</h4>
-                                <p>When you want to change some text in Japanese or English</p>
-                                <div class="code-block">// langs/ja.json (partial customization example)
+                                <p>To replace Japanese or English text, copy the complete built-in file and edit the required values.</p>
+                                <div class="code-block">// langs/ja.json (copy of the built-in file)
 {
   "ui": {
     "next_page": "➡️ Next",
@@ -211,7 +211,7 @@ langs/
                             <ul>
                                 <li>JSON syntax errors will cause loading to fail</li>
                                 <li>Invalid language codes will fallback to system default language</li>
-                                <li>Language changes are applied after restart</li>
+                                <li>Language changes update menus immediately. Content inside plugin sidebars may require a restart</li>
                                 <li>Don't omit required items (app_name, language_code, etc.)</li>
                             </ul>
                         </div>
@@ -245,7 +245,7 @@ langs/
                     <!-- Mouse Gestures -->
                     <section id="gestures" class="section">
                         <h2>👆 Mouse Gestures</h2>
-                        <p>Mouse gestures allow you to quickly perform common actions by drawing patterns with the right mouse button. The table below is registered only when creating the first profile (or a new profile). Deleted assignments are not restored on the next start.</p>
+                        <p>Mouse gestures quickly run actions drawn with the right mouse button. The table below seeds the first profile. A profile created from the menu copies the current assignments.</p>
 
                         <div class="control-table">
                             <table>
@@ -281,6 +281,11 @@ langs/
                                         <td>↑↓</td>
                                         <td>Reopen last file</td>
                                         <td>Open the latest history item</td>
+                                    </tr>
+                                    <tr>
+                                        <td>↓→←</td>
+                                        <td>Page slider</td>
+                                        <td>Show or hide the page slider</td>
                                     </tr>
                                     <tr>
                                         <td>→← / ←→</td>
@@ -340,8 +345,8 @@ langs/
 
                         <div class="method-grid">
                             <div class="method-card">
-                                <h4>🖱️ Command Line Launch</h4>
-                                <p><code>EzCo.exe "archive://path|file"</code></p>
+                                <h4>Where it is used</h4>
+                                <p>History, bookmarks, and state files use virtual paths to identify images inside archives.</p>
                             </div>
                             <div class="method-card">
                                 <h4>📝 Create Shortcut</h4>

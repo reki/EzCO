@@ -60,7 +60,19 @@ class Actions(Enum):
     HOLD_MOUSE_LOCK = "hold_mouse_lock"
 
 
-ACTION_LIST = [action.value for action in Actions]
+LEGACY_ACTION_ALIASES = {
+    Actions.TOGGLE_IMAGE_SLIDE_DOCK.value: Actions.IMAGE_SLIDE_SIDEBAR.value,
+}
+
+ACTION_LIST = [
+    action.value for action in Actions
+    if action.value not in LEGACY_ACTION_ALIASES
+]
+
+
+def canonical_action_id(action_name: str) -> str:
+    name = str(action_name or "")
+    return LEGACY_ACTION_ALIASES.get(name, name)
 
 
 def _plugin_host():
@@ -113,7 +125,7 @@ def is_known_action(action_name: str) -> bool:
     name = str(action_name or "")
     if not name:
         return False
-    if name in ACTION_LIST or name in list_assignable_actions():
+    if name in LEGACY_ACTION_ALIASES or name in ACTION_LIST or name in list_assignable_actions():
         return True
     host = _plugin_host()
     return host is not None and host.resolve_action(name) is not None
@@ -138,6 +150,7 @@ _ACTION_TEXT_KEYS = {
 
 def get_action_display_name(action_name: str) -> str:
     """アクションの表示名を取得"""
+    action_name = canonical_action_id(action_name)
     host = _plugin_host()
     if host is not None:
         label = host.action_label(action_name)

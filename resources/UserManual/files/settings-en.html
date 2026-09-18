@@ -6,14 +6,15 @@
     <title>Settings - EzCo User Manual</title>
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/theme.css">
-    <link rel="icon" type="image/x-icon" href="../files/icon.ico">
+    <link rel="stylesheet" href="../css/settings.css">
+    <link rel="icon" type="image/x-icon" href="../../icon.ico">
 </head>
 <body>
     <div class="container">
         <!-- Header -->
         <header class="header">
             <div class="header-content">
-                <h1><img src="../files/icon_32x32.png" alt="EzCo" class="logo-icon"> EzCo User Manual</h1>
+                <h1><img src="../../icon.ico" alt="EzCo" class="logo-icon"> EzCo User Manual</h1>
                 <div class="language-switch">
                     <a href="settings.html">日本語</a>
                     <a href="settings-en.html" class="active">English</a>
@@ -37,9 +38,12 @@
                         <li><a href="#viewer-settings" class="toc-link">Viewer Settings</a></li>
                         <li><a href="#cache-settings" class="toc-link">Cache Settings</a></li>
                         <li><a href="#debug-settings" class="toc-link">Debug Settings</a></li>
-                        <li><a href="#shortcuts" class="toc-link">Shortcuts</a></li>
+                        <li><a href="#archive-settings" class="toc-link">Archive Settings</a></li>
+                        <li><a href="settings-shortcuts-en.html" class="toc-link toc-external">Shortcut Settings</a></li>
                         <li><a href="#history-settings" class="toc-link">History Settings</a></li>
                         <li><a href="#language-settings" class="toc-link">Language Settings</a></li>
+                        <li><a href="#filter-settings" class="toc-link">Filter Settings</a></li>
+                        <li><a href="#imagelist-settings" class="toc-link">Image List Settings</a></li>
                         <li><a href="#font-settings" class="toc-link">Font Settings</a></li>
                         <li><a href="#tab-settings" class="toc-link">Tab Settings</a></li>
                         <li><a href="#plugin-settings" class="toc-link">Plugin Settings</a></li>
@@ -163,6 +167,21 @@
                                         <td>When toggling spread, keep the previous side, prefer right, or prefer left</td>
                                         <td>keep_previous</td>
                                     </tr>
+                                    <tr>
+                                        <td>Image movement sensitivity</td>
+                                        <td>Drag movement multiplier (0.5–4.0)</td>
+                                        <td>2.0</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Gesture threshold</td>
+                                        <td>Distance used to recognize a gesture (20–100 pixels)</td>
+                                        <td>50</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Mouse repeat timing</td>
+                                        <td>Initial delay, acceleration start, and minimum interval for repeated mouse page movement</td>
+                                        <td>100 / 100 / 30 ms</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -193,6 +212,11 @@
                                         <td>Prefetch pages</td>
                                         <td>Number of pages to prefetch around current page (1-50)</td>
                                         <td>Default: 15<br>Recommended: 5-30</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Large-image optimization</td>
+                                        <td>Downscales images over the file-size threshold to the configured maximum dimension while loading</td>
+                                        <td>Enabled / 50MB / 4000 px</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -260,7 +284,7 @@
                     <!-- Shortcut Settings -->
                     <section id="shortcuts" class="section">
                         <h2>⌨️ Shortcut Settings</h2>
-                        <p>You can customize keyboard and mouse shortcuts for all actions through <code>Settings</code> → <code>Shortcut Settings</code>. Default shortcuts and gestures are registered only when creating the first profile (or a new profile). Deleted assignments are not restored on the next start.</p>
+                        <p>Keyboard shortcuts and mouse gestures are documented on the dedicated <a href="settings-shortcuts-en.html">Shortcut Settings page</a>. See the <a href="action-reference-en.html">Action Reference</a> for every action.</p>
                         
                         <div class="method-grid">
                             <div class="method-card">
@@ -338,6 +362,22 @@
                                 <li><strong>No Data Loss:</strong> History is preserved even after application restart</li>
                             </ul>
                         </div>
+                    </section>
+
+                    <section id="archive-settings" class="section">
+                        <h2>Archive Settings</h2>
+                        <p>Built-in loading is enabled by default for ZIP, 7Z, RAR, TAR, compressed TAR, GZ, BZ2, XZ, CBZ, CBR, and PDF. Plugin Settings can choose Built-in, a plugin, or Don't load per extension.</p>
+                        <p>Compressed TAR aliases <code>.tgz</code>, <code>.tbz2</code>, and <code>.txz</code> are supported.</p>
+                    </section>
+
+                    <section id="filter-settings" class="section">
+                        <h2>Filter Settings</h2>
+                        <p>The Filter menu controls the ordered filter pipeline. Built-in orientation handling is always available; enabled plugin filters and their settings are stored per profile.</p>
+                    </section>
+
+                    <section id="imagelist-settings" class="section">
+                        <h2>Image List Settings</h2>
+                        <p>Configure thumbnail width, height, quality, and batch size for the Image List dialog. The default thumbnail size is 100 × 150 pixels.</p>
                     </section>
 
                     <!-- Font Settings -->
@@ -470,7 +510,7 @@
                                 <tbody>
                                     <tr>
                                         <td>Profile Creation</td>
-                                        <td>Create a new profile by copying the current settings (bookmarks and history stay empty)</td>
+                                        <td>Create a new profile by copying current settings and plugin-specific settings (bookmarks and history stay empty)</td>
                                         <td>Profile menu → Add</td>
                                     </tr>
                                     <tr>
@@ -566,8 +606,8 @@
 
                     <!-- Navigation -->
                     <div class="pagination">
-                        <a href="advanced-features-en.html" class="page-link">← Advanced Features</a>
-                        <a href="../Manual(EN).html" class="page-link">Main Page →</a>
+                        <a href="../Manual(EN).html" class="page-link">Main Page</a>
+                        <a href="settings-shortcuts-en.html" class="page-link">Shortcut Settings</a>
                     </div>
                 </div>
             </main>

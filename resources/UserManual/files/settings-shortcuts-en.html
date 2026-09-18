@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shortcut Settings - EzCo User Manual</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/settings.css">
+    <link rel="icon" type="image/x-icon" href="../../icon.ico">
+</head>
+<body>
+    <div class="container">
+        <header class="header"><div class="header-content">
+            <h1><img src="../../icon.ico" alt="EzCo" class="logo-icon"> EzCo User Manual</h1>
+            <div class="language-switch"><a href="settings-shortcuts.html">日本語</a><a href="settings-shortcuts-en.html" class="active">English</a></div>
+            <div class="search-container"><input type="text" id="searchBox" placeholder="Search..." /><button id="searchBtn">Search</button></div>
+        </div></header>
+        <div class="main-container">
+            <nav class="sidebar"><div class="toc">
+                <h3>Contents</h3>
+                <ul class="toc-list">
+                    <li><a href="../Manual(EN).html" class="toc-link">Main page</a></li>
+                    <li><a href="#shortcuts" class="toc-link">Shortcuts</a></li>
+                    <li><a href="#keys" class="toc-link">Input Names</a></li>
+                    <li><a href="#gestures" class="toc-link">Gestures</a></li>
+                    <li><a href="#import-export" class="toc-link">Import / Export</a></li>
+                </ul>
+            </div></nav>
+            <main class="content"><div class="content-wrapper">
+                <div class="breadcrumb"><a href="../Manual(EN).html">Home</a> &gt; <a href="settings-en.html">Settings</a> &gt; Shortcut Settings</div>
+                <h1>Shortcut Settings</h1>
+                <p>See the <a href="action-reference-en.html">Action Reference</a> for action names, IDs, behavior, and default assignments.</p>
+
+                <section id="shortcuts" class="config-section">
+                    <h3>Change shortcuts</h3>
+                    <ol>
+                        <li>Open Settings → Shortcut Settings.</li>
+                        <li>Choose Add, select an action, and press a keyboard or mouse input.</li>
+                        <li>To remove one, select its row and choose Delete.</li>
+                        <li>Choose OK. Changes update menus and controls immediately; no restart is needed.</li>
+                    </ol>
+                    <div class="warning-box"><h4>Assignment rules</h4><ul>
+                        <li>An action may have multiple assigned inputs.</li>
+                        <li>The same input cannot be added to more than one action.</li>
+                        <li>Defaults seed the first profile. A profile created from the menu copies the current settings and plugin-specific settings.</li>
+                        <li>Normal restart does not restore deleted assignments. Importing a shortcut file does fill missing default actions.</li>
+                    </ul></div>
+                </section>
+
+                <section id="keys" class="config-section">
+                    <h3>Input names</h3>
+                    <p>Join modifiers with <code>+</code>, for example <kbd>Ctrl+Shift+O</kbd>.</p>
+                    <div class="control-table"><table><thead><tr><th>Type</th><th>Available names</th></tr></thead><tbody>
+                        <tr><td>Modifiers</td><td><code>Ctrl</code>, <code>Alt</code>, <code>Shift</code>, <code>Meta</code></td></tr>
+                        <tr><td>Navigation and special keys</td><td><code>Left</code>, <code>Right</code>, <code>Up</code>, <code>Down</code>, <code>Return</code>, <code>Escape</code>, <code>Space</code>, <code>Tab</code>, <code>Home</code>, <code>End</code>, <code>PageUp</code>, <code>PageDown</code></td></tr>
+                        <tr><td>Mouse</td><td><code>MouseLeft</code>, <code>MouseRight</code>, <code>MouseMiddle</code>, <code>MouseWheelUp</code>, <code>MouseWheelDown</code>, <code>MouseX1</code>, <code>MouseX2</code></td></tr>
+                    </tbody></table></div>
+                </section>
+
+                <section id="gestures" class="config-section">
+                    <h3>Change mouse gestures</h3>
+                    <ol>
+                        <li>Open Settings → Gesture Settings.</li>
+                        <li>Choose Add and draw directions while holding the right mouse button.</li>
+                        <li>Select the action and confirm.</li>
+                    </ol>
+                    <p>Directions use <code>←</code> <code>→</code> <code>↑</code> <code>↓</code>, and may be chained. Invert Mouse Lock requires both press and release, so it is not available for gestures.</p>
+                    <p>The first profile includes gestures for previous/next comic, exit, fullscreen, reopen last file, first/last page, and page slider. See the <a href="action-reference-en.html">Action Reference</a> for details.</p>
+                </section>
+
+                <section id="import-export" class="config-section">
+                    <h3>Import and export</h3>
+                    <p>Shortcut Settings exports only the <code>shortcuts</code> section as YAML.</p>
+                    <pre class="config-example"><code>shortcuts:
+  next_page:
+    - MouseLeft
+    - Right
+    - Space
+  hold_mouse_lock:
+    - Ctrl
+    - MouseMiddle</code></pre>
+                    <p>Gesture Settings exports a JSON object from directions to action IDs.</p>
+                    <pre class="config-example"><code>{
+  "←": "prev_comic",
+  "→": "next_comic",
+  "↓→": "fullscreen"
+}</code></pre>
+                    <p>The general settings export is YAML and contains <code>shortcuts</code> and <code>gesture_map</code> together with the other settings.</p>
+                </section>
+                <div class="pagination"><a href="settings-en.html" class="page-link">General Settings</a><a href="action-reference-en.html" class="page-link">Action Reference</a></div>
+            </div></main>
+        </div>
+    </div>
+    <script src="../js/main.js"></script>
+    <script src="../js/search.js"></script>
+</body>
+</html>

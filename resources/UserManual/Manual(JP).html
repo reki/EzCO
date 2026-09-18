@@ -12,7 +12,7 @@
         <!-- ヘッダー -->
         <header class="header">
             <div class="header-content">
-                <h1><img src="files/icon_32x32.png" alt="EzCo" class="logo-icon"> EzCo ユーザーマニュアル</h1>
+                <h1><img src="../icon.ico" alt="EzCo" class="logo-icon"> EzCo ユーザーマニュアル</h1>
                 <div class="language-switch">
                     <a href="Manual(JP).html" class="active">日本語</a>
                     <a href="Manual(EN).html">English</a>
@@ -72,6 +72,7 @@
                                 <li><a href="files/settings.html#language-settings" class="toc-link toc-external" title="別ページ">言語設定</a></li>
                                 <li><a href="files/settings.html#debug-settings" class="toc-link toc-external" title="別ページ">デバッグ設定</a></li>
                                 <li><a href="files/settings.html#archive-settings" class="toc-link toc-external" title="別ページ">アーカイブ設定</a></li>
+                                <li><a href="files/settings.html#filter-settings" class="toc-link toc-external" title="別ページ">フィルター設定</a></li>
                                 <li><a href="files/settings-shortcuts.html" class="toc-link toc-external" title="別ページ">ショートカット設定</a></li>
                                 <li><a href="files/settings.html#font-settings" class="toc-link toc-external" title="別ページ">フォント設定</a></li>
                                 <li><a href="files/settings.html#imagelist-settings" class="toc-link toc-external" title="別ページ">画像リスト設定</a></li>
@@ -80,6 +81,7 @@
                                 <li><a href="files/settings.html#profile-settings" class="toc-link toc-external" title="別ページ">プロファイル設定</a></li>
                             </ul>
                         </li>
+                        <li><a href="files/action-reference.html" class="toc-link toc-external" title="別ページ">アクションリファレンス</a></li>
                         <li>
                             <a href="#plugin-reference" class="toc-link">プラグインリファレンス</a>
                             <ul class="toc-sublist">
@@ -95,7 +97,6 @@
                                 <li><a href="#common-issues" class="toc-link">よくある問題</a></li>
                             </ul>
                         </li>
-                        <li><a href="#future-features" class="toc-link">今後の予定機能</a></li>
                         <li><a href="#appendix" class="toc-link">付録</a></li>
                     </ul>
                 </div>
@@ -152,6 +153,11 @@
                                 <div class="feature-icon">🌐</div>
                                 <h3>多言語対応</h3>
                                 <p>日本語と英語に対応し、カスタム言語ファイルも追加できます。外部言語ファイルで未定義のキーはキー名が表示されます。</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-icon">🔌</div>
+                                <h3>プラグイン</h3>
+                                <p>ZIPまたはフォルダ形式のプラグインで、対応形式・フィルター・サイドバー・アクションを追加できます。</p>
                             </div>
                         </div>
 
@@ -529,6 +535,7 @@
                         <div class="code-block">
                             <pre><code>EzCo.exe --conf:section.key=value --profile=profile_name</code></pre>
                         </div>
+                        <p>通常のファイルまたはフォルダは、<code>EzCo.exe "C:\path\to\book.cbz"</code> のようにパスを渡して起動時に開けます。</p>
 
                         <div class="info-box">
                             <h3>💡 特徴</h3>
@@ -759,43 +766,6 @@
                         <p><a href="files/settings.html#plugin-settings" class="page-link">プラグイン設定 →</a></p>
                     </section>
 
-                    <!-- 今後の予定機能 -->
-                    <section id="future-features" class="section">
-                        <h2>🚧 今後予定されている機能</h2>
-                        <div class="info-box">
-                            <h3>🛠️ 開発予定</h3>
-                            <p>以下の機能が今後のバージョンで実装予定です：</p>
-                        </div>
-
-                        <div class="feature-grid">
-                            <div class="feature-card">
-                                <div class="feature-icon">📦</div>
-                                <h4>ネストアーカイブ</h4>
-                                <p>アーカイブ内のアーカイブファイル対応</p>
-                            </div>
-                            <div class="feature-card">
-                                <div class="feature-icon">🌙</div>
-                                <h4>ダークモード</h4>
-                                <p>目に優しい暗色テーマの実装</p>
-                            </div>
-                            <div class="feature-card">
-                                <div class="feature-icon">🔌</div>
-                                <h4>プラグインシステム</h4>
-                                <p>ZIP プラグインで形式とサイドバーを追加できます。<a href="files/plugin-reference.html">リファレンス</a></p>
-                            </div>
-                            <div class="feature-card">
-                                <div class="feature-icon">🎯</div>
-                                <h4>コマンドパレット</h4>
-                                <p>キーワードによる機能検索・実行</p>
-                            </div>
-                        </div>
-
-                        <div class="tip-box">
-                            <h3>💡 Susieプラグイン対応</h3>
-                            <p>将来的にSusieプラグインの対応により、より多くの画像形式やアーカイブ形式をサポート予定です。</p>
-                        </div>
-                    </section>
-
                     <!-- 付録セクション -->
                     <section id="appendix" class="section">
                         <h2>📋 付録</h2>
@@ -819,7 +789,7 @@
                                     <tr>
                                         <td>アーカイブ・圧縮ファイル</td>
                                         <td>ZIP, 7-Zip, RAR, TAR, GZip, BZip2, XZ</td>
-                                        <td>.zip, .7z, .rar, .tar, .tar.gz, .tar.bz2, .tar.xz, .gz, .bz2, .xz</td>
+                                        <td>.zip, .7z, .rar, .tar, .tar.gz/.tgz, .tar.bz2/.tbz2, .tar.xz/.txz, .gz, .bz2, .xz</td>
                                     </tr>
                                     <tr>
                                         <td>コミックアーカイブ</td>
@@ -840,8 +810,8 @@
                             <h3>📁 重要なファイルとフォルダ</h3>
                             <ul>
                                 <li><strong>config.db:</strong> 設定・ブックマーク・履歴をプロファイル単位で保存するデータベース</li>
-                                <li><strong>langs/:</strong> カスタム言語ファイル（独自言語・表記カスタマイズ。未定義キーはキー名表示）</li>
-                                <li><strong>font/:</strong> カスタムTTFフォントファイル（UIフォント追加）</li>
+                                <li><strong>langs/:</strong> 「データの置き場」に配置するカスタム言語ファイル（未定義キーはキー名表示）</li>
+                                <li><strong>font/:</strong> 「データの置き場」に配置するカスタムTTF/OTFフォント</li>
                                 <li><strong>logs/:</strong> デバッグログファイル（デバッグモード有効時）</li>
                             </ul>
                         </div>

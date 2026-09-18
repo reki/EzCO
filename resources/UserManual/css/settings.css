@@ -109,7 +109,25 @@
     font-size: 0.9em;
     line-height: 1.6;
     overflow-x: auto;
+    white-space: pre;
     position: relative;
+}
+
+.config-example {
+    margin: 1rem 0;
+    padding: 1rem;
+    overflow-x: auto;
+    white-space: pre;
+    background: var(--background-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    line-height: 1.5;
+}
+
+.config-example code {
+    font: inherit;
+    white-space: inherit;
 }
 
 .yaml-example::before {
