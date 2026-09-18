@@ -1,0 +1,13 @@
+---
+description: Python パッケージとデータ専用フォルダの __init__.py 方針
+globs: "**/*.py,pyproject.toml"
+alwaysApply: false
+---
+
+# Python パッケージの配置
+
+- import 対象の Python コードディレクトリには `__init__.py` を置き、通常パッケージとして統一する
+- JSON・Markdown・画像などだけを置くデータ専用サブフォルダには `__init__.py` を置かない
+- パッケージ内データは、最寄りの通常パッケージを `importlib.resources.files()` で取得し、`joinpath()` でデータ専用サブフォルダを辿る
+- `plugins/<名前>/src/` は本体が独自に読み込むプラグインソース、`tests/` は pytest の `--import-mode=importlib` 対象なので、通常パッケージ化の対象外
+- 新しい Python コードディレクトリまたはデータフォルダを足すときは、この区別に合わせる

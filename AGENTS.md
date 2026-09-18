@@ -7,6 +7,7 @@
 - `.cursor/rules/tests.mdc`
 - `.cursor/rules/plugins.mdc`
 - `.cursor/rules/plugin-data.mdc`
+- `.cursor/rules/package-layout.mdc`
 - `.cursor/rules/ui-strings.mdc`
 - `.cursor/rules/user-manual.mdc`
 - `.cursor/rules/workflow.mdc`

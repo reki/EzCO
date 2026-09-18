@@ -36,21 +36,23 @@ class LanguageManager:
             }
         # resources/langsフォルダから言語ファイルを読み込み
         try:
-            with resources.path("ez_co.resources.langs", "") as langs_path:
-                for file_path in Path(langs_path).glob("*.json"):
-                    if file_path.is_file():
-                        try:
-                            with open(file_path, 'r', encoding='utf-8') as f:
-                                lang_data = json.load(f)
-                                lang_code = lang_data.get("language_code", file_path.stem)
-                                lang_name = lang_data.get("language", file_path.stem)
-                                self.available_languages[lang_code] = {
-                                    "name": lang_name,
-                                    "code": lang_code,
-                                    "file": file_path
-                                }
-                        except Exception as e:
-                            logger.warning(f"言語ファイルの読み込みに失敗 {file_path}: {e}")
+            langs_root = resources.files("ez_co.resources").joinpath("langs")
+            for file_path in langs_root.iterdir():
+                if not file_path.is_file() or not file_path.name.endswith(".json"):
+                    continue
+                try:
+                    with file_path.open("r", encoding="utf-8") as f:
+                        lang_data = json.load(f)
+                    stem = Path(file_path.name).stem
+                    lang_code = lang_data.get("language_code", stem)
+                    lang_name = lang_data.get("language", stem)
+                    self.available_languages[lang_code] = {
+                        "name": lang_name,
+                        "code": lang_code,
+                        "file": file_path
+                    }
+                except Exception as e:
+                    logger.warning(f"言語ファイルの読み込みに失敗 {file_path}: {e}")
         except Exception as e:
             logger.warning(f"resources/langsフォルダの読み込みに失敗: {e}")
         self._load_external_language_dirs()
@@ -128,9 +130,9 @@ class LanguageManager:
                     return
         lang_info = self.available_languages[lang_code]
         file_path = lang_info["file"]
-        if file_path and file_path.exists():
+        if file_path and file_path.is_file():
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with file_path.open("r", encoding="utf-8") as f:
                     self.language_data = json.load(f)
                 logger.info(f"言語ファイルを読み込みました: {lang_code}")
             except Exception as e:
