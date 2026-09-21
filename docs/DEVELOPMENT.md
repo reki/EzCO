@@ -58,7 +58,7 @@ UI には `%APPDATA%` と出さず「このユーザーのデータフォルダ�
 | `debug.cache_archive_metadata` | `True` | アーカイブ一覧の fingerprint cache |
 | `debug.show_error_log` | `False` | エラーログ表示 |
 
-先読み窓は `cache.prefetch_pages`（設定の既定 **15**）。メモリ上限は `cache.memory_limit`（既定 `"256MB"`）。
+先読み窓は `cache.prefetch_pages`（設定の既定 **5**）。メモリ上限は `cache.memory_limit`（`Config` の既定 `"256MB"`、新規設定では物理RAM 16GiB以上で `"512MB"`）。推奨値の決め方は [IMAGE_LOADING.md](IMAGE_LOADING.md#推奨値とオンデマンド実測) です。
 
 ログディレクトリは `logs_dir()` = `get_data_root() / "logs"` です。
 

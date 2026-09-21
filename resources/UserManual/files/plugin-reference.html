@@ -424,7 +424,7 @@ class _Entry:
                         <article id="read-entry" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>read_entry(file_path: str, index: int) -&gt; object</code></div>
                             <div class="api-body">
-                                <p><code>name</code>（str）と <code>data</code>（bytes、PIL が開ける画像）を持つオブジェクトを返します。ワーカーから呼ばれることがあります。UI はホスト API 経由。</p>
+                                <p><code>name</code>（str）と <code>data</code>（bytes、PIL が開ける画像）を持つオブジェクトを返します。ワーカーから呼ばれることがあります。同じプラグインの <code>list_entries</code> / <code>read_entry</code> は本体が直列化します。別スレッドから同じプラグインの読込へ再入し、その完了を同期的に待たないでください。UI はホスト API 経由。</p>
 <pre class="api-example">def read_entry(self, file_path, index):
     name = self.list_entries(file_path)[index]
     with ZipFile(file_path) as archive:

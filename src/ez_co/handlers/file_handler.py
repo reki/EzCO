@@ -11,19 +11,16 @@ from PIL import Image
 import io
 import logging
 import shutil
-from collections import OrderedDict
 import time
 import threading
-from queue import Queue, PriorityQueue
-from concurrent.futures import ThreadPoolExecutor
-import queue
 import traceback
 import tempfile
-import concurrent.futures
 import re
+import weakref
 from ez_co.enums.archives import ArchiveInfo, ArchiveType
 from ez_co.enums.images import ImageInfo
 from ez_co.enums.encodings import EncodingInfo
+from ez_co.handlers.image_load_scheduler import ImageLoadScheduler, ImageLoadTask
 from ez_co.handlers.virtual_path_handler import VirtualPathHandler
 from ez_co.handlers.archive_password import (
     PASSWORD_ARCHIVE_TYPES,
@@ -37,6 +34,10 @@ from ez_co.handlers.pdf_handler import list_pdf_entries, load_pdf_image
 from ez_co.utils.language_manager import get_text, get_log_text
 import humanfriendly
 logger = logging.getLogger(__name__)
+_PLUGIN_READ_LOCKS_GUARD = threading.Lock()
+_PLUGIN_READ_LOCKS = {}
+
+
 def natural_sort_key(path):
     """自然順序ソート用のキー生成関数（数字を考慮）"""
     # ファイル名を取得（仮想パスの場合は|以降の部分を取得）
@@ -69,11 +70,14 @@ class FileHandler:
         self.current_archive_path = None
         # 新しいファイルハンドル管理設定用
         self.archive_metadata_cache = {}
+        self._archive_metadata_lock = threading.RLock()
+        self._archive_metadata_source_locks = weakref.WeakValueDictionary()
+        self._archive_metadata_epoch = 0
+        self._performance_local = threading.local()
         self.image_cache = {}
+        self._cache_usage = {}
         self.cache_size = 0
         self._cache_lock = threading.RLock()
-        self._load_events = {}
-        self._load_wait_timeout = 0.4
         # 設定からキャッシュサイズを読み込み、humanfriendlyでパース
         self.cache_limit = self._parse_cache_size()
         self._on_image_loaded = None
@@ -81,85 +85,25 @@ class FileHandler:
         self._archive_password_provider = None
         self._current_loading = None
         self._loading_lock = threading.Lock()
-        self._prefetch_lock = threading.Lock()
-        self._prefetch_in_progress = set()
-        self._prefetch_pending = set()
-        # プリフェッチスレッド関連
-        self._prefetch_thread = None
-        self._prefetch_running = False
-        # ワーカースレッド用のキュー
-        self._image_queue = queue.Queue()
-        self._prefetch_queue = queue.PriorityQueue()
-        # スレッドプール
-        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
         # 処理停止フラグ
         self._stop_all_loading = threading.Event()
         self._current_session_id = 0
         self._session_lock = threading.Lock()
-        # ワーカースレッドを開始
+        self._last_navigation_direction = 1
+        self._prefetched_evicted_before_use = 0
+        self._scheduler = None
         self._start_workers()
         # 一時ディレクトリの作成
         self.temp_dir = None
         self._create_temp_dir()
+
     def _start_workers(self):
-        def prefetch_worker():
-            logger.info(get_log_text("debug_prefetch_worker_started"))
-            while True:
-                try:
-                    # タイムアウト付きでキューから取得
-                    priority, index = self._prefetch_queue.get(timeout=1.0)
-                    if index is None:
-                        logger.info(get_log_text("debug_prefetch_worker_stopping"))
-                        break
-                    
-                    # セッションが無効になっていないかチェック
-                    current_session = self._get_current_session_id()
-                    if self._stop_all_loading.is_set():
-                        logger.info(get_log_text("debug_prefetch_worker_session_cancelled", session_id=current_session, index=index))
-                        self._prefetch_queue.task_done()
-                        continue
-                    
-                    logger.info(get_log_text("debug_prefetch_worker_processing", priority=priority, index=index, session_id=current_session))
-                    self._prefetch_around(index, current_session)
-                    self._prefetch_queue.task_done()
-                except queue.Empty:
-                    # タイムアウトは正常な動作なのでログを出力しない
-                    continue
-                except Exception as e:
-                    logger.error(get_log_text("file_handler_worker_error", error=e))
-        def image_loader_worker():
-            logger.info(get_log_text("debug_image_loader_worker_started"))
-            while True:
-                try:
-                    # タイムアウト付きでキューから取得
-                    task = self._image_queue.get(timeout=1.0)
-                    if task is None:
-                        logger.info(get_log_text("debug_image_loader_worker_stopping"))
-                        break
-                    
-                    file, cache_key, is_current, session_id = task
-                    
-                    # セッションが無効になっていないかチェック
-                    if not self._is_session_active(session_id):
-                        logger.info(get_log_text("debug_image_loader_worker_session_cancelled", session_id=session_id, file=file))
-                        if not is_current:
-                            with self._prefetch_lock:
-                                self._prefetch_pending.discard(cache_key)
-                        self._image_queue.task_done()
-                        continue
-                    
-                    logger.info(get_log_text("debug_image_loader_worker_processing", file=file, cache_key=cache_key, is_current=is_current, session_id=session_id))
-                    self._load_image(file, cache_key, is_current, session_id)
-                    self._image_queue.task_done()
-                except queue.Empty:
-                    # タイムアウトは正常な動作なのでログを出力しない
-                    continue
-                except Exception as e:
-                    logger.error(get_log_text("file_handler_worker_error", error=e))
-        logger.info(get_log_text("debug_starting_worker_threads"))
-        threading.Thread(target=prefetch_worker, daemon=True).start()
-        threading.Thread(target=image_loader_worker, daemon=True).start()
-        logger.info(get_log_text("debug_worker_threads_started"))
+        worker_count = getattr(self.config, "effective_image_loader_workers", 3)
+        self._scheduler = ImageLoadScheduler(
+            self._load_scheduled_task,
+            self._is_session_active,
+            worker_count=worker_count,
+        )
 
     def stop_all_loading(self):
         """現在進行中のすべての読み込み処理を停止"""
@@ -174,35 +118,12 @@ class FileHandler:
             current_session = self._current_session_id
             logger.info(get_log_text("file_handler_new_session_started", session_id=current_session))
         
-        # キューをクリア
-        try:
-            while not self._image_queue.empty():
-                try:
-                    self._image_queue.get_nowait()
-                    self._image_queue.task_done()
-                except queue.Empty:
-                    break
-        except Exception as e:
-            logger.debug(get_log_text("file_handler_queue_clear_error", queue_name="image_queue", error=e))
-        
-        try:
-            while not self._prefetch_queue.empty():
-                try:
-                    self._prefetch_queue.get_nowait()
-                    self._prefetch_queue.task_done()
-                except queue.Empty:
-                    break
-        except Exception as e:
-            logger.debug(get_log_text("file_handler_queue_clear_error", queue_name="prefetch_queue", error=e))
-        
-        with self._prefetch_lock:
-            self._prefetch_pending.clear()
-            self._prefetch_in_progress.clear()
-            events = list(self._load_events.values())
-            self._load_events.clear()
-        for event in events:
-            event.set()
-        self.archive_metadata_cache.clear()
+        if self._scheduler is not None:
+            self._scheduler.cancel_pending()
+        with self._archive_metadata_lock:
+            self._archive_metadata_epoch += 1
+            self.archive_metadata_cache.clear()
+        self._prefetched_evicted_before_use = 0
         
         # キャッシュをクリア（大きなアーカイブファイルのメモリを解放）
         self._clear_image_cache()
@@ -219,6 +140,7 @@ class FileHandler:
         with self._cache_lock:
             logger.info(get_log_text("file_handler_clearing_image_cache", cache_size=len(self.image_cache), memory_size=self.cache_size))
             self.image_cache.clear()
+            self._cache_usage.clear()
             self.cache_size = 0
             logger.info(get_log_text("file_handler_image_cache_cleared"))
 
@@ -243,31 +165,110 @@ class FileHandler:
             or file_str.startswith("archive:\\")
         )
 
+    def _navigation_snapshot(self) -> tuple[tuple, int]:
+        """list/indexを同じ時点の組として取得する。"""
+        for _ in range(3):
+            files_object = self.current_files
+            index = self.current_index
+            files = tuple(files_object)
+            if files_object is self.current_files and index == self.current_index:
+                return files, index
+        return tuple(self.current_files), self.current_index
+
     def _pinned_cache_keys(self) -> set:
         keys = set()
-        if not self.current_files:
+        files, current_index = self._navigation_snapshot()
+        if not files:
             return keys
         for offset in (0, -1, 1):
-            index = self.current_index + offset
-            if 0 <= index < len(self.current_files):
-                key = self._cache_key_for_file(self.current_files[index])
+            index = current_index + offset
+            if 0 <= index < len(files):
+                key = self._cache_key_for_file(files[index])
                 if key:
                     keys.add(key)
         return keys
 
-    def _cache_get(self, cache_key: str) -> Optional[Image.Image]:
+    def _cache_get(self, cache_key: str, *, mark_used: bool = False) -> Optional[Image.Image]:
         with self._cache_lock:
-            return self.image_cache.get(cache_key)
+            image = self.image_cache.get(cache_key)
+            if image is not None and mark_used:
+                usage = self._cache_usage.get(cache_key)
+                if usage is not None:
+                    usage["used"] = True
+            return image
 
-    def _cache_put(self, cache_key: str, image: Image.Image, estimated_size: int) -> None:
+    def _cache_put(
+        self,
+        cache_key: str,
+        image: Image.Image,
+        estimated_size: int,
+        *,
+        prefetched: bool = False,
+    ) -> None:
         with self._cache_lock:
             old = self.image_cache.get(cache_key)
             if old is not None and old is not image:
                 self.cache_size -= self._estimate_image_size(old)
             self.image_cache[cache_key] = image
+            self._cache_usage[cache_key] = {
+                "prefetched": bool(prefetched),
+                "used": not prefetched,
+            }
             if old is not image:
                 self.cache_size += estimated_size
             self._evict_cache_unlocked()
+
+    def _cache_put_if_session_active(
+        self,
+        cache_key: str,
+        image: Image.Image,
+        estimated_size: int,
+        session_id: int,
+        *,
+        prefetched: bool,
+    ) -> bool:
+        """session確認とcache反映をstop_all_loadingに対して不可分にする。"""
+        with self._session_lock:
+            if (
+                session_id != self._current_session_id
+                or self._stop_all_loading.is_set()
+            ):
+                return False
+            self._cache_put(
+                cache_key,
+                image,
+                estimated_size,
+                prefetched=prefetched,
+            )
+            return True
+
+    def _performance_logging_enabled(self) -> bool:
+        return bool(
+            self.config
+            and hasattr(self.config, "debug")
+            and isinstance(self.config.debug, dict)
+            and self.config.debug.get("enabled", False)
+        )
+
+    def _log_load_performance(self, **values) -> None:
+        if not self._performance_logging_enabled():
+            return
+        scheduler = self._scheduler.snapshot() if self._scheduler is not None else {}
+        logger.debug(
+            get_log_text(
+                "debug_image_load_performance",
+                details=", ".join(
+                    f"{key}={value}"
+                    for key, value in {
+                        **values,
+                        **scheduler,
+                        "cache_size": self.cache_size,
+                        "cache_limit": self.cache_limit,
+                        "prefetched_evicted_before_use": self._prefetched_evicted_before_use,
+                    }.items()
+                ),
+            )
+        )
 
     def _schedule_on_main_thread(self, func) -> None:
         try:
@@ -343,16 +344,39 @@ class FileHandler:
         return decision.kind is not None
 
     def _image_from_bytes(self, data: bytes) -> Optional[Image.Image]:
-        image = Image.open(io.BytesIO(data))
+        return self._decode_image(io.BytesIO(data))
+
+    def _decode_image(self, source) -> Image.Image:
+        perf_enabled = self._performance_logging_enabled()
+        started = time.perf_counter() if perf_enabled else None
+        image = Image.open(source)
         image.load()
+        if perf_enabled:
+            previous = getattr(self._performance_local, "decode_ms", 0.0)
+            self._performance_local.decode_ms = (
+                previous + (time.perf_counter() - started) * 1000
+            )
         return image
+
+    def _reset_thread_performance(self) -> None:
+        if self._performance_logging_enabled():
+            self._performance_local.decode_ms = 0.0
+
+    def _thread_decode_ms(self) -> float:
+        return float(getattr(self._performance_local, "decode_ms", 0.0))
+
+    def _plugin_lock_for(self, plugin) -> threading.RLock:
+        plugin_key = id(plugin)
+        with _PLUGIN_READ_LOCKS_GUARD:
+            return _PLUGIN_READ_LOCKS.setdefault(plugin_key, threading.RLock())
 
     def _load_plugin_image(self, file_path: Union[str, Path]) -> Optional[Image.Image]:
         try:
             decision = self._resolve_handler(file_path)
             if not (decision.plugin and decision.is_image):
                 return None
-            entry = decision.plugin.read_entry(str(file_path), 0)
+            with self._plugin_lock_for(decision.plugin):
+                entry = decision.plugin.read_entry(str(file_path), 0)
             if entry is None:
                 return None
             data = entry.data if hasattr(entry, "data") else entry[1]
@@ -364,7 +388,8 @@ class FileHandler:
     def _expand_plugin_archive(self, archive_path: Path, plugin) -> List[Path]:
         files = []
         try:
-            names = plugin.list_entries(str(archive_path))
+            with self._plugin_lock_for(plugin):
+                names = plugin.list_entries(str(archive_path))
         except Exception as exc:
             logger.error(get_log_text("debug_plugin_read_failed", file_path=archive_path, error=exc))
             return files
@@ -376,25 +401,26 @@ class FileHandler:
 
     def _read_plugin_archive_entry(self, archive_path_str: str, filename: str, plugin) -> Optional[Image.Image]:
         try:
-            names = plugin.list_entries(archive_path_str)
-            target_index = None
-            normalized = filename.replace("\\", "/")
-            for index, name in enumerate(names):
-                if name.replace("\\", "/") == normalized:
-                    target_index = index
-                    break
-            if target_index is None:
-                base = Path(normalized).name
+            with self._plugin_lock_for(plugin):
+                names = plugin.list_entries(archive_path_str)
+                target_index = None
+                normalized = filename.replace("\\", "/")
                 for index, name in enumerate(names):
-                    if Path(str(name).replace("\\", "/")).name == base:
+                    if name.replace("\\", "/") == normalized:
                         target_index = index
                         break
-            if target_index is None:
-                error_msg = get_log_text("debug_file_not_found_in_archive", filename=filename)
-                logger.error(error_msg)
-                self._notify_error("file_not_in_archive", error_msg, archive_path_str)
-                return None
-            entry = plugin.read_entry(archive_path_str, target_index)
+                if target_index is None:
+                    base = Path(normalized).name
+                    for index, name in enumerate(names):
+                        if Path(str(name).replace("\\", "/")).name == base:
+                            target_index = index
+                            break
+                if target_index is None:
+                    error_msg = get_log_text("debug_file_not_found_in_archive", filename=filename)
+                    logger.error(error_msg)
+                    self._notify_error("file_not_in_archive", error_msg, archive_path_str)
+                    return None
+                entry = plugin.read_entry(archive_path_str, target_index)
             if entry is None:
                 return None
             data = entry.data if hasattr(entry, "data") else entry[1]
@@ -654,16 +680,26 @@ class FileHandler:
             return None
         return (stat.st_mtime_ns, stat.st_size)
 
-    def _store_archive_entries(self, archive_path, entries) -> None:
+    def _store_archive_entries(
+        self,
+        archive_path,
+        entries,
+        *,
+        fingerprint=None,
+        epoch=None,
+    ) -> None:
         if not self._archive_metadata_enabled():
             return
-        fingerprint = self._archive_fingerprint(archive_path)
+        fingerprint = fingerprint or self._archive_fingerprint(archive_path)
         if fingerprint is None:
             return
-        self.archive_metadata_cache[self._archive_metadata_key(archive_path)] = {
-            "fingerprint": fingerprint,
-            "entries": list(entries),
-        }
+        with self._archive_metadata_lock:
+            if epoch is not None and epoch != self._archive_metadata_epoch:
+                return
+            self.archive_metadata_cache[self._archive_metadata_key(archive_path)] = {
+                "fingerprint": fingerprint,
+                "entries": list(entries),
+            }
 
     def _cached_archive_entries(self, archive_path) -> Optional[list]:
         if not self._archive_metadata_enabled():
@@ -671,40 +707,45 @@ class FileHandler:
         fingerprint = self._archive_fingerprint(archive_path)
         if fingerprint is None:
             return None
-        cached = self.archive_metadata_cache.get(self._archive_metadata_key(archive_path))
+        with self._archive_metadata_lock:
+            cached = self.archive_metadata_cache.get(self._archive_metadata_key(archive_path))
         if not cached or cached.get("fingerprint") != fingerprint:
             return None
         entries = cached.get("entries")
         if not isinstance(entries, list):
             return None
-        return entries
+        return list(entries)
 
-    def _claim_decode(self, cache_key: str) -> str:
-        with self._prefetch_lock:
-            if self._cache_get(cache_key) is not None:
-                return "have"
-            if cache_key in self._prefetch_in_progress:
-                self._load_events.setdefault(cache_key, threading.Event())
-                return "wait"
-            self._prefetch_in_progress.add(cache_key)
-            self._prefetch_pending.discard(cache_key)
-            self._load_events.setdefault(cache_key, threading.Event())
-            return "owner"
+    def _archive_metadata_source_lock(self, archive_path) -> threading.RLock:
+        key = self._archive_metadata_key(archive_path)
+        with self._archive_metadata_lock:
+            return self._archive_metadata_source_locks.setdefault(key, threading.RLock())
 
-    def _finish_decode(self, cache_key: str) -> None:
-        with self._prefetch_lock:
-            self._prefetch_in_progress.discard(cache_key)
-            self._prefetch_pending.discard(cache_key)
-            event = self._load_events.pop(cache_key, None)
-        if event is not None:
-            event.set()
-
-    def _wait_for_decode(self, cache_key: str) -> Optional[Image.Image]:
-        with self._prefetch_lock:
-            event = self._load_events.get(cache_key)
-        if event is not None:
-            event.wait(self._load_wait_timeout)
-        return self._cache_get(cache_key)
+    def _archive_entries(self, archive_path, loader) -> list:
+        if not self._archive_metadata_enabled():
+            return list(loader())
+        cached = self._cached_archive_entries(archive_path)
+        if cached is not None:
+            return cached
+        with self._archive_metadata_source_lock(archive_path):
+            cached = self._cached_archive_entries(archive_path)
+            if cached is not None:
+                return cached
+            with self._archive_metadata_lock:
+                epoch = self._archive_metadata_epoch
+            fingerprint = self._archive_fingerprint(archive_path)
+            entries = list(loader())
+            if (
+                fingerprint is not None
+                and fingerprint == self._archive_fingerprint(archive_path)
+            ):
+                self._store_archive_entries(
+                    archive_path,
+                    entries,
+                    fingerprint=fingerprint,
+                    epoch=epoch,
+                )
+            return entries
     def _expand_archive(self, archive_path: Path) -> List[Path]:
         """アーカイブファイル内の画像ファイルを展開"""
         logger.info(get_log_text("debug_expanding_archive", archive_path=archive_path))
@@ -728,8 +769,7 @@ class FileHandler:
             if archive_type in (ArchiveType.ZIP, ArchiveType.CBZ):
                 with open_zip(archive_path) as archive:
                     apply_zip_password(archive, str(archive_path))
-                    archive_names = archive.namelist()
-                    self._store_archive_entries(archive_path, archive_names)
+                    archive_names = self._archive_entries(archive_path, archive.namelist)
                     for name in archive_names:
                         # 文字エンコーディングの修正
                         decoded_name = self._decode_zip_filename(name)
@@ -741,8 +781,7 @@ class FileHandler:
                             logger.debug(get_log_text("file_handler_found_image_in_archive", decoded_name=decoded_name))
             elif archive_type == ArchiveType.SEVEN_ZIP:
                 with py7zr.SevenZipFile(archive_path, 'r', password=seven_zip_password_arg(str(archive_path))) as archive:
-                    archive_names = archive.getnames()
-                    self._store_archive_entries(archive_path, archive_names)
+                    archive_names = self._archive_entries(archive_path, archive.getnames)
                     for name in archive_names:
                         # 文字エンコーディングの修正
                         decoded_name = self._decode_archive_filename(name, internal_name)
@@ -754,8 +793,7 @@ class FileHandler:
             elif archive_type in (ArchiveType.RAR, ArchiveType.CBR):
                 with rarfile.RarFile(archive_path, 'r') as archive:
                     apply_rar_password(archive, str(archive_path))
-                    archive_names = archive.namelist()
-                    self._store_archive_entries(archive_path, archive_names)
+                    archive_names = self._archive_entries(archive_path, archive.namelist)
                     for name in archive_names:
                         # 文字エンコーディングの修正
                         decoded_name = self._decode_archive_filename(name, internal_name)
@@ -768,8 +806,7 @@ class FileHandler:
                             logger.debug(get_log_text("file_handler_found_image_in_rar", normalized_name=normalized_name))
             elif archive_type in [ArchiveType.TAR, ArchiveType.TAR_GZ, ArchiveType.TAR_BZ2, ArchiveType.TAR_XZ]:
                 with tarfile.open(archive_path) as archive:
-                    archive_names = archive.getnames()
-                    self._store_archive_entries(archive_path, archive_names)
+                    archive_names = self._archive_entries(archive_path, archive.getnames)
                     for name in archive_names:
                         # 文字エンコーディングの修正
                         decoded_name = self._decode_archive_filename(name, internal_name)
@@ -836,9 +873,6 @@ class FileHandler:
               not str(file_path).startswith("archive:\\")):
             logger.info(get_log_text("file_handler_opening_as_image", file_path=file_path))
             # 画像ファイルの場合はTrueを返す（画像読み込みはget_current_image()で行う）
-            # プリフェッチを開始（非同期）
-            self._prefetch_around(self.current_index)
-            logger.info(get_log_text("debug_image_file_prefetch_started", file_path=file_path))
             return True
         
         logger.warning(get_log_text("file_handler_unsupported_file_type", suffix=file_path.suffix))
@@ -876,8 +910,7 @@ class FileHandler:
                 if archive_type in (ArchiveType.ZIP, ArchiveType.CBZ):
                     self.current_archive = open_zip(file)
                     apply_zip_password(self.current_archive, str(file))
-                    archive_names = self.current_archive.namelist()
-                    self._store_archive_entries(file, archive_names)
+                    archive_names = self._archive_entries(file, self.current_archive.namelist)
                     for name in archive_names:
                         decoded_name = self._decode_zip_filename(name)
                         if Path(decoded_name).suffix.lower() in self.SUPPORTED_IMAGE_EXTENSIONS:
@@ -886,8 +919,7 @@ class FileHandler:
                     logger.info(get_log_text("file_handler_opened_zip_archive", file=file, count=len(archive_files)))
                 elif archive_type in [ArchiveType.TAR, ArchiveType.TAR_GZ, ArchiveType.TAR_BZ2, ArchiveType.TAR_XZ]:
                     self.current_archive = tarfile.open(file)
-                    archive_names = self.current_archive.getnames()
-                    self._store_archive_entries(file, archive_names)
+                    archive_names = self._archive_entries(file, self.current_archive.getnames)
                     for name in archive_names:
                         decoded_name = self._decode_archive_filename(name, internal_name)
                         if Path(decoded_name).suffix.lower() in self.SUPPORTED_IMAGE_EXTENSIONS:
@@ -943,8 +975,8 @@ class FileHandler:
 
     def get_image_at(self, index: int) -> Optional[Image.Image]:
         """指定インデックスの画像を取得（同期的に読み込む）"""
-        import time
-        start_time = time.time()
+        perf_enabled = self._performance_logging_enabled()
+        start_time = time.perf_counter() if perf_enabled else None
         logger.debug(get_log_text("debug_get_current_image_called", current_index=index, total_files=len(self.current_files)))
         
         if not self.current_files:
@@ -977,30 +1009,60 @@ class FileHandler:
         logger.info(get_log_text("file_handler_current_image_info", file=file, cache_key=cache_key))
         logger.debug(get_log_text("debug_get_current_image_checking_cache", cache_key=cache_key, cache_size=len(self.image_cache)))
         
-        cached = self._cache_get(cache_key)
+        cached = self._cache_get(cache_key, mark_used=True)
         if cached is not None:
             logger.debug(get_log_text("debug_image_found_in_cache", cache_key=cache_key))
             logger.debug(get_log_text("debug_get_current_image_cache_hit", cache_key=cache_key))
-            elapsed = time.time() - start_time
-            logger.debug(get_log_text("debug_get_current_image_completed", cache_key=cache_key, elapsed_ms=elapsed * 1000))
+            if perf_enabled:
+                elapsed_ms = (time.perf_counter() - start_time) * 1000
+                self._log_load_performance(
+                    path="foreground",
+                    cache="hit",
+                    index=index,
+                    total_ms=round(elapsed_ms, 3),
+                )
             return cached
 
-        claim = self._claim_decode(cache_key)
-        if claim == "have":
-            return self._cache_get(cache_key)
+        session_id = self._get_current_session_id()
+        claim, event, owner_token = (
+            self._scheduler.claim_foreground(cache_key, session_id)
+            if self._scheduler is not None
+            else ("owner", threading.Event(), 0)
+        )
+        if claim == "owner":
+            raced = self._cache_get(cache_key, mark_used=True)
+            if raced is not None:
+                if self._scheduler is not None:
+                    self._scheduler.finish_foreground(cache_key, owner_token)
+                return raced
         if claim == "wait":
-            waited = self._wait_for_decode(cache_key)
+            wait_started = time.perf_counter() if perf_enabled else None
+            event.wait()
+            waited = self._cache_get(cache_key, mark_used=True)
             if waited is not None:
-                elapsed = time.time() - start_time
-                logger.debug(get_log_text("debug_get_current_image_completed", cache_key=cache_key, elapsed_ms=elapsed * 1000))
+                if perf_enabled:
+                    self._log_load_performance(
+                        path="foreground",
+                        cache="waited",
+                        index=index,
+                        queue_wait_ms=round((time.perf_counter() - wait_started) * 1000, 3),
+                        total_ms=round((time.perf_counter() - start_time) * 1000, 3),
+                    )
                 return waited
+            if not self._is_session_active(session_id):
+                return None
+            claim, event, owner_token = self._scheduler.claim_foreground(cache_key, session_id)
+            if claim == "wait":
+                event.wait()
+                return self._cache_get(cache_key, mark_used=True)
         
         # キャッシュにない場合は同期的に読み込む
         logger.info(get_log_text("file_handler_getting_image_directly", file=file))
         logger.debug(get_log_text("debug_get_current_image_cache_miss_loading_sync", cache_key=cache_key))
-        owned = claim == "owner"
         
         try:
+            source_started = time.perf_counter() if perf_enabled else None
+            self._reset_thread_performance()
             if is_virtual_path:
                 # 仮想パスから画像を読み込む（セッションチェックをスキップ）
                 image = self._get_image_from_archive_sync(file_str)
@@ -1008,38 +1070,86 @@ class FileHandler:
                 image = self._load_plugin_image(file)
             else:
                 # 通常のファイルから画像を読み込む
-                image = Image.open(Path(file))
-                image.load()  # ファイルハンドルを閉じるために画像データをメモリに読み込む
+                image = self._decode_image(Path(file))
+            source_total_ms = (time.perf_counter() - source_started) * 1000 if perf_enabled else 0
+            decode_ms = self._thread_decode_ms() if perf_enabled else 0
+            source_ms = max(0.0, source_total_ms - decode_ms)
             
             if not image:
                 logger.error(get_log_text("debug_failed_to_load_image", file=file))
                 return None
             
             # 画像の最適化（大きな画像の場合）
+            optimize_started = time.perf_counter() if perf_enabled else None
             image = self._optimize_image(image)
+            optimize_ms = (time.perf_counter() - optimize_started) * 1000 if perf_enabled else 0
             
             # キャッシュに保存
+            cache_started = time.perf_counter() if perf_enabled else None
             estimated_size = self._estimate_image_size(image)
             if estimated_size <= self.cache_limit:
-                self._cache_put(cache_key, image, estimated_size)
+                if not self._cache_put_if_session_active(
+                    cache_key,
+                    image,
+                    estimated_size,
+                    session_id,
+                    prefetched=False,
+                ):
+                    image.close()
+                    return None
                 logger.info(get_log_text("debug_image_loaded_and_cached", cache_key=cache_key))
             else:
                 logger.warning(get_log_text("file_handler_cache_too_large", size=estimated_size))
                 # キャッシュに保存できない場合でも画像は返す
             
-            elapsed = time.time() - start_time
-            logger.debug(get_log_text("debug_get_current_image_completed", cache_key=cache_key, elapsed_ms=elapsed * 1000))
+            if perf_enabled:
+                cache_put_ms = (time.perf_counter() - cache_started) * 1000
+                total_ms = (time.perf_counter() - start_time) * 1000
+                self._log_load_performance(
+                    path="foreground",
+                    cache="miss",
+                    index=index,
+                    source_read_ms=round(source_ms, 3),
+                    decode_ms=round(decode_ms, 3),
+                    optimize_ms=round(optimize_ms, 3),
+                    cache_put_ms=round(cache_put_ms, 3),
+                    total_ms=round(total_ms, 3),
+                )
+                logger.debug(get_log_text("debug_get_current_image_completed", cache_key=cache_key, elapsed_ms=total_ms))
             return image
             
         except Exception as e:
             logger.error(get_log_text("debug_failed_to_load_image", file=file, error=str(e)))
             return None
         finally:
-            if owned:
-                self._finish_decode(cache_key)
-    def _load_image(self, file: str, cache_key: str, is_current: bool = False, session_id: int = None):
+            if self._scheduler is not None and claim == "owner":
+                self._scheduler.finish_foreground(cache_key, owner_token)
+
+    def _load_scheduled_task(self, task: ImageLoadTask) -> bool:
+        return self._load_image(
+            task.file,
+            task.cache_key,
+            is_current=False,
+            session_id=task.session_id,
+            scheduler_owned=True,
+            page_index=task.page_index,
+        )
+
+    def _load_image(
+        self,
+        file: str,
+        cache_key: str,
+        is_current: bool = False,
+        session_id: int = None,
+        *,
+        scheduler_owned: bool = False,
+        page_index: int = -1,
+    ) -> bool:
         """画像を非同期で読み込み、キャッシュに保存"""
-        claimed_prefetch = False
+        direct_claimed = False
+        direct_token = 0
+        perf_enabled = self._performance_logging_enabled()
+        started = time.perf_counter() if perf_enabled else None
         try:
             # セッションIDが指定されていない場合は現在のセッションIDを取得
             if session_id is None:
@@ -1048,35 +1158,33 @@ class FileHandler:
             # セッションが無効になっていないかチェック
             if not self._is_session_active(session_id):
                 logger.info(get_log_text("debug_load_image_session_cancelled", file=file, session_id=session_id))
-                return
+                return False
             
             logger.info(get_log_text("debug_load_image_started", file=file, cache_key=cache_key, is_current=is_current, session_id=session_id))
             if is_current:
                 with self._loading_lock:
                     logger.info(get_log_text("file_handler_setting_current_loading", cache_key=cache_key))
                     self._current_loading = cache_key
-            else:
-                # pending → in_progress へ遷移。キャッシュ済み・処理中なら読み込みしない
-                claim = self._claim_decode(cache_key)
-                if claim == "have":
-                    logger.info(get_log_text("file_handler_skipping_cached", file=file, session_id=session_id))
-                    return
+            elif not scheduler_owned and self._scheduler is not None:
+                claim, event, direct_token = self._scheduler.claim_foreground(cache_key, session_id)
                 if claim == "wait":
-                    logger.info(get_log_text("file_handler_already_prefetching", cache_key=cache_key))
-                    return
-                claimed_prefetch = True
+                    event.wait()
+                    return self._cache_get(cache_key) is not None
+                direct_claimed = True
             
             # 画像読み込み前にもう一度セッションチェック
             if not self._is_session_active(session_id):
                 logger.info(get_log_text("debug_load_image_session_cancelled_before_load", file=file, session_id=session_id))
-                return
+                return False
             
             # キュー投入後に別経路でキャッシュされた場合はZIP読み込み・デコードをスキップ
             if self._cache_get(cache_key) is not None:
                 logger.info(get_log_text("file_handler_skipping_cached", file=file, session_id=session_id))
-                return
+                return True
             
             # 仮想的なパスの処理
+            source_started = time.perf_counter() if perf_enabled else None
+            self._reset_thread_performance()
             if VirtualPathHandler.is_virtual_path(file):
                 logger.info(get_log_text("file_handler_loading_from_archive", file=file))
                 image = self._get_image_from_archive(file, session_id)
@@ -1085,30 +1193,53 @@ class FileHandler:
                 image = self._load_plugin_image(file)
             else:
                 logger.info(get_log_text("file_handler_loading_from_local", file=file))
-                image = Image.open(Path(file))
-                # ファイルハンドルを閉じるために画像データをメモリに読み込む
-                image.load()
+                image = self._decode_image(Path(file))
+            source_total_ms = (time.perf_counter() - source_started) * 1000 if perf_enabled else 0
+            decode_ms = self._thread_decode_ms() if perf_enabled else 0
+            source_ms = max(0.0, source_total_ms - decode_ms)
             
             # 画像読み込み後にセッションチェック
             if not self._is_session_active(session_id):
                 logger.info(get_log_text("debug_load_image_session_cancelled_after_load", file=file, session_id=session_id))
                 if image:
                     image.close()
-                return
+                return False
             
             if image:
                 # 画像の最適化（大きな画像の場合）
+                optimize_started = time.perf_counter() if perf_enabled else None
                 image = self._optimize_image(image)
+                optimize_ms = (time.perf_counter() - optimize_started) * 1000 if perf_enabled else 0
                 
                 # 画像のメモリ使用量を推定
+                cache_started = time.perf_counter() if perf_enabled else None
                 estimated_size = self._estimate_image_size(image)
                 # キャッシュサイズをチェック
                 if estimated_size > self.cache_limit:
                     logger.warning(get_log_text("file_handler_cache_too_large", size=estimated_size))
                     image.close()
-                    return
-                self._cache_put(cache_key, image, estimated_size)
+                    return False
+                if not self._cache_put_if_session_active(
+                    cache_key,
+                    image,
+                    estimated_size,
+                    session_id,
+                    prefetched=not is_current,
+                ):
+                    image.close()
+                    return False
                 logger.info(get_log_text("debug_image_loaded_and_cached", cache_key=cache_key, estimated_size=estimated_size, session_id=session_id))
+                if perf_enabled:
+                    self._log_load_performance(
+                        path="background" if not is_current else "current_worker",
+                        cache="miss",
+                        index=page_index,
+                        source_read_ms=round(source_ms, 3),
+                        decode_ms=round(decode_ms, 3),
+                        optimize_ms=round(optimize_ms, 3),
+                        cache_put_ms=round((time.perf_counter() - cache_started) * 1000, 3),
+                        total_ms=round((time.perf_counter() - started) * 1000, 3),
+                    )
                 # 表示中ページだけ GUI スレッドへ通知する（先読み分で set_image しない）
                 if is_current and self._on_image_loaded and self._is_session_active(session_id):
                     loaded_cb = self._on_image_loaded
@@ -1119,19 +1250,22 @@ class FileHandler:
                         except Exception as callback_error:
                             logger.error(get_log_text("debug_failed_to_call_image_loaded_callback", error=callback_error))
                     self._schedule_on_main_thread(_notify)
+                return True
             else:
                 logger.error(get_log_text("debug_failed_to_load_image", file=file))
+                return False
         except Exception as e:
             logger.error(get_log_text("debug_failed_to_load_image_with_error", file=file, error=e))
+            return False
         finally:
             with self._loading_lock:
                 if is_current:
                     logger.info(get_log_text("file_handler_clearing_current_loading", cache_key=cache_key))
                     self._current_loading = None
-            if not is_current:
-                if claimed_prefetch:
-                    self._finish_decode(cache_key)
-    def _prefetch_around(self, index, session_id=None):
+            if direct_claimed and self._scheduler is not None:
+                self._scheduler.finish_foreground(cache_key, direct_token)
+
+    def _prefetch_around(self, index, session_id=None, direction=None):
         # セッションIDが指定されていない場合は現在のセッションIDを取得
         if session_id is None:
             session_id = self._get_current_session_id()
@@ -1139,6 +1273,8 @@ class FileHandler:
         # セッションが無効になっていないかチェック
         if not self._is_session_active(session_id):
             logger.info(get_log_text("debug_prefetch_around_session_cancelled", index=index, session_id=session_id))
+            return
+        if self._scheduler is None:
             return
         
         # プリフェッチは常に動作させる（ファイルハンドル非保持モードでも都度開閉で対応）
@@ -1150,21 +1286,18 @@ class FileHandler:
         n = 3
         if self.config and hasattr(self.config, 'cache') and isinstance(self.config.cache, dict):
             n = int(self.config.cache.get("prefetch_pages", 3))
-        # 先読みするページのインデックスを優先順位付きで収集
-        # 次のページを最優先（優先度1）、その次を優先度2、前のページは優先度3以降
+        generation = self._scheduler.advance_generation()
+        if direction in (-1, 1):
+            self._last_navigation_direction = direction
+        preferred_direction = self._last_navigation_direction
         prefetch_indices = []
-        # 次のページを最優先
-        if 0 <= index + 1 < len(self.current_files):
-            prefetch_indices.append((index + 1, 1))  # 次のページを最優先
-        # その他の次のページ
-        for i in range(2, n+1):
-            if 0 <= index + i < len(self.current_files):
-                prefetch_indices.append((index + i, i))  # 優先度を2から開始
-        # 前のページ（優先度を下げる）
-        for i in range(1, n+1):
-            if 0 <= index - i < len(self.current_files):
-                prefetch_indices.append((index - i, n + i))  # 前のページは優先度を下げる
-        # 優先順位でソート（現在のページに近い順、次のページを優先）
+        for distance in range(1, n + 1):
+            preferred = index + (distance * preferred_direction)
+            opposite = index - (distance * preferred_direction)
+            if 0 <= preferred < len(self.current_files):
+                prefetch_indices.append((preferred, distance))
+            if 0 <= opposite < len(self.current_files):
+                prefetch_indices.append((opposite, n + distance))
         prefetch_indices.sort(key=lambda x: x[1])
         logger.info(get_log_text("file_handler_prefetch_indices", prefetch_indices=prefetch_indices, session_id=session_id))
         # 各ページを非同期で先読み
@@ -1189,23 +1322,17 @@ class FileHandler:
             else:
                 # 通常ファイルも正規化
                 cache_key = str(Path(file).resolve())
-            should_enqueue = False
-            skip_reason = None
-            with self._prefetch_lock:
-                if self._cache_get(cache_key) is not None:
-                    skip_reason = "cached"
-                elif cache_key in self._prefetch_pending or cache_key in self._prefetch_in_progress:
-                    skip_reason = "prefetching"
-                else:
-                    self._prefetch_pending.add(cache_key)
-                    should_enqueue = True
-            if skip_reason == "cached":
+            if self._cache_get(cache_key) is not None:
                 logger.info(get_log_text("file_handler_skipping_cached", file=file, session_id=session_id))
-            elif skip_reason == "prefetching":
-                logger.info(get_log_text("file_handler_already_prefetching", cache_key=cache_key))
-            elif should_enqueue:
+            elif self._scheduler.enqueue(
+                file=str(file),
+                cache_key=cache_key,
+                page_index=idx,
+                session_id=session_id,
+                generation=generation,
+                priority=priority,
+            ):
                 logger.info(get_log_text("file_handler_adding_prefetch_queue", file=file, priority=priority, session_id=session_id))
-                self._image_queue.put((str(file), cache_key, False, session_id))
     def _estimate_image_size(self, image: Image.Image) -> int:
         # PIL.Imageのメモリ使用量を推定
         if hasattr(image, 'nbytes'):
@@ -1300,6 +1427,9 @@ class FileHandler:
                 break
             
             farthest_image = self.image_cache.pop(farthest_key)
+            usage = self._cache_usage.pop(farthest_key, None)
+            if usage and usage.get("prefetched") and not usage.get("used"):
+                self._prefetched_evicted_before_use += 1
             # 画像のメモリ使用量を推定して減算。表示中の参照は閉じない
             estimated_size = self._estimate_image_size(farthest_image)
             self.cache_size -= estimated_size
@@ -1318,7 +1448,8 @@ class FileHandler:
     
     def _find_farthest_cache_key(self, exclude=None) -> Optional[str]:
         """現在ページから最も遠いキャッシュキーを見つける"""
-        if not self.current_files or self.current_index < 0:
+        files, current_index = self._navigation_snapshot()
+        if not files or current_index < 0:
             return None
         
         skip = exclude or set()
@@ -1328,33 +1459,45 @@ class FileHandler:
         for cache_key in list(self.image_cache.keys()):
             if cache_key in skip:
                 continue
-            distance = self._calculate_page_distance(cache_key)
+            distance = self._calculate_page_distance(
+                cache_key,
+                files=files,
+                current_index=current_index,
+            )
             if distance > max_distance:
                 max_distance = distance
                 farthest_key = cache_key
                 logger.debug(get_log_text("debug_cache_distance_calculation", 
                                         cache_key=cache_key, 
                                         distance=distance,
-                                        current_index=self.current_index))
+                                        current_index=current_index))
         
         if farthest_key:
             logger.info(get_log_text("debug_cache_farthest_found", 
                                    cache_key=farthest_key, 
                                    distance=max_distance,
-                                   current_index=self.current_index))
+                                   current_index=current_index))
         
         return farthest_key
     
-    def _calculate_page_distance(self, cache_key: str) -> int:
+    def _calculate_page_distance(
+        self,
+        cache_key: str,
+        *,
+        files=None,
+        current_index=None,
+    ) -> int:
         """キャッシュキーから現在ページまでの距離を計算"""
         try:
+            if files is None or current_index is None:
+                files, current_index = self._navigation_snapshot()
             # キャッシュキーに対応するファイルのインデックスを検索
-            target_index = self._find_file_index_by_cache_key(cache_key)
+            target_index = self._find_file_index_by_cache_key(cache_key, files=files)
             if target_index is None:
                 return 999999  # 見つからない場合は非常に大きな距離
             
             # 現在ページからの距離を計算
-            distance = abs(target_index - self.current_index)
+            distance = abs(target_index - current_index)
             return distance
             
         except Exception as e:
@@ -1362,16 +1505,18 @@ class FileHandler:
                                     cache_key=cache_key, error=e))
             return 999999  # エラーの場合は非常に大きな距離
     
-    def _find_file_index_by_cache_key(self, cache_key: str) -> Optional[int]:
+    def _find_file_index_by_cache_key(self, cache_key: str, *, files=None) -> Optional[int]:
         """キャッシュキーに対応するファイルのインデックスを検索"""
         try:
+            if files is None:
+                files, _current_index = self._navigation_snapshot()
             # アーカイブファイルの場合（cache_key形式: "path|filename"）
             if '|' in cache_key:
                 archive_path, filename = cache_key.split('|', 1)
                 archive_path = archive_path.replace('\\', '/')
                 
                 # current_filesから対応する仮想パスを探す
-                for i, file_path in enumerate(self.current_files):
+                for i, file_path in enumerate(files):
                     if VirtualPathHandler.is_virtual_path(str(file_path)):
                         result = VirtualPathHandler.parse_virtual_path(str(file_path))
                         if result:
@@ -1388,7 +1533,7 @@ class FileHandler:
                 # 通常ファイルの場合
                 normalized_cache_path = str(Path(cache_key).resolve())
                 
-                for i, file_path in enumerate(self.current_files):
+                for i, file_path in enumerate(files):
                     if not VirtualPathHandler.is_virtual_path(str(file_path)):
                         normalized_file_path = str(Path(file_path).resolve())
                         if normalized_file_path == normalized_cache_path:
@@ -1573,9 +1718,7 @@ class FileHandler:
                     logger.error(get_log_text("file_handler_no_archive_currently_open"))
                     return None
                 with self.current_archive.open(file) as image_file:
-                    image = Image.open(image_file)
-                    image.load()
-                    return image
+                    return self._decode_image(image_file)
         except Exception as e:
             error_msg = get_log_text("debug_failed_to_get_image_from_archive", error=e)
             logger.error(error_msg)
@@ -1750,6 +1893,9 @@ class FileHandler:
             return None
     def close(self):
         """リソースを解放"""
+        if self._scheduler is not None:
+            self.stop_all_loading()
+            self._scheduler.shutdown(wait=True)
         if self.current_archive:
             try:
                 self.current_archive.close()
@@ -1761,16 +1907,18 @@ class FileHandler:
         
         # アーカイブメタデータキャッシュをクリア
         if hasattr(self, 'archive_metadata_cache'):
-            self.archive_metadata_cache.clear()
+            with self._archive_metadata_lock:
+                self.archive_metadata_cache.clear()
+                self._archive_metadata_source_locks.clear()
             
         # 一時ディレクトリのクリーンアップ
         if self.temp_dir and self.temp_dir.exists():
             shutil.rmtree(self.temp_dir)
             self.temp_dir = None
     def __del__(self):
-        self._prefetch_queue.put((float('inf'), None))  # ワーカーを停止
-        self._image_queue.put(None)
-        self._executor.shutdown(wait=False)
+        scheduler = getattr(self, "_scheduler", None)
+        if scheduler is not None:
+            scheduler.shutdown(wait=False)
     def set_on_error_occurred(self, callback):
         """
         エラー発生時に呼ばれるコールバックを登録する。
@@ -1808,10 +1956,12 @@ class FileHandler:
 
     def _move_to_index(self, index: int) -> bool:
         """index を更新して開き、現在位置を中心に先読みする。"""
+        old_index = self.current_index
         self.current_index = index
         result = self._open_current_file()
         if result:
-            self._prefetch_around(self.current_index)
+            direction = 1 if index >= old_index else -1
+            self._prefetch_around(self.current_index, direction=direction)
             logger.info(get_log_text("debug_go_to_page_prefetch_started", page_index=self.current_index))
         return result
 
@@ -1975,10 +2125,7 @@ class FileHandler:
         """ZIPアーカイブの処理（同期的、セッションチェックなし）"""
         with open_zip(archive_path_str, 'r') as archive:
             apply_zip_password(archive, archive_path_str)
-            archive_names = self._cached_archive_entries(archive_path_str)
-            if archive_names is None:
-                archive_names = archive.namelist()
-                self._store_archive_entries(archive_path_str, archive_names)
+            archive_names = self._archive_entries(archive_path_str, archive.namelist)
             target_filename = None
             logger.debug(get_log_text("file_handler_looking_for_file", filename=filename))
             logger.debug(get_log_text("file_handler_archive_contains_files", file_count=len(archive_names)))
@@ -2033,9 +2180,7 @@ class FileHandler:
             if target_filename:
                 logger.debug(get_log_text("file_handler_opening_file", file=target_filename))
                 with archive.open(target_filename) as image_file:
-                    image = Image.open(image_file)
-                    image.load()
-                    return image
+                    return self._decode_image(image_file)
             else:
                 error_msg = get_log_text("debug_file_not_found_in_archive", filename=filename)
                 logger.error(error_msg)
@@ -2056,10 +2201,7 @@ class FileHandler:
         """7ZIPアーカイブの処理（同期的、セッションチェックなし）"""
         with py7zr.SevenZipFile(archive_path_str, 'r', password=seven_zip_password_arg(archive_path_str)) as archive:
             try:
-                archive_names = self._cached_archive_entries(archive_path_str)
-                if archive_names is None:
-                    archive_names = archive.getnames()
-                    self._store_archive_entries(archive_path_str, archive_names)
+                archive_names = self._archive_entries(archive_path_str, archive.getnames)
                 target_filename = None
                 logger.debug(get_log_text("file_handler_looking_for_file", filename=filename))
                 logger.debug(get_log_text("file_handler_archive_contains_files", file_count=len(archive_names)))
@@ -2081,9 +2223,7 @@ class FileHandler:
                     extracted_files = archive.read([target_filename])
                     if target_filename in extracted_files:
                         extracted_file = extracted_files[target_filename].read()
-                        image = Image.open(io.BytesIO(extracted_file))
-                        image.load()
-                        return image
+                        return self._image_from_bytes(extracted_file)
 
                     error_msg = get_log_text("debug_file_not_found_in_7z_archive", filename=target_filename)
                     logger.error(error_msg)
@@ -2123,10 +2263,7 @@ class FileHandler:
         """RARアーカイブの処理（同期的、セッションチェックなし）"""
         with rarfile.RarFile(archive_path_str, 'r') as archive:
             apply_rar_password(archive, archive_path_str)
-            archive_names = self._cached_archive_entries(archive_path_str)
-            if archive_names is None:
-                archive_names = archive.namelist()
-                self._store_archive_entries(archive_path_str, archive_names)
+            archive_names = self._archive_entries(archive_path_str, archive.namelist)
             target_filename = None
             logger.debug(get_log_text("file_handler_looking_for_file", filename=filename))
             logger.debug(get_log_text("file_handler_archive_contains_files", file_count=len(archive_names)))
@@ -2167,9 +2304,7 @@ class FileHandler:
             if target_filename:
                 logger.debug(get_log_text("file_handler_opening_file", file=target_filename))
                 with archive.open(target_filename) as image_file:
-                    image = Image.open(image_file)
-                    image.load()
-                    return image
+                    return self._decode_image(image_file)
             else:
                 error_msg = get_log_text("debug_file_not_found_in_rar_archive", filename=filename)
                 logger.error(error_msg)
@@ -2180,10 +2315,7 @@ class FileHandler:
     def _process_tar_archive_sync(self, archive_path_str: str, filename: str, internal_name: str) -> Optional[Image.Image]:
         """TARアーカイブの処理（同期的、セッションチェックなし）"""
         with tarfile.open(archive_path_str, 'r') as archive:
-            archive_names = self._cached_archive_entries(archive_path_str)
-            if archive_names is None:
-                archive_names = archive.getnames()
-                self._store_archive_entries(archive_path_str, archive_names)
+            archive_names = self._archive_entries(archive_path_str, archive.getnames)
             target_filename = None
             logger.debug(get_log_text("file_handler_looking_for_file", filename=filename))
             logger.debug(get_log_text("file_handler_archive_contains_files", file_count=len(archive_names)))
@@ -2203,9 +2335,7 @@ class FileHandler:
             if target_filename:
                 logger.debug(get_log_text("file_handler_opening_file", file=target_filename))
                 with archive.extractfile(target_filename) as image_file:
-                    image = Image.open(image_file)
-                    image.load()
-                    return image
+                    return self._decode_image(image_file)
             else:
                 error_msg = get_log_text("debug_file_not_found_in_tar_archive", filename=filename)
                 logger.error(error_msg)

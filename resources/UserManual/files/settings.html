@@ -302,7 +302,18 @@ viewer:
                     <!-- キャッシュ設定 -->
                     <section id="cache-settings" class="config-section">
                         <h3>💾 キャッシュ設定 (cache)</h3>
-                        <p>画像のキャッシュとプリフェッチに関する設定を行います。これらの設定により、ページめくりの応答性を大幅に改善できます。</p>
+                        <p>画像のキャッシュとプリフェッチに関する設定を行います。ページめくりの応答性に効きますが、値を大きくするほど速くなるわけではありません。</p>
+
+                        <div class="info-box">
+                            <h4>🖥️ このPCに合わせて決める</h4>
+                            <p>設定画面のキャッシュ設定には2つのボタンがあります。どちらも入力欄の値を変えるだけで、［適用］または［OK］を押すまで保存されません。</p>
+                            <ul>
+                                <li><strong>PCに合わせた推奨設定に戻す:</strong> このPCのCPUと搭載メモリから決めた推奨値を入れます。時間はかかりません。</li>
+                                <li><strong>このPCで最適な設定を測定...:</strong> 実際に画像を読み込んで、ワーカー数・キャッシュ容量・先読みページ数の組み合わせを比べます。数十秒から数分かかり、その間はEzCoを操作できません。結果は確認してから採用できます。</li>
+                            </ul>
+                            <p>測定中はCPU・メモリ・ストレージを使います。他の重い処理を動かしていたり、大きなファイルを開いたタブがあると結果が不正確になります。起動オプションで画像読み込み設定を固定している場合、測定ボタンは使えません。</p>
+                            <p>初回起動時など設定を新しく作るときは、測定せずに推奨値が初期値として入ります。</p>
+                        </div>
 
                         <div class="setting-item">
                             <div class="setting-header">
@@ -310,13 +321,13 @@ viewer:
                                 <span class="setting-key">cache.memory_limit</span>
                                 <span class="setting-type">文字列</span>
                             </div>
-                            <p>読み込んだ画像をメモリに保持するキャッシュのサイズを文字列形式で指定します。大きく設定するほど、より多くの画像をメモリに保持でき、ページめくりが高速になります。</p>
-                            <div class="setting-value">デフォルト: "256MB"（推奨: "128MB"～"8GB"）</div>
+                            <p>読み込んだ画像をメモリに保持するキャッシュのサイズを文字列形式で指定します。大きくしても必ず速くなるわけではありません。先読みが届く範囲を超えた分は、使用メモリだけが増えます。</p>
+                            <div class="setting-value">デフォルト: "256MB"（搭載メモリ16GB以上のPCで新しく設定を作ると "512MB"）</div>
                             <div class="tip-box">
                                 <strong>設定例:</strong>
-                                <br>• <strong>低スペックPC:</strong> "128MB"～"256MB"
-                                <br>• <strong>標準PC:</strong> "512MB"～"1GB"
-                                <br>• <strong>高スペックPC:</strong> "2GB"～"8GB"
+                                <br>• <strong>高解像度の本を複数タブで開く:</strong> "512MB"以上
+                                <br>• <strong>それ以外:</strong> 既定のままで十分です
+                                <br>• <strong>注意:</strong> キャッシュは閲覧タブごとに使われるため、タブを増やすと使用メモリも増えます
                                 <br>• <strong>数値形式:</strong> "1.5GB", "2.5GB"なども可能
                             </div>
                         </div>
@@ -327,14 +338,30 @@ viewer:
                                 <span class="setting-key">cache.prefetch_pages</span>
                                 <span class="setting-type">整数</span>
                             </div>
-                            <p>現在のページから前後何ページ分を先読みしてキャッシュするかを設定します。大きく設定するほど、より多くのページが事前に読み込まれ、スムーズなページめくりが可能になります。</p>
-                            <div class="setting-value">デフォルト: 15（推奨: 5～30、範囲: 1～50）</div>
+                            <p>現在のページから前後何ページ分を先読みしてキャッシュするかを設定します。大きくしても必ず速くなるわけではありません。読み進む前に追い出される先読みが増えると、同じページを読み直すことになり、かえって遅くなります。</p>
+                            <div class="setting-value">デフォルト: 5（範囲: 1～50）</div>
                             <div class="tip-box">
                                 <strong>最適化のポイント:</strong>
-                                <br>• <strong>高速SSD環境:</strong> 10～15ページ（読み込み速度が速いため）
-                                <br>• <strong>HDD環境:</strong> 20～30ページ（読み込み速度が遅いため多めに設定）
-                                <br>• <strong>大容量ファイル:</strong> 5～10ページ（メモリ使用量を抑制）
-                                <br>• <strong>小容量ファイル:</strong> 25～50ページ（より多くのページを先読み）
+                                <br>• <strong>基本:</strong> 既定の5前後。計測では通常の画像でも高解像度でも5が最も安定していました
+                                <br>• <strong>ページを飛ばして読むことが多い:</strong> 10程度まで
+                                <br>• <strong>大容量ファイル:</strong> 増やすならキャッシュサイズも一緒に増やしてください
+                                <br>• <strong>迷うとき:</strong> 「このPCで最適な設定を測定...」で確かめられます
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">画像読み込みワーカー数</span>
+                                <span class="setting-key">cache.image_loader_workers</span>
+                                <span class="setting-type">"auto" または整数</span>
+                            </div>
+                            <p>各閲覧タブが画像の先読みに使うワーカー数を設定します。自動は論理CPU数から1～6本を保守的に選びます。手動では1～8本を指定できます。</p>
+                            <div class="setting-value">デフォルト: "auto"（推奨）</div>
+                            <div class="tip-box">
+                                <strong>注意:</strong>
+                                <br>• 本数を増やしても必ず速くなるわけではなく、CPU・メモリ・I/Oの使用量が増えます。
+                                <br>• ワーカーは閲覧タブごとに作られるため、複数タブを同時に使うと負荷が重なります。
+                                <br>• 変更はEzCoの再起動後に反映されます。設定画面には現在の実行値も表示されます。
                             </div>
                         </div>
 
@@ -354,14 +381,13 @@ viewer:
                             <div class="setting-value">デフォルト: true / 50MB / 4000px</div>
                         </div>
 
-                        <div class="yaml-example">
-cache:
-  memory_limit: "512MB"   # キャッシュメモリサイズ（文字列形式）
-  prefetch_pages: 15      # 事前読み込みページ数（1～50）
+                        <div class="yaml-example"><pre><code>cache:
+  memory_limit: "512MB"
+  prefetch_pages: 5
+  image_loader_workers: "auto"
   optimize_large_images: true
   optimize_threshold: "50MB"
-  optimize_max_resolution: 4000
-                        </div>
+  optimize_max_resolution: 4000</code></pre></div>
                     </section>
 
                     <!-- 履歴設定 -->

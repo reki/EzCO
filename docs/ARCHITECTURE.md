@@ -35,7 +35,8 @@ EzCo は Windows 向けのコミックビュワーです。利用者が指した
 | `MainWindow` | [`src/ez_co/ui/main_window.py`](../src/ez_co/ui/main_window.py) | メニュー、タブ、開く／ページ送り、設定ダイアログ、終了時の保存 |
 | `ViewerPane` | [`src/ez_co/ui/viewer/viewer_pane.py`](../src/ez_co/ui/viewer/viewer_pane.py) | タブ 1 枚分。`FileHandler` と `ImageView` を持つ |
 | `ImageView` | [`src/ez_co/ui/viewer/image_view.py`](../src/ez_co/ui/viewer/image_view.py) | PIL 画像を Qt で表示。ズーム・移動・ジェスチャ |
-| `FileHandler` | [`src/ez_co/handlers/file_handler.py`](../src/ez_co/handlers/file_handler.py) | ページ列、キャッシュ、先読み、アーカイブ／プラグイン読込 |
+| `FileHandler` | [`src/ez_co/handlers/file_handler.py`](../src/ez_co/handlers/file_handler.py) | ページ列、キャッシュ、先読み対象、アーカイブ／プラグイン読込 |
+| `ImageLoadScheduler` | [`src/ez_co/handlers/image_load_scheduler.py`](../src/ez_co/handlers/image_load_scheduler.py) | 先読みの優先queue、設定されたworker pool、世代破棄、decode所有権、終了処理 |
 | `VirtualPathHandler` | [`src/ez_co/handlers/virtual_path_handler.py`](../src/ez_co/handlers/virtual_path_handler.py) | `archive://パス\|エントリ` の生成と解析 |
 | `Config` | [`src/ez_co/config.py`](../src/ez_co/config.py) | ランタイム設定。永続化は DB |
 | `DatabaseManager` | [`src/ez_co/utils/database.py`](../src/ez_co/utils/database.py) | `config.db`。プロファイル設定、プラグイン設定、履歴、ブックマーク |
@@ -43,6 +44,8 @@ EzCo は Windows 向けのコミックビュワーです。利用者が指した
 | `PluginHost` | [`src/ez_co/plugins/host.py`](../src/ez_co/plugins/host.py) | プラグインへ渡す API。`ScopedPluginHost` で隔離 |
 | `PluginSession` | [`src/ez_co/ui/plugins/plugin_session.py`](../src/ez_co/ui/plugins/plugin_session.py) | 同意、重複選択、UI 有効化、サイドバーのドック |
 | `session_file` | [`src/ez_co/handlers/session_file.py`](../src/ez_co/handlers/session_file.py) | `.ezs` の保存／復元（タブとページ） |
+| 画像読み込み推奨値 | [`src/ez_co/utils/image_loading_recommendation.py`](../src/ez_co/utils/image_loading_recommendation.py) | CPU・物理RAMからcache / 先読み / worker の推奨値。新規設定生成時だけ適用 |
+| 画像読み込み実測 | [`src/ez_co/services/image_loading_benchmark.py`](../src/ez_co/services/image_loading_benchmark.py) | 設定画面から呼ぶQt非依存のbenchmark。判定は同ディレクトリの evaluator |
 
 ブックマークは `DatabaseManager` と [`ui/dialogs/bookmark_dialog.py`](../src/ez_co/ui/dialogs/bookmark_dialog.py)、ショートカットは `MainWindow.setup_shortcuts` と [`shortcut_dialog.py`](../src/ez_co/ui/dialogs/shortcut_dialog.py)、ジェスチャは [`gestures/mouse_gesture.py`](../src/ez_co/gestures/mouse_gesture.py) です。描画とページ送りの本体は `ImageView` / `FileHandler` にあり、プラグインには渡しません。
 
@@ -57,6 +60,7 @@ flowchart TD
     Pane[ViewerPane]
     IV[ImageView]
     FH[FileHandler]
+    ILS[ImageLoadScheduler]
     VP[VirtualPathHandler]
     PM[PluginManager]
     PH[PluginHost]
@@ -73,6 +77,7 @@ flowchart TD
     MW --> PS
     Pane --> FH
     Pane --> IV
+    FH --> ILS
     FH --> VP
     FH --> PM
     PS --> PM

@@ -696,20 +696,27 @@ EzCo provides memory caching and prefetching features to improve image loading s
 4. Configure items in the "Cache Settings" section
 5. Save settings
 
+### Tuning for Your PC
+Cache Settings has two buttons. Both only fill the form; nothing is saved until you press Apply or OK.
+
+- **Restore the recommended settings for this PC**: fills in the values chosen from this PC's CPU and installed memory
+- **Measure the best settings for this PC...**: loads real images and compares combinations. It takes from a few dozen seconds to a few minutes, and EzCo cannot be used while it runs
+
+When a configuration is created for the first time, the recommended values are used as defaults without any measurement. The measure button is unavailable while a startup option fixes the image loading settings.
+
 ### Memory Cache Size
 
 #### Overview
-Sets the size of cache for storing loaded images in memory. Larger settings allow more images to be kept in memory, resulting in faster page turning.
+Sets the size of cache for storing loaded images in memory. A larger value is not always faster: beyond what prefetching reaches, only memory usage grows.
 
 #### Setting Values
 - **Format**: String format (e.g., 256MB, 1GB, 2.5GB)
-- **Default**: 256MB
-- **Recommended range**: 128MB to 8GB
+- **Default**: 256MB ("512MB" for a new configuration on a PC with 16GB or more)
 
 #### Setting Examples
-- **Low-spec PC**: 128MB to 256MB
-- **Standard PC**: 512MB to 1GB
-- **High-spec PC**: 2GB to 8GB
+- **High-resolution books in several tabs**: 512MB or more
+- **Otherwise**: the default is enough
+- **Not sure**: use "Measure the best settings for this PC..." in Settings
 
 #### Important Notes
 - Setting values too large may cause system memory shortage
@@ -719,22 +726,20 @@ Sets the size of cache for storing loaded images in memory. Larger settings allo
 ### Prefetch Pages
 
 #### Overview
-Sets how many pages before and after the current page to prefetch and cache. Larger settings enable more pages to be preloaded, allowing smoother page turning.
+Sets how many pages before and after the current page to prefetch and cache. A larger window is not always faster: pages evicted before you reach them are decoded again, which makes page turns slower.
 
 #### Setting Values
 - **Range**: 1 to 50 pages
-- **Default**: 15 pages
-- **Recommended**: 10 to 30 pages
+- **Default**: 5 pages
 
 #### Operation Example
-- **Setting 15**: Prefetch 15 pages before and after current page (31 pages total)
-- **When current is page 10**: Cache pages 1-25
+- **Setting 5**: Prefetch 5 pages before and after current page (11 pages total)
+- **When current is page 10**: Cache pages 5-15
 
 #### Optimization Points
-- **High-speed SSD environment**: 10-15 pages (sufficient with smaller numbers due to fast loading)
-- **HDD environment**: 20-30 pages (larger numbers due to slower loading)
-- **Large files**: 5-10 pages (reduce memory usage)
-- **Small files**: 25-50 pages (prefetch more pages)
+- **Baseline**: around the default of 5; it was the most stable for both normal and high-resolution images
+- **If you often skip pages**: up to about 10
+- **If you increase it**: raise the memory cache size as well
 
 ### Cache Operation Specifications
 
@@ -757,14 +762,14 @@ Prefetching runs in separate threads, so it doesn't affect main image display. H
 ```yaml
 cache:
   memory_limit: "512MB"
-  prefetch_pages: 15
+  prefetch_pages: 5
 ```
 
-#### Performance-focused Settings
+#### When You Often Skip Pages
 ```yaml
 cache:
-  memory_limit: "2GB"
-  prefetch_pages: 30
+  memory_limit: "1GB"
+  prefetch_pages: 10
 ```
 
 #### Memory-saving Settings

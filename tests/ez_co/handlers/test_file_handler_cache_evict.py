@@ -17,7 +17,6 @@ def _handler(monkeypatch, memory_limit="1MB"):
         debug={"keep_archive_handles": False},
     )
     handler = FileHandler(config)
-    handler._executor.shutdown(wait=False)
     return handler
 
 
@@ -41,3 +40,24 @@ def test_evict_keeps_current_and_neighbor_pages(tmp_path, monkeypatch):
     assert current_key in handler.image_cache
     assert neighbor_key in handler.image_cache
     assert far_key not in handler.image_cache
+
+
+def test_counts_prefetched_page_evicted_before_use(tmp_path, monkeypatch):
+    handler = _handler(monkeypatch)
+    files = [tmp_path / f"{index}.png" for index in range(5)]
+    for path in files:
+        path.write_bytes(b"")
+    handler.current_files = files
+    handler.current_index = 0
+    handler.cache_limit = 2500
+
+    for path in files:
+        image = Image.new("RGB", (20, 20))
+        handler._cache_put(
+            handler._cache_key_for_file(path),
+            image,
+            handler._estimate_image_size(image),
+            prefetched=True,
+        )
+
+    assert handler._prefetched_evicted_before_use > 0

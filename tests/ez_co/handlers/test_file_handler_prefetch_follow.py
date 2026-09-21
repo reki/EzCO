@@ -6,6 +6,27 @@ from ez_co.handlers.file_handler import FileHandler
 from ez_co.handlers.virtual_path_handler import VirtualPathHandler
 
 
+class _RecordingScheduler:
+    def __init__(self):
+        self.generation = 0
+        self.tasks = []
+
+    def advance_generation(self):
+        self.generation += 1
+        self.tasks.clear()
+        return self.generation
+
+    def enqueue(self, **task):
+        self.tasks.append(task)
+        return True
+
+    def shutdown(self, *, wait=False):
+        del wait
+
+    def cancel_pending(self):
+        self.tasks.clear()
+
+
 def _handler(monkeypatch):
     monkeypatch.setattr(FileHandler, "_start_workers", lambda self: None)
     monkeypatch.setattr(FileHandler, "_is_plugin_image", lambda self, file: False)
@@ -15,7 +36,7 @@ def _handler(monkeypatch):
         plugins={},
     )
     handler = FileHandler(config)
-    handler._executor.shutdown(wait=False)
+    handler._scheduler = _RecordingScheduler()
     return handler
 
 
@@ -27,8 +48,7 @@ def _archive_pages(archive_path: Path, count: int):
 
 
 def _queued_indices(handler, files):
-    keys = {item[1] for item in list(handler._image_queue.queue)}
-    keys.update(handler._prefetch_pending)
+    keys = {item["cache_key"] for item in handler._scheduler.tasks}
     indices = []
     for index, file in enumerate(files):
         if handler._cache_key_for_file(file) in keys:
@@ -56,6 +76,7 @@ def test_next_file_in_archive_keeps_prefetch_ahead(tmp_path, monkeypatch):
     assert handler.current_index == 10
     assert 11 in queued
     assert 13 in queued
+    assert handler._scheduler.tasks[0]["page_index"] == 11
 
 
 def test_go_to_page_prefetches_around_jump(tmp_path, monkeypatch):
@@ -71,6 +92,7 @@ def test_go_to_page_prefetches_around_jump(tmp_path, monkeypatch):
     assert 16 in queued
     assert 14 in queued
     assert 1 not in queued
+    assert handler._scheduler.tasks[0]["page_index"] == 16
 
 
 def test_prev_file_prefetches_around_new_index(tmp_path, monkeypatch):
@@ -86,3 +108,4 @@ def test_prev_file_prefetches_around_new_index(tmp_path, monkeypatch):
     assert handler.current_index == 9
     assert 10 in queued
     assert 8 in queued
+    assert handler._scheduler.tasks[0]["page_index"] == 8

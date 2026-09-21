@@ -341,7 +341,11 @@ class DatabaseManager:
         """設定行が無いプロファイルへデフォルト設定を入れる（既存データは上書きしない）"""
         try:
             from ez_co.config import Config
-            default_dict = Config().to_dict()
+            from ez_co.utils.image_loading_recommendation import apply_recommendation
+            # 設定行が無いプロファイルは新規生成なので、推奨値を初期値にする
+            default_config = Config()
+            apply_recommendation(default_config)
+            default_dict = default_config.to_dict()
             for profile_name in self.get_profiles():
                 if not self.has_profile_settings(profile_name):
                     self.save_profile_config(profile_name, default_dict)
@@ -514,7 +518,15 @@ class DatabaseManager:
                 ''', (profile_name,))
                 conn.commit()
             from ez_co.config import Config
-            config_dict = settings if settings is not None else Config().to_dict()
+            if settings is not None:
+                # UIやYAML importは渡された設定をそのまま使う（現在設定のコピー）
+                config_dict = settings
+            else:
+                # 呼び出し元が設定を持たないときだけ、新規設定として推奨値を入れる
+                from ez_co.utils.image_loading_recommendation import apply_recommendation
+                new_config = Config()
+                apply_recommendation(new_config)
+                config_dict = new_config.to_dict()
             self.save_profile_config(profile_name, config_dict)
             source = self.current_profile
             if source and source != profile_name:

@@ -1,11 +1,14 @@
 ---
-description: Python パッケージとデータ専用フォルダの __init__.py 方針
+description: 実行コードとリソースの置き場、および __init__.py 方針
 globs: "**/*.py,pyproject.toml"
 alwaysApply: false
 ---
 
 # Python パッケージの配置
 
+- 本体の実行コードと、軽い runtime リソースは `src/ez_co/` 配下に置く。Exe 化で nuitka へ渡すのは `src/ez_co/main.py` と、データとしての `src/ez_co/resources` だけなので、外に置くと Exe から読めない
+- 重いリソースは `src/ez_co/resources/` へ入れない。onefile は起動ごとに同梱データを展開するので、起動が遅くなる。プロジェクトルート側（`data/` や既存の `resources/UserManual/`）へ置き、`tooling/release_layout.py` の `stage_release_dir` で頒布 zip へ同梱し、実行時は `utils/path_utils.py` の `get_project_root()` 基準で読む
+- `tooling/` と `tests/` は開発専用で Exe に含めない。ビルド時アイコンの `resources/icon.ico` も Exe 内に取り込まない
 - import 対象の Python コードディレクトリには `__init__.py` を置き、通常パッケージとして統一する
 - JSON・Markdown・画像などだけを置くデータ専用サブフォルダには `__init__.py` を置かない
 - パッケージ内データは、最寄りの通常パッケージを `importlib.resources.files()` で取得し、`joinpath()` でデータ専用サブフォルダを辿る

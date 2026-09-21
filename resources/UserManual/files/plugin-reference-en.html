@@ -424,7 +424,7 @@ class _Entry:
                         <article id="read-entry" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>read_entry(file_path: str, index: int) -&gt; object</code></div>
                             <div class="api-body">
-                                <p>Return an object with <code>name</code> (str) and <code>data</code> (bytes PIL can open). May run on a worker. Use host APIs for UI.</p>
+                                <p>Return an object with <code>name</code> (str) and <code>data</code> (bytes PIL can open). May run on a worker. The host serializes <code>list_entries</code> / <code>read_entry</code> calls for the same plugin. Do not re-enter loading on the same plugin from another thread and synchronously wait for it. Use host APIs for UI.</p>
 <pre class="api-example">def read_entry(self, file_path, index):
     name = self.list_entries(file_path)[index]
     with ZipFile(file_path) as archive:

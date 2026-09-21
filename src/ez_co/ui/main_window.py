@@ -4,6 +4,7 @@ import os
 import logging
 import subprocess
 import sys
+import time
 import webbrowser
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout,
@@ -1206,6 +1207,11 @@ class MainWindow(QMainWindow):
         if not self.file_handler:
             return None
         if self._has_spread_pair():
+            perf_enabled = bool(
+                isinstance(self.config.debug, dict)
+                and self.config.debug.get("enabled", False)
+            )
+            spread_started = time.perf_counter() if perf_enabled else None
             start = self._spread_display_start(self.file_handler.current_index)
             first_image = self._piped_image_at(start)
             second_image = self._piped_image_at(start + 1)
@@ -1213,8 +1219,20 @@ class MainWindow(QMainWindow):
                 page_mode = self.config.viewer.get("page_mode", "spread_right")
                 if page_mode == "spread_right":
                     # 右に小さいページ、左に次ページ
-                    return self.image_view.combine_spread_images(second_image, first_image)
-                return self.image_view.combine_spread_images(first_image, second_image)
+                    result = self.image_view.combine_spread_images(second_image, first_image)
+                else:
+                    result = self.image_view.combine_spread_images(first_image, second_image)
+                if perf_enabled:
+                    logger.debug(
+                        get_log_text(
+                            "debug_image_load_performance",
+                            details=(
+                                f"path=display_spread, index={start}, "
+                                f"spread_total_ms={(time.perf_counter() - spread_started) * 1000:.3f}"
+                            ),
+                        )
+                    )
+                return result
             return first_image or second_image
         current = self.file_handler.get_current_image()
         index = self.file_handler.current_index if self.file_handler else -1
@@ -1228,18 +1246,34 @@ class MainWindow(QMainWindow):
     def _apply_display_pipe(self, image, page_index: int):
         if image is None:
             return None
+        perf_enabled = bool(
+            isinstance(self.config.debug, dict)
+            and self.config.debug.get("enabled", False)
+        )
+        started = time.perf_counter() if perf_enabled else None
         path = ""
         files = self.file_handler.current_files if self.file_handler else []
         if 0 <= page_index < len(files):
             path = str(files[page_index])
         filters = self.config.filters if self.config else {}
-        return apply_pipe(
+        result = apply_pipe(
             image,
             filters.get("pipe") or [],
             path=path,
             page=page_index + 1,
             builtin_settings=(filters.get("settings") or {}).get(BUILTIN_FILTER_ID),
         )
+        if perf_enabled:
+            logger.debug(
+                get_log_text(
+                    "debug_image_load_performance",
+                    details=(
+                        f"path=display_filter, index={page_index}, "
+                        f"filter_ms={(time.perf_counter() - started) * 1000:.3f}"
+                    ),
+                )
+            )
+        return result
 
     def _setup_filter_menu(self, menubar):
         """フィルターメニューを台帳から組み立てる。"""
@@ -1638,6 +1672,7 @@ class MainWindow(QMainWindow):
             self._push_closed_tab(pane)
         self.tab_widget.removeTab(index)
         if isinstance(pane, ViewerPane):
+            pane.dispose()
             pane.deleteLater()
         self._sync_tab_bar()
 
@@ -1939,6 +1974,7 @@ class MainWindow(QMainWindow):
                 pane = self.tab_widget.widget(0)
                 self.tab_widget.removeTab(0)
                 if isinstance(pane, ViewerPane):
+                    pane.dispose()
                     pane.deleteLater()
             self.tab_widget.blockSignals(False)
         else:
@@ -3225,6 +3261,10 @@ class MainWindow(QMainWindow):
         self._store_window_geometry()
         # 現在のファイルの履歴を保存
         self.save_current_file_history()
+        for index in range(self.tab_widget.count()):
+            pane = self.tab_widget.widget(index)
+            if isinstance(pane, ViewerPane):
+                pane.dispose()
         # マウスロックが有効な場合は無効にして、設定もFalseで保存
         self.mouse_lock_state.persistent = False
         self.mouse_lock_state.fullscreen = False

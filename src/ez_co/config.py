@@ -1,4 +1,5 @@
 import locale
+import os
 from PySide6.QtGui import QFontDatabase
 from typing import Dict, Any, List
 from ez_co.enums.arrows import Arrow
@@ -8,6 +9,14 @@ from ez_co.enums.actions import Actions
 from ez_co.enums.mouse_buttons import MouseButtons
 from ez_co.enums.keyboard_keys import KeyboardKeys, ModifierKeys
 from ez_co.enums.fonts import FontFamilyManager
+from ez_co.utils.image_loader_workers import (
+    AUTO_IMAGE_LOADER_WORKERS,
+    normalize_image_loader_workers,
+    resolve_image_loader_workers,
+)
+
+
+_CPU_COUNT_UNSET = object()
 
 class OverrideDict(dict):
     """ランタイムオーバーライドを考慮する辞書プロキシ"""
@@ -71,6 +80,9 @@ class Config:
     def __init__(self):
         # ランタイムオーバーライド用の辞書（コマンドライン引数で指定された設定）
         self.runtime_overrides = {}
+        self._effective_image_loader_workers = None
+        self._image_loader_workers_configured_at_start = None
+        self._image_loader_logical_cpu_count = None
         
         self.window = {
             "width": 800,
@@ -110,7 +122,8 @@ class Config:
         }
         self.cache = {
             "memory_limit": "256MB",
-            "prefetch_pages": 15,
+            "prefetch_pages": 5,
+            "image_loader_workers": AUTO_IMAGE_LOADER_WORKERS,
             "optimize_large_images": True,
             "optimize_threshold": "50MB",
             "optimize_max_resolution": 4000
@@ -341,6 +354,9 @@ class Config:
         if "cache" in merged_data:
             cache_data = merged_data["cache"]
             config.cache.update(cache_data)
+            config.cache["image_loader_workers"] = normalize_image_loader_workers(
+                cache_data.get("image_loader_workers", AUTO_IMAGE_LOADER_WORKERS)
+            )
             # デフォルト値を設定（不足している場合）
             if "optimize_large_images" not in cache_data:
                 config.cache["optimize_large_images"] = True
@@ -530,6 +546,37 @@ class Config:
         self.shortcuts = dict(loaded.shortcuts) if loaded.shortcuts else {}
         self.gesture_map = dict(loaded.gesture_map) if loaded.gesture_map else {}
         self.runtime_overrides = runtime
+
+    def freeze_image_loader_workers(self, logical_cpu_count=_CPU_COUNT_UNSET) -> int:
+        """今回のprocessで使うworker数を初回呼出し時に固定する。"""
+        if self._effective_image_loader_workers is not None:
+            return self._effective_image_loader_workers
+        if logical_cpu_count is _CPU_COUNT_UNSET:
+            logical_cpu_count = os.cpu_count()
+        configured = normalize_image_loader_workers(
+            self.cache.get("image_loader_workers", AUTO_IMAGE_LOADER_WORKERS)
+        )
+        self._image_loader_workers_configured_at_start = configured
+        self._image_loader_logical_cpu_count = logical_cpu_count
+        self._effective_image_loader_workers = resolve_image_loader_workers(
+            configured,
+            logical_cpu_count,
+        )
+        return self._effective_image_loader_workers
+
+    @property
+    def effective_image_loader_workers(self) -> int:
+        return self.freeze_image_loader_workers()
+
+    @property
+    def image_loader_workers_configured_at_start(self):
+        self.freeze_image_loader_workers()
+        return self._image_loader_workers_configured_at_start
+
+    @property
+    def image_loader_logical_cpu_count(self):
+        self.freeze_image_loader_workers()
+        return self._image_loader_logical_cpu_count
 
     @staticmethod
     def strip_profile_section(data: Dict[str, Any]) -> Dict[str, Any]:

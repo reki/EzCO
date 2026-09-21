@@ -44,6 +44,12 @@ class ViewerPane(QWidget):
             "page": self.current_page or 1,
         }
 
+    def dispose(self):
+        """タブが所有するbackground workerとfile handleを終了する。"""
+        if self.file_handler is not None:
+            self.file_handler.close()
+            self.file_handler = None
+
     def show_center_message(self, message: str):
         if self._center_message_label is None:
             self._center_message_label = QLabel(self)

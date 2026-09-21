@@ -107,9 +107,23 @@ class ImageView(QWidget):
             logger.info(get_log_text("image_view_setting_image", size=image.size))
             logger.info(get_log_text("debug_set_image_zoom_factor", zoom_factor=self.zoom_factor))
             # PIL.Image から QImage への変換（1回だけ）。convert 結果を保持しないと ImageQt が落ちる
+            perf_enabled = bool(
+                self.config
+                and hasattr(self.config, "debug")
+                and isinstance(self.config.debug, dict)
+                and self.config.debug.get("enabled", False)
+            )
+            convert_started = time.perf_counter() if perf_enabled else None
             rgba = image.convert("RGBA")
             self._qimage_source = rgba
             self.current_qimage = PILImageQt(rgba)
+            if perf_enabled:
+                logger.debug(
+                    get_log_text(
+                        "debug_image_load_performance",
+                        details=f"path=display_rgba, rgba_convert_ms={(time.perf_counter() - convert_started) * 1000:.3f}",
+                    )
+                )
             
             if self._zoom_navigation_mode() == "page" and self.zoom_factor > 1.0:
                 # page は従来どおり、拡大した新しい画像を右上から表示する。

@@ -14,7 +14,6 @@ def test_cache_get_put_from_many_threads(tmp_path, monkeypatch):
         debug={"keep_archive_handles": False},
     )
     handler = FileHandler(config)
-    handler._executor.shutdown(wait=False)
     files = [tmp_path / f"{index}.png" for index in range(8)]
     for path in files:
         path.write_bytes(b"")
@@ -48,3 +47,28 @@ def test_cache_get_put_from_many_threads(tmp_path, monkeypatch):
     for thread in threads:
         thread.join()
     assert errors == []
+
+
+def test_navigation_snapshot_retries_when_index_changes(monkeypatch):
+    monkeypatch.setattr(FileHandler, "_start_workers", lambda self: None)
+    config = SimpleNamespace(
+        cache={"memory_limit": "8KB", "prefetch_pages": 1, "optimize_large_images": False},
+        debug={"keep_archive_handles": False},
+    )
+    handler = FileHandler(config)
+
+    class ChangingList(list):
+        changed = False
+
+        def __iter__(self):
+            if not self.changed:
+                self.changed = True
+                handler.current_index = 1
+            return super().__iter__()
+
+    handler.current_files = ChangingList(["a", "b"])
+    handler.current_index = 0
+
+    files, index = handler._navigation_snapshot()
+    assert files == ("a", "b")
+    assert index == 1

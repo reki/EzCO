@@ -12,6 +12,15 @@ import logging
 import humanfriendly
 from ez_co.enums.fonts import FontInfo, FontFamilyManager
 from ez_co.config import Config
+from ez_co.utils.image_loader_workers import (
+    AUTO_IMAGE_LOADER_WORKERS,
+    normalize_image_loader_workers,
+)
+from ez_co.utils.image_loading_recommendation import (
+    auto_effective_workers,
+    recommend_image_loading_settings,
+)
+from ez_co.utils.system_resources import logical_cpu_count, physical_memory_bytes
 from ez_co.utils.language_manager import get_text, get_available_languages, set_language, get_log_text
 from ez_co.utils.data_location import (
     LOCATION_CUSTOM,
@@ -26,6 +35,13 @@ from ez_co.utils.data_location import (
 
 logger = logging.getLogger(__name__)
 
+# このいずれかが起動オプションで固定されていると、測定結果をそのまま適用できない
+CACHE_BENCHMARK_OVERRIDE_KEYS = (
+    "cache.memory_limit",
+    "cache.prefetch_pages",
+    "cache.image_loader_workers",
+)
+
 class SettingsDialog(QDialog):
     """設定ダイアログ"""
     def __init__(self, config, parent=None):
@@ -34,6 +50,98 @@ class SettingsDialog(QDialog):
         self._setting_tip_widgets = {}
         self.setup_ui()
         self.apply_runtime_overrides()
+
+    def _set_image_loader_workers_value(self, value):
+        normalized = normalize_image_loader_workers(value)
+        index = self.cache_image_loader_workers.findData(normalized)
+        self.cache_image_loader_workers.setCurrentIndex(max(0, index))
+
+    def _image_loading_recommendation(self):
+        """このPCの推奨値と、判断に使ったRAM量・autoの実効worker数を返す。"""
+        cpu_count = logical_cpu_count()
+        memory_bytes = physical_memory_bytes()
+        recommendation = recommend_image_loading_settings(cpu_count, memory_bytes)
+        return recommendation, memory_bytes, auto_effective_workers(cpu_count)
+
+    def current_worker_display(self):
+        value = normalize_image_loader_workers(
+            self.cache_image_loader_workers.currentData()
+        )
+        if value == AUTO_IMAGE_LOADER_WORKERS:
+            return get_text("settings.cache_image_loader_workers_auto")
+        return str(value)
+
+    def _update_cache_recommendation_label(self):
+        """現在値と推奨値を並べて出す。推奨のworkerは常にautoの実効値。"""
+        recommendation, memory_bytes, auto_workers = (
+            self._image_loading_recommendation()
+        )
+        lines = [
+            get_text("settings.cache_current_settings").format(
+                memory_limit=self.cache_memory_limit.text().strip() or "-",
+                prefetch_pages=self.cache_prefetch_pages.value(),
+                workers=self.current_worker_display(),
+            ),
+            get_text("settings.cache_recommended_settings").format(
+                memory_limit=recommendation.memory_limit,
+                prefetch_pages=recommendation.prefetch_pages,
+                workers=get_text("settings.cache_recommended_workers_auto").format(
+                    count=auto_workers
+                ),
+            ),
+        ]
+        if memory_bytes is None:
+            lines.append(get_text("settings.cache_recommended_memory_unknown"))
+        self.cache_recommendation_label.setText("\n".join(lines))
+
+    def apply_recommended_cache_settings(self):
+        """widget値だけ推奨値へ戻す。保存は Apply / OK のまま。"""
+        recommendation, _memory_bytes, _auto_workers = (
+            self._image_loading_recommendation()
+        )
+        if not self.config.is_runtime_overridden("cache.memory_limit"):
+            self.cache_memory_limit.setText(recommendation.memory_limit)
+        if not self.config.is_runtime_overridden("cache.prefetch_pages"):
+            self.cache_prefetch_pages.setValue(recommendation.prefetch_pages)
+        if not self.config.is_runtime_overridden("cache.image_loader_workers"):
+            self._set_image_loader_workers_value(recommendation.image_loader_workers)
+        self._update_cache_recommendation_label()
+
+    def _cache_benchmark_blocked_by_override(self):
+        return any(
+            self.config.is_runtime_overridden(key)
+            for key in CACHE_BENCHMARK_OVERRIDE_KEYS
+        )
+
+    def _update_cache_measure_button_state(self):
+        """起動オプションでcacheが固定されているときは測定させない。"""
+        blocked = self._cache_benchmark_blocked_by_override()
+        self.cache_measure_button.setEnabled(not blocked)
+        self.cache_measure_disabled_label.setVisible(blocked)
+        if blocked:
+            self._apply_setting_tip(
+                "cache_measure_best",
+                self.cache_measure_button,
+                extra_text=get_text("settings.cache_measure_best_runtime_override"),
+            )
+
+    def measure_best_cache_settings(self):
+        """実測ダイアログを開き、採用された結果をwidgetへ入れる。"""
+        from ez_co.ui.dialogs.image_loading_benchmark_dialog import (
+            run_image_loading_benchmark_dialog,
+        )
+
+        outcome = run_image_loading_benchmark_dialog(self)
+        if outcome is None:
+            return
+        self.apply_benchmark_outcome(outcome)
+
+    def apply_benchmark_outcome(self, outcome):
+        """測定結果をwidgetへ反映する。Configへは保存しない。"""
+        self.cache_memory_limit.setText(outcome.memory_limit)
+        self.cache_prefetch_pages.setValue(int(outcome.prefetch_pages))
+        self._set_image_loader_workers_value(outcome.image_loader_workers)
+        self._update_cache_recommendation_label()
 
     def _setting_tip_text(self, key):
         """設定項目の詳細説明を取得（tip → description の順）"""
@@ -189,6 +297,8 @@ class SettingsDialog(QDialog):
         self._disable_if_overridden("viewer.open_folders_in_own_tab", "open_folders_in_own_tab", self.open_folders_own_tab_checkbox)
         self._disable_if_overridden("cache.memory_limit", "cache_memory_limit", self.cache_memory_limit)
         self._disable_if_overridden("cache.prefetch_pages", "cache_prefetch_pages", self.cache_prefetch_pages)
+        self._disable_if_overridden("cache.image_loader_workers", "cache_image_loader_workers", self.cache_image_loader_workers)
+        self._update_cache_measure_button_state()
         self._disable_if_overridden("cache.optimize_large_images", "optimize_large_images", self.optimize_large_images_checkbox)
         self._disable_if_overridden("cache.optimize_threshold", "optimize_threshold", self.optimize_threshold)
         self._disable_if_overridden("cache.optimize_max_resolution", "optimize_max_resolution", self.optimize_max_resolution)
@@ -686,7 +796,7 @@ class SettingsDialog(QDialog):
         self.cache_prefetch_pages = QSpinBox()
         self.cache_prefetch_pages.setMaximumWidth(100)
         self.cache_prefetch_pages.setRange(1, 50)
-        self.cache_prefetch_pages.setValue(self.config.cache.get("prefetch_pages", 15))
+        self.cache_prefetch_pages.setValue(self.config.cache.get("prefetch_pages", 5))
         cache_layout.addRow(self._form_label("cache_prefetch_pages"), self.cache_prefetch_pages)
         self._apply_setting_tip("cache_prefetch_pages", self.cache_prefetch_pages)
         
@@ -696,6 +806,99 @@ class SettingsDialog(QDialog):
         prefetch_description.setWordWrap(True)
         self._apply_setting_tip("cache_prefetch_pages", prefetch_description)
         cache_layout.addRow(prefetch_description)
+
+        # 画像読み込みworker数
+        self.cache_image_loader_workers = QComboBox()
+        self.cache_image_loader_workers.setMaximumWidth(200)
+        self.cache_image_loader_workers.addItem(
+            get_text("settings.cache_image_loader_workers_auto"),
+            "auto",
+        )
+        for worker_count in range(1, 9):
+            self.cache_image_loader_workers.addItem(str(worker_count), worker_count)
+        self._set_image_loader_workers_value(
+            self.config.cache.get("image_loader_workers", "auto")
+        )
+        cache_layout.addRow(
+            self._form_label("cache_image_loader_workers"),
+            self.cache_image_loader_workers,
+        )
+        self._apply_setting_tip(
+            "cache_image_loader_workers",
+            self.cache_image_loader_workers,
+        )
+
+        worker_description = QLabel(
+            get_text("settings.cache_image_loader_workers_description")
+        )
+        worker_description.setStyleSheet("color: #666; font-size: 10px;")
+        worker_description.setWordWrap(True)
+        self._apply_setting_tip(
+            "cache_image_loader_workers",
+            worker_description,
+        )
+        cache_layout.addRow(worker_description)
+
+        effective_workers = getattr(
+            self.config,
+            "effective_image_loader_workers",
+            3,
+        )
+        self.cache_image_loader_workers_effective = QLabel(
+            get_text("settings.cache_image_loader_workers_effective").format(
+                count=effective_workers
+            )
+        )
+        self.cache_image_loader_workers_effective.setStyleSheet(
+            "color: #666; font-size: 10px;"
+        )
+        cache_layout.addRow(self.cache_image_loader_workers_effective)
+
+        # 現在設定とこのPCの推奨値
+        self.cache_recommendation_label = QLabel()
+        self.cache_recommendation_label.setStyleSheet("color: #666; font-size: 10px;")
+        self.cache_recommendation_label.setWordWrap(True)
+        cache_layout.addRow(self.cache_recommendation_label)
+
+        cache_button_row = QHBoxLayout()
+        self.cache_restore_recommended_button = QPushButton(
+            get_text("settings.cache_restore_recommended")
+        )
+        self.cache_restore_recommended_button.clicked.connect(
+            self.apply_recommended_cache_settings
+        )
+        self._apply_setting_tip(
+            "cache_restore_recommended",
+            self.cache_restore_recommended_button,
+        )
+        cache_button_row.addWidget(self.cache_restore_recommended_button)
+        self.cache_measure_button = QPushButton(get_text("settings.cache_measure_best"))
+        self.cache_measure_button.clicked.connect(self.measure_best_cache_settings)
+        self._apply_setting_tip("cache_measure_best", self.cache_measure_button)
+        cache_button_row.addWidget(self.cache_measure_button)
+        cache_button_row.addStretch()
+        cache_button_container = QWidget()
+        cache_button_container.setLayout(cache_button_row)
+        cache_layout.addRow(cache_button_container)
+
+        self.cache_measure_disabled_label = QLabel(
+            get_text("settings.cache_measure_best_runtime_override")
+        )
+        self.cache_measure_disabled_label.setStyleSheet("color: #666; font-size: 10px;")
+        self.cache_measure_disabled_label.setWordWrap(True)
+        self.cache_measure_disabled_label.setVisible(False)
+        cache_layout.addRow(self.cache_measure_disabled_label)
+
+        self.cache_memory_limit.textChanged.connect(
+            self._update_cache_recommendation_label
+        )
+        self.cache_prefetch_pages.valueChanged.connect(
+            self._update_cache_recommendation_label
+        )
+        self.cache_image_loader_workers.currentIndexChanged.connect(
+            self._update_cache_recommendation_label
+        )
+        self._update_cache_recommendation_label()
         
         # 大きな画像の最適化
         self.optimize_large_images_checkbox = QCheckBox(get_text("settings.optimize_large_images"))
@@ -1068,9 +1271,14 @@ class SettingsDialog(QDialog):
 
     def _update_ui_with_config(self, config_dict):
         """設定辞書の値でUIを更新"""
+        # このメソッドはreset/import時のUI同期だけを行う。
+        font_changed = False
+        language_changed = False
+        selected_language = self.config.language.get("code", "system")
         # 言語設定
         if "language" in config_dict:
             language_code = config_dict["language"].get("code", "system")
+            selected_language = language_code
             for i in range(self.language_combo.count()):
                 if self.language_combo.itemData(i) == language_code:
                     self.language_combo.setCurrentIndex(i)
@@ -1155,7 +1363,10 @@ class SettingsDialog(QDialog):
         # キャッシュ設定
         if "cache" in config_dict:
             self.cache_memory_limit.setText(config_dict["cache"].get("memory_limit", "256MB"))
-            self.cache_prefetch_pages.setValue(config_dict["cache"].get("prefetch_pages", 15))
+            self.cache_prefetch_pages.setValue(config_dict["cache"].get("prefetch_pages", 5))
+            self._set_image_loader_workers_value(
+                config_dict["cache"].get("image_loader_workers", "auto")
+            )
             if hasattr(self, 'optimize_large_images_checkbox'):
                 self.optimize_large_images_checkbox.setChecked(config_dict["cache"].get("optimize_large_images", True))
             if hasattr(self, 'optimize_threshold'):
@@ -1399,6 +1610,9 @@ class SettingsDialog(QDialog):
             )
         
         self.config.cache["prefetch_pages"] = self.cache_prefetch_pages.value()
+        self.config.cache["image_loader_workers"] = (
+            self.cache_image_loader_workers.currentData()
+        )
         
         # 画像最適化設定
         self.config.cache["optimize_large_images"] = self.optimize_large_images_checkbox.isChecked()

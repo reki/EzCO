@@ -26,7 +26,6 @@ def _handler(monkeypatch, metadata=True):
         archive={"enabled": True},
     )
     handler = FileHandler(config)
-    handler._executor.shutdown(wait=False)
     return handler
 
 

@@ -322,7 +322,7 @@ class _Entry:
 | アーカイブを開く | `list_entries` → 仮想パスを作る |
 | ページ表示／プリフェッチ | `list_entries` のあと `read_entry(path, index)` |
 
-`read_entry` はワーカースレッドから呼ばれることがあります。UI が必要な処理はホスト API（`ask_password` など）を使ってください。ホスト側で UI スレッドに渡します。
+`read_entry` はワーカースレッドから呼ばれることがあります。本体は同じプラグイン instance の `list_entries` / `read_entry` を直列に呼び、異なるプラグインは並列に呼べます。これらのメソッドから別threadを起動して同じinstanceの読込へ再入し、その完了を同期的に待たないでください。UI が必要な処理はホスト API（`ask_password` など）を使ってください。ホスト側で UI スレッドに渡します。
 
 ---
 

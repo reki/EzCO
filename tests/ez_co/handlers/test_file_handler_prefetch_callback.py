@@ -15,7 +15,6 @@ def _handler(monkeypatch):
         plugins={},
     )
     handler = FileHandler(config)
-    handler._executor.shutdown(wait=False)
     return handler
 
 

@@ -302,27 +302,55 @@ ZIP（および同様のアーカイブ一覧）は開いたときのエント�
 
 <a id="prefetch-follow"></a>
 
-## 先読みは窓の追従を先にする
+## 先読みは現在位置追従の優先schedulerで処理する
 
 ### Context
 
-連写 ZIP で先読みが効いていないように見えた。キューを PriorityQueue にする案があった。
+連写 ZIP で先読みが効いていないように見えたため、まずページ移動後に先読み窓を追従させた。しかし実働は単一workerとFIFOのままで、古い未開始task、cache churn、0.4秒後の二重decodeにより、順送りでも先読みが枯渇し得た。
 
 ### Current decision
 
-`next_file` / `prev_file` / `go_to_page` は `_move_to_index` 経由で `_prefetch_around` する。実キューは FIFO の `_image_queue`。`_prefetch_queue` と PriorityQueue はほぼ未使用。PriorityQueue 化はしない（後回しのまま。予定とは書かない）。
+`next_file` / `prev_file` / `go_to_page` は `_move_to_index` 経由で `_prefetch_around` する。実働は `ImageLoadScheduler` の共通 `PriorityQueue` と設定された本数のworker。ページ移動ごとのgenerationとtaskごとの単調増加tokenで、古い未開始taskをqueueから除去する。すでにworkerが取得した旧taskも開始前検証で捨て、開始済みdecodeは中断しない。
+
+優先方向は最後の改ページ方向と現在位置からの距離で決める。現在ページのcache missは引き続きGUI同期だが、未開始prefetchはforegroundがclaimし、background実行中なら同じ完了を待つ。
 
 ### Why
 
-窓がページに追従していなかったのが欠落だった。現行ページはまだ GUI 同期なので、キューの優先度は体感の本命ではない。会話で確定。
+計測と再現テストで、窓へ追加されることだけでは処理順を保証できず、単一workerが古いtaskを消化する間に現在位置が先読みへ追いつく構造が確認できた。workerを増やすだけでは古い仕事と二重decodeも増えるため、priority・generation・decode所有権を同じschedulerへ集約した。
 
 ### Consequences
 
-先読みの優先は `_prefetch_around` がエンキューする順。未使用キューを「改善予定」と書かない。
+同一Plugin instanceの `list_entries` / `read_entry` はforegroundを含めPlugin単位で直列化する。archive metadataはsource単位で構築を共有し、異なるarchiveは並列に処理できる。現在ページの完全非同期化は含めない。
 
 ### Status
 
-追従は採用済み。PriorityQueue は未着手。
+採用中。
+
+---
+
+## 画像読込worker数は起動時に解決してprocess内で固定する
+
+### Context
+
+固定3本では端末性能や負荷の好みに合わせられない。一方、設定保存後に新しいタブだけ別のworker数を使うと、同じprocess内でpool構成が混在し、「再起動後に反映」という説明とも矛盾する。
+
+### Current decision
+
+`cache.image_loader_workers` は `"auto"` または1～8。autoは論理CPU数から保守的に1～6を選び、CPU数を取得できない場合は3とする。起動プロファイルとruntime overrideを適用したあと、configured値、論理CPU数、effective値を `Config` に固定する。設定保存やプロファイル切替ではeffective値を変えず、次回起動から反映する。
+
+worker poolはFileHandlerごとに所有する。shared scheduler化とruntime resizeは行わない。
+
+### Why
+
+pool再構築中のdecode・cache・session所有権を増やさず、全タブの挙動と設定画面の説明を一致させるため。auto上限6は、複数タブでFileHandlerごとのthread数が加算される点も考慮した保守値。
+
+### Consequences
+
+設定画面は現在のeffective値を表示する。worker数を増やすと先読みが速くなる場合がある一方、複数タブではCPU・メモリ・I/O負荷が重なる。24論理CPUでの生成素材benchmarkでは通常画像は2本以上で改善したが、高解像度ZIPは256MB cacheに対して4本以上で追放と再decodeが増えた。単一端末の結果だけでCPU帯ごとのauto表は変更しない。詳細は [IMAGE_LOADING.md](IMAGE_LOADING.md#2026-09-21-の生成素材benchmark)。
+
+### Status
+
+採用中。
 
 ---
 
@@ -334,8 +362,8 @@ ZIP（および同様のアーカイブ一覧）は開いたときのエント�
 
 ### Current decision
 
-1. アーカイブ metadata cache  
-2. `_claim_decode` による二重 decode 防止  
+1. アーカイブ metadata cache
+2. schedulerによるcache key単位のdecode所有権
 プラグイン一覧 cache は後回し。
 
 ### Why
@@ -344,7 +372,7 @@ ZIP（および同様のアーカイブ一覧）は開いたときのエント�
 
 ### Consequences
 
-`debug.cache_archive_metadata`（既定 True）。wait タイムアウトは 0.4 秒。
+`debug.cache_archive_metadata`（既定 True）。foregroundがbackground decodeへ追いついた場合は同じ完了eventを待つ。タイムアウト後に同じ画像をforegroundでもdecodeするfallbackは持たない。
 
 ### Status
 

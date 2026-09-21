@@ -14,6 +14,7 @@ from ez_co.ui.plugins.plugin_session import PluginSession
 from ez_co.config import Config
 from ez_co.handlers.file_handler import FileHandler
 from ez_co.utils.path_utils import get_project_root
+from ez_co.utils.image_loading_recommendation import apply_recommendation
 from ez_co.utils.data_location import (
     LOCATION_EXE,
     LOCATION_USER,
@@ -206,9 +207,19 @@ def load_config_from_db(db_manager: DatabaseManager) -> Config:
         profile_name = db_manager.current_profile
         data = db_manager.load_profile_config(profile_name)
         if not data:
+            # 新規設定だけhardwareからの推奨値を初期値にする。既存設定は再計算しない
             config = Config()
+            recommendation = apply_recommendation(config)
             db_manager.save_profile_config(profile_name, config.to_dict())
             logger.info(get_log_text("config_created"))
+            logger.info(
+                get_log_text(
+                    "image_loading_recommendation_applied",
+                    memory_limit=recommendation.memory_limit,
+                    prefetch_pages=recommendation.prefetch_pages,
+                    workers=recommendation.image_loader_workers,
+                )
+            )
             return config
         logger.info(get_log_text("config_loaded"))
         return Config.from_dict(data)
@@ -407,6 +418,15 @@ def main():
         current_profile = initialize_profile(db_manager, config, specified_profile)
         # プロファイル設定の言語を適用
         initialize_language(config)
+        effective_workers = config.freeze_image_loader_workers()
+        logger.info(
+            get_log_text(
+                "image_loader_workers_resolved",
+                configured=config.image_loader_workers_configured_at_start,
+                resolved=effective_workers,
+                cpu_count=config.image_loader_logical_cpu_count,
+            )
+        )
         # アプリケーションフォントの設定
         try:
             ui_font = config.ui_font
