@@ -163,6 +163,187 @@
                 "clear": false
             },
             "problemMatcher": []
+        },
+        {
+            "label": "計測: 画像読み込み smoke (1分未満)",
+            "detail": "worker × cache を小さい素材で1周。所要 1 分未満。結果の判断には使わない",
+            "type": "shell",
+            "command": "poetry",
+            "args": [
+                "run",
+                "python",
+                "-m",
+                "tooling.image_loader_benchmark",
+                "--matrix",
+                "--pages",
+                "6",
+                "--repeats",
+                "1",
+                "--output",
+                "tooling/logs/image_loader_matrix_smoke.json",
+                "--markdown-output",
+                "tooling/logs/image_loader_matrix_smoke.md"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "計測: worker 1〜8 基準 (数分)",
+            "detail": "3素材 × worker 1〜8。docs/IMAGE_LOADING.md の worker 比較の元データ",
+            "type": "shell",
+            "command": "poetry",
+            "args": [
+                "run",
+                "python",
+                "-m",
+                "tooling.image_loader_benchmark",
+                "--output",
+                "tooling/logs/image_loader_benchmark.json"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "計測: worker × cache matrix (数分)",
+            "detail": "高解像度ZIPで worker 1〜8 × cache 256MB/512MB/1GB の24条件。条件ごとに独立process",
+            "type": "shell",
+            "command": "poetry",
+            "args": [
+                "run",
+                "python",
+                "-m",
+                "tooling.image_loader_benchmark",
+                "--matrix",
+                "--output",
+                "tooling/logs/image_loader_cache_matrix.json",
+                "--markdown-output",
+                "tooling/logs/image_loader_cache_matrix.md"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "計測: 推奨設定 policy matrix (数分)",
+            "detail": "3素材 × cache 256MB/512MB/1GB × prefetch 5/10/15 の27条件。--pages は見ず source 64 / 測定 20 / worker 4 固定",
+            "type": "shell",
+            "command": "poetry",
+            "args": [
+                "run",
+                "python",
+                "-m",
+                "tooling.image_loader_benchmark",
+                "--policy-matrix",
+                "--output",
+                "tooling/logs/image_policy_matrix.json",
+                "--markdown-output",
+                "tooling/logs/image_policy_matrix.md"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "計測: 性能一括 (十数分)",
+            "detail": "cache / prefetch・foreground stall・表示準備・複数タブmemory をまとめて測る。最も時間がかかる",
+            "type": "shell",
+            "command": "poetry",
+            "args": [
+                "run",
+                "python",
+                "-m",
+                "tooling.image_loader_benchmark",
+                "--full-batch",
+                "--output",
+                "tooling/logs/image_performance_batch.json",
+                "--markdown-output",
+                "tooling/logs/image_performance_batch.md"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "計測: 表示準備コスト (1〜2分)",
+            "detail": "filter・見開き合成・RGBA変換・ImageView 準備の内訳だけを測る",
+            "type": "shell",
+            "command": "poetry",
+            "args": [
+                "run",
+                "python",
+                "-m",
+                "tooling.image_display_benchmark",
+                "--output",
+                "tooling/logs/image_display_benchmark.json"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "計測: 実測ダイアログ smoke (数秒)",
+            "detail": "設定画面からの実測ダイアログの thread lifecycle（正常終了・キャンセル・実行中のclose）を確認",
+            "type": "shell",
+            "command": "poetry",
+            "args": [
+                "run",
+                "python",
+                "tooling/image_loading_benchmark_dialog_smoke.py"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false,
+                "clear": false
+            },
+            "problemMatcher": []
         }
     ]
 }

@@ -156,6 +156,90 @@
             "preLaunchTask": "EzCo: テスト"
         },
         {
+            "name": "▶ 計測: 画像読み込み smoke (1分未満)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tooling/noop.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "preLaunchTask": "計測: 画像読み込み smoke (1分未満)"
+        },
+        {
+            "name": "▶ 計測: worker 1〜8 基準 (数分)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tooling/noop.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "preLaunchTask": "計測: worker 1〜8 基準 (数分)"
+        },
+        {
+            "name": "▶ 計測: worker × cache matrix (数分)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tooling/noop.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "preLaunchTask": "計測: worker × cache matrix (数分)"
+        },
+        {
+            "name": "▶ 計測: 推奨設定 policy matrix (数分)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tooling/noop.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "preLaunchTask": "計測: 推奨設定 policy matrix (数分)"
+        },
+        {
+            "name": "▶ 計測: 性能一括 (十数分)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tooling/noop.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "preLaunchTask": "計測: 性能一括 (十数分)"
+        },
+        {
+            "name": "▶ 計測: 表示準備コスト (1〜2分)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tooling/noop.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "preLaunchTask": "計測: 表示準備コスト (1〜2分)"
+        },
+        {
+            "name": "Python: 実測ダイアログ smoke (デバッグ可)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tooling/image_loading_benchmark_dialog_smoke.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        },
+        {
             "name": "py-spy: top (EzCo)",
             "type": "node-terminal",
             "request": "launch",
