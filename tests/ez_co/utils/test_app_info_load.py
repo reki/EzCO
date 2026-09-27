@@ -12,3 +12,4 @@ def test_load_app_info_reads_packaged_fields():
     assert info["homepage"].startswith("http")
     assert info["description"] == "A lightweight comic viewer"
     assert not isinstance(info["description"], dict)
+    assert info["hash"] == ""

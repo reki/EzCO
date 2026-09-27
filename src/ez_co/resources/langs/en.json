@@ -47,6 +47,7 @@
   },
   "logging": {
     "add_gesture_dialog_opened": "Add gesture dialog opened",
+    "app_build_id": "EzCo version={version} build_id={build_id}",
     "application_exited": "Application exited",
     "application_started": "Application started",
     "archive_file_moved": "Archive file has been moved or deleted\\n'{path}'\\n\\nPlease check the file location.",
@@ -998,6 +999,7 @@
   "ui": {
     "about": "About EzCo",
     "about_author": "Author",
+    "about_hash": "Build id",
     "about_homepage": "Homepage",
     "about_license": "License",
     "about_years": "Years",

@@ -147,6 +147,16 @@ def _enqueue_error_dialog(where: str, text: str) -> None:
     queue.requested.emit(where, text)
 
 
+def _build_id_header() -> str:
+    """識別子が取れなくても、呼び出し側は traceback を残す。"""
+    try:
+        from ez_co.utils.app_info import build_id_error_header
+
+        return build_id_error_header()
+    except Exception:
+        return ""
+
+
 def report_error(where, exc=None, plugin_id=None, exc_info=None) -> None:
     if exc_info is not None and _should_ignore(exc_info[0]):
         return
@@ -157,6 +167,9 @@ def report_error(where, exc=None, plugin_id=None, exc_info=None) -> None:
         text = f"{type(exc).__name__}: {exc}"
     if not text:
         return
+    header = _build_id_header()
+    if header:
+        text = f"{header}\n\n{text}"
     location = str(where or "error")
     if plugin_id:
         location = f"{plugin_id} / {location}"

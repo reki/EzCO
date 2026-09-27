@@ -76,7 +76,7 @@ SVG の出力先はリポジトリ直下の `py-spy-ezco.svg` です（スクリ
 
 ## ビルド
 
-Nuitka の Launch（「▶ ビルド」「▶ ビルド (--safe-mode)」「▶ 頒布用zip」「▶ インストーラ」）に任せます。`collect` で実行中の `EzCo.exe` が消せなくても失敗にしない、は `workflow.mdc` です。サンプルプラグインの ZIP は **「EzCo: プラグインZIP」** または `poetry run pack-plugins` です。出力は `<フォルダ>-<version>.zip`。manifest の誤りはログしてスキップし、最後に成功／失敗件数を出します。
+Nuitka の Launch（「▶ ビルド」「▶ ビルド (--safe-mode)」「▶ 頒布用zip」「▶ インストーラ」）に任せます。ビルドの直前に `src/` のビルド識別（64桁の SHA-256）を `src/ez_co/resources/about/info.json` の `hash` へ書き、成功・失敗・Ctrl+C のいずれでも `finally` で元のバイト列に戻します。リポジトリ上の `hash` は空のままです。この値は source と resource の識別子であり、Nuitka や Python、コンパイラオプションまで含めた exe のバイナリ指紋ではありません。ソース起動時は同じ計算をその場で行い、バージョンダイアログは先頭16桁、起動ログと未処理例外ログは64桁を出します。`collect` で実行中の `EzCo.exe` が消せなくても失敗にしない、は `workflow.mdc` です。サンプルプラグインの ZIP は **「EzCo: プラグインZIP」** または `poetry run pack-plugins` です。出力は `<フォルダ>-<version>.zip`。manifest の誤りはログしてスキップし、最後に成功／失敗件数を出します。
 
 ---
 

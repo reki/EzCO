@@ -14,6 +14,7 @@ from ez_co.ui.plugins.plugin_session import PluginSession
 from ez_co.config import Config
 from ez_co.handlers.file_handler import FileHandler
 from ez_co.utils.path_utils import get_project_root
+from ez_co.utils.app_info import current_build_id, load_app_info
 from ez_co.utils.image_loading_recommendation import apply_recommendation
 from ez_co.utils.data_location import (
     LOCATION_EXE,
@@ -375,6 +376,18 @@ def create_new_window(config: Config, parent_window=None):
         error_logger.log_error(get_log_text("main_new_window_create_error", error=e), e)
         return None
 
+def log_build_id() -> None:
+    """起動ログへ、この source/resource の64桁を1行出す。"""
+    info = load_app_info()
+    logger.info(
+        get_log_text(
+            "app_build_id",
+            version=info.get("version") or "",
+            build_id=current_build_id(),
+        )
+    )
+
+
 def main():
     try:
         # エラーログ機能を初期化
@@ -427,6 +440,7 @@ def main():
                 cpu_count=config.image_loader_logical_cpu_count,
             )
         )
+        log_build_id()
         # アプリケーションフォントの設定
         try:
             ui_font = config.ui_font

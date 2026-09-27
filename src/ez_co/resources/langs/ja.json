@@ -47,6 +47,7 @@
   },
   "logging": {
     "add_gesture_dialog_opened": "ジェスチャー追加ダイアログを開きました",
+    "app_build_id": "EzCo version={version} build_id={build_id}",
     "application_exited": "アプリケーションを終了しました",
     "application_started": "アプリケーションを開始しました",
     "archive_file_moved": "アーカイブファイルが移動または削除されました\\n'{path}'\\n\\nファイルの場所を確認してください。",
@@ -998,6 +999,7 @@
   "ui": {
     "about": "EzCoについて",
     "about_author": "制作者",
+    "about_hash": "ビルド識別",
     "about_homepage": "ホームページ",
     "about_license": "ライセンス",
     "about_years": "年代",

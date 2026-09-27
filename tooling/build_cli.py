@@ -11,6 +11,8 @@ import sys
 import time
 from pathlib import Path
 
+from ez_co.utils.app_info import source_tree_hash, stamped_info_json
+
 
 def _project_root() -> Path:
     return Path(__file__).resolve().parent.parent
@@ -110,27 +112,31 @@ def _run_nuitka(project_root: Path, safe_mode: bool) -> None:
             main_arg,
         ]
 
-    subprocess.run(cmd, cwd=str(project_root), env=env, check=True)
+    info_path = res_root / "about" / "info.json"
+    build_id = source_tree_hash(project_root / "src")
+    print(f"Build id: {build_id}")
+    with stamped_info_json(info_path, build_id):
+        subprocess.run(cmd, cwd=str(project_root), env=env, check=True)
 
-    exe = build_dir / "EzCo.exe"
-    print("Build completed successfully!")
-    print(f"Executable location: {exe}")
+        exe = build_dir / "EzCo.exe"
+        print("Build completed successfully!")
+        print(f"Executable location: {exe}")
 
-    if not exe.is_file():
-        raise SystemExit("Nuitka finished but EzCo.exe was not found.")
+        if not exe.is_file():
+            raise SystemExit("Nuitka finished but EzCo.exe was not found.")
 
-    if safe_mode:
-        dest = dist_dir / "EzCo(Debug).exe"
-        print("Copying executable to project root...")
-        shutil.copy2(exe, dest)
-        print(f"Executable copied to: {dest}")
-    else:
-        dest = dist_dir / "EzCo.exe"
-        print("Copying executable to project root...")
-        shutil.copy2(exe, dest)
-        print(f"Executable copied to: {dest}")
+        if safe_mode:
+            dest = dist_dir / "EzCo(Debug).exe"
+            print("Copying executable to project root...")
+            shutil.copy2(exe, dest)
+            print(f"Executable copied to: {dest}")
+        else:
+            dest = dist_dir / "EzCo.exe"
+            print("Copying executable to project root...")
+            shutil.copy2(exe, dest)
+            print(f"Executable copied to: {dest}")
 
-    shutil.rmtree(build_dir)
+        shutil.rmtree(build_dir)
 
 
 def run_build(*, safe_mode: bool = False) -> None:
