@@ -18,6 +18,7 @@ from PySide6.QtGui import (
     QAction, QActionGroup, QPainter, QColor, QDragEnterEvent, QDropEvent,
     QFont, QCursor, QKeySequence,
 )
+import shiboken6
 from ez_co.config import Config
 from ez_co.filters.builtin import BUILTIN_FILTER_ID, register_builtin
 from ez_co.filters.pipeline import apply_pipe
@@ -927,16 +928,27 @@ class MainWindow(QMainWindow):
         self._apply_sidebar_dock_corners()
         self._restore_dock_state()
         self._refresh_tab_list()
+    def _is_zoom_overlay_valid(self):
+        """ズーム表示ラベルの C++ オブジェクトが残っているか。"""
+        label = getattr(self, "_zoom_overlay_label", None)
+        return label is not None and shiboken6.isValid(label)
+
+    def _hide_zoom_overlay(self):
+        """生きているズーム表示だけを隠す。"""
+        if self._is_zoom_overlay_valid():
+            self._zoom_overlay_label.hide()
+
     def update_zoom_display(self, zoom_factor):
         # ImageView上に半透明ラベルで2～3秒だけ表示
         self.show_zoom_overlay(zoom_factor)
     def show_zoom_overlay(self, zoom_factor):
         if self.image_view is None:
             return
-        if (
-            not hasattr(self, '_zoom_overlay_label')
-            or self._zoom_overlay_label.parent() is not self.image_view
-        ):
+        if not self._is_zoom_overlay_valid():
+            self._zoom_overlay_label = None
+        elif self._zoom_overlay_label.parent() is not self.image_view:
+            self._zoom_overlay_label = None
+        if self._zoom_overlay_label is None:
             self._zoom_overlay_label = QLabel(self.image_view)
             # ここでsetStyleSheetはしない（後で必ず上書きするため）
             self._zoom_overlay_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -944,11 +956,7 @@ class MainWindow(QMainWindow):
             if not hasattr(self, "_zoom_overlay_timer"):
                 self._zoom_overlay_timer = QTimer(self)
                 self._zoom_overlay_timer.setSingleShot(True)
-            try:
-                self._zoom_overlay_timer.timeout.disconnect()
-            except TypeError:
-                pass
-            self._zoom_overlay_timer.timeout.connect(lambda: self._zoom_overlay_label.hide())
+                self._zoom_overlay_timer.timeout.connect(self._hide_zoom_overlay)
         percent = int(zoom_factor * 100)
         self._zoom_overlay_label.setText(f"{get_text('ui.zoom_factor')} {percent} %")
         self._zoom_overlay_label.adjustSize()
@@ -1644,8 +1652,7 @@ class MainWindow(QMainWindow):
     def _on_tab_changed(self, index: int):
         if index < 0 or self.current_pane is None:
             return
-        if hasattr(self, "_zoom_overlay_label"):
-            self._zoom_overlay_label.hide()
+        self._hide_zoom_overlay()
         if self.file_handler and self.file_handler.current_files:
             self.update_image()
             self._update_image_list_dialog()
