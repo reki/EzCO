@@ -65,6 +65,7 @@ class FileHandler:
         self.config = config
         self.plugin_manager = plugin_manager
         self.current_files = []
+        self._cache_key_to_index = {}
         self.current_index = 0
         self.current_archive = None
         self.current_archive_path = None
@@ -156,6 +157,15 @@ class FileHandler:
             return str(Path(file).resolve())
         except Exception:
             return file_str
+
+    def _rebuild_file_index_map(self) -> None:
+        """確定した current_files から、キャッシュキーの最初の index を引く表を作る。"""
+        mapping = {}
+        for index, file in enumerate(self.current_files):
+            key = self._cache_key_for_file(file)
+            if key:
+                mapping.setdefault(key, index)
+        self._cache_key_to_index = mapping
 
     def _is_virtual_file(self, file) -> bool:
         file_str = str(file)
@@ -444,6 +454,7 @@ class FileHandler:
                 logger.warning(get_log_text("debug_no_config_available"))
             # ファイルリストをクリア
             self.current_files = []
+            self._rebuild_file_index_map()
             skipped_archives = []
             for file in files:
                 logger.info(get_log_text("debug_processing_file", file=file, is_dir=Path(file).is_dir() if hasattr(Path(file), 'is_dir') else 'N/A', exists=Path(file).exists() if hasattr(Path(file), 'exists') else 'N/A'))
@@ -492,6 +503,7 @@ class FileHandler:
                     self.current_files.append(file_path)
                 else:
                     logger.warning(get_log_text("file_handler_file_not_found", file=file))
+            self._rebuild_file_index_map()
             logger.info(get_log_text("debug_total_files_found", file_count=len(self.current_files)))
             logger.info(get_log_text("debug_files_list", files_list=self.current_files))
             # スキップされたアーカイブファイルがある場合はログに記録
@@ -886,6 +898,7 @@ class FileHandler:
                 self.current_archive_path = file
                 self.current_files = archive_files
                 self.current_index = 0
+                self._rebuild_file_index_map()
                 return True
 
             archive_type = ArchiveInfo.get_archive_type_by_path(str(file))
@@ -965,6 +978,7 @@ class FileHandler:
             self.current_archive_path = file
             self.current_files = archive_files
             self.current_index = 0
+            self._rebuild_file_index_map()
             return True
         except Exception as e:
             logger.error(get_log_text("file_handler_failed_to_open_archive", error=e))
@@ -1491,8 +1505,10 @@ class FileHandler:
         try:
             if files is None or current_index is None:
                 files, current_index = self._navigation_snapshot()
-            # キャッシュキーに対応するファイルのインデックスを検索
-            target_index = self._find_file_index_by_cache_key(cache_key, files=files)
+            # 確定済みの表を使う。表に無いキーだけ先頭からの探索に落とす
+            target_index = self._cache_key_to_index.get(cache_key)
+            if target_index is None:
+                target_index = self._find_file_index_by_cache_key(cache_key, files=files)
             if target_index is None:
                 return 999999  # 見つからない場合は非常に大きな距離
             

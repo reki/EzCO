@@ -3332,6 +3332,7 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'file_handler') and self.file_handler:
             self.file_handler.current_files = []
             self.file_handler.current_index = 0
+            self.file_handler._rebuild_file_index_map()
         pane = self.current_pane
         if pane is not None:
             pane.show_center_message(message)
