@@ -47,6 +47,15 @@ from ez_co.ui.docks.image_slide_sidebar import ImageSlideSidebar
 from ez_co.ui.docks.page_slider import PageSlider
 from ez_co.ui.dialogs.pdf_password_dialog import CLOSE_APP_RESULT, ArchivePasswordDialog
 from ez_co.ui.viewer.viewer_tab_bar import ViewerTabBar
+from ez_co.ui.viewer.tab_commands import (
+    close_left_indexes,
+    close_other_indexes,
+    close_right_indexes,
+    regroup_order,
+    snap_pinned_drop,
+    tab_copy_texts,
+)
+from ez_co.ui.viewer.tab_context_menu import build_tab_context_menu
 from ez_co.utils.path_utils import get_project_root, is_nuitka
 from ez_co.enums.actions import Actions, canonical_action_id
 from ez_co.enums.mouse_buttons import MouseButtons, MOUSE_BUTTON_VALUES
@@ -334,12 +343,14 @@ class MainWindow(QMainWindow):
         self.tab_widget.setMovable(True)
         self.tab_widget.setTabsClosable(True)
         self.tab_widget.tabCloseRequested.connect(self._close_tab_at)
+        self._tab_move_guard = False
+        self.tab_widget.tabBar().customContextMenuRequested.connect(self._show_tab_bar_context_menu)
         layout.addWidget(self.tab_widget)
         self.tab_widget.blockSignals(True)
         self._add_tab(switch=True)
         self.tab_widget.blockSignals(False)
         self.tab_widget.currentChanged.connect(self._on_tab_changed)
-        self.tab_widget.tabBar().tabMoved.connect(lambda *_: self._refresh_tab_list())
+        self.tab_widget.tabBar().tabMoved.connect(self._on_tab_moved)
         self._sync_tab_bar()
         # ツールバーの設定
         self.setup_toolbars()
@@ -869,6 +880,7 @@ class MainWindow(QMainWindow):
         self.tab_list_toolbar = TabListToolbar()
         self.tab_list_toolbar.tab_activated.connect(self.tab_widget.setCurrentIndex)
         self.tab_list_toolbar.tab_close_requested.connect(self._close_tab_at)
+        self.tab_list_toolbar.tab_menu_requested.connect(self._show_tab_context_menu)
         tab_list_dock = QDockWidget(get_text("ui.tab_list"), self)
         tab_list_dock.setObjectName("tab_list_dock")
         tab_list_dock.setWidget(self.tab_list_toolbar)
@@ -1676,6 +1688,137 @@ class MainWindow(QMainWindow):
             pane.deleteLater()
         self._sync_tab_bar()
 
+    def _close_tabs_at(self, indexes: list[int]):
+        for tab_index in indexes:
+            self._close_tab_at(tab_index)
+
+    def _show_tab_bar_context_menu(self, pos):
+        index = self.tab_widget.tabBar().tabAt(pos)
+        if index >= 0:
+            self._show_tab_context_menu(index)
+
+    def _show_tab_context_menu(self, index: int):
+        pane = self.tab_widget.widget(index)
+        if not isinstance(pane, ViewerPane):
+            return
+        path = pane.current_file_path or pane.base_dir_path
+        pinned = self._pinned_flags()
+        menu = build_tab_context_menu(
+            self,
+            index=index,
+            pinned=pinned,
+            path=str(path) if path else None,
+            on_close=lambda: self._close_tab_at(index),
+            on_close_others=lambda: self._close_tabs_at(
+                close_other_indexes(index, pinned)
+            ),
+            on_close_right=lambda: self._close_tabs_at(
+                close_right_indexes(index, pinned)
+            ),
+            on_close_left=lambda: self._close_tabs_at(
+                close_left_indexes(index, pinned)
+            ),
+            on_pin=lambda: self.toggle_pin_tab(index),
+            on_duplicate=lambda: self.duplicate_tab(index),
+            on_copy_name=lambda: self._copy_tab_path(index, filename=True),
+            on_copy_path=lambda: self._copy_tab_path(index, filename=False),
+        )
+        menu.exec(QCursor.pos())
+
+    def _copy_tab_path(self, index: int, *, filename: bool):
+        pane = self.tab_widget.widget(index)
+        if not isinstance(pane, ViewerPane):
+            return
+        path = pane.current_file_path or pane.base_dir_path
+        texts = tab_copy_texts(str(path) if path else None)
+        if texts is None:
+            return
+        clipboard = QApplication.clipboard()
+        if clipboard is None:
+            return
+        clipboard.setText(texts[0] if filename else texts[1])
+
+    def toggle_pin_tab(self, index: int):
+        pane = self.tab_widget.widget(index)
+        if not isinstance(pane, ViewerPane):
+            return
+        pane.pinned = not pane.pinned
+        self._regroup_pinned_tabs(select=pane)
+
+    def duplicate_tab(self, index: int):
+        pane = self.tab_widget.widget(index)
+        if not isinstance(pane, ViewerPane):
+            return
+        path = pane.current_file_path or pane.base_dir_path
+        page = int(pane.current_page or 1)
+        self._add_tab(switch=True)
+        if path:
+            self.open_history(str(path), page, new_tab=False)
+        else:
+            self.update_title()
+
+    def _pinned_flags(self) -> list[bool]:
+        flags = []
+        for index in range(self.tab_widget.count()):
+            pane = self.tab_widget.widget(index)
+            flags.append(isinstance(pane, ViewerPane) and pane.pinned is True)
+        return flags
+
+    def _regroup_pinned_tabs(self, select=None):
+        flags = self._pinned_flags()
+        order = regroup_order(flags)
+        if order != list(range(len(order))):
+            self._move_tabs_to_order(order)
+        self._sync_pin_chrome()
+        if select is not None:
+            index = self.tab_widget.indexOf(select)
+            if index >= 0:
+                self.tab_widget.setCurrentIndex(index)
+        self._sync_tab_bar()
+
+    def _move_tabs_to_order(self, order: list[int]):
+        bar = self.tab_widget.tabBar()
+        current = list(range(len(order)))
+        self._tab_move_guard = True
+        try:
+            for new_index, old_index in enumerate(order):
+                now = current.index(old_index)
+                if now == new_index:
+                    continue
+                bar.moveTab(now, new_index)
+                item = current.pop(now)
+                current.insert(new_index, item)
+        finally:
+            self._tab_move_guard = False
+
+    def _sync_pin_chrome(self):
+        bar = self.tab_widget.tabBar()
+        if isinstance(bar, ViewerTabBar):
+            bar.apply_pin_chrome()
+
+    def _on_tab_moved(self, _from_index: int, to_index: int):
+        if self._tab_move_guard:
+            self._refresh_tab_list()
+            return
+        target = snap_pinned_drop(self._pinned_flags(), to_index)
+        if target is not None and target != to_index:
+            source = to_index
+            dest = target
+
+            def snap():
+                if source >= self.tab_widget.count():
+                    return
+                self._tab_move_guard = True
+                try:
+                    self.tab_widget.tabBar().moveTab(source, dest)
+                finally:
+                    self._tab_move_guard = False
+                self._refresh_tab_list()
+
+            QTimer.singleShot(0, snap)
+            return
+        self._refresh_tab_list()
+
     def reopen_closed_tab(self):
         if not self._closed_tabs:
             return
@@ -1911,7 +2054,11 @@ class MainWindow(QMainWindow):
                 continue
             if index == current_index:
                 current_saved = len(tabs)
-            tabs.append({"path": str(path), "page": int(pane.current_page or 1)})
+            tabs.append({
+                "path": str(path),
+                "page": int(pane.current_page or 1),
+                "pinned": pane.pinned is True,
+            })
         if not tabs:
             QMessageBox.information(self, get_text("dialogs.information"), get_text("ui.no_tabs_to_save"))
             return
@@ -1967,7 +2114,6 @@ class MainWindow(QMainWindow):
         return None
 
     def _apply_session_tabs(self, tabs: list, current: int, *, replace: bool):
-        first_new = 0
         if replace:
             self.tab_widget.blockSignals(True)
             while self.tab_widget.count() > 0:
@@ -1977,23 +2123,22 @@ class MainWindow(QMainWindow):
                     pane.dispose()
                     pane.deleteLater()
             self.tab_widget.blockSignals(False)
-        else:
-            first_new = self.tab_widget.count()
-        for tab in tabs:
+        offset = min(max(int(current or 0), 0), max(len(tabs) - 1, 0))
+        selected = None
+        for position, tab in enumerate(tabs):
             self.tab_widget.blockSignals(True)
-            self._add_tab(switch=True)
+            pane = self._add_tab(switch=True)
             self.tab_widget.blockSignals(False)
+            pane.pinned = tab.get("pinned") is True
             path = tab.get("path")
             page = tab.get("page") or 1
             if path:
                 self._open_single_path(path, page)
+            if position == offset:
+                selected = pane
         if self.tab_widget.count() == 0:
             self._add_tab(switch=True)
-        offset = min(max(int(current or 0), 0), max(len(tabs) - 1, 0))
-        target = min(first_new + offset, self.tab_widget.count() - 1)
-        if target >= 0:
-            self.tab_widget.setCurrentIndex(target)
-        self._sync_tab_bar()
+        self._regroup_pinned_tabs(select=selected)
         self.update_title()
 
     def restore_session(self, session_path: str):

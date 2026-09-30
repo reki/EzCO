@@ -1,9 +1,8 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QListWidget, QListWidgetItem,
-    QSizePolicy, QMenu,
+    QSizePolicy,
 )
 from PySide6.QtCore import Qt, Signal, QEvent
-from PySide6.QtGui import QAction
 from ez_co.utils.language_manager import get_text
 
 
@@ -11,6 +10,7 @@ class TabListToolbar(QWidget):
     """開いているタブの一覧サイドバー"""
     tab_activated = Signal(int)
     tab_close_requested = Signal(int)
+    tab_menu_requested = Signal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -68,8 +68,5 @@ class TabListToolbar(QWidget):
         if item is None:
             return
         index = self.tab_list.row(item)
-        menu = QMenu(self)
-        close_action = QAction(get_text("ui.close_tab"), self)
-        close_action.triggered.connect(lambda: self.tab_close_requested.emit(index))
-        menu.addAction(close_action)
-        menu.exec(self.tab_list.mapToGlobal(pos))
+        if index >= 0:
+            self.tab_menu_requested.emit(index)

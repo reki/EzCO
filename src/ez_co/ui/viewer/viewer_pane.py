@@ -20,6 +20,7 @@ class ViewerPane(QWidget):
         self.total_pages = 0
         self._spread_force_single = False
         self._center_message_label = None
+        self.pinned = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

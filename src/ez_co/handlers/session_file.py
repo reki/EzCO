@@ -33,7 +33,11 @@ def load_session(path: str | Path) -> dict[str, Any]:
             page = int(item.get("page") or 1)
         except (TypeError, ValueError):
             page = 1
-        tabs.append({"path": file_path, "page": max(page, 1)})
+        tabs.append({
+            "path": file_path,
+            "page": max(page, 1),
+            "pinned": item.get("pinned") is True,
+        })
     try:
         current = int(data.get("current") or 0)
     except (TypeError, ValueError):

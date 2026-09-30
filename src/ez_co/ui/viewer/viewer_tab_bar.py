@@ -55,12 +55,14 @@ class ViewerTabBar(QTabBar):
     """幅固定。長い名前は省略し、ホバーで全文をツールチップ表示する。"""
 
     TAB_WIDTH = 160
+    PINNED_TAB_WIDTH = 80
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setExpanding(False)
         self.setElideMode(Qt.TextElideMode.ElideRight)
         self.setUsesScrollButtons(True)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.setStyleSheet(
             "QTabBar::close-button { image: none; width: 16px; height: 16px; }"
             "QTabBar::close-button:hover { background: transparent; }"
@@ -70,19 +72,30 @@ class ViewerTabBar(QTabBar):
             hints.colorSchemeChanged.connect(self._refresh_close_buttons)
 
     def tabSizeHint(self, index: int):
-        """タブ幅を固定する。"""
+        """未固定は固定幅、固定タブは狭くする。"""
         size = super().tabSizeHint(index)
-        return QSize(self.TAB_WIDTH, size.height())
+        return QSize(self._tab_width(index), size.height())
 
     def minimumTabSizeHint(self, index: int):
-        """最小幅も固定幅に揃える。"""
+        """最小幅も表示幅に揃える。"""
         size = super().minimumTabSizeHint(index)
-        return QSize(self.TAB_WIDTH, size.height())
+        return QSize(self._tab_width(index), size.height())
 
     def tabInserted(self, index: int):
-        """追加したタブに閉じるボタンを付ける。"""
+        """追加したタブに閉じるボタンを付ける。固定タブは付けない。"""
         super().tabInserted(index)
-        self._install_close_button(index)
+        if self._pane_pinned(index):
+            self._hide_close_button(index)
+        else:
+            self._install_close_button(index)
+
+    def apply_pin_chrome(self):
+        """固定タブの閉じるボタンを外し、未固定タブには付ける。"""
+        for index in range(self.count()):
+            if self._pane_pinned(index):
+                self._hide_close_button(index)
+            else:
+                self._install_close_button(index)
 
     def changeEvent(self, event):
         """配色変更で閉じるボタンを描き直す。"""
@@ -106,6 +119,23 @@ class ViewerTabBar(QTabBar):
                 event.accept()
                 return
         super().mousePressEvent(event)
+
+    def _tab_width(self, index: int) -> int:
+        if self._pane_pinned(index):
+            return self.PINNED_TAB_WIDTH
+        return self.TAB_WIDTH
+
+    def _pane_pinned(self, index: int) -> bool:
+        parent = self.parent()
+        if parent is None or not hasattr(parent, "widget"):
+            return False
+        pane = parent.widget(index)
+        return bool(getattr(pane, "pinned", False))
+
+    def _hide_close_button(self, index: int):
+        for position in (QTabBar.ButtonPosition.RightSide, QTabBar.ButtonPosition.LeftSide):
+            if self.tabButton(index, position) is not None:
+                self.setTabButton(index, position, None)
 
     def _close_button_position(self, index: int):
         """既存のタブボタン位置を返す。無ければ右側。"""
