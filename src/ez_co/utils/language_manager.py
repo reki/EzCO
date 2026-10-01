@@ -23,14 +23,14 @@ class LanguageManager:
             if system_lang:
                 lang_code = system_lang.split('_')[0]
                 self.available_languages["system"] = {
-                    "name": "システムのデフォルト言語",
+                    "name": "",
                     "code": lang_code,
                     "file": None
                 }
         except Exception as e:
             logger.warning(f"システム言語の取得に失敗: {e}")
             self.available_languages["system"] = {
-                "name": "システムのデフォルト言語",
+                "name": "",
                 "code": "ja",
                 "file": None
             }
@@ -175,7 +175,13 @@ class LanguageManager:
         return value
     def get_available_languages(self) -> Dict[str, Dict[str, Any]]:
         """利用可能な言語の一覧を取得"""
-        return self.available_languages.copy()
+        languages = {
+            code: dict(info) for code, info in self.available_languages.items()
+        }
+        system = languages.get("system")
+        if system is not None:
+            system["name"] = self.get_text("settings.system_default")
+        return languages
     def set_language(self, language_code: str) -> bool:
         """言語を設定"""
         if language_code not in self.available_languages:

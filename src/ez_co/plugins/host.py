@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import logging
 import threading
 from dataclasses import dataclass
@@ -113,22 +114,69 @@ def normalize_action_aliases(aliases) -> tuple[str, ...]:
     return tuple(seen)
 
 
-_SIDEBAR_TITLE_SUFFIXES = (
-    "サイドバー表示/非表示",
-    "サイドバーの開閉",
-    "サイドバー",
-    " show/hide sidebar",
-    " sidebar",
-)
+# 引用符でまとめると langs missing がキー名とみなす。
+_TITLE_PLACEHOLDER = "{" + "title" + "}"
+
+
+def _sidebar_toggle_template(file_path) -> str:
+    try:
+        with file_path.open("r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, TypeError, ValueError, AttributeError):
+        return ""
+    ui = data.get("ui") if isinstance(data, dict) else None
+    if not isinstance(ui, dict):
+        return ""
+    template = ui.get("plugin_sidebar_toggle")
+    return template if isinstance(template, str) else ""
+
+
+def _sidebar_toggle_affixes() -> tuple[tuple[str, str], ...]:
+    affixes: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for code, info in language_manager.available_languages.items():
+        if code == "system":
+            continue
+        file_path = info.get("file")
+        if file_path is None:
+            continue
+        template = _sidebar_toggle_template(file_path)
+        if template.count(_TITLE_PLACEHOLDER) != 1:
+            continue
+        prefix, suffix = template.split(_TITLE_PLACEHOLDER, 1)
+        if not prefix and not suffix:
+            continue
+        key = (prefix.casefold(), suffix.casefold())
+        if key in seen:
+            continue
+        seen.add(key)
+        affixes.append((prefix, suffix))
+    affixes.sort(key=lambda item: len(item[0]) + len(item[1]), reverse=True)
+    return tuple(affixes)
+
+
+def _strip_folded_edge(name: str, edge: str, *, prefix: bool) -> str:
+    if not edge or len(name) <= len(edge):
+        return name
+    piece = name[: len(edge)] if prefix else name[-len(edge) :]
+    if piece.casefold() != edge.casefold():
+        return name
+    return name[len(edge) :] if prefix else name[: -len(edge)]
 
 
 def sidebar_title_stem(title: str) -> str:
     name = str(title or "").strip()
-    lowered = name.casefold()
-    for suffix in _SIDEBAR_TITLE_SUFFIXES:
-        if lowered.endswith(suffix.casefold()):
-            name = name[: len(name) - len(suffix)].strip()
-            lowered = name.casefold()
+    affixes = _sidebar_toggle_affixes()
+    changed = True
+    while changed and name:
+        changed = False
+        for prefix, suffix in affixes:
+            updated = _strip_folded_edge(name, suffix, prefix=False)
+            updated = _strip_folded_edge(updated, prefix, prefix=True).strip()
+            if updated != name:
+                name = updated
+                changed = True
+                break
     return name
 
 

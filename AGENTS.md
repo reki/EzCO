@@ -30,5 +30,5 @@
 - テストは 1ソース n ファイル。本番の `%APPDATA%` とリポジトリの `config.db` は触らない
 - クラッシュは推測で直さない。先に呼び出しとスレッドが残る調査ログ
 - manifest / host API を変えたら `docs/plugins.md` とユーザーマニュアル（日英）を直す
-- UI 文言は `langs` の ja / en。画面に `%APPDATA%` を出さない
+- UI 文言は `langs`。同梱は ja と en。コードはほかの言語ファイルも読める前提。画面に `%APPDATA%` を出さない
 - リリースノートは `.cursor/rules/release-notes.mdc`。`RELEASE_NOTES_<version>.md` を出す。タグは指示があるまで作らない

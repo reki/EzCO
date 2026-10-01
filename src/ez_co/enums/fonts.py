@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Dict, List, Set, Optional, Tuple
 from PySide6.QtGui import QFontDatabase
+from ez_co.utils.language_manager import get_text
 
 class FontType(Enum):
     """フォントタイプの列挙"""
@@ -69,7 +70,7 @@ class FontInfo:
         filter_parts = []
         for ext in extensions:
             filter_parts.append(f"*{ext}")
-        return f"フォントファイル ({' '.join(filter_parts)})"
+        return f"{get_text('ui.font_files')} ({' '.join(filter_parts)})"
 
     @classmethod
     def is_font_file(cls, file_path: str) -> bool:

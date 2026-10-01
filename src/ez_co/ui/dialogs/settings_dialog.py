@@ -781,7 +781,7 @@ class SettingsDialog(QDialog):
         self.cache_memory_limit = QLineEdit()
         self.cache_memory_limit.setMaximumWidth(200)
         self.cache_memory_limit.setText(self.config.cache.get("memory_limit", "256MB"))
-        self.cache_memory_limit.setPlaceholderText("256MB, 1GB, 2.5GB など")
+        self.cache_memory_limit.setPlaceholderText(get_text("settings.cache_memory_limit_placeholder"))
         cache_layout.addRow(self._form_label("cache_memory_limit"), self.cache_memory_limit)
         self._apply_setting_tip("cache_memory_limit", self.cache_memory_limit)
         
@@ -910,7 +910,7 @@ class SettingsDialog(QDialog):
         self.optimize_threshold = QLineEdit()
         self.optimize_threshold.setMaximumWidth(200)
         self.optimize_threshold.setText(self.config.cache.get("optimize_threshold", "50MB"))
-        self.optimize_threshold.setPlaceholderText("50MB, 100MB など")
+        self.optimize_threshold.setPlaceholderText(get_text("settings.optimize_threshold_placeholder"))
         cache_layout.addRow(self._form_label("optimize_threshold"), self.optimize_threshold)
         self._apply_setting_tip("optimize_threshold", self.optimize_threshold)
         

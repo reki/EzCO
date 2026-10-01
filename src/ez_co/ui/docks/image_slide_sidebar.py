@@ -89,7 +89,7 @@ class ThumbnailWidget(QWidget):
         layout.addWidget(self.image_label)
         
         # 初期状態では読み込み中の表示
-        self.image_label.setText("読み込み中...")
+        self.image_label.setText(get_text("ui.thumbnail_loading"))
         self.image_label.setStyleSheet("border: 1px solid #ccc; background-color: #f9f9f9; color: #999; font-size: 12px;")
         
         # ページ番号表示用ラベル
@@ -115,7 +115,7 @@ class ThumbnailWidget(QWidget):
             self.image_label.setStyleSheet("border: 1px solid #ccc; background-color: #f0f0f0;")
         else:
             # 読み込み失敗時の表示
-            self.image_label.setText("画像\n読み込み\n失敗")
+            self.image_label.setText(get_text("ui.thumbnail_load_failed"))
             self.image_label.setStyleSheet("border: 1px solid #ccc; background-color: #ffcccc; color: #666; font-size: 12px;")
     
     def set_current(self, is_current):
