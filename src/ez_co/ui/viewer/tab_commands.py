@@ -58,6 +58,13 @@ def regroup_order(pinned: list[bool]) -> list[int]:
     return pinned_indexes + unpinned_indexes
 
 
+def pin_selection(operated_index: int, current_index: int) -> int:
+    """固定のあと選ぶ元の番号。操作したタブが現在タブでなければ現在タブ。"""
+    if operated_index == current_index:
+        return operated_index
+    return current_index
+
+
 def regroup_current(pinned: list[bool], current: int) -> int:
     """並べ直したあとの、同じタブの番号。"""
     order = regroup_order(pinned)

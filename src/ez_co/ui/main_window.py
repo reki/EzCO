@@ -52,6 +52,7 @@ from ez_co.ui.viewer.tab_commands import (
     close_left_indexes,
     close_other_indexes,
     close_right_indexes,
+    pin_selection,
     regroup_order,
     snap_pinned_drop,
     tab_copy_texts,
@@ -1749,8 +1750,9 @@ class MainWindow(QMainWindow):
         pane = self.tab_widget.widget(index)
         if not isinstance(pane, ViewerPane):
             return
+        keep = self.tab_widget.widget(pin_selection(index, self.tab_widget.currentIndex()))
         pane.pinned = not pane.pinned
-        self._regroup_pinned_tabs(select=pane)
+        self._regroup_pinned_tabs(select=keep)
 
     def duplicate_tab(self, index: int):
         pane = self.tab_widget.widget(index)

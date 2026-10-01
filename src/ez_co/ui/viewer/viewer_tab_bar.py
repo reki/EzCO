@@ -111,14 +111,27 @@ class ViewerTabBar(QTabBar):
             self._refresh_close_buttons()
 
     def mousePressEvent(self, event):
-        """中クリックでタブを閉じる。"""
+        """中クリックでタブを閉じる。右クリックはタブを選ばず、親へ渡さない。"""
         if event.button() == Qt.MouseButton.MiddleButton:
             index = self.tabAt(event.position().toPoint())
             if index >= 0:
                 self.tabCloseRequested.emit(index)
                 event.accept()
                 return
+        if event.button() == Qt.MouseButton.RightButton:
+            event.accept()
+            return
         super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        """右ボタンの離しはメニューだけを出し、親のクリック割り当てへ渡さない。"""
+        if event.button() == Qt.MouseButton.RightButton:
+            event.accept()
+            pos = event.position().toPoint()
+            if self.tabAt(pos) >= 0:
+                self.customContextMenuRequested.emit(pos)
+            return
+        super().mouseReleaseEvent(event)
 
     def _tab_width(self, index: int) -> int:
         if self._pane_pinned(index):

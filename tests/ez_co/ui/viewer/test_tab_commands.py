@@ -3,6 +3,7 @@ from ez_co.ui.viewer.tab_commands import (
     close_left_indexes,
     close_other_indexes,
     close_right_indexes,
+    pin_selection,
     regroup_current,
     regroup_order,
     snap_pinned_drop,
@@ -55,6 +56,11 @@ def test_copy_texts_use_the_given_path():
     assert tab_copy_texts(None) is None
     assert tab_copy_texts("") is None
     assert tab_copy_texts(r"C:\books\a.zip") == ("a.zip", r"C:\books\a.zip")
+
+
+def test_pin_keeps_another_tab_current():
+    assert pin_selection(2, 0) == 0
+    assert pin_selection(0, 0) == 0
 
 
 def test_regroup_keeps_relative_order_and_current_tab():
