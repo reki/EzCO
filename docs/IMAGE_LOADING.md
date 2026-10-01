@@ -4,6 +4,101 @@
 
 ---
 
+## いまのフロー
+
+同期読み込みと先読みは別の流れです。ページ移動は両方を始めますが、一本にはつながりません。出会うのは `image_cache` と、先読みがすでに decode しているときの `claim_foreground` だけです。
+
+### ページ移動
+
+`MainWindow.next_page` / `prev_page` は、先に `next_file` / `prev_file` / `go_to_page` を呼び、移動できたあとで `update_image` を呼びます。ファイルを開いたときも、`open_files` が先読みを始め、表示はあとから `get_image_at` です。
+
+```mermaid
+flowchart TD
+    page[next_page_or_prev_page]
+    page --> moveCall[next_file_or_go_to_page]
+    page --> updateImage[update_image]
+    moveCall --> move[_move_to_index]
+    move --> prefetch[_prefetch_around]
+    prefetch --> enqueue[enqueue]
+    enqueue --> workers[worker_pool]
+    workers --> cachePut[_cache_put]
+    updateImage --> getAt[get_image_at]
+    getAt --> pipe[apply_pipe]
+    pipe --> view[ImageView]
+```
+
+左の枝が先読みです。`_prefetch_around` は現在ページを積まず、隣から `ImageLoadScheduler` の worker が decode して cache に置きます。右の枝が同期読み込みです。GUI が `get_image_at` で現在ページを取り、`apply_pipe` してから `ImageView` に出します。先読みの完了では `set_image` しません。
+
+先読みの優先は、最後の改ページ方向の近いページ、その反対、遠いページです。優先の数は近いほど小さく、queue は `(priority, sequence, task)` です。worker は `FileHandler` ごとで、本数は起動時に確定した `cache.image_loader_workers` です。
+
+### 同期読み込み
+
+`get_image_at` だけです。先読みの enqueue はこの中にありません。
+
+```mermaid
+flowchart TD
+    start[get_image_at]
+    hit{cache_hit}
+    claim{claim_foreground}
+    owner[decode_on_GUI]
+    waitNode[wait_for_owner]
+    fromCache[read_cache]
+    over{over_memory_limit}
+    put[_cache_put]
+    done[return_image]
+    start --> hit
+    hit -->|yes| done
+    hit -->|no| claim
+    claim -->|owner| owner
+    claim -->|wait| waitNode
+    waitNode --> fromCache
+    fromCache --> done
+    owner --> over
+    over -->|yes| done
+    over -->|no| put
+    put --> done
+```
+
+`owner` は GUI がその場で decode します。推定サイズが `cache.memory_limit` を超える画像は返しますが、cache には入れません。`wait` は、同じ cache key が `background_in_progress` か `foreground_claimed` のときです。完了を待って cache から受け取り、自分では decode しません。
+
+### 先読みの状態
+
+worker が持つ状態です。同期読み込みが自分で decode するときは `foreground_claimed` になり、worker はその key を取りません。
+
+```mermaid
+stateDiagram-v2
+    [*] --> queued: enqueue
+    queued --> foreground_claimed: claim_foreground
+    queued --> background_in_progress: worker_claims
+    queued --> dropped: advance_generation
+    foreground_claimed --> [*]: finish_foreground
+    background_in_progress --> [*]: finish_background
+    dropped --> [*]
+```
+
+ページ移動の `_prefetch_around` は、積む前に `advance_generation` します。未開始の `queued` は捨てます。すでに `background_in_progress` の decode は完了まで続けます。同じ cache key を新しい優先度で積み直すと token が進み、queue に残った古い item は開始前に無効です。先読みが上限を超える画像は `image.close()` して捨て、画面には返しません。
+
+### 別ファイルを開く
+
+新しいファイルの同期読み込みでも先読みでもありません。前の読み込みを止める処理です。
+
+```mermaid
+flowchart TD
+    openFiles[open_files]
+    stop[stop_all_loading]
+    session[session_id_advances]
+    cancel[cancel_pending]
+    clearCache[clear_image_cache]
+    openFiles --> stop
+    stop --> session
+    stop --> cancel
+    stop --> clearCache
+```
+
+`open_files` の先頭が `stop_all_loading` です。session を進め、scheduler の未開始と待ちを外し、画像 cache を空にします。そのあとで新しいページ列を作り、先読みと、UI からの同期読み込みがそれぞれ始まります。
+
+---
+
 ## 読み込み経路
 
 入口は `open_file` → `open_files` です。先頭で `stop_all_loading()` し、`current_files` を作り直します。
@@ -18,25 +113,7 @@
 
 ビルトインのアーカイブ展開（`_expand_archive`）は画像拡張子だけを仮想エントリにします。PDF は [`pdf_handler.py`](../src/ez_co/handlers/pdf_handler.py) が `page_XXXX.png` または埋め込み画像名を返します。
 
-ページ移動は `next_file` / `prev_file` / `go_to_page` が `_move_to_index` を呼び、成功したら `_prefetch_around` します。
-
-```mermaid
-sequenceDiagram
-    participant UI as MainWindow
-    participant FH as FileHandler
-    participant Cache as image_cache
-    participant Scheduler as ImageLoadScheduler
-    UI->>FH: next_file or get_image_at
-    FH->>FH: _move_to_index and _prefetch_around
-    FH->>Cache: _cache_get
-    alt hit
-        Cache-->>UI: PIL_Image
-    else miss
-        FH->>Scheduler: claim_foreground
-        FH->>FH: sync_load_current_or_wait_owner
-        FH-->>Scheduler: enqueue_neighbors
-    end
-```
+ページ移動は `next_file` / `prev_file` / `go_to_page` が `_move_to_index` を呼び、成功したら `_prefetch_around` します。表示の同期読み込みは、そのあと UI が `get_image_at` を呼びます。二つの流れは [いまのフロー](#いまのフロー) です。
 
 ---
 
@@ -63,15 +140,14 @@ sequenceDiagram
 
 ### 表示フィルター
 
-Decode 後の原画は `image_cache` のままです。表示時だけ [`MainWindow._get_display_image`](../src/ez_co/ui/main_window.py) が [`apply_pipe`](../src/ez_co/filters/pipeline.py) します。見開きは各ページに pipe してから `combine_spread_images` します。原画キャッシュは加工画像で上書きしません。先読みワーカーは原画のみです。空 pipe、または台帳に載るのが `builtin:basic` の identity だけなら同一オブジェクトです（copy / `process` なし）。プラグインへは working copy を渡します。サムネイル／画像リストは原画のままです。回転・ズームは `ImageView` の QImage 側です。
+Decode 後の原画は `image_cache` のままです。表示時だけ [`MainWindow._get_display_image`](../src/ez_co/ui/main_window.py) が [`apply_pipe`](../src/ez_co/filters/pipeline.py) します。見開きは各ページに pipe してから `combine_spread_images` します。原画キャッシュは加工画像で上書きしません。先読みワーカーは原画を cache に置くところまでで、pipe や `ImageView` には続きません。空 pipe、または台帳に載るのが `builtin:basic` の identity だけなら同一オブジェクトです（copy / `process` なし）。プラグインへは working copy を渡します。サムネイル／画像リストは原画のままです。回転・ズームは `ImageView` の QImage 側です。
 
 ```mermaid
 flowchart LR
-  decode[Decode]
-  orig[OriginalCache]
-  pipe[FilterPipe]
+  orig[image_cache]
+  pipe[apply_pipe]
   view[ImageView]
-  decode --> orig --> pipe --> view
+  orig --> pipe --> view
 ```
 
 ### アーカイブ metadata
