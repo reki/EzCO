@@ -12,6 +12,14 @@ from ez_co.plugins.manager import HandlerDecision
 
 
 def _handler(monkeypatch, metadata=True):
+    """書庫を組み込みアーカイブとして扱う FileHandler を作る。
+
+    Args:
+        metadata: 書庫メタデータをキャッシュするか。
+
+    Returns:
+        その FileHandler。
+    """
     monkeypatch.setattr(FileHandler, "_start_workers", lambda self: None)
     monkeypatch.setattr(FileHandler, "_is_plugin_image", lambda self, file: False)
     monkeypatch.setattr(
@@ -30,6 +38,12 @@ def _handler(monkeypatch, metadata=True):
 
 
 def _make_zip(path: Path, pages: int) -> None:
+    """連番 PNG を入れた ZIP を書く。
+
+    Args:
+        path: ZIP のパス。
+        pages: ページ数。
+    """
     with zipfile.ZipFile(path, "w") as archive:
         for index in range(pages):
             buffer = io.BytesIO()
@@ -38,16 +52,35 @@ def _make_zip(path: Path, pages: int) -> None:
 
 
 def _count_namelist(monkeypatch):
+    """open_zip の namelist 呼び出し回数を数える仕掛けを入れる。
+
+    Returns:
+        count を持つ辞書。
+    """
     from ez_co.handlers import file_handler as module
 
     real_open = module.open_zip
     calls = {"count": 0}
 
     def counting_open(*args, **kwargs):
+        """開いた書庫の namelist を数えるラッパに差し替える。
+
+        Args:
+            args: open_zip へ渡す位置引数。
+            kwargs: open_zip へ渡すキーワード引数。
+
+        Returns:
+            namelist を数える書庫。
+        """
         archive = real_open(*args, **kwargs)
         original = archive.namelist
 
         def namelist():
+            """呼び出し回数を増やして元の一覧を返す。
+
+            Returns:
+                元の entry 一覧。
+            """
             calls["count"] += 1
             return original()
 
@@ -59,6 +92,7 @@ def _count_namelist(monkeypatch):
 
 
 def test_zip_pages_reuse_namelist_from_expand(tmp_path, monkeypatch):
+    """展開で数えた namelist は、その後のページ取得では増えない。"""
     handler = _handler(monkeypatch)
     zip_path = tmp_path / "book.zip"
     _make_zip(zip_path, 3)
@@ -78,6 +112,7 @@ def test_zip_pages_reuse_namelist_from_expand(tmp_path, monkeypatch):
 
 
 def test_zip_metadata_invalidates_when_file_changes(tmp_path, monkeypatch):
+    """展開後にファイルを書き換えると、キャッシュした entry 一覧は無効になる。"""
     handler = _handler(monkeypatch)
     zip_path = tmp_path / "book.zip"
     _make_zip(zip_path, 2)
@@ -89,6 +124,7 @@ def test_zip_metadata_invalidates_when_file_changes(tmp_path, monkeypatch):
 
 
 def test_zip_namelist_every_page_when_metadata_disabled(tmp_path, monkeypatch):
+    """メタデータ無効では展開と各ページ取得のたびに namelist が増える。"""
     handler = _handler(monkeypatch, metadata=False)
     zip_path = tmp_path / "book.zip"
     _make_zip(zip_path, 2)

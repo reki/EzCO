@@ -25,7 +25,9 @@ from ez_co.utils.language_manager import get_log_text, get_text, language_manage
 
 logger = logging.getLogger(__name__)
 
+# プラグインへ読ませるアプリ設定のセクション。
 _APP_CONFIG_ALLOW = ("language", "viewer", "cache", "ui_font")
+# プラグイン設定として受け付ける型名。
 _CONFIG_TYPES = (
     "bool",
     "string",
@@ -44,18 +46,29 @@ _CONFIG_TYPES = (
     "language",
     "country",
 )
+# 設定ダイアログで即時保存できる数値型。
 _SYNC_CONFIG_TYPES = ("int", "float", "int_range", "float_range")
+# ドロップダウンで出す設定型。
 _DROPDOWN_CONFIG_TYPES = ("choice", "charset", "language", "country")
+# 数値として扱う設定型。
 _NUMERIC_CONFIG_TYPES = ("int", "float", "int_range", "float_range")
+# 色が解釈できないときの黒。
 _COLOR_FALLBACK = "#000000"
 
 
+# インスタンス生成中の phase。
 _PHASE_INIT = "init"
+# load 実行中の phase。
 _PHASE_LOAD = "load"
+# 読み込み後、setup 前の phase。
 _PHASE_IDLE = "idle"
+# setup 実行中の phase。
 _PHASE_SETUP = "setup"
+# 有効化後の phase。
 _PHASE_ACTIVE = "active"
+# 言語変更コールバック中の phase。
 _PHASE_LANGUAGE = "language"
+# setup 中にだけ呼べる登録メソッド。
 _UI_REGISTER = frozenset(
     {
         "register_sidebar",
@@ -76,20 +89,53 @@ class PluginRegistrationDenied(Exception):
     """マニフェストに無い register、または phase 違いの register。このプラグインは使わない。"""
 
     def __init__(self, plugin_id: str, log_key: str, ui_key: str = "ui.plugin_register_not_permitted"):
+        """拒否理由のキーと画面用の文言を保持する。
+
+        Args:
+            plugin_id: 拒否されたプラグイン ID。
+            log_key: ログ用の文言キー。
+            ui_key: 例外メッセージに使う画面文言キー。
+        """
         self.plugin_id = plugin_id
         self.log_key = log_key
         super().__init__(get_text(ui_key))
 
 
 def make_plugin_action_id(plugin_id: str, action_id: str) -> str:
+    """プラグインアクションの公開 ID を作る。
+
+    Args:
+        plugin_id: プラグイン ID。
+        action_id: プラグイン内のアクション ID。
+
+    Returns:
+        plugin:{plugin_id}:{action_id}。
+    """
     return f"plugin:{plugin_id}:{action_id}"
 
 
 def make_plugin_filter_id(plugin_id: str, filter_id: str) -> str:
+    """プラグインフィルターの公開 ID を作る。
+
+    Args:
+        plugin_id: プラグイン ID。
+        filter_id: プラグイン内のフィルター ID。
+
+    Returns:
+        plugin:{plugin_id}:{filter_id}。
+    """
     return f"plugin:{plugin_id}:{filter_id}"
 
 
 def normalize_local_filter_id(filter_id) -> str:
+    """フィルターのローカル ID を空または使える名前にする。
+
+    Args:
+        filter_id: 検査する ID。
+
+    Returns:
+        空白を除いた名前。空、またはコロンを含むなら空文字。
+    """
     name = str(filter_id or "").strip()
     if not name or ":" in name:
         return ""
@@ -97,10 +143,27 @@ def normalize_local_filter_id(filter_id) -> str:
 
 
 def make_sidebar_action_id(plugin_id: str, sidebar_id: str) -> str:
+    """サイドバー表示切替アクションの公開 ID を作る。
+
+    Args:
+        plugin_id: プラグイン ID。
+        sidebar_id: サイドバー ID。
+
+    Returns:
+        plugin:{plugin_id}:sidebar:{sidebar_id}。
+    """
     return f"plugin:{plugin_id}:sidebar:{sidebar_id}"
 
 
 def normalize_action_aliases(aliases) -> tuple[str, ...]:
+    """エイリアスを空でない重複なしの組にする。
+
+    Args:
+        aliases: 文字列、または文字列の列。None なら空。
+
+    Returns:
+        順序を保ったエイリアスの組。
+    """
     if aliases is None:
         return ()
     if isinstance(aliases, str):
@@ -119,10 +182,19 @@ _TITLE_PLACEHOLDER = "{" + "title" + "}"
 
 
 def _sidebar_toggle_template(file_path) -> str:
+    """言語ファイルからサイドバー切替ラベルの雛形を読む。
+
+    Args:
+        file_path: 言語 JSON のパス。
+
+    Returns:
+        ui.plugin_sidebar_toggle の文字列。無ければ空文字。
+    """
     try:
         with file_path.open("r", encoding="utf-8") as handle:
             data = json.load(handle)
     except (OSError, TypeError, ValueError, AttributeError):
+        # 言語ファイルを読めなければ空文字を返す。
         return ""
     ui = data.get("ui") if isinstance(data, dict) else None
     if not isinstance(ui, dict):
@@ -132,6 +204,11 @@ def _sidebar_toggle_template(file_path) -> str:
 
 
 def _sidebar_toggle_affixes() -> tuple[tuple[str, str], ...]:
+    """言語ファイルにある切替ラベルの前後の文言を集める。
+
+    Returns:
+        長いものから順の (接頭辞, 接尾辞)。system は除く。
+    """
     affixes: list[tuple[str, str]] = []
     seen: set[tuple[str, str]] = set()
     for code, info in language_manager.available_languages.items():
@@ -156,6 +233,16 @@ def _sidebar_toggle_affixes() -> tuple[tuple[str, str], ...]:
 
 
 def _strip_folded_edge(name: str, edge: str, *, prefix: bool) -> str:
+    """名前の端が edge と大文字小文字を無視して一致すれば、その部分を外す。
+
+    Args:
+        name: 対象の文字列。
+        edge: 外す端の文字列。
+        prefix: True なら先頭、False なら末尾。
+
+    Returns:
+        外したあとの文字列。一致しなければ name のまま。
+    """
     if not edge or len(name) <= len(edge):
         return name
     piece = name[: len(edge)] if prefix else name[-len(edge) :]
@@ -165,6 +252,14 @@ def _strip_folded_edge(name: str, edge: str, *, prefix: bool) -> str:
 
 
 def sidebar_title_stem(title: str) -> str:
+    """切替ラベルの前後を除いたサイドバー名にする。
+
+    Args:
+        title: 表示タイトル。
+
+    Returns:
+        接頭辞と接尾辞を除いた名前。
+    """
     name = str(title or "").strip()
     affixes = _sidebar_toggle_affixes()
     changed = True
@@ -181,11 +276,27 @@ def sidebar_title_stem(title: str) -> str:
 
 
 def sidebar_toggle_label(title: str) -> str:
+    """サイドバー名から切替アクションのラベルを作る。
+
+    Args:
+        title: 表示タイトル。
+
+    Returns:
+        ui.plugin_sidebar_toggle に渡したラベル。空なら sidebar。
+    """
     stem = sidebar_title_stem(title) or str(title or "").strip() or "sidebar"
     return get_text("ui.plugin_sidebar_toggle", title=stem)
 
 
 def normalize_local_action_id(action_id) -> str:
+    """アクションのローカル ID を空または使える名前にする。
+
+    Args:
+        action_id: 検査する ID。
+
+    Returns:
+        空白を除いた名前。空、sidebar、またはコロンを含むなら空文字。
+    """
     name = str(action_id or "").strip()
     if not name or name == "sidebar" or ":" in name:
         return ""
@@ -194,6 +305,8 @@ def normalize_local_action_id(action_id) -> str:
 
 @dataclass(frozen=True)
 class PluginAction:
+    """登録済みアクションの公開 ID、ラベル、コールバック。"""
+
     plugin_id: str
     local_id: str
     public_id: str
@@ -205,6 +318,8 @@ class PluginAction:
 
 @dataclass(frozen=True)
 class ConfigField:
+    """プラグイン設定の1項目。"""
+
     key: str
     value_type: str
     default: Any = None
@@ -225,6 +340,14 @@ class ConfigField:
 
 
 def normalize_config_type(value_type) -> str:
+    """設定の型名を既知の種別に揃える。
+
+    Args:
+        value_type: プラグインが渡した型名。
+
+    Returns:
+        既知の種別名。未知は string。
+    """
     name = str(value_type or "string").strip().lower()
     if name in ("bool", "boolean"):
         return "bool"
@@ -260,6 +383,14 @@ def normalize_config_type(value_type) -> str:
 
 
 def normalize_path_kind(path_kind) -> str:
+    """パス項目がファイルかディレクトリかを揃える。
+
+    Args:
+        path_kind: file または directory 系の名前。
+
+    Returns:
+        directory または file。
+    """
     name = str(path_kind or "file").strip().lower()
     if name in ("directory", "folder", "dir"):
         return "directory"
@@ -267,18 +398,51 @@ def normalize_path_kind(path_kind) -> str:
 
 
 def config_field_syncs(field: ConfigField) -> bool:
+    """sync が有効な数値項目なら True。
+
+    Args:
+        field: 判定する項目。
+
+    Returns:
+        sync が立っていて int、float、int_range、float_range なら True。
+    """
     return bool(field.sync) and field.value_type in _SYNC_CONFIG_TYPES
 
 
 def config_field_reloads(field: ConfigField) -> bool:
+    """sync 付きの数値項目で reload が有効なら True。
+
+    Args:
+        field: 判定する項目。
+
+    Returns:
+        即時保存かつ再読み込み対象なら True。
+    """
     return config_field_syncs(field) and bool(field.reload)
 
 
 def config_should_reload(fields) -> bool:
+    """項目のどれかが再読み込み対象なら True。
+
+    Args:
+        fields: 判定する項目の列。
+
+    Returns:
+        1つでも reload 対象なら True。
+    """
     return any(config_field_reloads(field) for field in fields)
 
 
 def _parse_bound_number(value, as_int: bool):
+    """範囲の端や刻みを数値にする。
+
+    Args:
+        value: 解釈する値。空や bool は対象外。
+        as_int: True なら整数、False なら浮動小数。
+
+    Returns:
+        解釈した数値。できなければ None。
+    """
     if value is None or value == "":
         return None
     if isinstance(value, bool):
@@ -290,10 +454,22 @@ def _parse_bound_number(value, as_int: bool):
             return int(float(value))
         return float(value)
     except (TypeError, ValueError):
+        # 数値にできなければ None を返す。
         return None
 
 
 def normalize_range_bounds(value_type, minimum=None, maximum=None, step=None):
+    """範囲の下限、上限、刻みを補完して大小を揃える。
+
+    Args:
+        value_type: int_range か float_range。
+        minimum: 下限。無ければ型ごとの既定。
+        maximum: 上限。無ければ型ごとの既定。
+        step: 刻み。0 以下や欠ければ型ごとの既定。
+
+    Returns:
+        下限、上限、刻み。
+    """
     kind = normalize_config_type(value_type)
     as_int = kind == "int_range"
     lo = _parse_bound_number(minimum, as_int)
@@ -315,6 +491,22 @@ def normalize_range_bounds(value_type, minimum=None, maximum=None, step=None):
 
 
 def validate_range_bounds(value_type, minimum, maximum, step, plugin_id="", key=""):
+    """範囲の下限、上限、刻みが揃っているか検査する。
+
+    Args:
+        value_type: int_range か float_range。
+        minimum: 下限。
+        maximum: 上限。
+        step: 刻み。
+        plugin_id: エラー文言に載せるプラグイン ID。
+        key: エラー文言に載せる項目キー。
+
+    Returns:
+        下限、上限、刻み。
+
+    Raises:
+        ValueError: 端や刻みが欠ける、下限が上限より大きい、または刻みが 0 以下のとき。
+    """
     kind = normalize_config_type(value_type)
     as_int = kind == "int_range"
     lo = _parse_bound_number(minimum, as_int)
@@ -335,6 +527,14 @@ def validate_range_bounds(value_type, minimum, maximum, step, plugin_id="", key=
 
 
 def _range_step_decimals(step) -> int:
+    """浮動小数の刻みから丸め桁数を決める。
+
+    Args:
+        step: 刻み。
+
+    Returns:
+        小数桁。整数刻みなら 0。最大 6。
+    """
     text = f"{float(step):.10f}".rstrip("0").rstrip(".")
     if "." in text:
         return min(6, max(1, len(text.split(".", 1)[1])))
@@ -342,6 +542,18 @@ def _range_step_decimals(step) -> int:
 
 
 def snap_range_value(value, minimum, maximum, step, as_int: bool):
+    """値を範囲に収め、刻みに合わせる。
+
+    Args:
+        value: 合わせる値。
+        minimum: 下限。
+        maximum: 上限。
+        step: 刻み。
+        as_int: True なら整数として扱う。
+
+    Returns:
+        範囲内で刻みに合わせた値。
+    """
     number = int(value) if as_int else float(value)
     lo = int(minimum) if as_int else float(minimum)
     hi = int(maximum) if as_int else float(maximum)
@@ -366,10 +578,27 @@ def snap_range_value(value, minimum, maximum, step, as_int: bool):
 
 
 def _is_enum_class(value) -> bool:
+    """Enum のクラスなら True。
+
+    Args:
+        value: 検査するオブジェクト。
+
+    Returns:
+        Enum のサブクラスなら True。
+    """
     return isinstance(value, type) and issubclass(value, Enum)
 
 
 def _enum_name(enum_type: type, value) -> Optional[str]:
+    """値がその Enum のメンバー名なら名前を返す。
+
+    Args:
+        enum_type: 対象の Enum クラス。
+        value: メンバー、またはメンバー名。
+
+    Returns:
+        メンバー名。該当しなければ None。
+    """
     if value is None:
         return None
     if isinstance(value, enum_type):
@@ -382,6 +611,15 @@ def _enum_name(enum_type: type, value) -> Optional[str]:
 
 
 def _enum_member(enum_type: type, value):
+    """名前またはメンバーをその Enum のメンバーにする。
+
+    Args:
+        enum_type: 対象の Enum クラス。
+        value: メンバー、またはメンバー名。
+
+    Returns:
+        メンバー。該当しなければ None。
+    """
     name = _enum_name(enum_type, value)
     if name is None:
         return None
@@ -389,6 +627,14 @@ def _enum_member(enum_type: type, value):
 
 
 def config_choice_key(value) -> str:
+    """choice の保存キーにする。
+
+    Args:
+        value: Enum、None、またはその他。
+
+    Returns:
+        Enum なら name、None なら空文字、それ以外は文字列。
+    """
     if isinstance(value, Enum):
         return value.name
     if value is None:
@@ -397,11 +643,32 @@ def config_choice_key(value) -> str:
 
 
 def normalize_config_choices(choices) -> tuple[tuple[str, str], ...]:
+    """choice の候補を値とラベルの組だけにする。
+
+    Args:
+        choices: Enum、メンバー列、または値とラベルの列。
+
+    Returns:
+        値とラベルの組。
+    """
     rows, _enum_type = parse_config_choices(choices)
     return rows
 
 
 def parse_config_choices(choices, plugin_id: str = "", key: str = "") -> tuple[tuple[tuple[str, str], ...], Optional[type]]:
+    """choice の候補を正規化し、Enum ならそのクラスも返す。
+
+    Args:
+        choices: Enum クラス、メンバー列、組の列、または値の列。
+        plugin_id: エラー文言に載せるプラグイン ID。
+        key: エラー文言に載せる項目キー。
+
+    Returns:
+        (値, ラベル) の組と、Enum ならそのクラス。Enum でなければ None。
+
+    Raises:
+        ValueError: Enum のメンバーが空、または混在しているとき。
+    """
     if choices is None:
         return (), None
     if _is_enum_class(choices):
@@ -490,6 +757,14 @@ def parse_config_choices(choices, plugin_id: str = "", key: str = "") -> tuple[t
 
 
 def _builtin_choices(kind: str) -> tuple[tuple[str, str], ...]:
+    """charset、language、country の組み込み候補を返す。
+
+    Args:
+        kind: charset、language、country のいずれか。
+
+    Returns:
+        値とラベルの組。それ以外は空。
+    """
     if kind == "charset":
         from ez_co.plugins.charset import charset_choices
 
@@ -506,6 +781,21 @@ def _builtin_choices(kind: str) -> tuple[tuple[str, str], ...]:
 
 
 def _validate_enum_default(enum_type: type, default, multiple: bool, plugin_id: str, key: str):
+    """Enum 項目の初期値をメンバーにする。
+
+    Args:
+        enum_type: 対象の Enum クラス。
+        default: 初期値。multiple なら列でもよい。
+        multiple: True なら複数選択。
+        plugin_id: エラー文言に載せるプラグイン ID。
+        key: エラー文言に載せる項目キー。
+
+    Returns:
+        単一ならメンバー、複数ならメンバーの列。未指定の単一は先頭メンバー。
+
+    Raises:
+        ValueError: メンバーにない初期値のとき。
+    """
     if multiple:
         if default is None:
             return []
@@ -538,6 +828,14 @@ def _validate_enum_default(enum_type: type, default, multiple: bool, plugin_id: 
 
 
 def _normalize_multiple_default(default):
+    """複数選択の初期値をリストにする。
+
+    Args:
+        default: None、列、または単一値。
+
+    Returns:
+        リスト。None なら空。
+    """
     if default is None:
         return []
     if isinstance(default, (list, tuple)):
@@ -546,6 +844,16 @@ def _normalize_multiple_default(default):
 
 
 def _choice_fallback(options, value, default):
+    """候補に含まれる値を選び、無ければ初期値、それも無ければ先頭を返す。
+
+    Args:
+        options: 値とラベルの組。
+        value: 優先する値。
+        default: 次点の値。
+
+    Returns:
+        候補にある値。
+    """
     text = config_choice_key(value)
     allowed = {item[0] for item in options}
     if text in allowed:
@@ -557,6 +865,14 @@ def _choice_fallback(options, value, default):
 
 
 def _parse_hex_color(value) -> str:
+    """色を #rrggbb にする。
+
+    Args:
+        value: #rgb、#rrggbb、またはその前後の空白。
+
+    Returns:
+        小文字の #rrggbb。解釈できなければ空文字。
+    """
     text = str(value or "").strip()
     if text.startswith("#"):
         text = text[1:]
@@ -568,6 +884,14 @@ def _parse_hex_color(value) -> str:
 
 
 def _unix_seconds(value) -> Optional[int]:
+    """日時を UTC の UNIX 秒にする。
+
+    Args:
+        value: datetime、数値、または ISO 形式の文字列。
+
+    Returns:
+        秒。bool や解釈できない値は None。
+    """
     if isinstance(value, bool):
         return None
     if isinstance(value, datetime):
@@ -585,6 +909,7 @@ def _unix_seconds(value) -> Optional[int]:
     try:
         return int(float(text))
     except (TypeError, ValueError):
+        # 数値文字列でなければ日付の解釈へ進む。
         pass
     try:
         if text.endswith("Z"):
@@ -599,10 +924,19 @@ def _unix_seconds(value) -> Optional[int]:
             moment = moment.astimezone(timezone.utc)
         return int(moment.timestamp())
     except ValueError:
+        # 日付として解釈できなければ None を返す。
         return None
 
 
 def _date_seconds(value) -> Optional[int]:
+    """日付を UTC のその日 0 時の UNIX 秒にする。
+
+    Args:
+        value: _unix_seconds が解釈できる値。
+
+    Returns:
+        その日の 0 時の秒。解釈できなければ None。
+    """
     parsed = _unix_seconds(value)
     if parsed is None:
         return None
@@ -612,6 +946,17 @@ def _date_seconds(value) -> Optional[int]:
 
 
 def _parse_config_int(value):
+    """設定値を整数にする。
+
+    Args:
+        value: 整数、または数値として読める値。
+
+    Returns:
+        整数。
+
+    Raises:
+        TypeError: bool のとき。
+    """
     if isinstance(value, bool):
         raise TypeError
     if isinstance(value, int):
@@ -620,6 +965,17 @@ def _parse_config_int(value):
 
 
 def _parse_config_float(value):
+    """設定値を浮動小数にする。
+
+    Args:
+        value: 数値として読める値。
+
+    Returns:
+        浮動小数。
+
+    Raises:
+        TypeError: bool のとき。
+    """
     if isinstance(value, bool):
         raise TypeError
     return float(value)
@@ -634,6 +990,20 @@ def coerce_config_value(
     maximum=None,
     step=None,
 ):
+    """設定値を種別に合わせ、変換できなければ初期値か種ごとの既定にする。
+
+    Args:
+        value_type: 設定の種別。
+        value: 変換する値。
+        default: 変換できないときの初期値。
+        choices: choice 系の候補。
+        minimum: 範囲の下限。
+        maximum: 範囲の上限。
+        step: 範囲の刻み。
+
+    Returns:
+        種別に合わせた値。
+    """
     kind = normalize_config_type(value_type)
     options = normalize_config_choices(choices)
     if kind == "bool":
@@ -652,17 +1022,21 @@ def coerce_config_value(
         try:
             return _parse_config_int(value)
         except (TypeError, ValueError):
+            # 整数にできなければ初期値を試す。
             try:
                 return _parse_config_int(default)
             except (TypeError, ValueError):
+                # 初期値も整数にできなければ 0 を返す。
                 return 0
     if kind == "float":
         try:
             return _parse_config_float(value)
         except (TypeError, ValueError):
+            # 浮動小数にできなければ初期値を試す。
             try:
                 return _parse_config_float(default)
             except (TypeError, ValueError):
+                # 初期値も浮動小数にできなければ 0.0 を返す。
                 return 0.0
     if kind in ("int_range", "float_range"):
         as_int = kind == "int_range"
@@ -671,9 +1045,11 @@ def coerce_config_value(
         try:
             raw = parse(value)
         except (TypeError, ValueError):
+            # 範囲の値にできなければ初期値を試す。
             try:
                 raw = parse(default)
             except (TypeError, ValueError):
+                # 初期値も範囲の値にできなければ下限を使う。
                 raw = lo
         return snap_range_value(raw, lo, hi, st, as_int)
     if kind == "color":
@@ -706,6 +1082,15 @@ def coerce_config_value(
 
 
 def _coerce_one(field: ConfigField, value):
+    """1件の値を項目の種別に合わせる。Enum ならメンバーにする。
+
+    Args:
+        field: 対象項目。
+        value: 変換する値。
+
+    Returns:
+        メンバー、または coerce_config_value の結果。
+    """
     if field.enum_type is not None:
         member = _enum_member(field.enum_type, value)
         if member is not None:
@@ -727,6 +1112,15 @@ def _coerce_one(field: ConfigField, value):
 
 
 def coerce_field_value(field: ConfigField, value):
+    """項目の値を1件または複数件として種別に合わせる。
+
+    Args:
+        field: 対象項目。
+        value: 変換する値。複数なら列。
+
+    Returns:
+        単一値、または値の列。空の複数は空リスト。
+    """
     if not field.multiple:
         return _coerce_one(field, value)
     if value is None:
@@ -772,6 +1166,15 @@ def coerce_field_value(field: ConfigField, value):
 
 
 def config_value_for_storage(field: ConfigField, plain):
+    """保存用に Enum を名前へ戻す。
+
+    Args:
+        field: 対象項目。
+        plain: 変換済みの値。
+
+    Returns:
+        Enum でなければそのまま。Enum なら名前、複数なら名前の列。
+    """
     if field.enum_type is None:
         return plain
     if field.multiple:
@@ -782,6 +1185,15 @@ def config_value_for_storage(field: ConfigField, plain):
 
 
 def is_config_empty(field: ConfigField, value) -> bool:
+    """必須判定のため、値が空か返す。
+
+    Args:
+        field: 対象項目。
+        value: 判定する値。
+
+    Returns:
+        空とみなすなら True。
+    """
     if field.multiple:
         if value is None:
             return True
@@ -804,16 +1216,34 @@ def is_config_empty(field: ConfigField, value) -> bool:
 
 
 def _password_to_stored(plain: str) -> Optional[str]:
+    """平文を保存用トークンにする。
+
+    Args:
+        plain: 平文。
+
+    Returns:
+        トークン。暗号化に失敗したら None。
+    """
     from ez_co.utils.password_protect import encrypt_secret
 
     try:
         return encrypt_secret(str(plain or ""))
     except Exception as exc:
+        # 暗号化に失敗したら記録して None を返す。
         logger.debug(get_log_text("plugin_event_failed", event="password", error=exc))
         return None
 
 
 def _password_from_stored(token, default="") -> str:
+    """保存トークンを平文に戻す。
+
+    Args:
+        token: 保存トークン。空なら初期値。
+        default: 復号できないときの文字列。
+
+    Returns:
+        平文。失敗時は default の文字列。
+    """
     if not token:
         return "" if default is None else str(default)
     from ez_co.utils.password_protect import decrypt_secret
@@ -821,6 +1251,7 @@ def _password_from_stored(token, default="") -> str:
     try:
         plain = decrypt_secret(str(token))
     except Exception as exc:
+        # 復号に失敗したら記録して初期値を返す。
         logger.debug(get_log_text("plugin_event_failed", event="password", error=exc))
         return "" if default is None else str(default)
     if plain is None:
@@ -832,20 +1263,30 @@ class _UiBridge:
     """ワーカーから UI スレッドへ処理を渡す。"""
 
     def __init__(self):
+        """UI スレッドへキュー接続する発信器を作る。"""
         from PySide6.QtCore import QObject, Qt, Signal
 
         class _Emitter(QObject):
+            """要求をキュー接続で UI スレッドへ渡す QObject。"""
+
             requested = Signal(object)
 
             def __init__(self):
+                """要求シグナルを自身の処理へキュー接続する。"""
                 super().__init__()
                 self.requested.connect(self._dispatch, Qt.QueuedConnection)
 
             def _dispatch(self, payload):
+                """UI スレッドで関数を実行し、結果か例外を入れて完了を知らせる。
+
+                Args:
+                    payload: 関数、結果を入れるリスト、完了イベントの組。
+                """
                 func, box, done = payload
                 try:
                     box.append(func())
                 except Exception as exc:
+                    # UI スレッドの実行に失敗したら例外を結果へ入れて呼び出し側へ返す。
                     box.append(exc)
                 finally:
                     done.set()
@@ -853,6 +1294,17 @@ class _UiBridge:
         self._emitter = _Emitter()
 
     def invoke(self, func):
+        """UI スレッドで関数を実行し、その戻りを返す。
+
+        Args:
+            func: 実行する関数。
+
+        Returns:
+            関数の戻り。UI が無いか既に UI スレッドならその場で実行する。
+
+        Raises:
+            Exception: UI スレッド側の実行が例外のとき、その例外を送出する。
+        """
         from PySide6.QtCore import QThread
         from PySide6.QtWidgets import QApplication
 
@@ -869,7 +1321,17 @@ class _UiBridge:
 
 
 class SidebarRegistration:
+    """登録済みサイドバーの ID、タイトル、ウィジェット。"""
+
     def __init__(self, plugin_id: str, sidebar_id: str, title: str, widget):
+        """サイドバー登録の内容を保持する。
+
+        Args:
+            plugin_id: プラグイン ID。
+            sidebar_id: サイドバー ID。
+            title: 表示タイトル。
+            widget: 載せるウィジェット。
+        """
         self.plugin_id = plugin_id
         self.sidebar_id = sidebar_id
         self.title = title
@@ -877,7 +1339,10 @@ class SidebarRegistration:
 
 
 class PluginHost:
+    """プラグイン全体の登録台帳と、本体が束ねた UI 呼び出し。"""
+
     def __init__(self):
+        """台帳と、本体から束ねるコールバックの入れ物を空で作る。"""
         self._parent = None
         self._db = None
         self._run_action = None
@@ -901,6 +1366,14 @@ class PluginHost:
         self._phases: dict[str, str] = {}
 
     def scoped(self, plugin_id: str) -> "ScopedPluginHost":
+        """plugin_id に閉じたホストを返す。無ければ作る。
+
+        Args:
+            plugin_id: 対象のプラグイン ID。
+
+        Returns:
+            その ID 用の ScopedPluginHost。
+        """
         key = str(plugin_id or "")
         existing = self._scoped.get(key)
         if existing is None:
@@ -922,6 +1395,21 @@ class PluginHost:
         sidebar_visible: Optional[Callable] = None,
         after_plugin_config: Optional[Callable] = None,
     ) -> None:
+        """本体のウィンドウ、DB、アクション、サイドバー操作を束ねる。
+
+        Args:
+            parent: ダイアログの親。
+            db_manager: プラグイン設定を読む DB。
+            run_action: 本体アクションを実行する関数。
+            get_current: 現在のページやパスを返す関数。
+            reload_current: 現在の表示を読み直す関数。
+            get_app_config: アプリ設定の読み取り関数。
+            mount_sidebar: サイドバーを載せる関数。
+            unmount_sidebar: サイドバーを外す関数。
+            toggle_sidebar: サイドバーの表示を切り替える関数。
+            sidebar_visible: サイドバーが見えているか返す関数。
+            after_plugin_config: 設定保存後に呼ぶ関数。
+        """
         self._parent = parent
         self._db = db_manager
         self._run_action = run_action
@@ -944,18 +1432,54 @@ class PluginHost:
                         record.widget,
                     )
                 except Exception as exc:
+                    # サイドバーの取り付けに失敗したら警告を残して続ける。
                     logger.warning(get_log_text("plugin_sidebar_mount_failed", error=exc))
 
     def formats_for(self, plugin_id: str) -> list[FormatSpec]:
+        """プラグインが宣言した担当形式を返す。
+
+        Args:
+            plugin_id: プラグイン ID。
+
+        Returns:
+            FormatSpec のリスト。無ければ空。
+        """
         return list(self._formats.get(plugin_id, []))
 
     def sidebars_for(self, plugin_id: str) -> list[SidebarRegistration]:
+        """プラグインが登録したサイドバーを返す。
+
+        Args:
+            plugin_id: プラグイン ID。
+
+        Returns:
+            その ID の登録一覧。
+        """
         return [item for key, item in self._sidebars.items() if key[0] == plugin_id]
 
     def ask_password(self, file_path: str, mismatch: bool = False, verify=None) -> Optional[str]:
+        """UI スレッドでアーカイブパスワードを尋ねる。
+
+        Args:
+            file_path: 対象ファイル。
+            mismatch: True なら不一致としてダイアログを開く。
+            verify: パスワードを検証する関数。無ければ検証しない。
+
+        Returns:
+            採用したパスワード。取消なら None。
+        """
         return self._call_on_ui(lambda: self._ask_password_ui(file_path, mismatch, verify))
 
     def show_dialog(self, name: str, **kwargs):
+        """名前がパスワード系ならパスワードを尋ね、それ以外は未対応として何も返さない。
+
+        Args:
+            name: ダイアログ名。
+            kwargs: file_path、path、mismatch、verify。
+
+        Returns:
+            パスワードダイアログの結果。未対応なら None。
+        """
         key = str(name or "").strip().lower()
         if key in ("password", "archive_password", "ask_password"):
             return self.ask_password(
@@ -967,17 +1491,46 @@ class PluginHost:
         return None
 
     def run_action(self, action_id: str, **kwargs) -> bool:
+        """UI スレッドでアクションを実行する。
+
+        Args:
+            action_id: 公開 ID またはエイリアス。
+            kwargs: 本体アクションへ渡す追加引数。
+
+        Returns:
+            実行できれば True。
+        """
         return bool(self._call_on_ui(lambda: self._run_action_ui(action_id, kwargs)))
 
     def load_ui(self, data_or_path):
+        """UI スレッドで .ui のバイト列またはパスからウィジェットを作る。
+
+        Args:
+            data_or_path: .ui のバイト列、またはファイルパス。
+
+        Returns:
+            読み込んだウィジェット。
+        """
         return self._call_on_ui(lambda: self._load_ui(data_or_path))
 
     def report_error(self, where, exc, plugin_id: Optional[str] = None) -> None:
+        """エラーを本体の記録へ渡す。
+
+        Args:
+            where: 発生箇所の名前。
+            exc: 例外。
+            plugin_id: 対象プラグイン。省略時は記録側の既定。
+        """
         from ez_co.utils.error_logger import report_error
         report_error(where, exc, plugin_id=plugin_id)
 
     def set_manifest_permissions(self, plugin_id: str, permissions) -> None:
-        """本体のロード経路だけが呼ぶ。プラグイン API には出さない。"""
+        """本体のロード経路だけが呼び、プラグイン API には出さない。
+
+        Args:
+            plugin_id: 対象のプラグイン ID。空なら何もしない。
+            permissions: マニフェストの permissions。dict 以外は dict にできるものだけ読む。
+        """
         key = str(plugin_id or "")
         if not key:
             return
@@ -989,11 +1542,18 @@ class PluginHost:
             try:
                 raw = dict(permissions)
             except (TypeError, ValueError):
+                # 権限を dict にできなければ空として扱う。
                 raw = {}
         self._permissions[key] = parse_permissions(raw)
 
     def set_manifest_provides(self, plugin_id: str, formats=(), sidebar: bool = False) -> None:
-        """本体のロード経路だけが呼ぶ。プラグイン API には出さない。"""
+        """本体のロード経路だけが呼び、プラグイン API には出さない。
+
+        Args:
+            plugin_id: 対象のプラグイン ID。空なら何もしない。
+            formats: FormatSpec の列、または正規化前の形式指定。
+            sidebar: サイドバーを宣言しているか。
+        """
         key = str(plugin_id or "")
         if not key:
             return
@@ -1005,17 +1565,34 @@ class PluginHost:
         self._formats[key] = list(specs)
 
     def enter_phase(self, plugin_id: str, phase: str) -> None:
-        """本体のロード経路だけが呼ぶ。プラグイン API には出さない。"""
+        """本体のロード経路だけが呼び、プラグイン API には出さない。
+
+        Args:
+            plugin_id: 対象のプラグイン ID。空なら何もしない。
+            phase: 設定する phase。空なら idle。
+        """
         key = str(plugin_id or "")
         if not key:
             return
         self._phases[key] = str(phase or _PHASE_IDLE)
 
     def phase_of(self, plugin_id: str) -> str:
+        """プラグインの現在の phase を返す。
+
+        Args:
+            plugin_id: 対象のプラグイン ID。
+
+        Returns:
+            記録された phase。無ければ idle。
+        """
         return self._phases.get(str(plugin_id or ""), _PHASE_IDLE)
 
     def abort_load(self, plugin_id: str) -> None:
-        """__init__ / load 失敗。UI 台帳と設定スキーマをその plugin_id だけ捨てる。"""
+        """__init__ / load 失敗時に、UI 台帳と設定スキーマをその plugin_id だけ捨てる。
+
+        Args:
+            plugin_id: 対象のプラグイン ID。空なら何もしない。
+        """
         key = str(plugin_id or "")
         if not key:
             return
@@ -1024,6 +1601,15 @@ class PluginHost:
         self.enter_phase(key, _PHASE_IDLE)
 
     def _deny_wrong_phase(self, plugin_id: str, action: str) -> None:
+        """phase に合わない登録なら拒否する。
+
+        Args:
+            plugin_id: 対象のプラグイン ID。
+            action: 行おうとした登録名。
+
+        Raises:
+            PluginRegistrationDenied: language、init、または load 中の UI 登録のとき。
+        """
         phase = self.phase_of(plugin_id)
         if phase == _PHASE_LANGUAGE:
             raise PluginRegistrationDenied(
@@ -1045,12 +1631,29 @@ class PluginHost:
             )
 
     def has_manifest_permission(self, plugin_id: str, name: str) -> bool:
+        """マニフェストでその権限が true なら True。
+
+        Args:
+            plugin_id: プラグイン ID。
+            name: 権限名。
+
+        Returns:
+            付与されていれば True。
+        """
         granted = self._permissions.get(str(plugin_id))
         if not granted:
             return False
         return bool(granted.get(str(name or "")))
 
     def _delivers_current_changed(self, plugin_id: str) -> bool:
+        """current_changed をこのプラグインへ届けるなら True。
+
+        Args:
+            plugin_id: プラグイン ID。
+
+        Returns:
+            サイドバーが無い、inactive_callback がある、またはサイドバーが見えていれば True。
+        """
         if not self.sidebars_for(plugin_id):
             return True
         if self.has_manifest_permission(plugin_id, "inactive_callback"):
@@ -1061,9 +1664,17 @@ class PluginHost:
         try:
             return bool(checker(plugin_id))
         except Exception:
+            # 表示判定に失敗したら current_changed を届けない。
             return False
 
     def emit(self, event: str, payload=None, plugin_id: Optional[str] = None) -> None:
+        """購読者へイベントを渡す。失敗は report_error に残す。
+
+        Args:
+            event: イベント名。空なら何もしない。
+            payload: コールバックへ渡す値。
+            plugin_id: 指定時はそのプラグインの購読だけ。
+        """
         name = str(event or "").strip()
         if not name:
             return
@@ -1077,14 +1688,26 @@ class PluginHost:
             try:
                 callback(payload)
             except TypeError:
+                # 引数を受け取れない購読なら引数なしで呼び直す。
                 try:
                     callback()
                 except Exception as exc:
+                    # 引数なしの呼び出しも失敗したら記録して次の購読へ進む。
                     self.report_error(name, exc, plugin_id=owner)
             except Exception as exc:
+                # 購読の実行に失敗したら記録して次へ進む。
                 self.report_error(name, exc, plugin_id=owner)
 
     def expand_text(self, plugin_id: str, value) -> str:
+        """プラグインの get_text で {key} 全体だけ展開する。
+
+        Args:
+            plugin_id: 対象のプラグイン ID。
+            value: 展開する値。
+
+        Returns:
+            展開後の文字列。
+        """
         return self.scoped(plugin_id).expand_text(value)
 
     def refresh_display_titles(self) -> None:
@@ -1097,20 +1720,43 @@ class PluginHost:
                 try:
                     refresh()
                 except Exception as exc:
+                    # ラベル更新に失敗したら記録してタイトル差し替えへ進む。
                     logger.debug(get_log_text("plugin_event_failed", event="refresh_labels", error=exc))
             title = self.expand_text(record.plugin_id, record.title)
             try:
                 self._mount_sidebar(record.plugin_id, record.sidebar_id, title, record.widget)
             except Exception as exc:
+                # タイトル差し替えの取り付けに失敗したら警告を残して続ける。
                 logger.warning(get_log_text("plugin_sidebar_mount_failed", error=exc))
 
     def configs_for(self, plugin_id: str) -> list[ConfigField]:
+        """プラグインが登録した設定項目を返す。
+
+        Args:
+            plugin_id: プラグイン ID。
+
+        Returns:
+            ConfigField のリスト。無ければ空。
+        """
         return list(self._config_fields.get(plugin_id, []))
 
     def list_actions(self) -> list[PluginAction]:
+        """登録済みアクションを返す。
+
+        Returns:
+            PluginAction のリスト。
+        """
         return list(self._actions.values())
 
     def resolve_action(self, action_id: str) -> Optional[PluginAction]:
+        """公開 ID またはエイリアスからアクションを探す。
+
+        Args:
+            action_id: 公開 ID またはエイリアス。
+
+        Returns:
+            見つかったアクション。無ければ None。
+        """
         key = str(action_id or "")
         if not key:
             return None
@@ -1123,6 +1769,14 @@ class PluginHost:
         return None
 
     def action_label(self, action_id: str) -> Optional[str]:
+        """アクションの表示ラベルを言語展開して返す。
+
+        Args:
+            action_id: 公開 ID またはエイリアス。
+
+        Returns:
+            展開したラベル。サイドバーなら切替ラベル。無ければ None。
+        """
         record = self.resolve_action(action_id)
         if record is None:
             return None
@@ -1132,31 +1786,54 @@ class PluginHost:
         return label
 
     def action_ids_for(self, public_id: str) -> list[str]:
+        """公開 ID とエイリアスをまとめて返す。
+
+        Args:
+            public_id: 公開 ID またはエイリアス。
+
+        Returns:
+            公開 ID とエイリアス。見つからなければ public_id だけ。空なら空。
+        """
         record = self.resolve_action(public_id)
         if record is None:
             return [public_id] if public_id else []
         return [record.public_id, *record.aliases]
 
     def invoke_registered(self, action_id: str) -> bool:
+        """登録済みアクションのコールバックを実行する。
+
+        Args:
+            action_id: 公開 ID またはエイリアス。
+
+        Returns:
+            戻りが None なら True、それ以外はその真偽。失敗や未登録は False。
+        """
         record = self.resolve_action(action_id)
         if record is None:
             return False
         try:
             result = record.callback()
         except TypeError:
+            # 引数を取らないコールバックなら引数なしで実行する。
             try:
                 record.callback()
                 return True
             except Exception as exc:
+                # 引数なしの実行も失敗したら記録して False を返す。
                 self.report_error(action_id, exc, plugin_id=record.plugin_id)
                 return False
         except Exception as exc:
+            # アクション実行に失敗したら記録して False を返す。
             self.report_error(action_id, exc, plugin_id=record.plugin_id)
             return False
         return True if result is None else bool(result)
 
     def clear_plugin(self, plugin_id: str) -> None:
-        """sidebar / action / listener / filter 台帳を外す。teardown の off / unregister には頼らない。"""
+        """sidebar / action / listener / filter 台帳を外し、teardown の off / unregister には頼らない。
+
+        Args:
+            plugin_id: 外すプラグイン ID。
+        """
         for key in [item for item in self._sidebars if item[0] == plugin_id]:
             self._unmount_sidebar_record(key)
         for public_id in [item for item, record in self._actions.items() if record.plugin_id == plugin_id]:
@@ -1166,6 +1843,18 @@ class PluginHost:
         get_filter_registry().unregister_plugin(plugin_id)
 
     def _register_sidebar(self, plugin_id: str, sidebar_id: str, title: str, widget_or_layout, aliases=None) -> None:
+        """サイドバーと切替アクションを台帳へ載せ、可能ならマウントする。
+
+        Args:
+            plugin_id: プラグイン ID。
+            sidebar_id: サイドバー ID。空なら main。
+            title: 表示タイトル。空なら sidebar_id。
+            widget_or_layout: ウィジェット、またはレイアウト。
+            aliases: 切替アクションのエイリアス。
+
+        Raises:
+            PluginRegistrationDenied: phase が違う、または sidebar 未宣言のとき。
+        """
         self._deny_wrong_phase(plugin_id, "register_sidebar")
         if not self._declared_sidebar.get(plugin_id):
             raise PluginRegistrationDenied(plugin_id, "plugin_sidebar_not_declared")
@@ -1183,9 +1872,22 @@ class PluginHost:
                     widget,
                 )
             except Exception as exc:
+                # サイドバーの取り付けに失敗したら警告を残して台帳の登録は続ける。
                 logger.warning(get_log_text("plugin_sidebar_mount_failed", error=exc))
 
     def _required_setting_sidebar(self, plugin_id: str):
+        """登録済み設定から必須の設定フォームを作る。
+
+        Args:
+            plugin_id: プラグイン ID。
+
+        Returns:
+            そのプラグインの PluginConfigForm。
+
+        Raises:
+            PluginRegistrationDenied: phase が違う、または sidebar 未宣言のとき。
+            ValueError: 設定項目が無いとき。
+        """
         self._deny_wrong_phase(plugin_id, "required_setting_sidebar")
         if not self._declared_sidebar.get(plugin_id):
             raise PluginRegistrationDenied(plugin_id, "plugin_sidebar_not_declared")
@@ -1197,15 +1899,34 @@ class PluginHost:
         return PluginConfigForm(self, plugin_id)
 
     def _register_config_sidebar(self, plugin_id: str, sidebar_id: str, title: str, aliases=None) -> None:
+        """設定フォームをサイドバーとして登録する。
+
+        Args:
+            plugin_id: プラグイン ID。
+            sidebar_id: サイドバー ID。
+            title: 表示タイトル。
+            aliases: 切替アクションのエイリアス。
+        """
         self._deny_wrong_phase(plugin_id, "register_config_sidebar")
         widget = self._required_setting_sidebar(plugin_id)
         self._register_sidebar(plugin_id, sidebar_id, title, widget, aliases)
 
     def _unregister_sidebar(self, plugin_id: str, sidebar_id: str) -> None:
+        """サイドバー登録を台帳から外す。
+
+        Args:
+            plugin_id: プラグイン ID。
+            sidebar_id: サイドバー ID。空なら main。
+        """
         self._deny_wrong_phase(plugin_id, "unregister_sidebar")
         self._unmount_sidebar_record((plugin_id, str(sidebar_id or "").strip() or "main"))
 
     def _unmount_sidebar_record(self, key: tuple[str, str]) -> None:
+        """台帳からサイドバーを外し、切替アクションも消してアンマウントする。
+
+        Args:
+            key: plugin_id と sidebar_id の組。
+        """
         record = self._sidebars.pop(key, None)
         if record is None:
             return
@@ -1214,9 +1935,18 @@ class PluginHost:
             try:
                 self._unmount_sidebar(record.plugin_id, record.sidebar_id)
             except Exception as exc:
+                # 取り外しに失敗したら記録して台帳からの削除は維持する。
                 logger.debug(get_log_text("plugin_sidebar_unmount_failed", error=exc))
 
     def _register_sidebar_action(self, plugin_id: str, sidebar_id: str, title: str, aliases=None) -> None:
+        """サイドバー表示切替のアクションを台帳へ載せる。
+
+        Args:
+            plugin_id: プラグイン ID。
+            sidebar_id: サイドバー ID。
+            title: 表示タイトル。
+            aliases: エイリアス。
+        """
         public_id = make_sidebar_action_id(plugin_id, sidebar_id)
         self._actions[public_id] = PluginAction(
             plugin_id=plugin_id,
@@ -1229,15 +1959,37 @@ class PluginHost:
         )
 
     def _toggle_sidebar_ui(self, plugin_id: str, sidebar_id: str) -> bool:
+        """本体の切替関数でサイドバー表示を切り替える。
+
+        Args:
+            plugin_id: プラグイン ID。
+            sidebar_id: サイドバー ID。
+
+        Returns:
+            切り替え結果。未接続や失敗は False。
+        """
         if self._toggle_sidebar is None:
             return False
         try:
             return bool(self._toggle_sidebar(plugin_id, sidebar_id))
         except Exception as exc:
+            # 表示切替に失敗したら記録して False を返す。
             logger.debug(get_log_text("plugin_event_failed", event=f"toggle_sidebar:{sidebar_id}", error=exc))
             return False
 
     def _register_filter(self, plugin_id: str, filter_id: str, title: str, process) -> None:
+        """フィルターを台帳へ載せる。
+
+        Args:
+            plugin_id: プラグイン ID。
+            filter_id: ローカル ID。
+            title: 表示名。空ならローカル ID。
+            process: 画像を加工する関数。
+
+        Raises:
+            PluginRegistrationDenied: phase が違う、または filter 権限が無いとき。
+            ValueError: ID が不正、または process が呼べないとき。
+        """
         self._deny_wrong_phase(plugin_id, "register_filter")
         if not self.has_manifest_permission(plugin_id, "filter"):
             raise PluginRegistrationDenied(plugin_id, "plugin_filter_not_permitted")
@@ -1257,6 +2009,12 @@ class PluginHost:
         )
 
     def _unregister_filter(self, plugin_id: str, filter_id: str) -> None:
+        """フィルターを台帳から外す。
+
+        Args:
+            plugin_id: プラグイン ID。
+            filter_id: ローカル ID。不正なら何もしない。
+        """
         self._deny_wrong_phase(plugin_id, "unregister_filter")
         local_id = normalize_local_filter_id(filter_id)
         if not local_id:
@@ -1264,6 +2022,15 @@ class PluginHost:
         get_filter_registry().unregister(make_plugin_filter_id(plugin_id, local_id))
 
     def _register_action(self, plugin_id: str, action_id, label, callback, aliases=None) -> None:
+        """カスタムアクションを台帳へ載せる。
+
+        Args:
+            plugin_id: プラグイン ID。
+            action_id: ローカル ID。不正なら何もしない。
+            label: 表示ラベル。空ならローカル ID。
+            callback: 実行する関数。None なら登録しない。
+            aliases: エイリアス。
+        """
         self._deny_wrong_phase(plugin_id, "register_action")
         local_id = normalize_local_action_id(action_id)
         if not local_id or callback is None:
@@ -1280,6 +2047,12 @@ class PluginHost:
         )
 
     def _unregister_action(self, plugin_id: str, action_id) -> None:
+        """カスタムアクションを台帳から外す。
+
+        Args:
+            plugin_id: プラグイン ID。
+            action_id: ローカル ID。不正なら何もしない。
+        """
         self._deny_wrong_phase(plugin_id, "unregister_action")
         local_id = normalize_local_action_id(action_id)
         if not local_id:
@@ -1287,6 +2060,14 @@ class PluginHost:
         self._actions.pop(make_plugin_action_id(plugin_id, local_id), None)
 
     def _as_widget(self, widget_or_layout):
+        """レイアウトならウィジェットに載せて返す。
+
+        Args:
+            widget_or_layout: ウィジェット、またはレイアウト。
+
+        Returns:
+            ウィジェット。レイアウトでなければそのまま。
+        """
         from PySide6.QtWidgets import QLayout, QWidget
 
         if isinstance(widget_or_layout, QLayout):
@@ -1296,6 +2077,13 @@ class PluginHost:
         return widget_or_layout
 
     def _on(self, plugin_id: str, event: str, callback: Callable) -> None:
+        """イベント購読を足す。
+
+        Args:
+            plugin_id: プラグイン ID。
+            event: イベント名。空なら何もしない。
+            callback: 呼ぶ関数。None なら何もしない。
+        """
         self._deny_wrong_phase(plugin_id, "on")
         name = str(event or "").strip()
         if not name or callback is None:
@@ -1303,6 +2091,13 @@ class PluginHost:
         self._listeners.setdefault(name, []).append((plugin_id, callback))
 
     def _off(self, plugin_id: str, event: str, callback: Optional[Callable] = None) -> None:
+        """イベント購読を外す。
+
+        Args:
+            plugin_id: プラグイン ID。
+            event: イベント名。
+            callback: 外す関数。None ならそのプラグインの購読を全部外す。
+        """
         self._deny_wrong_phase(plugin_id, "off")
         name = str(event or "").strip()
         rows = self._listeners.get(name) or []
@@ -1312,6 +2107,17 @@ class PluginHost:
         self._listeners[name] = [item for item in rows if item != (plugin_id, callback)]
 
     def _load_ui(self, data_or_path):
+        """.ui のバイト列またはパスからウィジェットを作る。
+
+        Args:
+            data_or_path: .ui のバイト列、またはファイルパス。
+
+        Returns:
+            読み込んだウィジェット。
+
+        Raises:
+            FileNotFoundError: パスを開けないとき。
+        """
         from PySide6.QtCore import QBuffer, QByteArray, QFile, QIODevice
         from PySide6.QtUiTools import QUiLoader
 
@@ -1351,6 +2157,27 @@ class PluginHost:
         suffix=None,
         required=False,
     ) -> None:
+        """設定項目を正規化して、台帳の同じキーを置き換える。
+
+        Args:
+            plugin_id: プラグイン ID。
+            key: 項目キー。空なら何もしない。
+            value_type: 設定の種別。
+            default: 初期値。
+            label: 表示名。
+            description: 説明。
+            choices: choice の候補。
+            minimum: 範囲の下限。
+            maximum: 範囲の上限。
+            step: 範囲の刻み。
+            path_kind: file または directory。
+            path_filter: パス選択のフィルタ。
+            sync: 数値の即時保存。
+            reload: 保存後の再読み込み。
+            multiple: 複数選択。
+            suffix: 数値の接尾辞。数値以外は空にする。
+            required: 空の保存を拒むか。
+        """
         self._deny_wrong_phase(plugin_id, "register_config")
         field_key = str(key or "").strip()
         if not field_key:
@@ -1398,6 +2225,16 @@ class PluginHost:
         self._config_fields[plugin_id] = rows
 
     def _register_config_json(self, plugin_id: str, name: str, root) -> None:
+        """resources/config の JSON から設定項目を登録する。
+
+        Args:
+            plugin_id: プラグイン ID。
+            name: config ディレクトリ内のファイル名。
+            root: プラグインルート。None なら失敗。
+
+        Raises:
+            KeyError: root が None のとき。
+        """
         self._deny_wrong_phase(plugin_id, "register_config")
         if root is None:
             raise KeyError(name)
@@ -1409,12 +2246,31 @@ class PluginHost:
             self._register_config(plugin_id, field_key, value_type, **payload)
 
     def _field_for(self, plugin_id: str, key: str) -> Optional[ConfigField]:
+        """キーに一致する設定項目を返す。
+
+        Args:
+            plugin_id: プラグイン ID。
+            key: 項目キー。
+
+        Returns:
+            一致した項目。無ければ None。
+        """
         for field in self._config_fields.get(plugin_id, []):
             if field.key == key:
                 return field
         return None
 
     def _get_plugin_config(self, plugin_id: str, key: str, default=None):
+        """保存値を項目の種別に合わせて返す。無ければ初期値。
+
+        Args:
+            plugin_id: プラグイン ID。
+            key: 項目キー。
+            default: 保存が無いときの値。None なら項目の初期値。
+
+        Returns:
+            変換後の値。項目が無ければ保存値か default。
+        """
         field = self._field_for(plugin_id, key)
         if default is None and field is not None:
             default = field.default
@@ -1432,6 +2288,17 @@ class PluginHost:
         return value
 
     def _set_plugin_config(self, plugin_id: str, key: str, value, notify: bool = True) -> bool:
+        """値を種別に合わせて保存し、必要なら config_changed を出す。
+
+        Args:
+            plugin_id: プラグイン ID。
+            key: 項目キー。
+            value: 保存する値。
+            notify: True なら変更を通知する。
+
+        Returns:
+            保存できれば True。必須が空、暗号化失敗、DB 無しは False。
+        """
         field = self._field_for(plugin_id, key)
         plain = coerce_field_value(field, value) if field is not None else value
         if field is not None and field.required and is_config_empty(field, plain):
@@ -1459,20 +2326,44 @@ class PluginHost:
         return ok
 
     def _notify_after_plugin_config(self, plugin_id: str) -> None:
+        """設定保存後の本体コールバックを呼ぶ。
+
+        Args:
+            plugin_id: プラグイン ID。
+        """
         callback = self._after_plugin_config
         if callback is None:
             return
         try:
             callback(plugin_id)
         except Exception as exc:
+            # 設定保存後の通知に失敗したら記録して続ける。
             logger.debug(get_log_text("plugin_event_failed", event="after_plugin_config", error=exc))
 
     def _delete_plugin_config(self, plugin_id: str, key: str) -> bool:
+        """保存済みの設定値を消す。
+
+        Args:
+            plugin_id: プラグイン ID。
+            key: 項目キー。
+
+        Returns:
+            削除できれば True。DB が無ければ False。
+        """
         if self._db is None:
             return False
         return bool(self._db.delete_plugin_setting(plugin_id, key))
 
     def _reset_plugin_config(self, plugin_id: str, key: str) -> bool:
+        """保存値を消して初期値へ戻し、変更を通知する。
+
+        Args:
+            plugin_id: プラグイン ID。
+            key: 項目キー。
+
+        Returns:
+            削除できれば True。
+        """
         if not self._delete_plugin_config(plugin_id, key):
             return False
         field = self._field_for(plugin_id, key)
@@ -1487,11 +2378,17 @@ class PluginHost:
         return True
 
     def _app_config_snapshot(self):
+        """アプリ設定のうち language、viewer、cache、ui_font だけを読み取り専用で返す。
+
+        Returns:
+            セクションごとの読み取り専用 dict。
+        """
         raw = {}
         if self._get_app_config is not None:
             try:
                 raw = self._get_app_config() or {}
             except Exception as exc:
+                # アプリ設定を読めなければ記録して空として続ける。
                 logger.debug(get_log_text("plugin_app_config_failed", error=exc))
                 raw = {}
         allowed = {}
@@ -1502,33 +2399,69 @@ class PluginHost:
         return MappingProxyType({key: MappingProxyType(val) for key, val in allowed.items()})
 
     def _current_value(self, key: str):
+        """本体から現在値を読む。
+
+        Args:
+            key: 現在値のキー。
+
+        Returns:
+            読めた値。未接続や失敗は None。
+        """
         if self._get_current is None:
             return None
         try:
             return self._get_current(str(key or ""))
         except Exception as exc:
+            # 現在値を読めなければ記録して None を返す。
             logger.debug(get_log_text("plugin_current_failed", key=key, error=exc))
             return None
 
     def reload_current(self, page=None) -> bool:
+        """UI スレッドで現在の表示を読み直す。
+
+        Args:
+            page: 読み直すページ。整数にできなければ指定なし。
+
+        Returns:
+            読み直せれば True。
+        """
         target = None
         if page is not None:
             try:
                 target = int(page)
             except (TypeError, ValueError):
+                # ページ番号にできなければ指定なしにする。
                 target = None
         return bool(self._call_on_ui(lambda: self._reload_current_ui(target)))
 
     def _reload_current_ui(self, page) -> bool:
+        """現在の表示を読み直す。
+
+        Args:
+            page: 読み直すページ。None なら指定なし。
+
+        Returns:
+            読み直せれば True。未接続や失敗は False。
+        """
         if self._reload_current is None:
             return False
         try:
             return bool(self._reload_current(page))
         except Exception as exc:
+            # 再読み込みに失敗したら記録して False を返す。
             logger.debug(get_log_text("plugin_event_failed", event="reload_current", error=exc))
             return False
 
     def _run_action_ui(self, action_id: str, kwargs: dict) -> bool:
+        """登録済みアクションを優先し、無ければ本体のアクションを実行する。
+
+        Args:
+            action_id: アクション ID。
+            kwargs: 本体アクションへ渡す引数。
+
+        Returns:
+            実行できれば True。未接続は False。
+        """
         if self.invoke_registered(action_id):
             return True
         if self._run_action is None:
@@ -1537,6 +2470,16 @@ class PluginHost:
         return bool(self._run_action(action_id, kwargs))
 
     def _ask_password_ui(self, file_path: str, mismatch: bool, verify) -> Optional[str]:
+        """セッション、保存済み、ダイアログの順でパスワードを決める。
+
+        Args:
+            file_path: 対象ファイル。
+            mismatch: True なら不一致としてダイアログを開く。
+            verify: パスワードを検証する関数。
+
+        Returns:
+            採用したパスワード。取消やアプリ終了は None。
+        """
         from PySide6.QtWidgets import QApplication, QDialog
         from ez_co.handlers.archive_password import get_session_password, set_session_password
         from ez_co.ui.dialogs.pdf_password_dialog import CLOSE_APP_RESULT, ArchivePasswordDialog
@@ -1551,6 +2494,7 @@ class PluginHost:
             try:
                 stored = self._db.get_stored_archive_password(file_path)
             except Exception as exc:
+                # 保存済みパスワードを読めなければ記録してダイアログへ進む。
                 logger.debug(get_log_text("plugin_stored_password_failed", error=exc))
         if stored is not None:
             if self._verify_password(stored, verify):
@@ -1575,14 +2519,25 @@ class PluginHost:
             mismatch = True
 
     def _verify_password(self, password: str, verify) -> bool:
+        """検証関数が無ければ通し、あればその結果を返す。
+
+        Args:
+            password: 検証するパスワード。
+            verify: 検証関数。None なら常に成功。
+
+        Returns:
+            検証結果。例外なら False。
+        """
         if verify is None:
             return True
         try:
             return bool(verify(password))
         except Exception:
+            # 検証に失敗したら不一致として False を返す。
             return False
 
     def _ensure_bridge(self) -> None:
+        """UI があるときだけ、UI スレッドへ渡す橋を作る。"""
         from PySide6.QtWidgets import QApplication
 
         if self._bridge is not None:
@@ -1594,6 +2549,14 @@ class PluginHost:
         self._bridge._emitter.moveToThread(app.thread())
 
     def _call_on_ui(self, func):
+        """UI スレッドで関数を実行する。UI が無ければその場で実行する。
+
+        Args:
+            func: 実行する関数。
+
+        Returns:
+            関数の戻り。
+        """
         from PySide6.QtCore import QThread
         from PySide6.QtWidgets import QApplication
 
@@ -1610,51 +2573,143 @@ class ScopedPluginHost:
     """呼び出し元 plugin_id に閉じたホスト。他プラグインの設定は触れない。"""
 
     def __init__(self, host: PluginHost, plugin_id: str):
+        """親ホストと plugin_id を固定する。
+
+        Args:
+            host: 親の PluginHost。
+            plugin_id: このスコープのプラグイン ID。
+        """
         self._host = host
         self._plugin_id = plugin_id
         self._root = None
         self._get_text = None
 
     def bind_plugin(self, root, get_text) -> None:
+        """プラグインルートと get_text を後から結ぶ。
+
+        Args:
+            root: プラグインルート。
+            get_text: 文言取得関数。
+        """
         self._root = root
         self._get_text = get_text
 
     def get_text(self, key: str, **kwargs) -> str:
+        """結ばれた get_text で文言を取り、無ければアプリの文言を使う。
+
+        Args:
+            key: 文言キー。
+            kwargs: format に渡す値。
+
+        Returns:
+            取得した文字列。
+        """
         if self._get_text is not None:
             return self._get_text(key, **kwargs)
         return language_manager.get_text(key, **kwargs)
 
     def expand_text(self, value) -> str:
+        """文字列全体が {key} のときだけ文言にする。
+
+        Args:
+            value: 展開する値。
+
+        Returns:
+            展開後の文字列。
+        """
         return expand_plugin_text(value, self.get_text)
 
     def register_config_json(self, name: str) -> None:
+        """このプラグインの config JSON から設定項目を登録する。
+
+        Args:
+            name: config ディレクトリ内のファイル名。
+        """
         self._host._register_config_json(self._plugin_id, name, self._root)
 
     def register_sidebar(self, sidebar_id: str, title: str, widget_or_layout, aliases=None) -> None:
+        """このプラグインのサイドバーを登録する。
+
+        Args:
+            sidebar_id: サイドバー ID。
+            title: 表示タイトル。
+            widget_or_layout: ウィジェット、またはレイアウト。
+            aliases: 切替アクションのエイリアス。
+        """
         self._host._register_sidebar(self._plugin_id, sidebar_id, title, widget_or_layout, aliases)
 
     def required_setting_sidebar(self):
+        """このプラグインの必須設定フォームを作る。
+
+        Returns:
+            PluginConfigForm。
+        """
         return self._host._required_setting_sidebar(self._plugin_id)
 
     def register_config_sidebar(self, sidebar_id: str, title: str, aliases=None) -> None:
+        """このプラグインの設定フォームをサイドバーとして登録する。
+
+        Args:
+            sidebar_id: サイドバー ID。
+            title: 表示タイトル。
+            aliases: 切替アクションのエイリアス。
+        """
         self._host._register_config_sidebar(self._plugin_id, sidebar_id, title, aliases)
 
     def unregister_sidebar(self, sidebar_id: str) -> None:
+        """このプラグインのサイドバー登録を外す。
+
+        Args:
+            sidebar_id: サイドバー ID。
+        """
         self._host._unregister_sidebar(self._plugin_id, sidebar_id)
 
     def register_action(self, action_id, label, callback, aliases=None) -> None:
+        """このプラグインのアクションを登録する。
+
+        Args:
+            action_id: ローカル ID。
+            label: 表示ラベル。
+            callback: 実行する関数。
+            aliases: エイリアス。
+        """
         self._host._register_action(self._plugin_id, action_id, label, callback, aliases)
 
     def unregister_action(self, action_id) -> None:
+        """このプラグインのアクションを外す。
+
+        Args:
+            action_id: ローカル ID。
+        """
         self._host._unregister_action(self._plugin_id, action_id)
 
     def register_filter(self, filter_id: str, title: str, process) -> None:
+        """このプラグインのフィルターを登録する。
+
+        Args:
+            filter_id: ローカル ID。
+            title: 表示名。
+            process: 画像を加工する関数。
+        """
         self._host._register_filter(self._plugin_id, filter_id, title, process)
 
     def unregister_filter(self, filter_id: str) -> None:
+        """このプラグインのフィルターを外す。
+
+        Args:
+            filter_id: ローカル ID。
+        """
         self._host._unregister_filter(self._plugin_id, filter_id)
 
     def load_ui(self, data_or_path):
+        """.ui のバイト列またはパスからウィジェットを作る。
+
+        Args:
+            data_or_path: .ui のバイト列、またはファイルパス。
+
+        Returns:
+            読み込んだウィジェット。
+        """
         return self._host.load_ui(data_or_path)
 
     def register_config(
@@ -1676,6 +2731,26 @@ class ScopedPluginHost:
         suffix=None,
         required=False,
     ) -> None:
+        """このプラグインの設定項目を登録する。
+
+        Args:
+            key: 項目キー。
+            value_type: 設定の種別。
+            default: 初期値。
+            label: 表示名。
+            description: 説明。
+            choices: choice の候補。
+            minimum: 範囲の下限。
+            maximum: 範囲の上限。
+            step: 範囲の刻み。
+            path_kind: file または directory。
+            path_filter: パス選択のフィルタ。
+            sync: 数値の即時保存。
+            reload: 保存後の再読み込み。
+            multiple: 複数選択。
+            suffix: 数値の接尾辞。
+            required: 空の保存を拒むか。
+        """
         self._host._register_config(
             self._plugin_id,
             key,
@@ -1697,47 +2772,157 @@ class ScopedPluginHost:
         )
 
     def get_config(self, key: str, default: Any = None):
+        """このプラグインの設定値を返す。
+
+        Args:
+            key: 項目キー。
+            default: 保存が無いときの値。
+
+        Returns:
+            変換後の値。
+        """
         return self._host._get_plugin_config(self._plugin_id, key, default)
 
     def set_config(self, key: str, value) -> bool:
+        """このプラグインの設定値を保存する。
+
+        Args:
+            key: 項目キー。
+            value: 保存する値。
+
+        Returns:
+            保存できれば True。
+        """
         return self._host._set_plugin_config(self._plugin_id, key, value)
 
     def delete_config(self, key: str) -> bool:
+        """このプラグインの保存値を消す。
+
+        Args:
+            key: 項目キー。
+
+        Returns:
+            削除できれば True。
+        """
         return self._host._delete_plugin_config(self._plugin_id, key)
 
     def reset_config(self, key: str) -> bool:
-        """保存済みoverrideを削除し、schema defaultへ戻して通知する。"""
+        """保存済みoverrideを削除し、schema defaultへ戻して通知する。
+
+        Args:
+            key: 項目キー。
+
+        Returns:
+            削除できれば True。
+        """
         return self._host._reset_plugin_config(self._plugin_id, key)
 
     def get_app_config(self):
+        """アプリ設定の language、viewer、cache、ui_font を読み取り専用で返す。
+
+        Returns:
+            読み取り専用の設定。
+        """
         return self._host._app_config_snapshot()
 
     def get_current(self, key: str):
+        """本体の現在値を読む。
+
+        Args:
+            key: 現在値のキー。
+
+        Returns:
+            読めた値。失敗時は None。
+        """
         return self._host._current_value(key)
 
     def reload_current(self, page=None) -> bool:
+        """現在の表示を読み直す。
+
+        Args:
+            page: 読み直すページ。
+
+        Returns:
+            読み直せれば True。
+        """
         return bool(self._host.reload_current(page))
 
     def on(self, event: str, callback: Callable) -> None:
+        """このプラグインのイベント購読を足す。
+
+        Args:
+            event: イベント名。
+            callback: 呼ぶ関数。
+        """
         self._host._on(self._plugin_id, event, callback)
 
     def off(self, event: str, callback: Optional[Callable] = None) -> None:
+        """このプラグインのイベント購読を外す。
+
+        Args:
+            event: イベント名。
+            callback: 外す関数。None ならそのイベントを全部外す。
+        """
         self._host._off(self._plugin_id, event, callback)
 
     def ask_password(self, file_path: str, mismatch: bool = False, verify=None):
+        """アーカイブパスワードを尋ねる。
+
+        Args:
+            file_path: 対象ファイル。
+            mismatch: True なら不一致として開く。
+            verify: 検証する関数。
+
+        Returns:
+            採用したパスワード。取消なら None。
+        """
         return self._host.ask_password(file_path, mismatch=mismatch, verify=verify)
 
     def show_dialog(self, name: str, **kwargs):
+        """名前に応じたダイアログを開く。
+
+        Args:
+            name: ダイアログ名。
+            kwargs: ダイアログへ渡す引数。
+
+        Returns:
+            ダイアログの結果。未対応なら None。
+        """
         return self._host.show_dialog(name, **kwargs)
 
     def run_action(self, action_id: str, **kwargs) -> bool:
+        """アクションを実行する。
+
+        Args:
+            action_id: アクション ID。
+            kwargs: 追加引数。
+
+        Returns:
+            実行できれば True。
+        """
         return self._host.run_action(action_id, **kwargs)
 
     def report_error(self, where, exc) -> None:
+        """このプラグインのエラーを記録する。
+
+        Args:
+            where: 発生箇所の名前。
+            exc: 例外。
+        """
         self._host.report_error(where, exc, plugin_id=self._plugin_id)
 
     def registered_formats(self) -> list[FormatSpec]:
+        """このプラグインが宣言した担当形式を返す。
+
+        Returns:
+            FormatSpec のリスト。
+        """
         return self._host.formats_for(self._plugin_id)
 
     def has_pending_sidebars(self) -> bool:
+        """サイドバー登録が1件でもあれば True。
+
+        Returns:
+            登録があれば True。
+        """
         return bool(self._host.sidebars_for(self._plugin_id))

@@ -1,1 +1,1 @@
-"""Handlers package for Ez_Co application."""
+"""Ez_Co のハンドラパッケージ。"""

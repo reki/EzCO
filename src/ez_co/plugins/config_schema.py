@@ -5,6 +5,7 @@ import json
 
 from ez_co.utils.language_manager import get_log_text
 
+# 設定 JSON のフィールドで受け付けるキー。
 _FIELD_KEYS = frozenset(
     {
         "key",
@@ -25,15 +26,28 @@ _FIELD_KEYS = frozenset(
         "required",
     }
 )
+# 設定 JSON で拒否する Enum 指定のキー。
 _ENUM_KEYS = frozenset({"enum", "enum_type"})
 
 
 def parse_config_json(raw, plugin_id: str = "") -> list[dict]:
-    """UTF-8 JSON または list をフィールド dict の列にする。未知キーと Enum 指定はエラー。"""
+    """UTF-8 JSON または list をフィールド dict の列にし、未知キーと Enum 指定はエラーにする。
+
+    Args:
+        raw: JSON の bytes、str、または list。
+        plugin_id: エラー文言に載せるプラグイン ID。
+
+    Returns:
+        既知キーだけのフィールド dict の列。
+
+    Raises:
+        ValueError: JSON でない、list でない、要素がオブジェクトでない、未知キーがある、または Enum 指定のとき。
+    """
     if isinstance(raw, (bytes, bytearray)):
         try:
             data = json.loads(bytes(raw).decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            # UTF-8 の JSON でなければ ValueError にして返す。
             raise ValueError(
                 get_log_text("plugin_config_json_invalid", plugin_id=plugin_id, error=exc)
             ) from exc
@@ -41,6 +55,7 @@ def parse_config_json(raw, plugin_id: str = "") -> list[dict]:
         try:
             data = json.loads(raw)
         except json.JSONDecodeError as exc:
+            # JSON でなければ ValueError にして返す。
             raise ValueError(
                 get_log_text("plugin_config_json_invalid", plugin_id=plugin_id, error=exc)
             ) from exc

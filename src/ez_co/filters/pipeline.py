@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class FilterContext:
+    """フィルター処理に渡すパス、ページ、寸法、設定。"""
     path: str
     page: int
     size: tuple[int, int]
@@ -33,8 +34,16 @@ def apply_pipe(
 ) -> Optional[Image]:
     """pipe の公開 ID を台帳で引き、載っているものだけ process する。
 
-    台帳にヒットしなければ同一オブジェクト。builtin:basic の identity だけでも copy しない。
-    実効フィルターがあるときだけ working copy を1回作る。
+    Args:
+        image: 処理する画像。
+        pipe: 適用する公開 ID の列。
+        path: 処理文脈に渡すパス。
+        page: 処理文脈に渡すページ。
+        builtin_settings: builtin:basic に渡す設定。
+        registry: 検索する台帳。省略時は共有台帳。
+
+    Returns:
+        処理後の画像。image が None なら None。台帳にヒットしなければ同一オブジェクト。builtin:basic の identity だけでも copy しない。実効フィルターがあるときだけ working copy を1回作る。
     """
     if image is None:
         return None
@@ -66,6 +75,7 @@ def apply_pipe(
         try:
             result = record.process(working, context)
         except Exception as exc:
+            # フィルター処理に失敗したら警告を残して、次のフィルターへ進む
             logger.warning(get_log_text("filter_process_failed", filter_id=record.public_id, error=exc))
             continue
         if result is not None:

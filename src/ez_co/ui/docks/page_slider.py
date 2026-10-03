@@ -1,3 +1,4 @@
+"""ページ送りのスライダー。ドック結合時は1行、解除時は浮き窓。"""
 import logging
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSlider, QSpinBox, QPushButton,
@@ -8,8 +9,11 @@ from ez_co.utils.language_manager import get_text, get_log_text
 
 logger = logging.getLogger(__name__)
 
+# ドックを外したときの浮き窓の幅と高さ。
 _FLOATING_SIZE = (300, 110)
+# ドックに収めたときの1行の高さ。
 _COMPACT_HEIGHT = 32
+# ページ番号入力の幅。
 _SPIN_WIDTH = 60
 
 
@@ -19,6 +23,13 @@ class PageSlider(QWidget):
     page_changed = Signal(int)
 
     def __init__(self, parent=None, file_handler=None, host=None):
+        """スライダーとページ番号を用意し、ファイルの状態を反映する。
+
+        Args:
+            parent: 親ウィジェット。
+            file_handler: ページ一覧を持つハンドラ。
+            host: ページ移動の通知先。無ければ parent。
+        """
         super().__init__(parent)
         self.file_handler = file_handler
         self.parent_window = host if host is not None else parent
@@ -34,6 +45,7 @@ class PageSlider(QWidget):
         logger.info(get_log_text("page_slider_dialog_initialized"))
 
     def setup_ui(self):
+        """ページ表示、番号、スライダー、先頭と末尾のボタンを作る。"""
         self._root = QVBoxLayout()
         self._root.setContentsMargins(4, 2, 4, 2)
         self._root.setSpacing(2)
@@ -70,13 +82,18 @@ class PageSlider(QWidget):
         self._row.setSpacing(6)
 
     def setup_connections(self):
+        """スライダー、番号、先頭、末尾をページ移動へつなぐ。"""
         self.page_slider.valueChanged.connect(self.on_slider_changed)
         self.page_spinbox.valueChanged.connect(self.on_spinbox_changed)
         self.first_button.clicked.connect(self.go_to_first_page)
         self.last_button.clicked.connect(self.go_to_last_page)
 
     def set_compact(self, compact: bool):
-        """結合時は1行、浮き窓は3段。"""
+        """結合時は1行、浮き窓は3段。
+
+        Args:
+            compact: 1行にするとき True。
+        """
         self._compact = bool(compact)
         self._rebuild_layout()
         if self._compact:
@@ -96,6 +113,7 @@ class PageSlider(QWidget):
             self._rtl_slider = rtl
 
     def _rebuild_layout(self):
+        """結合時はスライダー、番号、ボタンの1行にする。浮き窓は表示、番号とスライダー、ボタンの3段にする。"""
         while self._root.count():
             self._root.takeAt(0)
         while self._row.count():
@@ -153,6 +171,11 @@ class PageSlider(QWidget):
             self._updating = False
 
     def on_slider_changed(self, value):
+        """更新中でなければ番号を合わせてページを変える。
+
+        Args:
+            value: スライダーのページ。
+        """
         if self._updating:
             return
         self._updating = True
@@ -163,6 +186,11 @@ class PageSlider(QWidget):
             self._updating = False
 
     def on_spinbox_changed(self, value):
+        """更新中でなければスライダーを合わせてページを変える。
+
+        Args:
+            value: 番号入力のページ。
+        """
         if self._updating:
             return
         self._updating = True
@@ -173,6 +201,11 @@ class PageSlider(QWidget):
             self._updating = False
 
     def change_page(self, page_number):
+        """ファイルがあるとき、そのページへ移して画像を更新する。
+
+        Args:
+            page_number: 1始まりのページ。
+        """
         if not self.file_handler or not self.file_handler.current_files:
             return
 
@@ -197,6 +230,11 @@ class PageSlider(QWidget):
             logger.info(get_log_text("page_slider_dialog_page_changed", page=aligned_page))
 
     def update_info_display(self, current_page):
+        """ページ表示と、先頭・末尾ボタンの有効を更新する。
+
+        Args:
+            current_page: 表示中のページ。
+        """
         if not self.file_handler or not self.file_handler.current_files:
             return
 
@@ -206,6 +244,15 @@ class PageSlider(QWidget):
         self.last_button.setEnabled(not self._is_at_last_position(current_page, total_pages))
 
     def _format_page_info(self, current_page, total_pages):
+        """見開きなら開始と次のページ、そうでなければ現在ページを総数つきで返す。
+
+        Args:
+            current_page: 表示中のページ。
+            total_pages: 総ページ。
+
+        Returns:
+            ページ表示の文字列。
+        """
         if hasattr(self.parent_window, "_has_spread_pair") and self.parent_window._has_spread_pair():
             start = current_page
             if hasattr(self.parent_window, "_spread_display_start"):
@@ -214,14 +261,29 @@ class PageSlider(QWidget):
         return f"{current_page} / {total_pages}"
 
     def _is_at_last_position(self, current_page, total_pages):
+        """現在ページが総数以上かを返す。
+
+        Args:
+            current_page: 表示中のページ。
+            total_pages: 総ページ。
+
+        Returns:
+            末尾のとき True。
+        """
         return current_page >= total_pages
 
     def _use_rtl_slider(self) -> bool:
+        """親が右から左のスライダーを使うかを返す。親に無ければ True。
+
+        Returns:
+            右から左のとき True。
+        """
         if hasattr(self.parent_window, "_use_rtl_page_slider"):
             return self.parent_window._use_rtl_page_slider()
         return True
 
     def _apply_slider_direction(self):
+        """スライダーの向きと、先頭・末尾ボタンの並びを更新する。向きが同じならボタンは動かさない。"""
         rtl = self._use_rtl_slider()
         self.page_slider.setInvertedAppearance(rtl)
         self.page_slider.setInvertedControls(rtl)
@@ -239,6 +301,11 @@ class PageSlider(QWidget):
             self.button_layout.addWidget(self.last_button)
 
     def _apply_slider_fill_style(self, rtl: bool):
+        """右から左かどうかで、進む側と戻る側の色をスタイルシートにする。
+
+        Args:
+            rtl: 右から左のとき True。
+        """
         if rtl:
             sub_page = "palette(mid)"
             add_page = "palette(highlight)"
@@ -273,15 +340,22 @@ class PageSlider(QWidget):
         """)
 
     def go_to_first_page(self):
+        """ファイルがあれば1ページへ移る。"""
         if self.file_handler and self.file_handler.current_files:
             self._go_to_page(1)
 
     def go_to_last_page(self):
+        """ファイルがあれば最終ページへ移る。"""
         if self.file_handler and self.file_handler.current_files:
             total_pages = len(self.file_handler.current_files)
             self._go_to_page(total_pages)
 
     def _go_to_page(self, page_number):
+        """更新中フラグを立ててスライダーと番号を合わせ、ページを変える。
+
+        Args:
+            page_number: 移るページ。
+        """
         self._updating = True
         try:
             self.page_slider.setValue(page_number)
@@ -291,4 +365,5 @@ class PageSlider(QWidget):
             self._updating = False
 
     def refresh(self):
+        """ファイルの状態から表示を読み直す。"""
         self.update_from_handler()

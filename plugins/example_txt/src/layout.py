@@ -5,16 +5,23 @@ from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QRect, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter
 
 
+# 横書き。
 HORIZONTAL = "horizontal"
+# 縦書き。
 VERTICAL = "vertical"
 
+# 縦書きで回転させる文字。
 _ROTATE = set("ー―‐−–—～〜…‥=＝ｰ")
+# 字体が空のときの既定。
 _DEFAULT_FAMILY = "Meiryo"
+# サイズが空のときの既定ポイント。
 _DEFAULT_SIZE = 18
 
 
 @dataclass(frozen=True)
 class PageSettings:
+    """ページ画像の字体、色、寸法、余白、縦横。"""
+
     font_family: str
     font_size: int
     text_color: str
@@ -26,6 +33,15 @@ class PageSettings:
 
 
 def read_text(path: str, charset: str = "utf-8") -> str:
+    """ファイルを文字コードで読み、改行とタブを揃える。
+
+    Args:
+        path: テキストファイル。
+        charset: 復号に使う文字コード。空なら utf-8。
+
+    Returns:
+        BOM を外し、改行を LF、タブを空白4つにした本文。
+    """
     data = open(path, "rb").read()
     if data.startswith(b"\xef\xbb\xbf"):
         data = data[3:]
@@ -33,13 +49,25 @@ def read_text(path: str, charset: str = "utf-8") -> str:
     try:
         text = data.decode(encoding)
     except LookupError:
+        # 未知の文字コードなら utf-8 で読み替える。
         text = data.decode("utf-8", errors="replace")
     except UnicodeDecodeError:
+        # 復号できなければ置換して読み続ける。
         text = data.decode(encoding, errors="replace")
     return text.replace("\r\n", "\n").replace("\r", "\n").replace("\t", "    ")
 
 
 def resolve_settings(raw: PageSettings, app_family: str, app_size: int) -> PageSettings:
+    """空の字体とサイズをアプリ側か既定で埋め、寸法を1以上に揃える。
+
+    Args:
+        raw: プラグイン設定の値。
+        app_family: アプリの字体名。
+        app_size: アプリのサイズ。
+
+    Returns:
+        揃えた PageSettings。縦書き以外は横書き。
+    """
     family = (raw.font_family or "").strip() or (app_family or "").strip() or _DEFAULT_FAMILY
     size = raw.font_size if raw.font_size and raw.font_size > 0 else (app_size or _DEFAULT_SIZE)
     writing = VERTICAL if raw.writing == VERTICAL else HORIZONTAL
@@ -56,22 +84,54 @@ def resolve_settings(raw: PageSettings, app_family: str, app_size: int) -> PageS
 
 
 def make_font(settings: PageSettings) -> QFont:
+    """設定からアンチエイリアス付きの字体を作る。
+
+    Args:
+        settings: ページ設定。
+
+    Returns:
+        QFont。
+    """
     font = QFont(settings.font_family, settings.font_size)
     font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
     return font
 
 
 def content_size(settings: PageSettings):
+    """余白を除いた本文の幅と高さを返す。
+
+    Args:
+        settings: ページ設定。
+
+    Returns:
+        幅と高さ。
+    """
     width = settings.page_width - settings.margin * 2
     height = settings.page_height - settings.margin * 2
     return width, height
 
 
 def _metrics(settings: PageSettings) -> QFontMetrics:
+    """設定の字体のメトリクスを返す。
+
+    Args:
+        settings: ページ設定。
+
+    Returns:
+        QFontMetrics。
+    """
     return QFontMetrics(make_font(settings))
 
 
 def _cell_size(metrics: QFontMetrics):
+    """縦書き1文字分の幅と高さを返す。
+
+    Args:
+        metrics: 字体のメトリクス。
+
+    Returns:
+        1以上の幅と高さ。
+    """
     sample = metrics.horizontalAdvance("あ")
     if sample <= 0:
         sample = metrics.averageCharWidth()
@@ -81,6 +141,14 @@ def _cell_size(metrics: QFontMetrics):
 
 
 def layout_fits(settings: PageSettings) -> bool:
+    """本文領域に1文字以上入るなら True。
+
+    Args:
+        settings: ページ設定。
+
+    Returns:
+        横書きは行高と1文字幅、縦書きはセルが領域に入れば True。
+    """
     content_w, content_h = content_size(settings)
     if content_w < 1 or content_h < 1:
         return False
@@ -94,6 +162,17 @@ def layout_fits(settings: PageSettings) -> bool:
 
 
 def paginate(text: str, settings: PageSettings, start: int = 0, end: int | None = None):
+    """本文をページの文字範囲に分ける。入らなければ None。
+
+    Args:
+        text: 本文。
+        settings: ページ設定。
+        start: 開始位置。
+        end: 終了位置。None なら文末。
+
+    Returns:
+        各ページの開始と終了。1文字も入らなければ None。空範囲は1ページ。
+    """
     if end is None:
         end = len(text)
     start = max(0, min(start, len(text)))
@@ -108,6 +187,16 @@ def paginate(text: str, settings: PageSettings, start: int = 0, end: int | None 
 
 
 def paginate_anchored(text: str, settings: PageSettings, anchor: int):
+    """anchor の位置で前後に分けてページ範囲を繋ぐ。
+
+    Args:
+        text: 本文。
+        settings: ページ設定。
+        anchor: 残したい文字位置。
+
+    Returns:
+        前後を繋いだページ範囲。どちらかが失敗なら None。先頭なら通常の分割。
+    """
     anchor = max(0, min(int(anchor), len(text)))
     if anchor <= 0:
         return paginate(text, settings)
@@ -119,6 +208,15 @@ def paginate_anchored(text: str, settings: PageSettings, anchor: int):
 
 
 def page_index_for_start(pages, start: int) -> int:
+    """開始位置を含むページ番号を返す。
+
+    Args:
+        pages: ページの開始と終了。
+        start: 探す文字位置。
+
+    Returns:
+        一致するページ。無ければ含むページ、それも無ければ最後。
+    """
     for index, (begin, _) in enumerate(pages):
         if begin == start:
             return index
@@ -129,6 +227,17 @@ def page_index_for_start(pages, start: int) -> int:
 
 
 def render_page(text: str, start: int, end: int, settings: PageSettings) -> bytes:
+    """指定範囲を PNG バイト列にする。
+
+    Args:
+        text: 本文。
+        start: 開始位置。
+        end: 終了位置。
+        settings: ページ設定。
+
+    Returns:
+        PNG バイト列。
+    """
     image = QImage(settings.page_width, settings.page_height, QImage.Format.Format_RGB32)
     image.fill(QColor(settings.bg_color))
     painter = QPainter(image)
@@ -149,6 +258,14 @@ def render_page(text: str, start: int, end: int, settings: PageSettings) -> byte
 
 
 def _is_cjk(char: str) -> bool:
+    """ひらがな、カタカナ、CJK、句読点の範囲なら True。
+
+    Args:
+        char: 1文字。
+
+    Returns:
+        その範囲なら True。
+    """
     code = ord(char)
     return (
         0x3040 <= code <= 0x30FF
@@ -160,6 +277,18 @@ def _is_cjk(char: str) -> bool:
 
 
 def _iter_horizontal_lines(text: str, start: int, end: int, metrics: QFontMetrics, max_width: int):
+    """幅に収まる行の開始と終了を順に出す。
+
+    Args:
+        text: 本文。
+        start: 開始位置。
+        end: 終了位置。
+        metrics: 字体のメトリクス。
+        max_width: 行の最大幅。
+
+    Returns:
+        各行の開始位置と終了位置。改行も含む。
+    """
     index = start
     while index < end:
         if text[index] == "\n":
@@ -189,6 +318,17 @@ def _iter_horizontal_lines(text: str, start: int, end: int, metrics: QFontMetric
 
 
 def _paginate_horizontal(text: str, settings: PageSettings, start: int, end: int):
+    """横書きでページ範囲を作る。
+
+    Args:
+        text: 本文。
+        settings: ページ設定。
+        start: 開始位置。
+        end: 終了位置。
+
+    Returns:
+        各ページの開始と終了。
+    """
     metrics = _metrics(settings)
     content_w, content_h = content_size(settings)
     line_h = max(metrics.lineSpacing(), 1)
@@ -207,6 +347,17 @@ def _paginate_horizontal(text: str, settings: PageSettings, start: int, end: int
 
 
 def _paginate_vertical(text: str, settings: PageSettings, start: int, end: int):
+    """縦書きでページ範囲を作る。
+
+    Args:
+        text: 本文。
+        settings: ページ設定。
+        start: 開始位置。
+        end: 終了位置。
+
+    Returns:
+        各ページの開始と終了。
+    """
     metrics = _metrics(settings)
     content_w, content_h = content_size(settings)
     cell_w, cell_h = _cell_size(metrics)
@@ -248,6 +399,15 @@ def _paginate_vertical(text: str, settings: PageSettings, start: int, end: int):
 
 
 def _draw_horizontal(painter: QPainter, text: str, start: int, end: int, settings: PageSettings):
+    """横書きで範囲を描く。
+
+    Args:
+        painter: 描画先。
+        text: 本文。
+        start: 開始位置。
+        end: 終了位置。
+        settings: ページ設定。
+    """
     metrics = QFontMetrics(painter.font())
     content_w, _content_h = content_size(settings)
     line_h = max(metrics.lineSpacing(), 1)
@@ -262,6 +422,15 @@ def _draw_horizontal(painter: QPainter, text: str, start: int, end: int, setting
 
 
 def _draw_vertical(painter: QPainter, text: str, start: int, end: int, settings: PageSettings):
+    """縦書きで範囲を描く。
+
+    Args:
+        painter: 描画先。
+        text: 本文。
+        start: 開始位置。
+        end: 終了位置。
+        settings: ページ設定。
+    """
     metrics = QFontMetrics(painter.font())
     content_w, content_h = content_size(settings)
     cell_w, cell_h = _cell_size(metrics)
@@ -295,6 +464,13 @@ def _draw_vertical(painter: QPainter, text: str, start: int, end: int, settings:
 
 
 def _draw_vertical_char(painter: QPainter, rect: QRect, char: str):
+    """1文字を描き、伸ばし棒などは90度回す。
+
+    Args:
+        painter: 描画先。
+        rect: 1文字の矩形。
+        char: 描く文字。
+    """
     align = int(Qt.AlignmentFlag.AlignCenter)
     if char not in _ROTATE:
         painter.drawText(rect, align, char)

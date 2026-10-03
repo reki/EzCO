@@ -13,6 +13,11 @@ class MouseGesture:
     """右ドラッグなどの軌跡を方向の列に変換する。"""
 
     def __init__(self, config=None):
+        """軌跡の状態を初期化する。
+
+        Args:
+            config: ビューア設定を持つ設定。gesture_threshold が無ければ 50。
+        """
         self.points = []
         self.directions = []  # 方向履歴
         self.active = False
@@ -26,10 +31,15 @@ class MouseGesture:
         self._reference_x = None  # 基準X座標
         self._reference_y = None  # 基準Y座標
         self._target_widget = None
-        
+
         logger.debug(get_log_text("mouse_gesture_initialized", threshold=self.threshold))
+
     def start(self, pos: QPoint):
-        """ジェスチャー開始"""
+        """ジェスチャーを開始する。
+
+        Args:
+            pos: 開始位置。
+        """
         self.points = [pos]
         self.directions = []
         self.active = True
@@ -38,8 +48,13 @@ class MouseGesture:
         self._reference_x = None
         self._reference_y = None
         logger.debug(get_log_text("mouse_gesture_start_called", pos_x=pos.x(), pos_y=pos.y(), last_point_x=self._last_point.x(), last_point_y=self._last_point.y()))
+
     def update(self, pos: QPoint):
-        """ジェスチャー更新"""
+        """記録中なら点を追加し、閾値を超えた移動を方向として足す。
+
+        Args:
+            pos: 現在位置。
+        """
         if self.active:
             self.points.append(pos)
             if self._last_point is not None:
@@ -47,12 +62,12 @@ class MouseGesture:
                 dx = pos.x() - self._last_point.x()
                 dy = pos.y() - self._last_point.y()
                 distance = math.sqrt(dx * dx + dy * dy)
-                
+
                 logger.debug(get_log_text("mouse_gesture_movement_info", last_point_x=self._last_point.x(), last_point_y=self._last_point.y(), pos_x=pos.x(), pos_y=pos.y(), dx=dx, dy=dy, distance=distance, threshold=self.threshold))
                 logger.debug(get_log_text("mouse_gesture_current_directions", directions=self.directions, last_direction=self._last_direction))
-                
+
                 direction = None
-                
+
                 # 1回目：起点からの距離で判定
                 if len(self.directions) == 0:
                     if distance >= self.threshold:
@@ -65,90 +80,95 @@ class MouseGesture:
                         logger.debug(get_log_text("mouse_gesture_first_direction_detected", direction=direction, distance=distance, threshold=self.threshold))
                     else:
                         logger.debug(get_log_text("mouse_gesture_distance_insufficient", distance=distance, threshold=self.threshold))
-                
+
                 # 2回目以降：基準座標からの各軸距離で判定
                 else:
                     last_direction = self.directions[-1]
-                    
+
                     if last_direction == Arrow.DOWN.value:
                         # 下判定後：上向きはY軸、左右はX軸で判定
                         up_distance = self._reference_y - pos.y()
                         left_distance = self._reference_x - pos.x()
                         right_distance = pos.x() - self._reference_x
-                        
+
                         logger.debug(get_log_text("mouse_gesture_check_from_down", reference_x=self._reference_x, reference_y=self._reference_y, up_distance=up_distance, left_distance=left_distance, right_distance=right_distance, threshold=self.threshold))
-                        
+
                         if up_distance >= self.threshold:
                             direction = Arrow.UP.value
                         elif left_distance >= self.threshold:
                             direction = Arrow.LEFT.value
                         elif right_distance >= self.threshold:
                             direction = Arrow.RIGHT.value
-                            
+
                     elif last_direction == Arrow.UP.value:
                         # 上判定後：下向きはY軸、左右はX軸で判定
                         down_distance = pos.y() - self._reference_y
                         left_distance = self._reference_x - pos.x()
                         right_distance = pos.x() - self._reference_x
-                        
+
                         logger.debug(get_log_text("mouse_gesture_check_from_up", reference_x=self._reference_x, reference_y=self._reference_y, down_distance=down_distance, left_distance=left_distance, right_distance=right_distance, threshold=self.threshold))
-                        
+
                         if down_distance >= self.threshold:
                             direction = Arrow.DOWN.value
                         elif left_distance >= self.threshold:
                             direction = Arrow.LEFT.value
                         elif right_distance >= self.threshold:
                             direction = Arrow.RIGHT.value
-                            
+
                     elif last_direction == Arrow.LEFT.value:
                         # 左判定後：右向きはX軸、上下はY軸で判定
                         right_distance = pos.x() - self._reference_x
                         up_distance = self._reference_y - pos.y()
                         down_distance = pos.y() - self._reference_y
-                        
+
                         logger.debug(get_log_text("mouse_gesture_check_from_left", reference_x=self._reference_x, reference_y=self._reference_y, right_distance=right_distance, up_distance=up_distance, down_distance=down_distance, threshold=self.threshold))
-                        
+
                         if right_distance >= self.threshold:
                             direction = Arrow.RIGHT.value
                         elif up_distance >= self.threshold:
                             direction = Arrow.UP.value
                         elif down_distance >= self.threshold:
                             direction = Arrow.DOWN.value
-                            
+
                     elif last_direction == Arrow.RIGHT.value:
                         # 右判定後：左向きはX軸、上下はY軸で判定
                         left_distance = self._reference_x - pos.x()
                         up_distance = self._reference_y - pos.y()
                         down_distance = pos.y() - self._reference_y
-                        
+
                         logger.debug(get_log_text("mouse_gesture_check_from_right", reference_x=self._reference_x, reference_y=self._reference_y, left_distance=left_distance, up_distance=up_distance, down_distance=down_distance, threshold=self.threshold))
-                        
+
                         if left_distance >= self.threshold:
                             direction = Arrow.LEFT.value
                         elif up_distance >= self.threshold:
                             direction = Arrow.UP.value
                         elif down_distance >= self.threshold:
                             direction = Arrow.DOWN.value
-                
+
                 # 新しい方向が検出された場合
                 if direction and (not self.directions or self.directions[-1] != direction):
                     self.directions.append(direction)
                     self._last_direction = direction
-                    
+
                     # 基準座標を更新
                     self._reference_x = pos.x()
                     self._reference_y = pos.y()
-                    
+
                     logger.debug(get_log_text("mouse_gesture_direction_added", direction=direction, directions=self.directions))
                     logger.debug(get_log_text("mouse_gesture_reference_updated", reference_x=self._reference_x, reference_y=self._reference_y))
-                    
+
                     # 判定位置を新しい起点にする
                     self._last_point = pos
                     self._update_gesture(direction)
                 elif direction:
                     logger.debug(get_log_text("mouse_gesture_direction_unchanged", direction=direction, last_direction=self._last_direction))
+
     def end(self) -> str:
-        """ジェスチャー終了"""
+        """ジェスチャーを終了する。
+
+        Returns:
+            記録した方向を連結した文字列。方向が無いか、記録中でなければ None。
+        """
         if self.active:
             self.active = False
             logger.debug(get_log_text("mouse_gesture_end_called", directions=self.directions, points_count=len(self.points)))
@@ -164,21 +184,40 @@ class MouseGesture:
                 logger.debug(get_log_text("mouse_gesture_no_directions_recorded"))
                 return None
         return None
+
     def is_active(self) -> bool:
-        """ジェスチャーがアクティブかどうか"""
+        """ジェスチャーがアクティブかどうかを返す。
+
+        Returns:
+            記録中なら True。
+        """
         return self.active
+
     def _update_gesture(self, direction):
+        """対象ウィジェットに途中経過の表示があれば渡す。
+
+        Args:
+            direction: 追加された方向。
+        """
         logger.debug(get_log_text("mouse_gesture_update_gesture", direction=direction, target_widget=self._target_widget))
         if hasattr(self._target_widget, 'on_gesture_update'):
             gesture_action = self._get_gesture_action()
             logger.debug(get_log_text("mouse_gesture_call_on_gesture_update", gesture_action=gesture_action))
             self._target_widget.on_gesture_update(gesture_action)
+
     def _end_gesture(self):
+        """対象ウィジェットに終了通知があれば渡す。"""
         logger.debug(get_log_text("mouse_gesture_end_gesture", target_widget=self._target_widget))
         if hasattr(self._target_widget, 'on_gesture_end'):
             logger.debug(get_log_text("mouse_gesture_call_on_gesture_end"))
             self._target_widget.on_gesture_end()
+
     def _get_gesture_action(self):
+        """今の方向列から表示文字列を作る。
+
+        Returns:
+            方向が 8 を超えるときは省略記号と末尾だけを残す。設定とジェスチャー表があれば、その前にアクション名か未割り当てを付ける。
+        """
         # directionsはArrow Enumの値（←→↑↓）のみで構成
         MAX_LEN = 8
         if self._target_widget and hasattr(self._target_widget, 'config') and hasattr(self._target_widget, 'gesture_map'):
@@ -200,12 +239,22 @@ class MouseGesture:
         else:
             display_gesture = ''.join(self.directions)
         return display_gesture
+
     def set_target_widget(self, widget):
+        """通知先のウィジェットを設定する。
+
+        Args:
+            widget: ジェスチャーの通知先。
+        """
         logger.debug(get_log_text("mouse_gesture_set_target_widget", widget=widget))
-        self._target_widget = widget 
-    
+        self._target_widget = widget
+
     def set_threshold(self, threshold):
-        """判定距離を動的に変更"""
+        """判定距離を動的に変更する。
+
+        Args:
+            threshold: 新しい判定距離。
+        """
         old_threshold = self.threshold
         self.threshold = threshold
-        logger.debug(get_log_text("mouse_gesture_threshold_changed", old_threshold=old_threshold, new_threshold=threshold)) 
+        logger.debug(get_log_text("mouse_gesture_threshold_changed", old_threshold=old_threshold, new_threshold=threshold))

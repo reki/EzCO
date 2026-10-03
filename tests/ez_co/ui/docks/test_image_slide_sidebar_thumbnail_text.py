@@ -3,6 +3,7 @@ from ez_co.ui.docks.image_slide_sidebar import ThumbnailWidget
 
 
 def test_thumbnail_text_uses_language_keys(qapp, monkeypatch):
+    """待ちと失敗の表示が言語キー以外の文になり、読み込み失敗へ切り替わらない。"""
     monkeypatch.setattr(
         "ez_co.ui.docks.image_slide_sidebar.get_text",
         lambda key, **kwargs: key,

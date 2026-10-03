@@ -136,14 +136,29 @@ def write_zip_plugin(directory: Path, **kwargs) -> Path:
 
 @pytest.fixture
 def dir_plugin():
+    """ディレクトリプラグインを置く関数を返す。
+
+    Returns:
+        write_dir_plugin。
+    """
     return write_dir_plugin
 
 
 @pytest.fixture
 def zip_plugin():
+    """ZIP プラグインを置く関数を返す。
+
+    Returns:
+        write_zip_plugin。
+    """
     return write_zip_plugin
 
 
 @pytest.fixture
 def user_json():
+    """一時 user.json を書く関数を返す。
+
+    Returns:
+        write_user_json。
+    """
     return write_user_json

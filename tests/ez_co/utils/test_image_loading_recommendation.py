@@ -16,11 +16,13 @@ GIB = 1024**3
 
 
 def test_small_ram_uses_safe_memory_limit():
+    """8GB ではメモリ上限が安全側になる。"""
     recommendation = recommend_image_loading_settings(8, 8 * GIB)
     assert recommendation.memory_limit == SAFE_MEMORY_LIMIT
 
 
 def test_ram_just_below_threshold_uses_safe_memory_limit():
+    """閾値の 1 バイト下ではメモリ上限が安全側になる。"""
     recommendation = recommend_image_loading_settings(
         24,
         MEMORY_LIMIT_RAM_THRESHOLD_BYTES - 1,
@@ -29,6 +31,7 @@ def test_ram_just_below_threshold_uses_safe_memory_limit():
 
 
 def test_ram_at_threshold_uses_large_memory_limit():
+    """閾値ちょうどではメモリ上限が大きい側になる。"""
     recommendation = recommend_image_loading_settings(
         24,
         MEMORY_LIMIT_RAM_THRESHOLD_BYTES,
@@ -37,11 +40,13 @@ def test_ram_at_threshold_uses_large_memory_limit():
 
 
 def test_unknown_ram_falls_back_to_safe_memory_limit():
+    """CPU もメモリも不明ならメモリ上限は安全側になる。"""
     recommendation = recommend_image_loading_settings(None, None)
     assert recommendation.memory_limit == SAFE_MEMORY_LIMIT
 
 
 def test_prefetch_and_workers_are_fixed_for_every_machine():
+    """メモリ量が違っても先読みページ数は 5、ワーカー指定は auto のまま。"""
     for physical_memory in (None, 4 * GIB, 16 * GIB, 128 * GIB):
         recommendation = recommend_image_loading_settings(24, physical_memory)
         assert recommendation.prefetch_pages == RECOMMENDED_PREFETCH_PAGES == 5
@@ -49,6 +54,7 @@ def test_prefetch_and_workers_are_fixed_for_every_machine():
 
 
 def test_one_gigabyte_is_never_recommended():
+    """どのメモリ量でも推奨上限は安全側か大きい側だけで、1GB にはならない。"""
     for physical_memory in (None, 16 * GIB, 64 * GIB, 512 * GIB):
         recommendation = recommend_image_loading_settings(64, physical_memory)
         assert recommendation.memory_limit in (
@@ -59,12 +65,14 @@ def test_one_gigabyte_is_never_recommended():
 
 
 def test_auto_effective_workers_matches_auto_resolver_table():
+    """auto の実効ワーカー数は 24 論理 CPU で 4、4 で 1、不明で 3 になる。"""
     assert auto_effective_workers(24) == 4
     assert auto_effective_workers(4) == 1
     assert auto_effective_workers(None) == 3
 
 
 def test_apply_recommendation_touches_only_three_cache_keys():
+    """推奨の適用はメモリ上限、先読み、ワーカーだけを変え、最適化設定とウィンドウは残す。"""
     config = SimpleNamespace(
         cache={
             "memory_limit": "1GB",
@@ -91,6 +99,7 @@ def test_apply_recommendation_touches_only_three_cache_keys():
 
 
 def test_apply_recommendation_without_argument_uses_system_resources(monkeypatch):
+    """引数なしの適用は、測定した CPU とメモリから安全側の上限と先読みを書く。"""
     import ez_co.utils.system_resources as system_resources
 
     monkeypatch.setattr(system_resources, "logical_cpu_count", lambda: 24)

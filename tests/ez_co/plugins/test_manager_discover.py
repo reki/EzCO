@@ -5,6 +5,7 @@ from ez_co.plugins.manager import PluginManager
 
 
 def test_discover_lists_candidates_without_loading(tmp_path, dir_plugin):
+    """候補の id が揃わず、discover の時点で plugins が載るか _loaded が真になる。"""
     dir_plugin(tmp_path, plugin_id="com.example.a", folder_name="alpha")
     dir_plugin(tmp_path, plugin_id="com.example.b", folder_name="beta")
     manager = PluginManager()
@@ -15,6 +16,7 @@ def test_discover_lists_candidates_without_loading(tmp_path, dir_plugin):
 
 
 def test_discover_missing_directory_is_empty(tmp_path):
+    """無いディレクトリで候補や plugins が残り、_discovered が真にならない。"""
     manager = PluginManager()
     manager.discover(tmp_path / "missing")
     assert manager.candidates == []

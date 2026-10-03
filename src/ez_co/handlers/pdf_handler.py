@@ -22,23 +22,51 @@ from ez_co.utils.language_manager import get_log_text
 
 logger = logging.getLogger(__name__)
 
+# ページ画像名から番号を取る正規表現
 PAGE_NAME_RE = re.compile(r"^page_(\d+)\.png$", re.IGNORECASE)
+# 埋め込み画像名から番号を取る正規表現
 IMAGE_NAME_RE = re.compile(r"^image_(\d+)\.png$", re.IGNORECASE)
+# PDF を描画するときの既定 DPI
 DEFAULT_DPI = 150
+# 描画画像の長辺の上限
 MAX_RENDER_EDGE = 4000
 _render_lock = threading.Lock()
 _qtpdf_available: Optional[bool] = None
 
 
 def page_virtual_name(page_number: int) -> str:
+    """ページ番号から仮想ファイル名を作る。
+
+    Args:
+        page_number: 1 始まりのページ番号。
+
+    Returns:
+        page_ に続く 4 桁の png 名。
+    """
     return f"page_{page_number:04d}.png"
 
 
 def image_virtual_name(image_number: int) -> str:
+    """埋め込み画像の番号から仮想ファイル名を作る。
+
+    Args:
+        image_number: 1 始まりの画像番号。
+
+    Returns:
+        image_ に続く 4 桁の png 名。
+    """
     return f"image_{image_number:04d}.png"
 
 
 def parse_page_index(filename: str) -> Optional[int]:
+    """ページ用の仮想ファイル名から 0 始まりの番号を取り出す。
+
+    Args:
+        filename: 仮想ファイル名。
+
+    Returns:
+        ページ名なら 0 始まりの番号。違えば None。
+    """
     match = PAGE_NAME_RE.match(filename)
     if not match:
         return None
@@ -46,6 +74,14 @@ def parse_page_index(filename: str) -> Optional[int]:
 
 
 def parse_image_index(filename: str) -> Optional[int]:
+    """埋め込み画像用の仮想ファイル名から 0 始まりの番号を取り出す。
+
+    Args:
+        filename: 仮想ファイル名。
+
+    Returns:
+        画像名なら 0 始まりの番号。違えば None。
+    """
     match = IMAGE_NAME_RE.match(filename)
     if not match:
         return None
@@ -53,7 +89,11 @@ def parse_image_index(filename: str) -> Optional[int]:
 
 
 def can_render_pages() -> bool:
-    """QtPdf と QApplication が使えればページをそのまま描画できる。"""
+    """QtPdf と QApplication が使えればページをそのまま描画できる。
+
+    Returns:
+        両方使えるとき真。QtPdf を読み込めないときは以降も偽。
+    """
     global _qtpdf_available
     if _qtpdf_available is False:
         return False
@@ -61,6 +101,7 @@ def can_render_pages() -> bool:
         from PySide6.QtPdf import QPdfDocument  # noqa: F401
         from PySide6.QtWidgets import QApplication
     except Exception:
+        # QtPdf を読み込めなければ、以降は描画できないものとして偽を返す
         _qtpdf_available = False
         return False
     _qtpdf_available = True
@@ -68,6 +109,17 @@ def can_render_pages() -> bool:
 
 
 def _open_reader(pdf_path: str) -> PdfReader:
+    """パスワードが要る PDF ならセッションのパスワードで開く。
+
+    Args:
+        pdf_path: PDF のパス。
+
+    Returns:
+        開けたリーダ。
+
+    Raises:
+        ValueError: 暗号化されていて、セッションのパスワードか空文字で解けないとき。
+    """
     reader = PdfReader(pdf_path)
     if not reader.is_encrypted:
         return reader
@@ -77,6 +129,7 @@ def _open_reader(pdf_path: str) -> PdfReader:
     try:
         unlocked = reader.decrypt(password)
     except Exception as exc:
+        # 復号に失敗したらリーダを閉じて、暗号化エラーとして送出する
         reader.close()
         raise ValueError(get_log_text("debug_pdf_encrypted", pdf_path=pdf_path)) from exc
     if not unlocked:
@@ -86,7 +139,14 @@ def _open_reader(pdf_path: str) -> PdfReader:
 
 
 def list_pdf_entries(pdf_path: str) -> List[str]:
-    """仮想ファイル名の一覧。描画可能なら各ページ、不可なら埋め込み画像。"""
+    """仮想ファイル名の一覧を返す。
+
+    Args:
+        pdf_path: PDF のパス。
+
+    Returns:
+        描画可能なら各ページ、不可なら埋め込み画像。ページが無ければ空。
+    """
     reader = _open_reader(pdf_path)
     try:
         page_count = len(reader.pages)
@@ -109,6 +169,15 @@ def list_pdf_entries(pdf_path: str) -> List[str]:
 
 
 def load_pdf_image(pdf_path: str, filename: str) -> Optional[Image.Image]:
+    """仮想ファイル名に対応する PDF の画像を返す。
+
+    Args:
+        pdf_path: PDF のパス。
+        filename: ページ名か埋め込み画像名。
+
+    Returns:
+        読めた画像。名前がどちらでもなければ None。ページ描画に失敗したときはそのページの最大の埋め込み画像。
+    """
     page_index = parse_page_index(filename)
     if page_index is not None:
         image = _render_page(pdf_path, page_index)
@@ -126,9 +195,18 @@ def load_pdf_image(pdf_path: str, filename: str) -> Optional[Image.Image]:
 
 
 def _iter_page_images(page):
+    """ページ内の埋め込み画像を順に返す。
+
+    Args:
+        page: PDF のページ。
+
+    Returns:
+        埋め込み画像。取得に失敗したときは空。
+    """
     try:
         images = page.images
     except Exception as exc:
+        # 埋め込み画像を取れなければデバッグログを残して、何も返さない
         logger.debug(get_log_text("debug_pdf_image_extract_failed", error=exc))
         return
     for item in images:
@@ -136,6 +214,14 @@ def _iter_page_images(page):
 
 
 def _image_from_embedded(item) -> Optional[Image.Image]:
+    """埋め込み画像のバイト列から PIL 画像を作る。
+
+    Args:
+        item: 埋め込み画像。
+
+    Returns:
+        RGB または RGBA の画像。データが無いか読めなければ None。
+    """
     data = getattr(item, "data", None)
     if not data:
         return None
@@ -144,11 +230,21 @@ def _image_from_embedded(item) -> Optional[Image.Image]:
         image.load()
         return image.convert("RGB") if image.mode not in ("RGB", "RGBA") else image
     except Exception as exc:
+        # 画像へ変換できなければデバッグログを残して None を返す
         logger.debug(get_log_text("debug_pdf_image_extract_failed", error=exc))
         return None
 
 
 def _largest_embedded_image(pdf_path: str, page_index: int) -> Optional[Image.Image]:
+    """指定ページで最も大きい埋め込み画像を返す。
+
+    Args:
+        pdf_path: PDF のパス。
+        page_index: 0 始まりのページ番号。
+
+    Returns:
+        画素数が最大の画像。ページが範囲外か画像が無ければ None。
+    """
     reader = _open_reader(pdf_path)
     try:
         if page_index < 0 or page_index >= len(reader.pages):
@@ -173,6 +269,15 @@ def _largest_embedded_image(pdf_path: str, page_index: int) -> Optional[Image.Im
 
 
 def _embedded_image_at(pdf_path: str, image_index: int) -> Optional[Image.Image]:
+    """文書全体で数えた埋め込み画像を返す。
+
+    Args:
+        pdf_path: PDF のパス。
+        image_index: 0 始まりの画像番号。
+
+    Returns:
+        その番号の画像。無ければ None。
+    """
     reader = _open_reader(pdf_path)
     try:
         current = 0
@@ -187,6 +292,16 @@ def _embedded_image_at(pdf_path: str, image_index: int) -> Optional[Image.Image]
 
 
 def _render_size(point_w: float, point_h: float, dpi: int = DEFAULT_DPI) -> Tuple[int, int]:
+    """ポイント寸法から描画ピクセル数を決める。
+
+    Args:
+        point_w: ページ幅。
+        point_h: ページ高さ。
+        dpi: 描画に使う解像度。
+
+    Returns:
+        長辺を上限内に収めた幅と高さ。どちらも 1 以上。
+    """
     width = max(point_w * dpi / 72.0, 1.0)
     height = max(point_h * dpi / 72.0, 1.0)
     scale = min(1.0, MAX_RENDER_EDGE / max(width, height))
@@ -194,6 +309,14 @@ def _render_size(point_w: float, point_h: float, dpi: int = DEFAULT_DPI) -> Tupl
 
 
 def _qimage_to_pil(qimage) -> Optional[Image.Image]:
+    """QImage を白地の RGB 画像にする。
+
+    Args:
+        qimage: 変換する画像。
+
+    Returns:
+        変換した画像。空やバイト列が足りなければ None。
+    """
     from PySide6.QtGui import QImage
 
     if qimage is None or qimage.isNull():
@@ -213,6 +336,15 @@ def _qimage_to_pil(qimage) -> Optional[Image.Image]:
 
 
 def _render_page(pdf_path: str, page_index: int) -> Optional[Image.Image]:
+    """QtPdf でページを描画して PIL 画像にする。
+
+    Args:
+        pdf_path: PDF のパス。
+        page_index: 0 始まりのページ番号。
+
+    Returns:
+        描画した画像。描画できない、準備できない、範囲外のときは None。
+    """
     if not can_render_pages():
         return None
     from PySide6.QtCore import QEventLoop, QSize, QTimer

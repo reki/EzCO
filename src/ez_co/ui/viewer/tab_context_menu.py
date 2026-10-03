@@ -25,11 +25,36 @@ def build_tab_context_menu(
     on_copy_name: Callable[[], None],
     on_copy_path: Callable[[], None],
 ) -> QMenu:
-    """項目の並びと有効／無効を決めてメニューを返す。ショートカットは付けない。"""
+    """項目の並びと有効／無効を決めてメニューを返す。ショートカットは付けない。
+
+    Args:
+        parent: メニューの親ウィジェット。
+        index: 対象タブの位置。
+        pinned: 各タブがピン留めされているか。
+        path: 対象タブのパス。無いときは None。
+        on_close: このタブを閉じる処理。
+        on_close_others: ほかのタブを閉じる処理。
+        on_close_right: 右のタブを閉じる処理。
+        on_close_left: 左のタブを閉じる処理。
+        on_pin: ピン留めを切り替える処理。
+        on_duplicate: タブを複製する処理。
+        on_copy_name: ファイル名をコピーする処理。
+        on_copy_path: フルパスをコピーする処理。
+
+    Returns:
+        組み立てた右クリックメニュー。
+    """
     state = tab_menu_state(index, pinned, path)
     menu = QMenu(parent)
 
     def add(text: str, enabled: bool, slot: Callable[[], None]) -> None:
+        """メニューへ項目を1つ足す。
+
+        Args:
+            text: 項目の表示文。
+            enabled: 項目を有効にするとき True。
+            slot: 選択時に呼ぶ処理。
+        """
         action = QAction(text, menu)
         action.setEnabled(enabled)
         action.triggered.connect(lambda _checked=False: slot())

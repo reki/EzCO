@@ -27,12 +27,26 @@ from PySide6.QtWidgets import (
 from ez_co.plugins.host import coerce_config_value, config_choice_key
 from ez_co.utils.language_manager import get_text
 
+# 数値の即時保存を、入力が止まってから待つミリ秒。
 SYNC_RELOAD_IDLE_MS = 500
+# ドロップダウンで選ぶ設定型。
 DROPDOWN_TYPES = ("choice", "charset", "language", "country")
+# 数値として扱う設定型。
 NUMERIC_TYPES = ("int", "float", "int_range", "float_range")
 
 
 def make_value_widget(field, current, expand=None, parent=None):
+    """項目の型に合わせた入力を作る。複数選択はリスト、複数値は行、それ以外は単一入力。
+
+    Args:
+        field: 作る項目。
+        current: 初期値。
+        expand: 表示文を展開する処理。
+        parent: 親ウィジェット。
+
+    Returns:
+        作った入力。
+    """
     if field.multiple and field.value_type in DROPDOWN_TYPES and field.choices:
         return ChoiceMultiList(field, current, parent=parent, expand=expand)
     if field.multiple:
@@ -41,6 +55,17 @@ def make_value_widget(field, current, expand=None, parent=None):
 
 
 def make_single_widget(field, current, expand=None, parent=None):
+    """型に応じた入力を1つ作る。
+
+    Args:
+        field: 作る項目。
+        current: 初期値。
+        expand: 表示文を展開する処理。
+        parent: 親ウィジェット。
+
+    Returns:
+        作った入力。数値で接尾辞があれば接尾辞付き。
+    """
     kind = field.value_type
     if kind == "bool":
         widget = QCheckBox(parent)
@@ -52,6 +77,7 @@ def make_single_widget(field, current, expand=None, parent=None):
         try:
             widget.setValue(int(current))
         except (TypeError, ValueError):
+            # 整数にできない初期値は 0 に戻す。
             widget.setValue(0)
         return with_suffix(widget, field, expand=expand)
     if kind == "float":
@@ -61,6 +87,7 @@ def make_single_widget(field, current, expand=None, parent=None):
         try:
             widget.setValue(float(current))
         except (TypeError, ValueError):
+            # 小数にできない初期値は 0 に戻す。
             widget.setValue(0.0)
         return with_suffix(widget, field, expand=expand)
     if kind in ("int_range", "float_range"):
@@ -104,6 +131,15 @@ def make_single_widget(field, current, expand=None, parent=None):
 
 
 def read_value(field, widget):
+    """ウィジェットから保存する値を読む。
+
+    Args:
+        field: 読む項目。
+        widget: 読む入力。
+
+    Returns:
+        複数行と複数選択はそれぞれの値。それ以外は単一入力の値。
+    """
     if isinstance(widget, MultiRows):
         return widget.values()
     if isinstance(widget, ChoiceMultiList):
@@ -112,6 +148,15 @@ def read_value(field, widget):
 
 
 def read_single(field, widget):
+    """単一入力から値を読む。接尾辞付きなら中の入力を見る。
+
+    Args:
+        field: 読む項目。
+        widget: 読む入力。
+
+    Returns:
+        読んだ値。色が空なら既定。選択が空なら表示文か先頭の選択肢。
+    """
     editor = widget.editor if isinstance(widget, SuffixRow) else widget
     kind = field.value_type
     if kind == "bool":
@@ -143,6 +188,13 @@ def read_single(field, widget):
 
 
 def set_widget_value(field, widget, value):
+    """ウィジェットへ値を入れる。
+
+    Args:
+        field: 入れる項目。
+        widget: 入れる入力。
+        value: 入れる値。
+    """
     if isinstance(widget, MultiRows):
         widget.set_values(value)
         return
@@ -204,6 +256,14 @@ def set_widget_value(field, widget, value):
 
 
 def blank_value(field):
+    """空の行に入れる初期値を返す。
+
+    Args:
+        field: 項目。
+
+    Returns:
+        真偽は False。整数と実数は最小、無ければ 0。色は既定。日付は 0。それ以外は空文字。
+    """
     kind = field.value_type
     if kind == "bool":
         return False
@@ -225,6 +285,12 @@ def blank_value(field):
 
 
 def connect_value_changed(widget, callback):
+    """値が変わったときに処理をつなぐ。
+
+    Args:
+        widget: つなぐ入力。
+        callback: 変化時に呼ぶ処理。
+    """
     if isinstance(widget, MultiRows):
         widget.valueChanged.connect(lambda _=None: callback())
         return
@@ -260,7 +326,15 @@ def connect_value_changed(widget, callback):
 
 
 def config_field_display_name(field, expand=None) -> str:
-    """設定の項目名。range は末尾に範囲、float_range は step も付ける。"""
+    """設定の項目名。range は末尾に範囲、float_range は step も付ける。
+
+    Args:
+        field: 項目。
+        expand: ラベルを展開する処理。無ければそのまま。
+
+    Returns:
+        表示名。複数選択のドロップダウンにはその旨を足す。
+    """
     raw = str(field.label or field.key or "")
     name = expand(raw) if expand is not None else raw
     kind = field.value_type
@@ -287,6 +361,16 @@ def config_field_display_name(field, expand=None) -> str:
 
 
 def with_suffix(widget, field, expand=None):
+    """数値型で接尾辞があれば接尾辞付きの行で包む。
+
+    Args:
+        widget: 包む入力。
+        field: 接尾辞を持つ項目。
+        expand: 接尾辞を展開する処理。
+
+    Returns:
+        包んだ行。接尾辞が無い、または数値型でなければ元の入力。
+    """
     suffix = field.suffix
     if expand is not None:
         suffix = expand(suffix)
@@ -296,6 +380,11 @@ def with_suffix(widget, field, expand=None):
 
 
 def pick_color(button: QPushButton):
+    """色ダイアログで選ばれた色をボタンに塗る。無効な色なら変えない。
+
+    Args:
+        button: 塗るボタン。
+    """
     current = button.property("color_value") or "#000000"
     color = QColorDialog.getColor(QColor(str(current)), button)
     if color.isValid():
@@ -303,6 +392,12 @@ def pick_color(button: QPushButton):
 
 
 def paint_color_button(button: QPushButton, color: str):
+    """ボタンに色と、明るさに合わせた文字色を塗る。
+
+    Args:
+        button: 塗るボタン。
+        color: 塗る色。
+    """
     button.setProperty("color_value", color)
     button.setText(color)
     value = (color or "").lstrip("#")
@@ -314,6 +409,7 @@ def paint_color_button(button: QPushButton, color: str):
             blue = int(value[4:6], 16)
             light = (red * 299 + green * 587 + blue * 114) >= 140000
         except ValueError:
+            # 色コードを読めないときは明るい文字色の判定に戻す。
             light = True
     fg = "#111111" if light else "#f5f5f5"
     button.setStyleSheet(
@@ -322,30 +418,74 @@ def paint_color_button(button: QPushButton, color: str):
 
 
 def qdate_from_seconds(value) -> QDate:
+    """秒を UTC の日付にする。
+
+    Args:
+        value: 秒。整数にできないときは 0。
+
+    Returns:
+        その日付。
+    """
     try:
         seconds = int(value)
     except (TypeError, ValueError):
+        # 秒にできない値は起点の 0 に戻す。
         seconds = 0
     return QDateTime.fromSecsSinceEpoch(seconds, Qt.TimeSpec.UTC).date()
 
 
 def qdatetime_from_seconds(value) -> QDateTime:
+    """秒をローカルの日時にする。
+
+    Args:
+        value: 秒。整数にできないときは 0。
+
+    Returns:
+        その日時。
+    """
     try:
         seconds = int(value)
     except (TypeError, ValueError):
+        # 秒にできない値は起点の 0 に戻す。
         seconds = 0
     return QDateTime.fromSecsSinceEpoch(seconds, Qt.TimeSpec.UTC).toLocalTime()
 
 
 def seconds_from_qdate(value: QDate) -> int:
+    """日付の UTC 0時を秒にする。
+
+    Args:
+        value: 日付。
+
+    Returns:
+        秒。
+    """
     return int(QDateTime(value, QTime(0, 0, 0), Qt.TimeSpec.UTC).toSecsSinceEpoch())
 
 
 def seconds_from_qdatetime(value: QDateTime) -> int:
+    """日時を UTC の秒にする。
+
+    Args:
+        value: 日時。
+
+    Returns:
+        秒。
+    """
     return int(value.toUTC().toSecsSinceEpoch())
 
 
 def _format_range_number(value, as_int: bool, step) -> str:
+    """範囲表示用の数文字列にする。
+
+    Args:
+        value: 表示する数。
+        as_int: 整数として出すとき True。
+        step: 実数の桁に使う刻み。
+
+    Returns:
+        表示用の文字列。実数は末尾の 0 を落とす。
+    """
     if as_int:
         return str(int(value))
     decimals = _decimals_from_step(step if step is not None else 0.01)
@@ -356,6 +496,14 @@ def _format_range_number(value, as_int: bool, step) -> str:
 
 
 def _decimals_from_step(step) -> int:
+    """刻みの小数桁を返す。
+
+    Args:
+        step: 刻み。
+
+    Returns:
+        小数桁。最大 6。小数が無ければ 2。
+    """
     text = f"{float(step):.10f}".rstrip("0").rstrip(".")
     if "." in text:
         return min(6, max(1, len(text.split(".", 1)[1])))
@@ -363,9 +511,17 @@ def _decimals_from_step(step) -> int:
 
 
 class SuffixRow(QWidget):
+    """数値入力の右に接尾辞を出す。"""
     valueChanged = Signal(object)
 
     def __init__(self, editor, suffix: str, parent=None):
+        """入力の右に接尾辞を置く。
+
+        Args:
+            editor: 数値入力。
+            suffix: 接尾辞。
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self.editor = editor
         layout = QHBoxLayout(self)
@@ -378,11 +534,26 @@ class SuffixRow(QWidget):
             editor.valueChanged.connect(self.valueChanged.emit)
 
     def set_suffix(self, suffix: str):
+        """接尾辞の文字を差し替える。
+
+        Args:
+            suffix: 新しい接尾辞。
+        """
         self._suffix_label.setText(suffix)
 
 
 class FilterCombo(QComboBox):
+    """部分一致で絞れる選択コンボ。"""
+
     def __init__(self, choices, current, parent=None, expand=None):
+        """選択肢を入れ、部分一致の補完を付ける。
+
+        Args:
+            choices: 値と表示の組。
+            current: 初期選択。
+            parent: 親ウィジェット。
+            expand: 表示を展開する処理。
+        """
         super().__init__(parent)
         self.setEditable(True)
         self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
@@ -401,9 +572,18 @@ class FilterCombo(QComboBox):
 
 
 class ChoiceMultiList(QWidget):
+    """絞り込み付きの複数選択リスト。"""
     changed = Signal()
 
     def __init__(self, field, current, parent=None, expand=None):
+        """絞り込み欄と複数選択リストを置く。
+
+        Args:
+            field: 選択肢を持つ項目。
+            current: 初期の選択。
+            parent: 親ウィジェット。
+            expand: 表示を展開する処理。
+        """
         super().__init__(parent)
         self._choices = list(field.choices)
         layout = QVBoxLayout(self)
@@ -424,6 +604,11 @@ class ChoiceMultiList(QWidget):
         self._list.itemSelectionChanged.connect(self.changed.emit)
 
     def values(self):
+        """選択中の値を返す。
+
+        Returns:
+            選択中の値。
+        """
         selected = []
         for index in range(self._list.count()):
             item = self._list.item(index)
@@ -432,6 +617,11 @@ class ChoiceMultiList(QWidget):
         return selected
 
     def set_values(self, values):
+        """渡された値を選択する。選択のあいだシグナルは止める。
+
+        Args:
+            values: 選択する値。無ければ選択を外す。
+        """
         wanted = {config_choice_key(item) for item in (values or [])}
         self._list.blockSignals(True)
         for index in range(self._list.count()):
@@ -440,6 +630,11 @@ class ChoiceMultiList(QWidget):
         self._list.blockSignals(False)
 
     def _apply_filter(self, text: str):
+        """文字がラベルにも値にも無い項目を隠す。
+
+        Args:
+            text: 絞り込みの文字。空なら全部出す。
+        """
         needle = (text or "").casefold()
         for index in range(self._list.count()):
             item = self._list.item(index)
@@ -449,10 +644,19 @@ class ChoiceMultiList(QWidget):
 
 
 class MultiRows(QWidget):
+    """同じ項目を行で増減する。"""
     valueChanged = Signal(object)
     rowsChanged = Signal()
 
     def __init__(self, field, current, parent=None, expand=None):
+        """現在値の行と、行を足すボタンを置く。
+
+        Args:
+            field: 各行の項目。
+            current: 初期の行の値。
+            parent: 親ウィジェット。
+            expand: 表示を展開する処理。
+        """
         super().__init__(parent)
         self._field = field
         self._expand = expand
@@ -473,9 +677,19 @@ class MultiRows(QWidget):
             self._append_row(value)
 
     def values(self):
+        """各行の値を返す。
+
+        Returns:
+            行の値。
+        """
         return [read_single(self._field, inner) for inner in self._inners]
 
     def set_values(self, values):
+        """行をいったん消して、渡された値で作り直す。
+
+        Args:
+            values: 新しい行の値。無ければ空。
+        """
         while self._inners:
             self._remove_at(0)
         for value in values or []:
@@ -483,11 +697,17 @@ class MultiRows(QWidget):
         self.rowsChanged.emit()
 
     def _add_blank(self):
+        """空の値の行を足す。"""
         self._append_row(blank_value(self._field))
         self.rowsChanged.emit()
         self.valueChanged.emit(self.values())
 
     def _append_row(self, value):
+        """値の入力行と削除ボタンを足す。
+
+        Args:
+            value: 行の初期値。
+        """
         inner = make_single_widget(self._field, value, expand=self._expand)
         row = QWidget()
         layout = QHBoxLayout(row)
@@ -503,15 +723,26 @@ class MultiRows(QWidget):
         connect_value_changed(inner, lambda: self.valueChanged.emit(self.values()))
 
     def _remove_inner(self, inner):
+        """その入力の行を消す。見つからなければ何もしない。
+
+        Args:
+            inner: 消す行の入力。
+        """
         try:
             index = self._inners.index(inner)
         except ValueError:
+            # 消す行が既に無いときは、削除をやめて戻る。
             return
         self._remove_at(index)
         self.rowsChanged.emit()
         self.valueChanged.emit(self.values())
 
     def _remove_at(self, index: int):
+        """指定位置の行を外す。
+
+        Args:
+            index: 外す行。
+        """
         inner = self._inners.pop(index)
         row = inner.parentWidget()
         self._rows_box.removeWidget(row)
@@ -519,9 +750,17 @@ class MultiRows(QWidget):
 
 
 class RangeRow(QWidget):
+    """範囲のスライダーと数値入力を連動させる。"""
     valueChanged = Signal(object)
 
     def __init__(self, field, current, parent=None):
+        """範囲のスライダーと数値入力を置く。範囲や刻みが無い整数は 0 から 100 の 1、実数は 0 から 1 の 0.01。
+
+        Args:
+            field: 範囲の項目。
+            current: 初期値。列なら先頭。無ければ最小。
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self._as_int = field.value_type == "int_range"
         self._minimum = field.minimum
@@ -562,9 +801,19 @@ class RangeRow(QWidget):
         self.setValue(seed if seed is not None else self._minimum)
 
     def value(self):
+        """数値入力の値を返す。
+
+        Returns:
+            数値入力の値。
+        """
         return self._spin.value()
 
     def setValue(self, value):
+        """範囲内に収めてスライダーと数値へ入れる。入れるあいだシグナルは止める。
+
+        Args:
+            value: 入れる値。
+        """
         number = self._clamp(value)
         tick = self._tick_for(number)
         self._slider.blockSignals(True)
@@ -575,9 +824,18 @@ class RangeRow(QWidget):
         self._spin.blockSignals(False)
 
     def _clamp(self, value):
+        """範囲内の数にする。
+
+        Args:
+            value: 収める値。変換できないときは最小。
+
+        Returns:
+            範囲内の数。
+        """
         try:
             number = int(value) if self._as_int else float(value)
         except (TypeError, ValueError):
+            # 数値にできないときは範囲の最小値に戻す。
             number = self._minimum
         if number < self._minimum:
             return int(self._minimum) if self._as_int else float(self._minimum)
@@ -586,6 +844,14 @@ class RangeRow(QWidget):
         return int(number) if self._as_int else float(number)
 
     def _tick_for(self, value) -> int:
+        """値に対応するスライダー位置を返す。
+
+        Args:
+            value: 位置を求める値。
+
+        Returns:
+            0 から目盛り数までの位置。目盛りが無ければ 0。
+        """
         if self._ticks <= 0 or self._step <= 0:
             return 0
         tick = int(round((value - self._minimum) / self._step))
@@ -596,6 +862,11 @@ class RangeRow(QWidget):
         return tick
 
     def _from_slider(self, tick: int):
+        """スライダー位置から数値を更新する。
+
+        Args:
+            tick: スライダーの位置。
+        """
         number = self._minimum + tick * self._step
         number = self._clamp(number)
         self._spin.blockSignals(True)
@@ -604,6 +875,11 @@ class RangeRow(QWidget):
         self.valueChanged.emit(self.value())
 
     def _from_spin(self, number):
+        """数値からスライダー位置を更新する。
+
+        Args:
+            number: 数値入力の値。
+        """
         tick = self._tick_for(number)
         self._slider.blockSignals(True)
         self._slider.setValue(tick)
@@ -612,9 +888,18 @@ class RangeRow(QWidget):
 
 
 class PathRow(QWidget):
+    """パス入力と参照ボタン。"""
     valueChanged = Signal(object)
 
     def __init__(self, field, current, parent=None, expand=None):
+        """パス欄と参照ボタンを置く。
+
+        Args:
+            field: パスの種類とフィルタを持つ項目。
+            current: 初期パス。
+            parent: 親ウィジェット。
+            expand: ファイルダイアログのフィルタを展開する処理。
+        """
         super().__init__(parent)
         self._kind = field.path_kind
         self._filter = field.path_filter
@@ -631,12 +916,23 @@ class PathRow(QWidget):
         self._edit.editingFinished.connect(lambda: self.valueChanged.emit(self.text()))
 
     def text(self) -> str:
+        """入力中のパスを返す。
+
+        Returns:
+            パス文字列。
+        """
         return self._edit.text()
 
     def setText(self, value: str):
+        """パス欄へ入れる。
+
+        Args:
+            value: 入れるパス。None は空。
+        """
         self._edit.setText("" if value is None else str(value))
 
     def _browse(self):
+        """ディレクトリかファイルを選び、選ばれたパスを欄へ入れる。"""
         start = self._edit.text().strip() or ""
         if self._kind == "directory":
             path = QFileDialog.getExistingDirectory(self, get_text("ui.plugin_config_browse"), start)

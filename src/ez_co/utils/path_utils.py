@@ -1,17 +1,26 @@
+"""Nuitka かどうかを調べ、プロジェクトルートを決める。"""
+
 import sys
 import os
 from pathlib import Path
 
 def is_nuitka() -> bool:
-    """
-    nuitkaでコンパイルされているかどうかを確認
+    """nuitkaでコンパイルされているかどうかを確認
+
+    Returns:
+        コンパイル済み、または onefile の親プロセスがあるとき True
     """
     is_nuitka_compiled = "__compiled__" in globals()
     is_nuitka_onefile = "NUITKA_ONEFILE_PARENT" in os.environ
     return is_nuitka_compiled or is_nuitka_onefile
 
+
 def get_project_root() -> Path:
-    """exe化/非exe化両対応でプロジェクトルートを返す"""
+    """exe化/非exe化両対応でプロジェクトルートを返す
+
+    Returns:
+        プロジェクトルートのパス
+    """
     # nuitkaでコンパイルされた場合を優先チェック
     if is_nuitka():
         # sys.argv[0]を使用（デバッグ情報で正しいパスが確認済み）

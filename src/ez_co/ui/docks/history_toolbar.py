@@ -1,3 +1,4 @@
+"""閲覧履歴の一覧サイドバー。"""
 import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -17,6 +18,12 @@ class HistoryToolbar(QWidget):
     """履歴ツールバー"""
     history_selected = Signal(str, int, bool)  # file_path, page_number, new_tab
     def __init__(self, db_manager: DatabaseManager, parent=None):
+        """履歴一覧を作り、2秒ごとに更新する。
+
+        Args:
+            db_manager: 履歴を読むデータベース。
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self.db_manager = db_manager
         # 自動更新用タイマー
@@ -26,6 +33,7 @@ class HistoryToolbar(QWidget):
         logger.info(get_log_text("history_toolbar_initialized"))
         self.setup_ui()
         self.refresh_history()
+
     def setup_ui(self):
         """UIの初期化"""
         self.setWindowTitle(get_text("ui.history"))
@@ -59,6 +67,7 @@ class HistoryToolbar(QWidget):
         layout.addLayout(button_layout)
         # サイズポリシーを設定
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+
     def refresh_history(self):
         """履歴一覧を更新"""
         try:
@@ -83,9 +92,18 @@ class HistoryToolbar(QWidget):
                 self.history_list.addItem(item)
             # logger.info(get_log_text("history_refreshed", count=len(history)))
         except Exception as e:
+            # 履歴の読み込みに失敗したらログして、一覧の更新をやめる。
             logger.error(get_log_text("history_refresh_error", error=str(e)))
+
     def _check_file_exists(self, file_path: str) -> bool:
-        """ファイルの存在確認（アーカイブファイルやフォルダも含む）"""
+        """ファイルの存在確認（アーカイブファイルやフォルダも含む）
+
+        Args:
+            file_path: 確認するパス。仮想パスのときはアーカイブ側を見る。
+
+        Returns:
+            存在するとき True。
+        """
         if VirtualPathHandler.is_virtual_path(file_path):
             result = VirtualPathHandler.parse_virtual_path(file_path)
             if result:
@@ -106,10 +124,11 @@ class HistoryToolbar(QWidget):
             return exists
         # logger.debug(get_log_text("debug_history_file_exists_check", file_path=file_path, exists=False))
         return False
+
     def clear_history(self):
         """履歴をクリア"""
         reply = QMessageBox.question(
-            self, get_text("dialogs.question"), 
+            self, get_text("dialogs.question"),
             get_text("ui.history_clear_confirm"),
             QMessageBox.Yes | QMessageBox.No
         )
@@ -122,7 +141,17 @@ class HistoryToolbar(QWidget):
             else:
                 logger.error(get_log_text("history_cleared_failed_log"))
                 QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.history_clear_failed"))
+
     def eventFilter(self, obj, event):
+        """一覧上の中ボタンで、その履歴を新しいタブで開く。
+
+        Args:
+            obj: イベントの対象。
+            event: 受け取ったイベント。
+
+        Returns:
+            中ボタンが項目に当たったとき True。それ以外は親の結果。
+        """
         if obj is self.history_list.viewport() and event.type() == QEvent.Type.MouseButtonPress:
             if event.button() == Qt.MouseButton.MiddleButton:
                 item = self.history_list.itemAt(event.position().toPoint())
@@ -132,6 +161,12 @@ class HistoryToolbar(QWidget):
         return super().eventFilter(obj, event)
 
     def _open_history_item(self, item, new_tab: bool):
+        """履歴項目を開く。ファイルが無ければ警告して開かない。
+
+        Args:
+            item: 履歴の一覧項目。
+            new_tab: 新しいタブで開くとき True。
+        """
         entry = item.data(Qt.ItemDataRole.UserRole)
         file_path = entry[0]
         logger.info(get_log_text("history_item_clicked", file_path=file_path, page_number=entry[1]))
@@ -141,14 +176,28 @@ class HistoryToolbar(QWidget):
         self.history_selected.emit(file_path, entry[1], new_tab)
 
     def on_history_clicked(self, item):
-        """履歴をクリックした時の処理"""
+        """履歴をクリックした時の処理
+
+        Args:
+            item: クリックされた項目。Ctrl のときは新しいタブで開く。
+        """
         new_tab = bool(QApplication.keyboardModifiers() & Qt.KeyboardModifier.ControlModifier)
         self._open_history_item(item, new_tab)
+
     def on_item_double_clicked(self, item):
-        """履歴をダブルクリックした時の処理"""
+        """履歴をダブルクリックした時の処理
+
+        Args:
+            item: ダブルクリックされた項目。
+        """
         self.on_history_clicked(item)
+
     def show_context_menu(self, pos):
-        """コンテキストメニューを表示"""
+        """コンテキストメニューを表示
+
+        Args:
+            pos: 一覧上の位置。
+        """
         item = self.history_list.itemAt(pos)
         if item:
             entry = item.data(Qt.ItemDataRole.UserRole)
@@ -164,13 +213,18 @@ class HistoryToolbar(QWidget):
             delete_action.triggered.connect(lambda: self.delete_history_item(item))
             menu.addAction(delete_action)
             menu.exec(self.history_list.mapToGlobal(pos))
+
     def delete_history_item(self, item):
-        """履歴アイテムを削除"""
+        """履歴アイテムを削除
+
+        Args:
+            item: 消す履歴項目。
+        """
         entry = item.data(Qt.ItemDataRole.UserRole)
         file_path = entry[0]
         entry_type = entry[2]
         reply = QMessageBox.question(
-            self, get_text("dialogs.question"), 
+            self, get_text("dialogs.question"),
             get_text("ui.history_delete_confirm").format(file_path=file_path),
             QMessageBox.Yes | QMessageBox.No
         )
@@ -182,4 +236,4 @@ class HistoryToolbar(QWidget):
                 QMessageBox.information(self, get_text("dialogs.information"), get_text("ui.history_delete_success").format(file_path=file_path))
             else:
                 logger.error(get_log_text("history_item_deleted_failed_log", file_path=file_path))
-                QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.history_delete_failed").format(file_path=file_path)) 
+                QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.history_delete_failed").format(file_path=file_path))

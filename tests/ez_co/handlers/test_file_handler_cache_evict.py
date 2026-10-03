@@ -7,6 +7,14 @@ from ez_co.handlers.file_handler import FileHandler
 
 
 def _handler(monkeypatch, memory_limit="1MB"):
+    """指定メモリ上限で、ワーカーを起動しない FileHandler を作る。
+
+    Args:
+        memory_limit: キャッシュ上限。
+
+    Returns:
+        その FileHandler。
+    """
     monkeypatch.setattr(FileHandler, "_start_workers", lambda self: None)
     config = SimpleNamespace(
         cache={
@@ -21,6 +29,7 @@ def _handler(monkeypatch, memory_limit="1MB"):
 
 
 def test_evict_keeps_current_and_neighbor_pages(tmp_path, monkeypatch):
+    """上限超過の追い出し後も現在ページと隣はキャッシュに残り、遠いページは落ちる。"""
     handler = _handler(monkeypatch)
     files = [tmp_path / f"{index}.png" for index in range(8)]
     for path in files:
@@ -43,6 +52,7 @@ def test_evict_keeps_current_and_neighbor_pages(tmp_path, monkeypatch):
 
 
 def test_counts_prefetched_page_evicted_before_use(tmp_path, monkeypatch):
+    """未使用の先読みが上限で落ちると、使用前追い出し回数が増える。"""
     handler = _handler(monkeypatch)
     files = [tmp_path / f"{index}.png" for index in range(5)]
     for path in files:

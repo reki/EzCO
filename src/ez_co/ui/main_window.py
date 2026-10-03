@@ -1,3 +1,4 @@
+"""閲覧ウィンドウと、ジェスチャー表示のオーバーレイ。"""
 from typing import List, Optional
 from pathlib import Path
 import os
@@ -72,6 +73,11 @@ logger = logging.getLogger(__name__)
 class GestureOverlayWidget(QWidget):
     """ジェスチャーやメッセージ表示用のオーバーレイWidget"""
     def __init__(self, parent=None):
+        """親を透過のオーバーレイにする。
+
+        Args:
+            parent: 親ウィジェット。
+        """
         logger.debug(get_log_text("main_window_gesture_overlay_init", parent=parent))
         super().__init__(parent)
         self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
@@ -79,30 +85,65 @@ class GestureOverlayWidget(QWidget):
         self._message = None
         self._rect = None
         self.hide()
+
     def show_message(self, message, rect=None):
+        """文言を矩形とともに出して前面にする。
+
+        Args:
+            message: 出す文言。
+            rect: 表示位置。
+        """
         logger.debug(get_log_text("main_window_gesture_overlay_show_message", message=message, rect=rect))
         self._message = message
         self._rect = rect
         self.show()
         self.raise_()
         self.update()
+
     def hide_message(self):
+        """オーバーレイの文言を消して隠す。"""
         logger.debug(get_log_text("main_window_gesture_overlay_hide_message"))
         self._message = None
         self.hide()
+
     def showEvent(self, event):
+        """表示を記録して親の処理へ渡す。
+
+        Args:
+            event: 表示イベント。
+        """
         logger.debug(get_log_text("main_window_gesture_overlay_show_event", is_visible=self.isVisible(), geometry=self.geometry(), parent=self.parent(), window=self.window(), object_name=self.objectName()))
         super().showEvent(event)
+
     def hideEvent(self, event):
+        """非表示を記録して親の処理へ渡す。
+
+        Args:
+            event: 非表示イベント。
+        """
         logger.debug(get_log_text("main_window_gesture_overlay_hide_event", is_visible=self.isVisible(), geometry=self.geometry(), parent=self.parent(), window=self.window(), object_name=self.objectName()))
         super().hideEvent(event)
+
     def raise_(self):
+        """前面化を記録して親の処理へ渡す。"""
         logger.debug(get_log_text("main_window_gesture_overlay_raise", is_visible=self.isVisible(), geometry=self.geometry()))
         super().raise_()
+
     def setGeometry(self, rect):
+        """形状変更を記録して親の処理へ渡す。
+
+        Args:
+            rect: 新しい矩形。
+        """
         logger.debug(get_log_text("main_window_gesture_overlay_set_geometry", rect=rect))
         super().setGeometry(rect)
+
     def paintEvent(self, event):
+        """メッセージの背景と文字を画像の左上に描く。
+
+        Args:
+            event: 描画イベント。
+        """
         logger.debug(get_log_text("main_window_gesture_overlay_paint_event", message=self._message, rect=self._rect, is_visible=self.isVisible(), geometry=self.geometry(), parent=self.parent(), window=self.window(), object_name=self.objectName()))
         if not self._message:
             return
@@ -121,6 +162,15 @@ class GestureOverlayWidget(QWidget):
         alpha = ui_font.get('alpha', 170)
         # 色に透過度を合成
         def color_with_alpha(base, a):
+            """色へ透過度を足して返す。
+
+            Args:
+                base: 元の色。
+                a: 透過度。
+
+            Returns:
+                透過を足した色。
+            """
             c = QColor(base)
             c.setAlpha(a)
             return c
@@ -155,10 +205,18 @@ class GestureOverlayWidget(QWidget):
         text_rect = QRect(rect.left() + margin_x, rect.top() + margin_y, text_width, text_height)
         painter.drawText(text_rect, Qt.AlignLeft | Qt.AlignVCenter, self._message)
         painter.end()
+
+
 class MainWindow(QMainWindow):
     """メインウィンドウ"""
     def __init__(self, config: Config, db_manager=None, plugin_session=None):
-        """閲覧ウィンドウを組み立てる。プラグインのロードは main が attach する。"""
+        """閲覧ウィンドウを組み立てる。プラグインのロードは main が attach する。
+
+        Args:
+            config: 閲覧ウィンドウの設定。
+            db_manager: プロファイル用のデータベース。無ければ作る。
+            plugin_session: プラグインの起動結線。無ければ作る。
+        """
         super().__init__()
         self.config = config
         self.is_fullscreen = False
@@ -193,7 +251,14 @@ class MainWindow(QMainWindow):
         self.resizeEvent = self._resizeEvent_with_overlay
 
     def plugin_current(self, key: str):
-        """プラグイン向けの現在 path / folder / page。"""
+        """プラグイン向けの現在 path / folder / page。
+
+        Args:
+            key: folder、path、page のいずれか。
+
+        Returns:
+            その値。該当が無ければ None。
+        """
         if key == "folder":
             return self.get_current_folder_path()
         if key == "path":
@@ -206,7 +271,11 @@ class MainWindow(QMainWindow):
         return None
 
     def plugin_app_config(self):
-        """プラグインへ渡すアプリ設定の辞書。"""
+        """プラグインへ渡すアプリ設定の辞書。
+
+        Returns:
+            アプリ設定の辞書。
+        """
         return self.config.to_dict()
 
     def save_plugin_profile_config(self):
@@ -218,11 +287,22 @@ class MainWindow(QMainWindow):
             )
 
     def reload_current_for_plugin(self, page=None):
-        """プラグインから現在タブを再読み込みする。"""
+        """プラグインから現在タブを再読み込みする。
+
+        Args:
+            page: 開き直すページ。無ければ現在ページ。
+
+        Returns:
+            再読み込みできたとき True。
+        """
         return bool(self._reload_current_pane_files(page))
 
     def _plugin_settings_visible(self) -> bool:
-        """設定メニューにプラグイン設定を出すか。"""
+        """設定メニューにプラグイン設定を出すか。
+
+        Returns:
+            同意済みなら True。
+        """
         session = getattr(self, "plugin_session", None)
         if session is not None:
             return session.consent_accepted()
@@ -242,12 +322,22 @@ class MainWindow(QMainWindow):
 
     @property
     def current_pane(self) -> Optional[ViewerPane]:
+        """現在のタブの閲覧ペインを返す。
+
+        Returns:
+            閲覧ペイン。無ければ None。
+        """
         if not hasattr(self, "tab_widget"):
             return None
         widget = self.tab_widget.currentWidget()
         return widget if isinstance(widget, ViewerPane) else None
 
     def _iter_panes(self):
+        """タブの閲覧ペインを順に返す。
+
+        Returns:
+            閲覧ペイン。タブが無ければ何も返さない。
+        """
         if not hasattr(self, "tab_widget"):
             return
         for index in range(self.tab_widget.count()):
@@ -256,73 +346,163 @@ class MainWindow(QMainWindow):
                 yield widget
 
     def _pane_get(self, name, default=None):
+        """現在ペインの属性を返す。
+
+        Args:
+            name: 属性名。
+            default: ペインが無い、または属性が無いときの値。
+
+        Returns:
+            属性の値。ペインが無ければ default。
+        """
         pane = self.current_pane
         return getattr(pane, name, default) if pane is not None else default
 
     def _pane_set(self, name, value):
+        """現在ペインの属性を置く。
+
+        Args:
+            name: 属性名。
+            value: 置く値。
+        """
         pane = self.current_pane
         if pane is not None:
             setattr(pane, name, value)
 
     @property
     def file_handler(self):
+        """現在ペインのファイルハンドラを返す。
+
+        Returns:
+            ファイルハンドラ。ペインが無ければ None。
+        """
         return self._pane_get("file_handler")
 
     @file_handler.setter
     def file_handler(self, value):
+        """現在ペインのファイルハンドラを置く。
+
+        Args:
+            value: 置くファイルハンドラ。
+        """
         self._pane_set("file_handler", value)
 
     @property
     def image_view(self):
+        """現在ペインの画像表示を返す。
+
+        Returns:
+            画像表示。ペインが無ければ None。
+        """
         pane = self.current_pane
         return pane.image_view if pane is not None else None
 
     @property
     def current_file_path(self):
+        """現在ペインのファイルパスを返す。
+
+        Returns:
+            ファイルパス。ペインが無ければ None。
+        """
         return self._pane_get("current_file_path")
 
     @current_file_path.setter
     def current_file_path(self, value):
+        """現在ペインのファイルパスを置く。
+
+        Args:
+            value: 置くパス。
+        """
         self._pane_set("current_file_path", value)
 
     @property
     def base_dir_path(self):
+        """現在ペインの基準ディレクトリを返す。
+
+        Returns:
+            基準ディレクトリ。ペインが無ければ None。
+        """
         return self._pane_get("base_dir_path")
 
     @base_dir_path.setter
     def base_dir_path(self, value):
+        """現在ペインの基準ディレクトリを置く。
+
+        Args:
+            value: 置くパス。
+        """
         self._pane_set("base_dir_path", value)
 
     @property
     def current_rotation_angle(self):
+        """現在ペインの回転角を返す。
+
+        Returns:
+            回転角。無ければ 0。
+        """
         return self._pane_get("current_rotation_angle", 0)
 
     @current_rotation_angle.setter
     def current_rotation_angle(self, value):
+        """現在ペインの回転角を置く。
+
+        Args:
+            value: 置く角度。
+        """
         self._pane_set("current_rotation_angle", value)
 
     @property
     def current_page(self):
+        """現在ペインのページ番号を返す。
+
+        Returns:
+            ページ番号。無ければ 1。
+        """
         return self._pane_get("current_page", 1)
 
     @current_page.setter
     def current_page(self, value):
+        """現在ペインのページ番号を置く。
+
+        Args:
+            value: 置くページ番号。
+        """
         self._pane_set("current_page", value)
 
     @property
     def total_pages(self):
+        """現在ペインの総ページ数を返す。
+
+        Returns:
+            総ページ数。無ければ 0。
+        """
         return self._pane_get("total_pages", 0)
 
     @total_pages.setter
     def total_pages(self, value):
+        """現在ペインの総ページ数を置く。
+
+        Args:
+            value: 置く総ページ数。
+        """
         self._pane_set("total_pages", value)
 
     @property
     def _spread_force_single(self):
+        """現在ペインの単ページ固定を返す。
+
+        Returns:
+            単ページに固定するとき True。無ければ False。
+        """
         return self._pane_get("_spread_force_single", False)
 
     @_spread_force_single.setter
     def _spread_force_single(self, value):
+        """現在ペインの単ページ固定を置く。
+
+        Args:
+            value: 固定するとき True。
+        """
         self._pane_set("_spread_force_single", value)
 
     def setup_ui(self):
@@ -357,22 +537,35 @@ class MainWindow(QMainWindow):
         # ツールバーの設定
         self.setup_toolbars()
         self._apply_window_geometry()
-        
+
         # マウスジェスチャーの設定
         self.mouse_gesture = MouseGesture(self.config)
         self.mouse_gesture.set_target_widget(self)
-        
+
         # ダイアログの参照
         self.image_list_dialog = None
 
     def _first_keyboard_shortcut(self, action_name: str):
-        """アクションに割り当てた最初のキーボードショートカット。"""
+        """アクションに割り当てた最初のキーボードショートカット。
+
+        Args:
+            action_name: アクション名。
+
+        Returns:
+            最初のキーボードショートカット。無ければ None。
+        """
         for shortcut in self.config.shortcuts.get(action_name, []) or []:
             if shortcut and shortcut not in MOUSE_BUTTON_VALUES:
                 return shortcut
         return None
 
     def _apply_action_shortcut(self, action: QAction, action_name: str):
+        """アクションへ最初のキーボードショートカットを付ける。
+
+        Args:
+            action: 対象のアクション。
+            action_name: ショートカットを引くアクション名。
+        """
         shortcut = self._first_keyboard_shortcut(action_name)
         if not shortcut:
             return
@@ -571,17 +764,17 @@ class MainWindow(QMainWindow):
 
         # 機能／拡張メニュー
         extensions_menu = menubar.addMenu(get_text("ui.extensions"))
-        
+
         # サイドバーサブメニュー
         self.sidebar_submenu = extensions_menu.addMenu(get_text("ui.sidebar"))
-        
+
         # ブックマーク表示/非表示
         self.bookmark_action = QAction(get_text("ui.bookmarks"), self)
         self.bookmark_action.setCheckable(True)
         self.bookmark_action.triggered.connect(self.toggle_bookmark_dock)
         self._apply_action_shortcut(self.bookmark_action, Actions.TOGGLE_BOOKMARK_DOCK.value)
         self.sidebar_submenu.addAction(self.bookmark_action)
-        
+
         # 履歴表示/非表示
         self.history_action = QAction(get_text("ui.history"), self)
         self.history_action.setCheckable(True)
@@ -594,25 +787,25 @@ class MainWindow(QMainWindow):
         self.tab_list_action.triggered.connect(self.toggle_tab_list_dock)
         self._apply_action_shortcut(self.tab_list_action, Actions.TOGGLE_TAB_LIST_DOCK.value)
         self.sidebar_submenu.addAction(self.tab_list_action)
-        
+
         # 画像スライドサイドバー表示/非表示
         self.image_slide_action = QAction(get_text("ui.image_slide"), self)
         self.image_slide_action.setCheckable(True)
         self.image_slide_action.triggered.connect(self.toggle_image_slide_dock)
         self._apply_action_shortcut(self.image_slide_action, Actions.IMAGE_SLIDE_SIDEBAR.value)
         self.sidebar_submenu.addAction(self.image_slide_action)
-        
+
         self._readd_plugin_sidebar_actions()
-        
+
         # セパレータ
         extensions_menu.addSeparator()
-        
+
         # 画像一覧アクション
         self.image_list_action = QAction(get_text("ui.image_list"), self)
         self.image_list_action.triggered.connect(self.show_image_list_dialog)
         self._apply_action_shortcut(self.image_list_action, Actions.IMAGE_LIST.value)
         extensions_menu.addAction(self.image_list_action)
-        
+
         self.page_slider_action = QAction(get_text("ui.page_slider_dialog"), self)
         self.page_slider_action.setCheckable(True)
         self.page_slider_action.triggered.connect(self.toggle_page_slider_dock)
@@ -634,17 +827,17 @@ class MainWindow(QMainWindow):
         self.gesture_action = QAction(get_text("ui.gesture_settings"), self)
         self.gesture_action.triggered.connect(self.show_gesture_dialog)
         settings_menu.addAction(self.gesture_action)
-        
+
         # ヘルプメニュー
         help_menu = menubar.addMenu(get_text("ui.help"))
-        
+
         self.manual_action = QAction(get_text("ui.open_manual"), self)
         self.manual_action.triggered.connect(self.open_manual)
         help_menu.addAction(self.manual_action)
         self.version_action = QAction(get_text("ui.version"), self)
         self.version_action.triggered.connect(self.show_about_dialog)
         help_menu.addAction(self.version_action)
-        
+
         # ランタイムオーバーライドが適用されている設定項目を非活性化
         self.apply_runtime_overrides_to_menu()
         if hasattr(self, "bookmark_dock"):
@@ -660,17 +853,17 @@ class MainWindow(QMainWindow):
         """ランタイムオーバーライドが適用されている設定項目に対応するメニューアクションを非活性化"""
         if not self.config:
             return
-        
+
         # 常に手前に表示
         if self.config.is_runtime_overridden("window.always_on_top"):
             self.always_on_top_action.setEnabled(False)
             self.always_on_top_action.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
+
         # 最小縮小率
         if self.config.is_runtime_overridden("viewer.fit_to_window_minimum"):
             self.min_scale_action.setEnabled(False)
             self.min_scale_action.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
+
         # マウスロック
         if self.config.is_runtime_overridden("viewer.mouse_lock"):
             self.mouse_lock_action.setEnabled(False)
@@ -689,7 +882,7 @@ class MainWindow(QMainWindow):
         if self.config.is_runtime_overridden("viewer.show_page_slider_in_fullscreen"):
             self.show_page_slider_in_fullscreen_action.setEnabled(False)
             self.show_page_slider_in_fullscreen_action.setToolTip(get_text("settings.runtime_override_tooltip"))
-        
+
         # ページ表示モード
         if self.config.is_runtime_overridden("viewer.page_mode"):
             tooltip = get_text("settings.runtime_override_tooltip")
@@ -712,7 +905,11 @@ class MainWindow(QMainWindow):
                     action.setToolTip(tooltip)
 
     def _setup_profile_menu(self, menubar):
-        """プロファイルメニューを構築"""
+        """プロファイルメニューを構築
+
+        Args:
+            menubar: 載せるメニューバー。
+        """
         profile_menu = menubar.addMenu(get_text("ui.profile"))
         self.add_profile_action = QAction(get_text("ui.add_profile"), self)
         self.add_profile_action.triggered.connect(self.add_profile)
@@ -776,7 +973,13 @@ class MainWindow(QMainWindow):
             self.rebuild_menu()
 
     def switch_profile(self, profile_name: str, persist: bool = True, skip_save_current: bool = False):
-        """プロファイルを切り替え、設定をその場で適用する"""
+        """プロファイルを切り替え、設定をその場で適用する
+
+        Args:
+            profile_name: 切り替えるプロファイル名。
+            persist: 現在のプロファイルとして保存するとき True。
+            skip_save_current: 切り替え前の保存を省くとき True。
+        """
         if not profile_name or not self.db_manager:
             return
         if self.config.is_runtime_overridden("profile.current_profile"):
@@ -804,6 +1007,7 @@ class MainWindow(QMainWindow):
         try:
             set_language(self.config.language.get("code", "system"))
         except Exception:
+            # 言語コードが適用できないときは捨てて、残りの設定反映を続ける。
             pass
         try:
             ui_font = self.config.ui_font
@@ -816,6 +1020,7 @@ class MainWindow(QMainWindow):
                     app.setFont(app_font)
                 self.setFont(app_font)
         except Exception as e:
+            # フォント適用に失敗したらログして、残りの設定反映を続ける。
             logger.error(get_log_text("main_window_font_apply_failed", error=e))
 
         always_on_top = self.config.window.get("always_on_top", False)
@@ -888,7 +1093,7 @@ class MainWindow(QMainWindow):
         tab_list_dock.setWidget(self.tab_list_toolbar)
         tab_list_dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
         self.addDockWidget(Qt.RightDockWidgetArea, tab_list_dock)
-        
+
         # 画像スライドサイドバー
         self.image_slide_sidebar = ImageSlideSidebar()
         self.image_slide_sidebar.page_selected.connect(self.on_image_slide_page_selected)
@@ -905,7 +1110,7 @@ class MainWindow(QMainWindow):
         page_slider_dock.setAllowedAreas(Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
         self.addDockWidget(Qt.BottomDockWidgetArea, page_slider_dock)
         self.page_slider.set_compact(True)
-        
+
         # デフォルトでは非表示
         bookmark_dock.hide()
         history_dock.hide()
@@ -918,7 +1123,7 @@ class MainWindow(QMainWindow):
         self.tab_list_dock = tab_list_dock
         self.image_slide_dock = image_slide_dock
         self.page_slider_dock = page_slider_dock
-        
+
         # ドックウィジェットの表示/非表示状態とメニューアクションの同期
         bookmark_dock.visibilityChanged.connect(lambda visible: self.bookmark_action.setChecked(visible))
         history_dock.visibilityChanged.connect(lambda visible: self.history_action.setChecked(visible))
@@ -929,8 +1134,13 @@ class MainWindow(QMainWindow):
         self._apply_sidebar_dock_corners()
         self._restore_dock_state()
         self._refresh_tab_list()
+
     def _is_zoom_overlay_valid(self):
-        """ズーム表示ラベルの C++ オブジェクトが残っているか。"""
+        """ズーム表示ラベルの C++ オブジェクトが残っているか。
+
+        Returns:
+            ラベルが残っているとき True。
+        """
         label = getattr(self, "_zoom_overlay_label", None)
         return label is not None and shiboken6.isValid(label)
 
@@ -940,9 +1150,21 @@ class MainWindow(QMainWindow):
             self._zoom_overlay_label.hide()
 
     def update_zoom_display(self, zoom_factor):
-        # ImageView上に半透明ラベルで2～3秒だけ表示
+        """拡大率の表示を更新する。
+
+        ImageView 上の半透明ラベルに、2～3秒だけ出す。
+
+        Args:
+            zoom_factor: 表示する拡大率。
+        """
         self.show_zoom_overlay(zoom_factor)
+
     def show_zoom_overlay(self, zoom_factor):
+        """拡大率を画像の上に一時表示する。
+
+        Args:
+            zoom_factor: 表示する拡大率。
+        """
         if self.image_view is None:
             return
         if not self._is_zoom_overlay_valid():
@@ -977,12 +1199,22 @@ class MainWindow(QMainWindow):
         alpha = ui_font.get('alpha', 170)
         # CSS用rgba形式に変換
         def to_rgba(css_hex, a):
+            """CSS の色を透過付きの rgba にする。
+
+            Args:
+                css_hex: CSS の色。
+                a: 透過度。
+
+            Returns:
+                rgba 形式の文字列。
+            """
             c = QColor(css_hex)
             return f"rgba({c.red()},{c.green()},{c.blue()},{a/255:.3f})"
         style = f"background-color: {to_rgba(bg_color, alpha)}; color: {to_rgba(font_color, alpha)}; border-radius: 8px; font-size: {font_size}px; padding: 12px; font-family: {font_family};"
         # スタイルを一度リセットしてから新しいスタイルを適用
         self._zoom_overlay_label.setStyleSheet("")
         self._zoom_overlay_label.setStyleSheet(style)
+
     def toggle_min_scale(self):
         """最小縮小率の切り替え"""
         is_checked = self.min_scale_action.isChecked()
@@ -996,11 +1228,19 @@ class MainWindow(QMainWindow):
         self.save_config()
 
     def on_zoom_navigation_mode_changed(self, action):
-        """拡大時の読書順ナビゲーションを変更"""
+        """拡大時の読書順ナビゲーションを変更
+
+        Args:
+            action: 選ばれたメニューアクション。
+        """
         self.apply_zoom_navigation_mode(action.data())
 
     def apply_zoom_navigation_mode(self, mode: str):
-        """拡大時の移動モードを適用し、メニューと設定を同期する"""
+        """拡大時の移動モードを適用し、メニューと設定を同期する
+
+        Args:
+            mode: page、left、right のいずれか。
+        """
         if mode not in ("page", "left", "right"):
             mode = "page"
         if not self.config or self.config.is_runtime_overridden("viewer.zoom_navigation_mode"):
@@ -1012,7 +1252,11 @@ class MainWindow(QMainWindow):
         self.save_config()
 
     def _sync_zoom_navigation_menu(self, mode: str):
-        """拡大時挙動メニューのチェックを合わせる"""
+        """拡大時挙動メニューのチェックを合わせる
+
+        Args:
+            mode: チェックを合わせるモード。
+        """
         if not hasattr(self, "zoom_navigation_group"):
             return
         if mode not in self.zoom_navigation_actions:
@@ -1022,7 +1266,11 @@ class MainWindow(QMainWindow):
         self.zoom_navigation_group.blockSignals(False)
 
     def handle_zoom_navigation_action(self, action_name: str):
-        """ショートカット／ジェスチャーから拡大時挙動を切り替える"""
+        """ショートカット／ジェスチャーから拡大時挙動を切り替える
+
+        Args:
+            action_name: 切り替えるアクション名。
+        """
         modes = {
             Actions.ZOOM_NAVIGATION_PAGE.value: "page",
             Actions.ZOOM_NAVIGATION_LEFT.value: "left",
@@ -1033,11 +1281,19 @@ class MainWindow(QMainWindow):
             self.apply_zoom_navigation_mode(mode)
 
     def on_comic_page_mode_changed(self, action):
-        """コミックのページ表示モードを変更"""
+        """コミックのページ表示モードを変更
+
+        Args:
+            action: 選ばれたメニューアクション。
+        """
         self.apply_comic_page_mode(action.data())
 
     def apply_comic_page_mode(self, mode: str):
-        """単ページ／両開きの表示モードを適用し、メニューと設定を同期する"""
+        """単ページ／両開きの表示モードを適用し、メニューと設定を同期する
+
+        Args:
+            mode: single、spread_left、spread_right のいずれか。
+        """
         if mode not in ("single", "spread_left", "spread_right"):
             mode = "single"
         if self.config and self.config.is_runtime_overridden("viewer.page_mode"):
@@ -1058,7 +1314,11 @@ class MainWindow(QMainWindow):
             self._update_image_slide_sidebar()
 
     def _sync_comic_page_mode_menu(self, mode: str):
-        """表示メニューのページモードのチェックを合わせる"""
+        """表示メニューのページモードのチェックを合わせる
+
+        Args:
+            mode: チェックを合わせるモード。
+        """
         if not hasattr(self, "comic_page_mode_group"):
             return
         self.comic_page_mode_group.blockSignals(True)
@@ -1071,7 +1331,11 @@ class MainWindow(QMainWindow):
         self.comic_page_mode_group.blockSignals(False)
 
     def _resolve_toggle_spread_mode(self) -> str:
-        """両開き／単ページ切替で両開きにするときの向き"""
+        """両開き／単ページ切替で両開きにするときの向き
+
+        Returns:
+            spread_left か spread_right。
+        """
         preference = self.config.viewer.get("spread_toggle_preference", "keep_previous") if self.config else "keep_previous"
         if preference == "prefer_left":
             return "spread_left"
@@ -1090,7 +1354,11 @@ class MainWindow(QMainWindow):
             self.apply_comic_page_mode(self._resolve_toggle_spread_mode())
 
     def handle_page_mode_action(self, action_name: str):
-        """ショートカット／ジェスチャーからのページ表示モード操作"""
+        """ショートカット／ジェスチャーからのページ表示モード操作
+
+        Args:
+            action_name: 実行するページ表示のアクション名。
+        """
         if action_name == Actions.PAGE_MODE_SINGLE.value:
             self.apply_comic_page_mode("single")
         elif action_name == Actions.PAGE_MODE_SPREAD_RIGHT.value:
@@ -1101,6 +1369,14 @@ class MainWindow(QMainWindow):
             self.toggle_comic_spread()
 
     def _is_page_mode_action(self, action_name: str) -> bool:
+        """ページ表示モードのアクションかどうかを返す。
+
+        Args:
+            action_name: 調べるアクション名。
+
+        Returns:
+            ページ表示のアクションなら True。
+        """
         return action_name in (
             Actions.PAGE_MODE_SINGLE.value,
             Actions.PAGE_MODE_SPREAD_RIGHT.value,
@@ -1109,13 +1385,21 @@ class MainWindow(QMainWindow):
         )
 
     def _is_spread_mode(self) -> bool:
-        """両開き表示かどうか"""
+        """両開き表示かどうか
+
+        Returns:
+            両開きなら True。
+        """
         if not self.config:
             return False
         return self.config.viewer.get("page_mode", "single") in ("spread_left", "spread_right")
 
     def _is_spread_selected_as_axis(self) -> bool:
-        """両開きで選択ページを軸に N と N+1 を表示するか"""
+        """両開きで選択ページを軸に N と N+1 を表示するか
+
+        Returns:
+            選択ページを軸にするとき True。
+        """
         if not self.config:
             return False
         return bool(self.config.viewer.get("spread_selected_as_axis", False))
@@ -1125,11 +1409,22 @@ class MainWindow(QMainWindow):
         self._spread_force_single = False
 
     def _use_rtl_page_slider(self) -> bool:
-        """ページスライダーを右始まりにするか。両開き（左）以外は右が先頭。"""
+        """ページスライダーを右始まりにするか。両開き（左）以外は右が先頭。
+
+        Returns:
+            右始まりにするとき True。
+        """
         return self.config.viewer.get("page_mode", "single") != "spread_left"
 
     def _spread_display_start(self, index: int) -> int:
-        """見開き表示の先頭インデックス。選択ページは変えず、表示ペアだけ決める。"""
+        """見開き表示の先頭インデックス。選択ページは変えず、表示ペアだけ決める。
+
+        Args:
+            index: 選択ページのインデックス。
+
+        Returns:
+            見開きの先頭インデックス。
+        """
         if not self._is_spread_mode() or not self.file_handler or not self.file_handler.current_files:
             return index
         total = len(self.file_handler.current_files)
@@ -1152,7 +1447,11 @@ class MainWindow(QMainWindow):
             self.current_page = self.file_handler.current_index + 1
 
     def _has_spread_pair(self) -> bool:
-        """現在の選択が両開きの2ページ表示対象か"""
+        """現在の選択が両開きの2ページ表示対象か
+
+        Returns:
+            2ページ表示の対象なら True。
+        """
         if not self._is_spread_mode() or not self.file_handler or not self.file_handler.current_files:
             return False
         if self._spread_force_single:
@@ -1161,7 +1460,11 @@ class MainWindow(QMainWindow):
         return start + 1 < len(self.file_handler.current_files)
 
     def _next_spread_index(self):
-        """次の見開き（または単ページ）の先頭インデックス"""
+        """次の見開き（または単ページ）の先頭インデックス
+
+        Returns:
+            次の先頭インデックス。端なら None。
+        """
         if not self.file_handler or not self.file_handler.current_files:
             return None
         total = len(self.file_handler.current_files)
@@ -1180,7 +1483,11 @@ class MainWindow(QMainWindow):
         return None
 
     def _prev_spread_index(self):
-        """前の見開き（または単ページ）の先頭インデックス"""
+        """前の見開き（または単ページ）の先頭インデックス
+
+        Returns:
+            前の先頭インデックス。端なら None。
+        """
         if not self.file_handler or not self.file_handler.current_files:
             return None
         idx = self.file_handler.current_index
@@ -1197,7 +1504,13 @@ class MainWindow(QMainWindow):
         return self._spread_display_start(start - 1)
 
     def _apply_spread_axis_flags(self, going_next: bool, old_index: int, target: int):
-        """選択軸モードの単ページ固定フラグを更新"""
+        """選択軸モードの単ページ固定フラグを更新
+
+        Args:
+            going_next: 次へ進むとき True。
+            old_index: 移動前のインデックス。
+            target: 移動先のインデックス。
+        """
         if not self._is_spread_selected_as_axis():
             self._spread_force_single = False
             return
@@ -1208,7 +1521,14 @@ class MainWindow(QMainWindow):
             self._spread_force_single = (old_index == 1 and target == 0)
 
     def _is_loaded_file_currently_displayed(self, file) -> bool:
-        """読み込み完了したファイルが現在表示対象か"""
+        """読み込み完了したファイルが現在表示対象か
+
+        Args:
+            file: 読み込みが終わったファイル。
+
+        Returns:
+            いまの表示対象なら True。
+        """
         if not self.file_handler or not self.file_handler.current_files:
             return False
         files = self.file_handler.current_files
@@ -1224,7 +1544,11 @@ class MainWindow(QMainWindow):
         return False
 
     def _get_display_image(self):
-        """現在の表示モードに応じた画像を取得"""
+        """現在の表示モードに応じた画像を取得
+
+        Returns:
+            表示する画像。無ければ None。
+        """
         if not self.file_handler:
             return None
         if self._has_spread_pair():
@@ -1260,11 +1584,28 @@ class MainWindow(QMainWindow):
         return self._apply_display_pipe(current, index)
 
     def _piped_image_at(self, index: int):
+        """指定位置の画像へ表示フィルタを通して返す。
+
+        Args:
+            index: ファイル一覧の位置。
+
+        Returns:
+            フィルタ後の画像。無ければ None。
+        """
         if not self.file_handler:
             return None
         return self._apply_display_pipe(self.file_handler.get_image_at(index), index)
 
     def _apply_display_pipe(self, image, page_index: int):
+        """画像へ表示フィルタの列を通す。
+
+        Args:
+            image: 元の画像。
+            page_index: 0 始まりのページ位置。
+
+        Returns:
+            フィルタ後の画像。元が無ければ None。
+        """
         if image is None:
             return None
         perf_enabled = bool(
@@ -1297,7 +1638,11 @@ class MainWindow(QMainWindow):
         return result
 
     def _setup_filter_menu(self, menubar):
-        """フィルターメニューを台帳から組み立てる。"""
+        """フィルターメニューを台帳から組み立てる。
+
+        Args:
+            menubar: 載せるメニューバー。
+        """
         register_builtin()
         menu = menubar.addMenu(get_text("ui.filter_menu"))
         pipe = [str(item) for item in (self.config.filters.get("pipe") or [])]
@@ -1329,6 +1674,12 @@ class MainWindow(QMainWindow):
                 submenu.addAction(settings_action)
 
     def _set_filter_enabled(self, public_id: str, enabled: bool) -> None:
+        """フィルタを表示の列へ入れるか外す。
+
+        Args:
+            public_id: フィルタの公開 ID。
+            enabled: 有効にするとき True。
+        """
         public_id = str(public_id or "").strip()
         if not public_id or not self.config:
             return
@@ -1343,6 +1694,11 @@ class MainWindow(QMainWindow):
         self.update_image()
 
     def _open_filter_settings(self, record) -> None:
+        """組み込みかプラグインのフィルタ設定を開く。
+
+        Args:
+            record: 開くフィルタの台帳。
+        """
         if not record.plugin_id or record.public_id == BUILTIN_FILTER_ID:
             from ez_co.ui.dialogs.filter_dialog import FilterDialog
             FilterDialog(self, self).exec()
@@ -1355,6 +1711,11 @@ class MainWindow(QMainWindow):
         PluginConfigDialog(manager.host, record.plugin_id, name, self).exec()
 
     def _on_plugin_filter_config_changed(self, plugin_id: str) -> None:
+        """有効なプラグインフィルタの設定変更なら表示を更新する。
+
+        Args:
+            plugin_id: 変わったプラグインの ID。
+        """
         prefix = f"plugin:{plugin_id}:"
         pipe = [str(item) for item in (self.config.filters.get("pipe") or [])]
         if any(item.startswith(prefix) for item in pipe):
@@ -1376,7 +1737,7 @@ class MainWindow(QMainWindow):
 
         # FileHandlerの新しいメソッドを使用して次のコミックファイルを取得
         next_file = self.file_handler.get_next_comic_file(current_path)
-        
+
         if next_file is None:
             logger.info(get_log_text("main_window_no_next_comic_found"))
             return
@@ -1403,6 +1764,7 @@ class MainWindow(QMainWindow):
 
         # 新しいファイルを開く
         self.open_files([str(next_file)])
+
     def prev_comic(self):
         """前のコミック（ファイル）"""
         if not self.file_handler:
@@ -1419,7 +1781,7 @@ class MainWindow(QMainWindow):
 
         # FileHandlerの新しいメソッドを使用して前のコミックファイルを取得
         prev_file = self.file_handler.get_prev_comic_file(current_path)
-        
+
         if prev_file is None:
             logger.info(get_log_text("main_window_no_prev_comic_found"))
             return
@@ -1448,7 +1810,11 @@ class MainWindow(QMainWindow):
         self.open_files([str(prev_file)])
 
     def _get_current_comic_path(self) -> Optional[Path]:
-        """現在開いているコミック単位（ファイル、フォルダ、アーカイブ）のパスを取得"""
+        """現在開いているコミック単位（ファイル、フォルダ、アーカイブ）のパスを取得
+
+        Returns:
+            コミック単位のパス。開いていなければ None。
+        """
         if not self.file_handler or not self.file_handler.current_files:
             return None
 
@@ -1472,6 +1838,7 @@ class MainWindow(QMainWindow):
         """アプリケーションを閉じる"""
         self.save_config()
         self.close()
+
     def new_window(self):
         """新規ウィンドウを開く"""
         try:
@@ -1480,8 +1847,10 @@ class MainWindow(QMainWindow):
             create_new_window(self.config, self)
             logger.info(get_log_text("main_window_new_window_opened"))
         except Exception as e:
+            # 新しいウィンドウを開けないときはログして、失敗を知らせる。
             logger.error(get_log_text("main_window_new_window_failed", error=e))
             QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.new_window_launch_failed").format(error=str(e)))
+
     def show_shortcut_dialog(self):
         """ショートカット設定ダイアログを表示"""
         dialog = ShortcutDialog(self.config, self)
@@ -1492,13 +1861,16 @@ class MainWindow(QMainWindow):
             # ショートカットを再設定
             self.setup_shortcuts()
             self.rebuild_menu()
+
     def _store_dock_state(self):
+        """ドックの配置を設定へ保存する。"""
         if not hasattr(self, "bookmark_dock"):
             return
         state = self.saveState()
         self.config.window["dock_state"] = bytes(state.toBase64()).decode("ascii")
 
     def _restore_dock_state(self):
+        """設定に残したドックの配置を戻す。"""
         if not hasattr(self, "bookmark_dock"):
             return
         raw = self.config.window.get("dock_state") or ""
@@ -1508,6 +1880,7 @@ class MainWindow(QMainWindow):
                 if not data.isEmpty():
                     self.restoreState(data)
             except Exception as e:
+                # 保存したドック配置を戻せないときはログして、既定の配置のまま続ける。
                 logger.debug(get_log_text("main_window_dock_state_restore_failed", error=e))
         if hasattr(self, "bookmark_action"):
             self.bookmark_action.setChecked(self.bookmark_dock.isVisible())
@@ -1534,7 +1907,7 @@ class MainWindow(QMainWindow):
                 self.db_manager.current_profile,
                 self.config.to_dict(),
             )
-        
+
         # マウスジェスチャーの設定を更新
         if hasattr(self, 'mouse_gesture') and self.mouse_gesture:
             new_threshold = self.config.viewer.get("gesture_threshold", 50)
@@ -1542,16 +1915,27 @@ class MainWindow(QMainWindow):
             if self.mouse_gesture.threshold != new_threshold:
                 self.mouse_gesture.set_threshold(new_threshold)
                 logger.info(get_log_text("mouse_gesture_threshold_updated", old_threshold=self.mouse_gesture.threshold, new_threshold=new_threshold))
+
     def zoom_reset(self):
         """ズームをリセット"""
         self.image_view.zoom_factor = 1.0
         self.image_view.update_image_display()
+
     def dragEnterEvent(self, event: QDragEnterEvent):
-        """ドラッグ開始イベント"""
+        """ドラッグ開始イベント
+
+        Args:
+            event: ドラッグイベント。
+        """
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
+
     def dropEvent(self, event: QDropEvent):
-        """ドロップイベントの処理"""
+        """ドロップイベントの処理
+
+        Args:
+            event: ドロップイベント。
+        """
         mime_data = event.mimeData()
         if mime_data.hasUrls():
             files = [url.toLocalFile() for url in mime_data.urls()]
@@ -1560,6 +1944,14 @@ class MainWindow(QMainWindow):
             event.acceptProposedAction()
 
     def _add_tab(self, switch: bool = True) -> ViewerPane:
+        """閲覧ペインのタブを足す。
+
+        Args:
+            switch: 追加後にそのタブへ切り替えるとき True。
+
+        Returns:
+            追加した閲覧ペイン。
+        """
         pane = ViewerPane(self.config, self)
         pane.image_view.next_page_requested.connect(self.next_page)
         pane.image_view.prev_page_requested.connect(self.prev_page)
@@ -1572,6 +1964,7 @@ class MainWindow(QMainWindow):
         return pane
 
     def _sync_tab_bar(self):
+        """タブが複数のときだけタブバーを出し、一覧も更新する。"""
         if not hasattr(self, "tab_widget"):
             return
         show = self.tab_widget.count() > 1
@@ -1582,6 +1975,7 @@ class MainWindow(QMainWindow):
         self._update_reopen_tab_action()
 
     def _refresh_tab_list(self):
+        """タブ一覧ツールバーの題名を更新する。"""
         if not hasattr(self, "tab_list_toolbar"):
             return
         titles = []
@@ -1595,10 +1989,16 @@ class MainWindow(QMainWindow):
         self._update_save_session_action()
 
     def _update_reopen_tab_action(self):
+        """閉じたタブが残っているときだけ、開き直す操作を有効にする。"""
         if hasattr(self, "reopen_tab_action"):
             self.reopen_tab_action.setEnabled(bool(self._closed_tabs))
 
     def _has_savable_tabs(self) -> bool:
+        """保存できるタブがあるかを返す。
+
+        Returns:
+            ファイルかフォルダを開いたタブがあれば True。
+        """
         if not hasattr(self, "tab_widget"):
             return False
         for index in range(self.tab_widget.count()):
@@ -1608,16 +2008,19 @@ class MainWindow(QMainWindow):
         return False
 
     def _update_save_session_action(self):
+        """保存できるタブがあるときだけ、セッション保存を有効にする。"""
         if hasattr(self, "save_session_action"):
             self.save_session_action.setEnabled(self._has_savable_tabs())
 
     def toggle_show_tabs_in_fullscreen(self):
+        """フルスクリーン中のタブバー表示を切り替え、設定へ保存する。"""
         enabled = self.show_tabs_in_fullscreen_action.isChecked()
         self.config.viewer["show_tabs_in_fullscreen"] = enabled
         self._sync_tab_bar()
         self.save_config()
 
     def toggle_show_page_slider_in_fullscreen(self):
+        """フルスクリーン中のページスライダー表示を切り替え、設定へ保存する。"""
         enabled = self.show_page_slider_in_fullscreen_action.isChecked()
         self.config.viewer["show_page_slider_in_fullscreen"] = enabled
         if self.is_fullscreen and hasattr(self, "page_slider_dock"):
@@ -1631,6 +2034,11 @@ class MainWindow(QMainWindow):
         self.save_config()
 
     def _apply_tab_title(self, index: int):
+        """指定タブの題名とツールチップを更新する。
+
+        Args:
+            index: タブの位置。
+        """
         pane = self.tab_widget.widget(index)
         if not isinstance(pane, ViewerPane):
             return
@@ -1641,16 +2049,23 @@ class MainWindow(QMainWindow):
         self._update_save_session_action()
 
     def _sync_current_tab_title(self):
+        """現在タブの題名を更新する。"""
         index = self.tab_widget.currentIndex()
         if index >= 0:
             self._apply_tab_title(index)
 
     def _ensure_tab_for_new_open(self):
+        """現在タブが空でなければ、新しいタブを足して切り替える。"""
         pane = self.current_pane
         if pane is None or not pane.is_empty():
             self._add_tab(switch=True)
 
     def _on_tab_changed(self, index: int):
+        """タブを切り替えたあと、表示とプラグインへ現在位置を渡す。
+
+        Args:
+            index: 切り替えたタブの位置。
+        """
         if index < 0 or self.current_pane is None:
             return
         self._hide_zoom_overlay()
@@ -1667,19 +2082,31 @@ class MainWindow(QMainWindow):
         self._refresh_tab_list()
 
     def _push_closed_tab(self, pane: ViewerPane):
+        """閉じたタブの状態を、開き直す列へ積む。
+
+        Args:
+            pane: 閉じた閲覧ペイン。
+        """
         state = pane.closed_state()
         if state.get("file_path"):
             self._closed_tabs.append(state)
 
     def new_tab(self):
+        """空のタブを足して題名を更新する。"""
         self._add_tab(switch=True)
         self.update_title()
         self._refresh_tab_list()
 
     def close_current_tab(self):
+        """現在のタブを閉じる。"""
         self._close_tab_at(self.tab_widget.currentIndex())
 
     def _close_tab_at(self, index: int):
+        """指定位置のタブを閉じる。最後のタブならアプリを閉じる。
+
+        Args:
+            index: 閉じるタブの位置。
+        """
         if index < 0 or index >= self.tab_widget.count():
             return
         if self.tab_widget.count() <= 1:
@@ -1697,15 +2124,30 @@ class MainWindow(QMainWindow):
         self._sync_tab_bar()
 
     def _close_tabs_at(self, indexes: list[int]):
+        """指定した位置のタブを順に閉じる。
+
+        Args:
+            indexes: 閉じるタブの位置。
+        """
         for tab_index in indexes:
             self._close_tab_at(tab_index)
 
     def _show_tab_bar_context_menu(self, pos):
+        """タブバー上の位置にあるタブのメニューを出す。
+
+        Args:
+            pos: タブバー上の位置。
+        """
         index = self.tab_widget.tabBar().tabAt(pos)
         if index >= 0:
             self._show_tab_context_menu(index)
 
     def _show_tab_context_menu(self, index: int):
+        """タブのコンテキストメニューを出す。
+
+        Args:
+            index: 対象タブの位置。
+        """
         pane = self.tab_widget.widget(index)
         if not isinstance(pane, ViewerPane):
             return
@@ -1734,6 +2176,12 @@ class MainWindow(QMainWindow):
         menu.exec(QCursor.pos())
 
     def _copy_tab_path(self, index: int, *, filename: bool):
+        """タブのパスかファイル名をクリップボードへコピーする。
+
+        Args:
+            index: 対象タブの位置。
+            filename: ファイル名だけをコピーするとき True。
+        """
         pane = self.tab_widget.widget(index)
         if not isinstance(pane, ViewerPane):
             return
@@ -1747,6 +2195,11 @@ class MainWindow(QMainWindow):
         clipboard.setText(texts[0] if filename else texts[1])
 
     def toggle_pin_tab(self, index: int):
+        """タブのピンを切り替え、ピン付きをまとめる。
+
+        Args:
+            index: 対象タブの位置。
+        """
         pane = self.tab_widget.widget(index)
         if not isinstance(pane, ViewerPane):
             return
@@ -1755,6 +2208,11 @@ class MainWindow(QMainWindow):
         self._regroup_pinned_tabs(select=keep)
 
     def duplicate_tab(self, index: int):
+        """タブと同じパスとページを新しいタブで開く。
+
+        Args:
+            index: 複製するタブの位置。
+        """
         pane = self.tab_widget.widget(index)
         if not isinstance(pane, ViewerPane):
             return
@@ -1767,6 +2225,11 @@ class MainWindow(QMainWindow):
             self.update_title()
 
     def _pinned_flags(self) -> list[bool]:
+        """各タブがピンされているかを返す。
+
+        Returns:
+            タブ順の真偽値。
+        """
         flags = []
         for index in range(self.tab_widget.count()):
             pane = self.tab_widget.widget(index)
@@ -1774,6 +2237,11 @@ class MainWindow(QMainWindow):
         return flags
 
     def _regroup_pinned_tabs(self, select=None):
+        """ピンされたタブを左へ集め直す。
+
+        Args:
+            select: 並べたあと選択するウィジェット。
+        """
         flags = self._pinned_flags()
         order = regroup_order(flags)
         if order != list(range(len(order))):
@@ -1786,6 +2254,11 @@ class MainWindow(QMainWindow):
         self._sync_tab_bar()
 
     def _move_tabs_to_order(self, order: list[int]):
+        """タブを指定の順へ動かす。
+
+        Args:
+            order: 新しい順の、元の位置。
+        """
         bar = self.tab_widget.tabBar()
         current = list(range(len(order)))
         self._tab_move_guard = True
@@ -1801,11 +2274,18 @@ class MainWindow(QMainWindow):
             self._tab_move_guard = False
 
     def _sync_pin_chrome(self):
+        """タブバーのピン表示を更新する。"""
         bar = self.tab_widget.tabBar()
         if isinstance(bar, ViewerTabBar):
             bar.apply_pin_chrome()
 
     def _on_tab_moved(self, _from_index: int, to_index: int):
+        """タブを動かしたあと、ピンの範囲へ戻すか一覧を更新する。
+
+        Args:
+            _from_index: 移動前の位置。処理では使わない。
+            to_index: 移動後の位置。
+        """
         if self._tab_move_guard:
             self._refresh_tab_list()
             return
@@ -1815,6 +2295,7 @@ class MainWindow(QMainWindow):
             dest = target
 
             def snap():
+                """ピンの範囲へタブを戻し、一覧を更新する。"""
                 if source >= self.tab_widget.count():
                     return
                 self._tab_move_guard = True
@@ -1829,6 +2310,7 @@ class MainWindow(QMainWindow):
         self._refresh_tab_list()
 
     def reopen_closed_tab(self):
+        """直前に閉じたタブを開き直す。"""
         if not self._closed_tabs:
             return
         state = self._closed_tabs.pop()
@@ -1840,29 +2322,46 @@ class MainWindow(QMainWindow):
         self._update_reopen_tab_action()
 
     def goto_tab(self, index: int):
+        """指定位置のタブへ切り替える。
+
+        Args:
+            index: 切り替える位置。
+        """
         if 0 <= index < self.tab_widget.count():
             self.tab_widget.setCurrentIndex(index)
 
     def next_tab(self):
+        """次のタブへ循環して切り替える。"""
         count = self.tab_widget.count()
         if count > 1:
             self.tab_widget.setCurrentIndex((self.tab_widget.currentIndex() + 1) % count)
 
     def prev_tab(self):
+        """前のタブへ循環して切り替える。"""
         count = self.tab_widget.count()
         if count > 1:
             self.tab_widget.setCurrentIndex((self.tab_widget.currentIndex() - 1) % count)
 
     def first_tab(self):
+        """最初のタブへ切り替える。"""
         if self.tab_widget.count() > 0:
             self.tab_widget.setCurrentIndex(0)
 
     def last_tab(self):
+        """最後のタブへ切り替える。"""
         count = self.tab_widget.count()
         if count > 0:
             self.tab_widget.setCurrentIndex(count - 1)
 
     def _path_open_kind(self, path: str) -> str:
+        """パスを開き方の種類へ分ける。
+
+        Args:
+            path: 調べるパス。
+
+        Returns:
+            session、folder、image、archive、other、skip のいずれか。
+        """
         if is_session_file(path):
             return "session"
         file_path = Path(path)
@@ -1879,6 +2378,14 @@ class MainWindow(QMainWindow):
         return "other"
 
     def _grouped_open_items(self, paths: List[str]) -> list[tuple[str, list[str]]]:
+        """パスを、同じタブで開く束へ分ける。
+
+        Args:
+            paths: 開くパス。
+
+        Returns:
+            種類とパスの束。
+        """
         archive_own = bool(self.config.viewer.get("open_archives_in_own_tab", True))
         folder_own = bool(self.config.viewer.get("open_folders_in_own_tab", False))
         items: list[tuple[str, list[str]]] = []
@@ -1903,6 +2410,12 @@ class MainWindow(QMainWindow):
         return items
 
     def _open_path_groups(self, paths: List[str], *, new_tab: bool = False):
+        """束ごとにタブを分けて開く。
+
+        Args:
+            paths: 開くパス。
+            new_tab: 最初から新しいタブで開くとき True。
+        """
         groups = self._grouped_open_items(paths)
         if not groups:
             if new_tab:
@@ -1922,6 +2435,12 @@ class MainWindow(QMainWindow):
                 self._open_single_path(group_paths[0])
 
     def open_paths(self, file_paths: List[str], *, new_tab: bool = False):
+        """セッションとそれ以外を分けて開く。
+
+        Args:
+            file_paths: 開くパス。
+            new_tab: 新しいタブで開くとき True。
+        """
         paths = [path for path in file_paths if path]
         if not paths:
             return
@@ -1937,6 +2456,12 @@ class MainWindow(QMainWindow):
         self._open_path_groups(paths, new_tab=new_tab)
 
     def _open_single_path(self, file_path: str, page_number: int = 1):
+        """セッション、フォルダ、ファイルを現在タブで開く。
+
+        Args:
+            file_path: 開くパス。
+            page_number: 開いたあとに移すページ。
+        """
         if is_session_file(file_path):
             self.restore_session(file_path)
             return
@@ -1954,6 +2479,14 @@ class MainWindow(QMainWindow):
         self._sync_current_tab_title()
 
     def run_window_action(self, action_name: str) -> bool:
+        """ウィンドウ操作かプラグインの登録アクションを実行する。
+
+        Args:
+            action_name: 実行するアクション名。
+
+        Returns:
+            実行したとき True。
+        """
         session = getattr(self, "plugin_session", None)
         if session is not None and session.invoke_registered(action_name):
             return True
@@ -2001,6 +2534,7 @@ class MainWindow(QMainWindow):
             self.open_paths(file_paths, new_tab=False)
 
     def open_file_in_new_tab(self):
+        """ファイル選択から新しいタブで開く。"""
         file_paths, _ = QFileDialog.getOpenFileNames(
             self, get_text("ui.open_file_in_new_tab"), "",
             self._open_file_filter_string()
@@ -2009,11 +2543,20 @@ class MainWindow(QMainWindow):
             self.open_paths(file_paths, new_tab=True)
 
     def open_folder(self):
+        """フォルダ選択から現在タブで開く。"""
         folder = QFileDialog.getExistingDirectory(self, get_text("ui.open_folder"), "")
         if folder:
             self.open_paths([folder], new_tab=False)
 
     def _glob_exts(self, extensions) -> str:
+        """拡張子をファイルダイアログのグロブにする。
+
+        Args:
+            extensions: 拡張子。
+
+        Returns:
+            空白区切りのグロブ。
+        """
         parts = []
         seen = set()
         for ext in extensions:
@@ -2029,6 +2572,11 @@ class MainWindow(QMainWindow):
         return " ".join(parts)
 
     def _open_file_filter_string(self) -> str:
+        """ファイルを開くダイアログのフィルタ文字列を返す。
+
+        Returns:
+            フィルタ文字列。
+        """
         from ez_co.plugins.manager import get_plugin_manager
         image_exts = sorted(ImageInfo.get_all_extensions())
         archive_exts = []
@@ -2048,9 +2596,15 @@ class MainWindow(QMainWindow):
         return ";;".join(parts)
 
     def _session_file_filter(self) -> str:
+        """セッションファイル用のフィルタ文字列を返す。
+
+        Returns:
+            フィルタ文字列。
+        """
         return f"{get_text('ui.session_files')} (*{SESSION_SUFFIX})"
 
     def save_session_as(self):
+        """開いているタブをセッションファイルへ保存する。"""
         tabs = []
         current_saved = 0
         current_index = self.tab_widget.currentIndex() if hasattr(self, "tab_widget") else 0
@@ -2085,6 +2639,7 @@ class MainWindow(QMainWindow):
             save_session(file_path, tabs, current_saved)
             logger.info(get_log_text("session_saved", path=file_path))
         except Exception as exc:
+            # セッションを書けないときはログして、失敗を知らせる。
             logger.error(get_log_text("session_save_failed_log", error=exc))
             QMessageBox.warning(
                 self,
@@ -2093,6 +2648,11 @@ class MainWindow(QMainWindow):
             )
 
     def _ask_session_restore_mode(self) -> str | None:
+        """セッションをどう開くかを尋ねる。
+
+        Returns:
+            replace、append、new_window。取消なら None。
+        """
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Icon.Question)
         box.setWindowTitle(get_text("ui.session_restore_title"))
@@ -2123,6 +2683,13 @@ class MainWindow(QMainWindow):
         return None
 
     def _apply_session_tabs(self, tabs: list, current: int, *, replace: bool):
+        """セッションのタブを、置き換えるか足して開く。
+
+        Args:
+            tabs: 開くタブ。
+            current: 選択するタブの位置。
+            replace: 既存タブを置き換えるとき True。
+        """
         if replace:
             self.tab_widget.blockSignals(True)
             while self.tab_widget.count() > 0:
@@ -2151,9 +2718,18 @@ class MainWindow(QMainWindow):
         self.update_title()
 
     def restore_session(self, session_path: str):
+        """セッションファイルを開く。
+
+        Args:
+            session_path: セッションファイルのパス。
+
+        Returns:
+            復元したウィンドウ。失敗や取消なら None。
+        """
         try:
             data = load_session(session_path)
         except Exception as exc:
+            # セッションを読めないときはログして、復元をやめて戻る。
             logger.error(get_log_text("session_restore_failed_log", error=exc))
             QMessageBox.warning(self, get_text("dialogs.error"), get_text("ui.session_invalid"))
             return None
@@ -2171,6 +2747,7 @@ class MainWindow(QMainWindow):
                     from ez_co.main import create_new_window
                     new_window = create_new_window(self.config, self)
                 except Exception as exc:
+                    # 新しいウィンドウを開けないときはログして、復元をやめて戻る。
                     logger.error(get_log_text("main_window_new_window_failed", error=exc))
                     QMessageBox.critical(
                         self,
@@ -2194,9 +2771,12 @@ class MainWindow(QMainWindow):
             else:
                 QMessageBox.information(self, get_text("dialogs.information"), get_text("ui.no_history"))
         except Exception as e:
+            # 最後のファイルを開き直せないときはログして、失敗を知らせる。
             logger.error(get_log_text("main_window_failed_reopen_last_file", error=e))
             QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.last_file_open_error").format(error=str(e)))
+
     def _ensure_file_handler(self):
+        """現在ペインにファイルハンドラが無ければ作る。"""
         if self.file_handler is None:
             from ez_co.plugins.manager import get_plugin_manager
             self.file_handler = FileHandler(self.config, plugin_manager=get_plugin_manager())
@@ -2205,6 +2785,14 @@ class MainWindow(QMainWindow):
         self.file_handler.set_archive_password_provider(self._provide_archive_password)
 
     def _provide_archive_password(self, file_path: str) -> bool:
+        """暗号化アーカイブのパスワードを解決する。
+
+        Args:
+            file_path: アーカイブのパス。
+
+        Returns:
+            開けたとき True。
+        """
         from ez_co.handlers.archive_password import (
             get_session_password,
             is_encrypted,
@@ -2246,27 +2834,31 @@ class MainWindow(QMainWindow):
             mismatch = True
 
     def open_files(self, file_paths: List[str]):
-        """複数のファイルを開く"""
+        """複数のファイルを開く
+
+        Args:
+            file_paths: 開くファイルかフォルダ。
+        """
         try:
             self.image_view.cancel_pending_zoom_navigation()
             # メッセージを非表示
             self.hide_center_message()
             self._clear_spread_force_single()
-            
+
             # file_handlerが初期化されていない場合は初期化
             self._ensure_file_handler()
-            
+
             # 現在のファイルの履歴を保存
             self.save_current_file_history()
-            
+
             # 新しいファイルセットが開かれる時は回転状態をリセット
             self.current_rotation_angle = 0
-            
+
             # アーカイブの状態をクリア（新しいファイルを開く際に再設定される）
             if self.file_handler:
                 self.file_handler.current_archive = None
                 self.file_handler.current_archive_path = None
-            
+
             # フォルダが開かれた場合は、base_dir_pathを設定
             if len(file_paths) == 1 and Path(file_paths[0]).is_dir():
                 self.base_dir_path = file_paths[0]
@@ -2275,10 +2867,10 @@ class MainWindow(QMainWindow):
             else:
                 self.base_dir_path = None
                 restored_page = 1
-            
+
             # ファイルを開く
             success = self.file_handler.open_files(file_paths)
-            
+
             if not success:
                 # ファイルが開けなかった場合のメッセージ表示
                 self.show_unsupported_file_message()
@@ -2303,23 +2895,25 @@ class MainWindow(QMainWindow):
                 else:
                     # 復元されたページがない場合は1ページ目に設定
                     self.current_page = 1
-                
+
                 # ファイルが正常に開かれた場合、UIを更新
                 logger.info(get_log_text("debug_files_opened_successfully"))
                 self._update_ui_after_file_open()
                 self.save_current_file_history()
-                
+
                 # ページスライダーダイアログの更新
                 self._update_page_slider()
-                
+
                 # 画像一覧ダイアログの更新
                 self._update_image_list_dialog()
-                
+
                 # 画像スライドサイドバーの更新
                 self._update_image_slide_sidebar()
         except Exception as e:
+            # ファイルを開けないときはログして、非対応のメッセージを出す。
             logger.error(get_log_text("main_window_error_opening_files", error=e))
             self.show_unsupported_file_message()
+
     def _update_ui_after_file_open(self):
         """ファイルが開かれた後のUI更新"""
         try:
@@ -2333,11 +2927,11 @@ class MainWindow(QMainWindow):
                 # ページ数を取得
                 total_pages = self.file_handler.get_total_pages()
                 self.total_pages = total_pages
-                
+
                 # current_pageが設定されていない場合は現在のインデックスから設定
                 if not hasattr(self, 'current_page') or self.current_page is None:
                     self.current_page = self.file_handler.current_index + 1
-                
+
                 # UIを更新
                 self.update_title()
                 self.update_page_display()
@@ -2348,32 +2942,43 @@ class MainWindow(QMainWindow):
                     self.bookmark_toolbar.refresh_bookmarks()
                 if hasattr(self, 'history_toolbar'):
                     self.history_toolbar.refresh_history()
-                
+
                 self._notify_plugin_current_changed()
-                
+
                 self._sync_current_tab_title()
-                
+
                 logger.info(get_log_text("debug_ui_updated", file=self.current_file_path, page=self.current_page, total_pages=self.total_pages))
         except Exception as e:
+            # 開いたあとの画面更新に失敗したらログして、更新をやめる。
             logger.error(get_log_text("main_window_error_updating_ui", error=e))
+
     def show_unsupported_file_message(self):
         """サポートされていないファイルのメッセージを表示"""
         message = get_text("ui.unsupported_file_format")
         self.show_center_message(message)
+
     def show_no_displayable_files_message(self):
         """表示できるファイルがない場合のメッセージを表示"""
         message = get_text("ui.no_displayable_files")
         self.show_center_message(message)
+
     def show_archive_disabled_message(self):
         """アーカイブが無効になっている場合のメッセージを表示"""
         message = get_text("ui.archive_disabled_message")
         self.show_center_message(message)
+
     def on_file_error_occurred(self, error_type: str, error_message: str, archive_path: str):
-        """ファイルエラー発生時の処理"""
+        """ファイルエラー発生時の処理
+
+        Args:
+            error_type: エラーの種類。
+            error_message: エラーの詳細。
+            archive_path: 対象のパス。
+        """
         try:
             self.image_view.cancel_pending_zoom_navigation()
             logger.error(get_log_text("main_window_file_error_occurred", error_type=error_type, error_message=error_message, archive_path=archive_path))
-            
+
             # エラータイプに応じたユーザーフレンドリーなメッセージを生成
             if error_type == "file_not_found":
                 user_message = get_text("ui.archive_file_not_found").format(path=Path(archive_path).name)
@@ -2400,17 +3005,23 @@ class MainWindow(QMainWindow):
                 user_message = get_text("ui.archive_no_longer_accessible").format(archive_name=archive_name)
             else:
                 user_message = get_text("ui.file_loading_error").format(error=error_message)
-            
+
             # センターメッセージでエラーを表示
             self.show_center_message(user_message)
-            
+
         except Exception as e:
+            # エラー表示そのものが失敗したらログして、汎用の文言に戻す。
             logger.error(get_log_text("main_window_error_in_error_handler", error=e))
             # フォールバック：汎用エラーメッセージ
             self.show_center_message(get_text("ui.unexpected_error"))
 
     def on_image_loaded(self, file, image):
-        """画像が読み込まれた時の処理"""
+        """画像が読み込まれた時の処理
+
+        Args:
+            file: 読み込んだファイル。
+            image: 読み込んだ画像。
+        """
         try:
             if not image:
                 self.image_view.cancel_pending_zoom_navigation()
@@ -2432,7 +3043,9 @@ class MainWindow(QMainWindow):
             # UIの更新を非同期で実行
             QTimer.singleShot(0, self._update_ui_after_image_load)
         except Exception as e:
+            # 画像を画面へ載せられないときはログして、表示更新をやめる。
             logger.error(get_log_text("main_window_error_in_image_loaded", error=e))
+
     def _update_ui_after_image_load(self):
         """画像読み込み後のUI更新処理"""
         try:
@@ -2449,9 +3062,15 @@ class MainWindow(QMainWindow):
             # プラグインへ現在位置を通知
             self._notify_plugin_current_changed()
         except Exception as e:
+            # 画像表示後の画面更新に失敗したらログして、更新をやめる。
             logger.error(get_log_text("main_window_error_in_ui_update", error=e))
+
     def update_image(self, *, preserve_zoom_navigation: bool = False):
-        """現在の画像を表示"""
+        """現在の画像を表示
+
+        Args:
+            preserve_zoom_navigation: 拡大中の移動予約を残すとき True。
+        """
         if not preserve_zoom_navigation:
             self.image_view.cancel_pending_zoom_navigation()
         logger.info(get_log_text("debug_update_image_called", current_index=self.file_handler.current_index if self.file_handler else -1))
@@ -2504,8 +3123,13 @@ class MainWindow(QMainWindow):
             logger.warning(get_log_text("main_window_no_image_to_display"))
             self.setWindowTitle(get_text('app_name'))
             self.image_view.set_image(None)
+
     def get_current_title(self):
-        """ウィンドウタイトルを生成"""
+        """ウィンドウタイトルを生成
+
+        Returns:
+            ウィンドウタイトル。
+        """
         if not self.file_handler or not self.file_handler.current_files:
             return get_text('app_name')
         file = self.file_handler.current_files[self.file_handler.current_index]
@@ -2520,6 +3144,7 @@ class MainWindow(QMainWindow):
             start = self._spread_display_start(self.file_handler.current_index)
             return f"{get_text('app_name')} - {filename} {start + 1}-{start + 2}/{total}"
         return f"{get_text('app_name')} - {filename} {current}/{total}"
+
     def next_page(self):
         """次のページへ"""
         logger.info(get_log_text("debug_next_page_called", current_index=self.file_handler.current_index if self.file_handler else -1, total_files=len(self.file_handler.current_files) if self.file_handler else 0))
@@ -2557,6 +3182,7 @@ class MainWindow(QMainWindow):
             logger.info(get_log_text("debug_next_page_failed", current_index=self.file_handler.current_index, total_files=len(self.file_handler.current_files)))
             # 改ページが失敗した場合は読み込みフラグをリセット
             self.image_view._is_loading = False
+
     def prev_page(self):
         """前のページへ"""
         if self.image_view.try_zoom_navigation("previous"):
@@ -2588,22 +3214,27 @@ class MainWindow(QMainWindow):
             logger.info(get_log_text("main_window_already_at_first_page"))
             # 改ページが失敗した場合は読み込みフラグをリセット
             self.image_view._is_loading = False
+
     def zoom_in(self):
         """Zoom in"""
         self.image_view.zoom_in()
+
     def zoom_out(self):
         """Zoom out"""
         self.image_view.zoom_out()
+
     def rotate_right(self):
         """右回転（90度）"""
         self.current_rotation_angle = (self.current_rotation_angle + 90) % 360
         self.image_view.set_rotation(self.current_rotation_angle)
         logger.info(get_log_text("main_window_rotate_right", new_angle=self.current_rotation_angle))
+
     def rotate_left(self):
         """左回転（90度）"""
         self.current_rotation_angle = (self.current_rotation_angle - 90) % 360
         self.image_view.set_rotation(self.current_rotation_angle)
         logger.info(get_log_text("main_window_rotate_left", new_angle=self.current_rotation_angle))
+
     def next_file(self):
         """次のファイル"""
         if not self.file_handler:
@@ -2620,6 +3251,7 @@ class MainWindow(QMainWindow):
         if moved:
             self.current_page = self.file_handler.current_index + 1
             self.update_image()
+
     def prev_file(self):
         """前のファイル"""
         if not self.file_handler:
@@ -2681,12 +3313,22 @@ class MainWindow(QMainWindow):
             self._update_page_slider()
 
     def _on_page_slider_dock_visibility_changed(self, visible):
+        """ページスライダードックの表示に合わせてメニューを更新する。
+
+        Args:
+            visible: 表示されたとき True。
+        """
         if hasattr(self, "page_slider_action"):
             self.page_slider_action.setChecked(visible)
         if visible:
             self._update_page_slider()
 
     def _on_page_slider_floating(self, floating):
+        """ページスライダーの浮動に合わせて、表示の大きさを変える。
+
+        Args:
+            floating: 浮動したとき True。
+        """
         if not hasattr(self, "page_slider"):
             return
         self.page_slider.set_compact(not floating)
@@ -2715,7 +3357,7 @@ class MainWindow(QMainWindow):
             else:
                 # ファイルがない場合はダイアログを閉じる
                 self.image_list_dialog.close()
-    
+
     def _update_image_slide_sidebar(self):
         """画像スライドサイドバーを更新"""
         if hasattr(self, 'image_slide_sidebar') and self.image_slide_sidebar:
@@ -2723,13 +3365,13 @@ class MainWindow(QMainWindow):
             if not self.image_slide_dock.isVisible():
                 logger.info(get_log_text("main_window_image_slide_sidebar_update_skipped_not_visible"))
                 return
-                
+
             if self.file_handler and self.file_handler.current_files:
                 self.image_slide_sidebar.update_file_list(self.file_handler)
                 self.image_slide_sidebar.set_current_page(self.file_handler.current_index)
             else:
                 self.image_slide_sidebar.update_file_list(None)
-    
+
     def _update_image_slide_sidebar_on_show(self):
         """画像スライドサイドバーが表示された時の更新処理"""
         if hasattr(self, 'image_slide_sidebar') and self.image_slide_sidebar:
@@ -2737,7 +3379,7 @@ class MainWindow(QMainWindow):
                 # サイドバーが表示された時に最新のファイル情報で更新
                 self.image_slide_sidebar.update_file_list(self.file_handler)
                 self.image_slide_sidebar.set_current_page(self.file_handler.current_index)
-    
+
     def toggle_fullscreen(self):
         """フルスクリーンの切り替え"""
         if self.is_fullscreen:
@@ -2762,12 +3404,17 @@ class MainWindow(QMainWindow):
             # フルスクリーン時はマウスロックを自動的に有効にする
             self.mouse_lock_state.fullscreen = True
             self._sync_mouse_lock_state()
-            
+
             # フルスクリーン時はダイアログを閉じる
             self._close_dialogs_on_fullscreen()
         self._sync_tab_bar()
 
     def _builtin_docks(self):
+        """本体ドックと、対応するメニューアクションの名前を返す。
+
+        Returns:
+            ドック名とアクション名の組。
+        """
         return (
             ("bookmark_dock", "bookmark_action"),
             ("history_dock", "history_action"),
@@ -2777,6 +3424,7 @@ class MainWindow(QMainWindow):
         )
 
     def _snapshot_pre_fullscreen(self):
+        """フルスクリーン前の最大化と、見えているドックを控える。"""
         docks = []
         for name, _action in self._builtin_docks():
             dock = getattr(self, name, None)
@@ -2792,6 +3440,7 @@ class MainWindow(QMainWindow):
         }
 
     def _restore_after_fullscreen(self):
+        """フルスクリーン前のウィンドウとドックを戻す。"""
         state = getattr(self, "_fullscreen_restore", None)
         if not state:
             return
@@ -2818,17 +3467,17 @@ class MainWindow(QMainWindow):
         # 画像一覧ダイアログを閉じる
         if self.image_list_dialog and not self.image_list_dialog.isHidden():
             self.image_list_dialog.close()
-        
+
         # その他の開いているダイアログを閉じる
         for child in self.findChildren(QDialog):
             if child.isVisible() and child is not self.image_list_dialog:
                 child.close()
-        
+
         # 履歴、ブックマーク、画像スライドのドックを閉じる
         if hasattr(self, 'bookmark_dock') and self.bookmark_dock.isVisible():
             self.bookmark_dock.hide()
             self.bookmark_action.setChecked(False)
-        
+
         if hasattr(self, 'history_dock') and self.history_dock.isVisible():
             self.history_dock.hide()
             self.history_action.setChecked(False)
@@ -2836,7 +3485,7 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'tab_list_dock') and self.tab_list_dock.isVisible():
             self.tab_list_dock.hide()
             self.tab_list_action.setChecked(False)
-        
+
         if hasattr(self, 'image_slide_dock') and self.image_slide_dock.isVisible():
             self.image_slide_dock.hide()
             self.image_slide_action.setChecked(False)
@@ -2845,7 +3494,7 @@ class MainWindow(QMainWindow):
             if not self.config.viewer.get("show_page_slider_in_fullscreen", False):
                 self.page_slider_dock.hide()
                 self.page_slider_action.setChecked(False)
-        
+
         session = getattr(self, "plugin_session", None)
         if session is not None:
             hidden = session.hide_visible_sidebars()
@@ -2853,6 +3502,11 @@ class MainWindow(QMainWindow):
                 self._fullscreen_restore["plugin_sidebars"] = hidden
 
     def mousePressEvent(self, event):
+        """マウス押下をショートカットとして扱う。
+
+        Args:
+            event: マウス押下イベント。
+        """
         shortcuts = self.config.shortcuts
         if not shortcuts:
             super().mousePressEvent(event)
@@ -2913,8 +3567,16 @@ class MainWindow(QMainWindow):
                 event.accept()
                 return
         super().mousePressEvent(event)
+
     def mouse_to_string(self, event):
-        """マウスイベントを文字列に変換"""
+        """マウスイベントを文字列に変換
+
+        Args:
+            event: マウスイベント。
+
+        Returns:
+            ボタンの文字列。該当が無ければ空。
+        """
         if event.button() == Qt.LeftButton:
             return MouseButtons.LEFT.value
         elif event.button() == Qt.RightButton:
@@ -2926,8 +3588,13 @@ class MainWindow(QMainWindow):
         elif event.button() == Qt.XButton2:
             return MouseButtons.X2.value
         return ""
+
     def mouseMoveEvent(self, event):
-        """マウス移動時の処理"""
+        """マウス移動時の処理
+
+        Args:
+            event: マウス移動イベント。
+        """
         if self.mouse_locked and self.mouse_lock_center:
             # ジェスチャーがアクティブな場合はマウスロックを一時的にバイパス
             if self.gesture_active:
@@ -2943,14 +3610,25 @@ class MainWindow(QMainWindow):
                 event.accept()
         else:
             super().mouseMoveEvent(event)
+
     def mouseReleaseEvent(self, event):
+        """マウスを離したとき、一時ロックの解放を試す。
+
+        Args:
+            event: マウス離しイベント。
+        """
         mouse_text = self.mouse_to_string(event)
         if self.release_temporary_mouse_lock(mouse_text):
             event.accept()
             return
         super().mouseReleaseEvent(event)
+
     def wheelEvent(self, event):
-        """ホイールイベントをショートカットとして処理"""
+        """ホイールイベントをショートカットとして処理
+
+        Args:
+            event: ホイールイベント。
+        """
         shortcuts = self.config.shortcuts
         if not shortcuts:
             super().wheelEvent(event)
@@ -2972,6 +3650,7 @@ class MainWindow(QMainWindow):
                 event.accept()
                 return
         super().wheelEvent(event)
+
     def setup_shortcuts(self):
         """ショートカットキーの設定"""
         # 既存のアクションをクリア
@@ -2980,7 +3659,13 @@ class MainWindow(QMainWindow):
         # QActionへのショートカット割り当ては廃止
         # すべてkeyPressEventで判定
         # 既存のkeyPressEventで全てのショートカットを判定するのでOK
+
     def keyPressEvent(self, event):
+        """キー押下をショートカットと一時ロックとして扱う。
+
+        Args:
+            event: キー押下イベント。
+        """
         shortcuts = self.config.shortcuts
         if not shortcuts:
             super().keyPressEvent(event)
@@ -3108,6 +3793,11 @@ class MainWindow(QMainWindow):
         super().keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
+        """キーを離したとき、一時マウスロックの解放を試す。
+
+        Args:
+            event: キー離しイベント。
+        """
         key_text = key_to_string(event)
         if self.release_temporary_mouse_lock(key_text):
             event.accept()
@@ -3128,52 +3818,62 @@ class MainWindow(QMainWindow):
     #     # config.yamlに即時保存
     #     config_path = get_project_root() / "config.yaml"
     #     with open(config_path, "w", encoding="utf-8") as f:
-    #         yaml.dump(self.config.to_dict(), f, allow_unicode=True) 
+    #         yaml.dump(self.config.to_dict(), f, allow_unicode=True)
+
     def toggle_always_on_top(self):
+        """最前面表示を切り替え、設定へ保存する。"""
         is_checked = self.always_on_top_action.isChecked()
         self.setWindowFlag(Qt.WindowStaysOnTopHint, is_checked)
         self.show()  # フラグ変更後はshow()で反映
         self.config.window["always_on_top"] = is_checked
-        self.save_config() 
+        self.save_config()
+
     def show_image_list_dialog(self):
+        """画像一覧をモードレスで出す。開いていれば前面にする。"""
         if not self.file_handler or not self.file_handler.current_files:
             return
-        
+
         # 既にダイアログが開いている場合は前面に出す
         if self.image_list_dialog and not self.image_list_dialog.isHidden():
             self.image_list_dialog.raise_()
             self.image_list_dialog.activateWindow()
             return
-        
+
         def on_select(idx):
+            """一覧で選んだページを表示する。
+
+            Args:
+                idx: 0 始まりのページ位置。
+            """
             self._clear_spread_force_single()
             self.file_handler.current_index = idx
             self.current_page = idx + 1
             self.update_image()
             self._update_page_slider()
-        
+
         self.image_list_dialog = ImageListDialog([str(f) for f in self.file_handler.current_files], self, on_select=on_select, file_handler=self.file_handler, config=self.config)
-        
+
         # ダイアログが閉じられた時に参照をクリア
         self.image_list_dialog.finished.connect(lambda: setattr(self, 'image_list_dialog', None))
-        
+
         self.image_list_dialog.show()  # モードレスダイアログとして表示
+
     def show_gesture_dialog(self):
         """ジェスチャー設定ダイアログを表示"""
         dialog = GestureDialog(self.config, self)
         if dialog.exec() == QDialog.Accepted:
             self.config.gesture_map = dialog.get_gesture_map()
             self.save_config()
-    
+
     def open_manual(self):
         """マニュアルをデフォルトブラウザで開く"""
         try:
             # 現在の言語設定を取得
             from ez_co.utils.language_manager import language_manager
             import locale
-            
+
             current_lang = language_manager.get_current_language()
-            
+
             # 言語に応じてファイル名を決定
             if current_lang == "ja":
                 manual_file = "Manual(JP).html"
@@ -3186,21 +3886,22 @@ class MainWindow(QMainWindow):
                     else:
                         manual_file = "Manual(EN).html"
                 except Exception:
+                    # システム言語が取れないときは日本語のマニュアルに戻す。
                     manual_file = "Manual(JP).html"  # デフォルトは日本語
             else:
                 manual_file = "Manual(EN).html"
-            
+
             # マニュアルファイルのパスを構築
             project_root = get_project_root()
-            
+
             # 実行環境に応じてパスを選択
             if is_nuitka():
                 # 実行版: UserManual/Manual(JP).html
                 manual_path = project_root / "UserManual" / manual_file
             else:
-                # 開発版: resources/UserManual/Manual(JP).html  
+                # 開発版: resources/UserManual/Manual(JP).html
                 manual_path = project_root / "resources" / "UserManual" / manual_file
-            
+
             if manual_path.exists():
                 # file://スキームでURLを構築
                 manual_url = f"file:///{manual_path.as_posix()}"
@@ -3214,8 +3915,9 @@ class MainWindow(QMainWindow):
                     get_text("ui.manual_not_found", file=manual_file)
                 )
                 logger.warning(get_log_text("main_window_manual_not_found", path=manual_path))
-                
+
         except Exception as e:
+            # マニュアルを開けないときはログして、失敗を知らせる。
             logger.error(get_log_text("main_window_manual_open_failed", error=str(e)))
             QMessageBox.critical(
                 self,
@@ -3226,7 +3928,7 @@ class MainWindow(QMainWindow):
     def show_about_dialog(self):
         """ヘルプのバージョン表示。"""
         AboutDialog(self).exec()
-    
+
     def show_plugin_dialog(self):
         """プラグイン設定ダイアログを開き、適用後にセッションへ載せ替えを任せる。"""
         dialog = PluginDialog(self.config, self)
@@ -3250,7 +3952,11 @@ class MainWindow(QMainWindow):
         self._reload_after_plugin_config(reload_sources=reload_sources)
 
     def _reload_after_plugin_config(self, reload_sources=False):
-        """プラグイン設定変更後の再読込をセッションに渡す。"""
+        """プラグイン設定変更後の再読込をセッションに渡す。
+
+        Args:
+            reload_sources: 開いているファイルも読み直すとき True。
+        """
         session = getattr(self, "plugin_session", None)
         if session is not None:
             session.after_config_change(reload_sources=reload_sources)
@@ -3270,7 +3976,14 @@ class MainWindow(QMainWindow):
             self._reload_current_pane_files()
 
     def _reload_current_pane_files(self, page=None):
-        """現在のタブのファイルを再読み込みする。"""
+        """現在のタブのファイルを再読み込みする。
+
+        Args:
+            page: 開き直すページ。無ければ現在ページ。
+
+        Returns:
+            再読み込みできたとき True。
+        """
         if not self.file_handler or not self.file_handler.current_files:
             return False
         comic = self._get_current_comic_path()
@@ -3280,6 +3993,7 @@ class MainWindow(QMainWindow):
             try:
                 page = int(page)
             except (TypeError, ValueError):
+                # ページ番号にできないときは、いま開いているページに戻す。
                 page = self.file_handler.current_index + 1
         else:
             page = self.file_handler.current_index + 1
@@ -3307,26 +4021,45 @@ class MainWindow(QMainWindow):
         self._update_image_slide_sidebar()
         self._sync_current_tab_title()
         return True
+
     def _resizeEvent_with_overlay(self, event):
+        """リサイズに合わせてオーバーレイと中央メッセージの位置を更新する。
+
+        Args:
+            event: リサイズイベント。
+        """
         if hasattr(super(), 'resizeEvent'):
             super().resizeEvent(event)
         self.gesture_overlay.setGeometry(self.rect())
         self.gesture_overlay.raise_()
         # 中央メッセージの位置を更新
         self._update_center_message_position()
+
     def show_overlay_message(self, message, rect=None):
-        """オーバーレイメッセージを表示"""
+        """オーバーレイメッセージを表示
+
+        Args:
+            message: 出す文言。
+            rect: 表示位置。
+        """
         self.gesture_overlay.show_message(message, rect)
+
     def hide_overlay_message(self):
         """オーバーレイメッセージを非表示"""
         self.gesture_overlay.hide_message()
+
     def _update_center_message_position(self):
+        """現在タブの中央メッセージの位置を更新する。"""
         pane = self.current_pane
         if pane is not None:
             pane._update_center_message_position()
 
     def show_center_message(self, message):
-        """現在のタブ中央にメッセージを表示（背景なし）"""
+        """現在のタブ中央にメッセージを表示（背景なし）
+
+        Args:
+            message: 出す文言。
+        """
         if hasattr(self, 'image_view') and self.image_view:
             self.image_view.set_image(None)
         self.setWindowTitle(get_text('app_name'))
@@ -3346,7 +4079,19 @@ class MainWindow(QMainWindow):
         pane = self.current_pane
         if pane is not None:
             pane.hide_center_message()
+
     def _clamp_window_geometry(self, x: int, y: int, width: int, height: int):
+        """ウィンドウ位置と大きさを、最小サイズと画面内へ収める。
+
+        Args:
+            x: 左。
+            y: 上。
+            width: 幅。
+            height: 高さ。
+
+        Returns:
+            収めた左、上、幅、高さ。
+        """
         min_width = int(self.config.window.get("min_width", 400))
         min_height = int(self.config.window.get("min_height", 300))
         width = max(width, min_width)
@@ -3361,6 +4106,7 @@ class MainWindow(QMainWindow):
         return x, y, width, height
 
     def _apply_window_geometry(self):
+        """設定の位置と大きさでウィンドウを置く。"""
         self.setMinimumSize(
             self.config.window["min_width"],
             self.config.window["min_height"],
@@ -3381,12 +4127,22 @@ class MainWindow(QMainWindow):
         self._window_was_maximized = restore_maximized or self._window_was_maximized
 
     def showEvent(self, event):
+        """表示後、予約されていれば最大化する。
+
+        Args:
+            event: 表示イベント。
+        """
         super().showEvent(event)
         if self._pending_maximize:
             self._pending_maximize = False
             QTimer.singleShot(0, self.showMaximized)
 
     def _is_window_maximized(self) -> bool:
+        """ウィンドウが最大化されているかを返す。
+
+        Returns:
+            最大化なら True。
+        """
         return bool(
             self.isMaximized()
             or self._window_was_maximized
@@ -3394,6 +4150,7 @@ class MainWindow(QMainWindow):
         )
 
     def _confirm_unmaximize(self):
+        """最大化が解けていれば、その状態を設定へ残す。"""
         if self._closing or self.is_fullscreen or not self.isVisible():
             return
         if not self.isMaximized() and not (self.windowState() & Qt.WindowState.WindowMaximized):
@@ -3401,6 +4158,7 @@ class MainWindow(QMainWindow):
             self.config.window["maximized"] = False
 
     def _store_window_geometry(self):
+        """フルスクリーンでなければ、位置と最大化を設定へ残す。"""
         if self.is_fullscreen:
             return
         maximized = self._is_window_maximized()
@@ -3412,6 +4170,11 @@ class MainWindow(QMainWindow):
         self.config.window["height"] = geo.height()
 
     def closeEvent(self, event):
+        """位置と履歴を保存し、タブを片付けてから閉じる。
+
+        Args:
+            event: 閉じるイベント。
+        """
         self._closing = True
         self._store_window_geometry()
         # 現在のファイルの履歴を保存
@@ -3429,6 +4192,7 @@ class MainWindow(QMainWindow):
             logger.info(get_log_text("main_window_mouse_lock_disabled_on_close"))
         self.save_config()
         super().closeEvent(event)
+
     def toggle_bookmark_dock(self):
         """ブックマークドックの表示/非表示を切り替え"""
         if self.bookmark_dock.isVisible():
@@ -3437,6 +4201,7 @@ class MainWindow(QMainWindow):
         else:
             self.bookmark_dock.show()
             self.bookmark_action.setChecked(True)
+
     def toggle_history_dock(self):
         """履歴ドックの表示/非表示を切り替え"""
         if self.history_dock.isVisible():
@@ -3447,6 +4212,7 @@ class MainWindow(QMainWindow):
             self.history_action.setChecked(True)
 
     def toggle_tab_list_dock(self):
+        """タブ一覧ドックの表示を切り替える。"""
         if self.tab_list_dock.isVisible():
             self.tab_list_dock.hide()
             self.tab_list_action.setChecked(False)
@@ -3454,7 +4220,7 @@ class MainWindow(QMainWindow):
             self.tab_list_dock.show()
             self.tab_list_action.setChecked(True)
             self._refresh_tab_list()
-    
+
     def toggle_image_slide_dock(self):
         """画像スライドドックの表示/非表示を切り替え"""
         if self.image_slide_dock.isVisible():
@@ -3465,9 +4231,13 @@ class MainWindow(QMainWindow):
             self.image_slide_action.setChecked(True)
             # サイドバーが表示された時に初期ロードを実行
             self._update_image_slide_sidebar_on_show()
-    
+
     def on_image_slide_page_selected(self, page_index):
-        """画像スライドサイドバーでページが選択された時の処理"""
+        """画像スライドサイドバーでページが選択された時の処理
+
+        Args:
+            page_index: 選ばれたページの位置。
+        """
         if self.file_handler and 0 <= page_index < len(self.file_handler.current_files):
             self._clear_spread_force_single()
             self.file_handler.current_index = page_index
@@ -3475,17 +4245,28 @@ class MainWindow(QMainWindow):
             self.update_image()
             self._update_page_slider()
             logger.info(get_log_text("main_window_page_selected_from_slide", page=self.current_page))
-    
+
     def on_image_slide_dock_visibility_changed(self, visible):
-        """画像スライドドックの可視性変更時の処理"""
+        """画像スライドドックの可視性変更時の処理
+
+        Args:
+            visible: 表示されたとき True。
+        """
         # メニューアクションの同期
         self.image_slide_action.setChecked(visible)
-        
+
         # サイドバーが表示された時にサムネイルロードを開始
         if visible:
             self._update_image_slide_sidebar_on_show()
+
     def open_bookmark(self, file_path: str, page_number: int, new_tab: bool = False):
-        """ブックマークを開く"""
+        """ブックマークを開く
+
+        Args:
+            file_path: 開くパス。
+            page_number: 開くページ。
+            new_tab: 新しいタブで開くとき True。
+        """
         try:
             if new_tab:
                 self._ensure_tab_for_new_open()
@@ -3517,10 +4298,18 @@ class MainWindow(QMainWindow):
             self.setFocus()
             self.activateWindow()
         except Exception as e:
+            # ブックマークを開けないときはログして、失敗を知らせる。
             logger.error(get_log_text("main_window_failed_open_bookmark", error=e))
             QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.bookmark_open_error").format(error=str(e)))
+
     def open_history(self, file_path: str, page_number: int, new_tab: bool = False):
-        """履歴を開く"""
+        """履歴を開く
+
+        Args:
+            file_path: 開くパス。
+            page_number: 開くページ。
+            new_tab: 新しいタブで開くとき True。
+        """
         try:
             if new_tab:
                 self._ensure_tab_for_new_open()
@@ -3555,8 +4344,10 @@ class MainWindow(QMainWindow):
             self.setFocus()
             self.activateWindow()
         except Exception as e:
+            # 履歴を開けないときはログして、失敗を知らせる。
             logger.error(get_log_text("main_window_failed_open_history", error=e))
             QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.history_open_error").format(error=str(e)))
+
     def reopen_last_file(self):
         """最後に開いたファイルを開く"""
         try:
@@ -3566,13 +4357,29 @@ class MainWindow(QMainWindow):
             else:
                 QMessageBox.information(self, get_text("dialogs.information"), get_text("ui.no_history"))
         except Exception as e:
+            # 最後のファイルを開き直せないときはログして、失敗を知らせる。
             logger.error(get_log_text("main_window_failed_reopen_last_file", error=e))
             QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.last_file_open_error").format(error=str(e)))
+
     def set_current_file(self, file_path: str, page_number: int):
-        """現在のファイルとページを設定（ブックマークツールバー用）"""
+        """現在のファイルとページを設定（ブックマークツールバー用）
+
+        Args:
+            file_path: ブックマーク用のパス。
+            page_number: ブックマーク用のページ。
+        """
         self.bookmark_toolbar.current_file = file_path
         self.bookmark_toolbar.current_page = page_number
+
     def _check_file_exists(self, file_path: str) -> bool:
+        """実ファイルかアーカイブ内のパスが存在するかを返す。
+
+        Args:
+            file_path: 調べるパス。
+
+        Returns:
+            存在するとき True。
+        """
         from ez_co.handlers.virtual_path_handler import VirtualPathHandler
         logger.info(get_log_text("main_window_exist_check_called", file_path=file_path))
         if VirtualPathHandler.is_virtual_path(file_path):
@@ -3600,95 +4407,104 @@ class MainWindow(QMainWindow):
             return exists
         logger.warning(get_log_text("main_window_file_not_found_final", file_path=file_path))
         return False
+
     def load_file(self, file_path: str, page_number: int = 1, restore_history: bool = True):
-        """ファイルを読み込み"""
+        """ファイルを読み込み
+
+        Args:
+            file_path: 開くパス。
+            page_number: 開くページ。
+            restore_history: 履歴のページを使うとき True。
+        """
         if is_session_file(file_path):
             self.restore_session(file_path)
             return
         try:
             # メッセージを非表示
             self.hide_center_message()
-            
+
             # file_handlerが初期化されていない場合は初期化
             self._ensure_file_handler()
-            
+
             # 同じファイルが既に開いている場合は、ページ番号のみ更新
-            if (hasattr(self, 'current_file_path') and 
-                self.current_file_path and 
+            if (hasattr(self, 'current_file_path') and
+                self.current_file_path and
                 self.current_file_path == file_path):
                 logger.info(get_log_text("main_window_file_already_open", file_path=file_path))
                 self.current_page = page_number
                 self.load_current_page()
                 return
-            
+
             # 新しいファイルを読み込む前に、現在のファイルの履歴を保存
             self.save_current_file_history()
-            
+
             # 履歴からページを復元（page_numberが1の場合のみ）
             if restore_history and page_number == 1:
                 page_number = self._restore_page_from_history(file_path)
-            
+
             # 新しいファイルを読み込み
             self.current_file_path = file_path
             self.current_page = page_number
-            
+
             # 新しいファイルが開かれる時は回転状態をリセット
             self.current_rotation_angle = 0
-            
+
             # アーカイブの状態をクリア（新しいファイルを開く際に再設定される）
             if self.file_handler:
                 self.file_handler.current_archive = None
                 self.file_handler.current_archive_path = None
-            
+
             # ファイルが開かれた場合はbase_dir_pathをクリア
             self.base_dir_path = None
-            
+
             # ファイルハンドラーでファイルを開く
             success = self.file_handler.open_file(file_path)
-            
+
             if success:
                 # ページ数を取得
                 total_pages = self.file_handler.get_total_pages()
-                
+
                 # ページ番号を調整
                 if page_number > total_pages:
                     page_number = total_pages
                 elif page_number < 1:
                     page_number = 1
-                    
+
                 self.current_page = page_number
                 self.total_pages = total_pages
-                
+
                 # UIを更新
                 self.update_title()
                 self._sync_current_tab_title()
                 self.update_page_display()
                 self.load_current_page()
-                
+
                 # ファイルが正常に読み込まれた後に履歴を保存
                 self.save_current_file_history()
-                
+
                 # ツールバーを更新
                 if hasattr(self, 'bookmark_toolbar'):
                     self.bookmark_toolbar.refresh_bookmarks()
                 if hasattr(self, 'history_toolbar'):
                     self.history_toolbar.refresh_history()
-                
+
                 # メインウィンドウにフォーカスを戻す（ショートカットが効くように）
                 self.setFocus()
                 self.activateWindow()
-                
+
                 # ページスライダーダイアログの更新
                 self._update_page_slider()
-                
+
                 logger.info(get_log_text("main_window_file_loaded_successfully", file_path=file_path, page_number=page_number))
             else:
                 logger.error(get_log_text("main_window_failed_to_load_file", file_path=file_path))
                 # ファイルが開けなかった場合のメッセージ表示
                 self.show_unsupported_file_message()
         except Exception as e:
+            # ファイルの読み込みに失敗したらログして、非対応のメッセージを出す。
             logger.error(get_log_text("main_window_error_loading_file", error=e))
             self.show_unsupported_file_message()
+
     def update_title(self):
         """ウィンドウタイトルを更新"""
         if hasattr(self, 'current_file_path') and self.current_file_path:
@@ -3697,6 +4513,7 @@ class MainWindow(QMainWindow):
             self.setWindowTitle(f"{get_text('app_name')} - {file_name}{page_info}")
         else:
             self.setWindowTitle(get_text('app_name'))
+
     def update_page_display(self):
         """ページ表示を更新"""
         if hasattr(self, 'current_page') and hasattr(self, 'total_pages'):
@@ -3707,9 +4524,10 @@ class MainWindow(QMainWindow):
                     self.page_label.setText(f"{start + 1}-{start + 2} / {self.total_pages}")
                 else:
                     self.page_label.setText(f"{self.current_page} / {self.total_pages}")
+
     def load_current_page(self):
         """現在のページを読み込み"""
-        if (hasattr(self, 'file_handler') and self.file_handler and 
+        if (hasattr(self, 'file_handler') and self.file_handler and
             hasattr(self, 'current_page') and self.current_page):
             target_index = self.current_page - 1
             self._clear_spread_force_single()
@@ -3718,12 +4536,13 @@ class MainWindow(QMainWindow):
             if success:
                 self.update_image()
             else:
-                QMessageBox.warning(self, get_text("dialogs.warning"), get_text("ui.page_not_exists").format(page_number=self.current_page)) 
+                QMessageBox.warning(self, get_text("dialogs.warning"), get_text("ui.page_not_exists").format(page_number=self.current_page))
+
     def save_current_file_history(self):
         """現在のファイルの履歴を保存"""
-        if (hasattr(self, 'current_file_path') and self.current_file_path and 
-            hasattr(self, 'file_handler') and self.file_handler and 
-            hasattr(self.file_handler, 'current_index') and 
+        if (hasattr(self, 'current_file_path') and self.current_file_path and
+            hasattr(self, 'file_handler') and self.file_handler and
+            hasattr(self.file_handler, 'current_index') and
             self.file_handler.current_files):  # ファイルが実際に読み込まれているかチェック
             # 表示可能なファイルが0件の場合は履歴に保存しない
             if len(self.file_handler.current_files) == 0:
@@ -3742,7 +4561,16 @@ class MainWindow(QMainWindow):
             # フォルダかどうかを判定してentry_typeを設定
             entry_type = EntryType.FOLDER.value if Path(file_path).is_dir() else EntryType.FILE.value
             self.add_to_history(file_path, page_number, entry_type=entry_type)
+
     def _encrypted_password_for_history(self, file_path: str):
+        """履歴へ残すアーカイブパスワードを暗号化する。
+
+        Args:
+            file_path: 対象のパス。
+
+        Returns:
+            暗号化したパスワード。無ければ None。
+        """
         from ez_co.handlers.archive_password import get_session_password
         from ez_co.handlers.virtual_path_handler import VirtualPathHandler
         from ez_co.utils.password_protect import encrypt_secret
@@ -3761,12 +4589,20 @@ class MainWindow(QMainWindow):
                 try:
                     return encrypt_secret(password)
                 except Exception as exc:
+                    # パスワードを暗号化できないときはログして、履歴には残さない。
                     logger.error(get_log_text("main_window_archive_password_encrypt_failed", error=exc))
                     return None
         return None
 
     def add_to_history(self, file_path: str, page_number: int, title: str = None, entry_type: str = EntryType.FILE.value):
-        """履歴に追加"""
+        """履歴に追加
+
+        Args:
+            file_path: 履歴へ残すパス。
+            page_number: ページ番号。
+            title: 題名。無ければパスから決める。
+            entry_type: 履歴の種類。
+        """
         try:
             if not title:
                 # virtual pathの場合（archive:〜形式）はアーカイブファイル名を使用
@@ -3806,7 +4642,9 @@ class MainWindow(QMainWindow):
             else:
                 logger.error(get_log_text("main_window_failed_add_history", file_path=file_path, page_number=page_number))
         except Exception as e:
+            # 履歴を追加できないときはログして、追加をやめる。
             logger.error(get_log_text("main_window_error_adding_history", error=e))
+
     def toggle_bookmark(self):
         """ブックマークの追加/削除を切り替え"""
         if not self.file_handler or not hasattr(self, 'current_file_path') or not self.current_file_path:
@@ -3839,11 +4677,12 @@ class MainWindow(QMainWindow):
                     archive_path, internal_path = VirtualPathHandler.parse_virtual_path(file_path)
                     title = archive_path.name
                 except Exception as e:
+                    # 仮想パスを解けないときはログして、パス全体の名前を題名に使う。
                     logger.error(f"virtual pathの解析に失敗: {file_path}, エラー: {e}")
                     title = Path(file_path).name
             else:
                 title = Path(file_path).name
-            
+
             # フォルダかどうかを判定してentry_typeを設定
             entry_type = EntryType.FOLDER.value if Path(file_path).is_dir() else EntryType.FILE.value
             success = self.db_manager.add_bookmark(file_path, page_number, title, current_folder_id, entry_type)
@@ -3852,10 +4691,16 @@ class MainWindow(QMainWindow):
                 QMessageBox.information(self, get_text("dialogs.information"), get_text("ui.bookmark_add_success"))
             else:
                 QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.bookmark_add_failed"))
+
     def set_page_mode(self, mode: str):
-        """ページモード設定"""
+        """ページモード設定
+
+        Args:
+            mode: 設定するページモード。
+        """
         self.config.display.page_mode = mode
-        self.image_view.set_page_mode(mode) 
+        self.image_view.set_page_mode(mode)
+
     def toggle_mouse_lock(self):
         """マウスロックの切り替え"""
         is_checked = self.mouse_lock_action.isChecked()
@@ -3865,6 +4710,14 @@ class MainWindow(QMainWindow):
         self.save_config()
 
     def press_temporary_mouse_lock(self, source: str) -> bool:
+        """ホールド用の入力なら、一時マウスロックを押す。
+
+        Args:
+            source: 押したボタンかキー。
+
+        Returns:
+            ロックを押したとき True。
+        """
         if source not in self.config.shortcuts.get(Actions.HOLD_MOUSE_LOCK.value, []):
             return False
         self.mouse_lock_state.press(source)
@@ -3872,6 +4725,14 @@ class MainWindow(QMainWindow):
         return True
 
     def release_temporary_mouse_lock(self, source: str) -> bool:
+        """押している一時ロックを、その入力で離す。
+
+        Args:
+            source: 離したボタンかキー。
+
+        Returns:
+            離したとき True。
+        """
         if source not in self.mouse_lock_state.held_sources:
             return False
         self.mouse_lock_state.release(source)
@@ -3879,15 +4740,18 @@ class MainWindow(QMainWindow):
         return True
 
     def clear_temporary_mouse_lock(self):
+        """一時マウスロックをすべて離す。"""
         self.mouse_lock_state.clear_temporary()
         self._sync_mouse_lock_state()
 
     def _apply_mouse_lock_config(self):
+        """設定のマウスロックを状態へ反映する。"""
         self.mouse_lock_state.clear_temporary()
         self.mouse_lock_state.persistent = bool(self.config.viewer.get("mouse_lock", False))
         self._sync_mouse_lock_state()
 
     def _sync_mouse_lock_state(self):
+        """ロック状態に合わせて、カーソルと相対移動を切り替える。"""
         if self.mouse_lock_state.locked:
             self.enable_mouse_lock()
             if self.mouse_locked:
@@ -3929,7 +4793,15 @@ class MainWindow(QMainWindow):
         logger.info(get_log_text("main_window_mouse_lock_disabled"))
 
     def eventFilter(self, obj, event):
-        """アプリケーションレベルでのイベントフィルタ"""
+        """アプリケーションレベルでのイベントフィルタ
+
+        Args:
+            obj: イベントの対象。
+            event: 受け取ったイベント。
+
+        Returns:
+            処理したとき True。それ以外は親の結果。
+        """
         if event.type() == QEvent.Type.KeyRelease:
             if self.release_temporary_mouse_lock(key_to_string(event)):
                 return True
@@ -3947,37 +4819,42 @@ class MainWindow(QMainWindow):
                     current_global_pos = QCursor.pos()
                     center_global_pos = self.mapToGlobal(self.mouse_lock_center)
                     mouse_delta = current_global_pos - center_global_pos
-                    
+
                     # 移動量が十分大きい場合のみ処理（微細な振動を防ぐ）
                     if abs(mouse_delta.x()) > 1 or abs(mouse_delta.y()) > 1:
                         # ImageViewがあり、拡大表示中の場合は画像移動を処理
-                        if (hasattr(self, 'image_view') and self.image_view and 
-                            hasattr(self.image_view, 'zoom_factor') and 
-                            self.image_view.zoom_factor > 1.0 and 
-                            hasattr(self.image_view, 'current_qimage') and 
+                        if (hasattr(self, 'image_view') and self.image_view and
+                            hasattr(self.image_view, 'zoom_factor') and
+                            self.image_view.zoom_factor > 1.0 and
+                            hasattr(self.image_view, 'current_qimage') and
                             self.image_view.current_qimage):
-                            
+
                             # 移動感度を適用
                             sensitivity = self.config.viewer.get("image_move_sensitivity", 2.0) if self.config else 2.0
                             adjusted_delta = mouse_delta * sensitivity
-                            
+
                             # 画像のオフセットを更新（マウス移動と逆方向）
                             self.image_view.image_offset -= adjusted_delta
-                            
+
                             # 画像表示を更新
                             self.image_view.update_image_display()
-                            
-                            logger.info(get_log_text("main_window_mouse_lock_image_moved", 
-                                                   mouse_delta=mouse_delta, 
+
+                            logger.info(get_log_text("main_window_mouse_lock_image_moved",
+                                                   mouse_delta=mouse_delta,
                                                    adjusted_delta=adjusted_delta,
                                                    new_offset=self.image_view.image_offset))
-                    
+
                     # マウスを中心位置に戻す
                     QCursor.setPos(center_global_pos)
                     return True  # イベントを消費
         return super().eventFilter(obj, event)
+
     def changeEvent(self, event):
-        """ウィンドウ状態変更時の処理"""
+        """ウィンドウ状態変更時の処理
+
+        Args:
+            event: 状態変更イベント。
+        """
         super().changeEvent(event)
         if event.type() == QEvent.Type.ActivationChange:
             if self.isActiveWindow():
@@ -3997,22 +4874,36 @@ class MainWindow(QMainWindow):
             if not self.isActiveWindow() and self.mouse_locked:
                 self.mouse_lock_state.clear_temporary()
                 self.disable_mouse_lock()
+
     def focusOutEvent(self, event):
-        """フォーカスが外れた時の処理"""
+        """フォーカスが外れた時の処理
+
+        Args:
+            event: フォーカスが外れたイベント。
+        """
         super().focusOutEvent(event)
         self.mouse_lock_state.clear_temporary()
         if self.mouse_locked:
             self.disable_mouse_lock()
 
     def focusInEvent(self, event):
+        """フォーカスが戻ったとき、マウスロックの状態を合わせる。
+
+        Args:
+            event: フォーカスイベント。
+        """
         super().focusInEvent(event)
         self._sync_mouse_lock_state()
-    
+
     def set_gesture_active(self, active: bool):
-        """ジェスチャーのアクティブ状態を設定"""
+        """ジェスチャーのアクティブ状態を設定
+
+        Args:
+            active: ジェスチャー中なら True。
+        """
         self.gesture_active = active
         logger.info(get_log_text("main_window_mouse_lock_gesture_active", gesture_active=active))
-    
+
     def rebuild_menu(self):
         """メニューを再構築（言語変更時など）"""
         menubar = self.menuBar()
@@ -4020,42 +4911,53 @@ class MainWindow(QMainWindow):
         self.setup_menu()
 
     def _restore_page_from_history(self, file_path: str) -> int:
-        """履歴からページ番号を復元"""
+        """履歴からページ番号を復元
+
+        Args:
+            file_path: 履歴を引くパス。
+
+        Returns:
+            復元したページ番号。使わないときは 1。
+        """
         if not self.config.history.get("restore_page_on_reopen", False):
             return 1
-        
+
         # フォルダかファイルかを判定
         entry_type = EntryType.FOLDER.value if Path(file_path).is_dir() else EntryType.FILE.value
-        
+
         # 履歴からページ番号を取得
         history_entry = self.db_manager.get_history_by_file_path(file_path, entry_type)
         if history_entry:
             page_number = history_entry['page_number']
             logger.info(get_log_text("main_window_restored_page_from_history", file_path=file_path, page_number=page_number))
             return page_number
-        
+
         # 履歴がない場合は1ページ目から
         return 1
-    
+
     def get_current_folder_path(self) -> Optional[str]:
-        """現在開いているフォルダのパスを取得"""
+        """現在開いているフォルダのパスを取得
+
+        Returns:
+            フォルダのパス。開いていなければ None。
+        """
         try:
             if not self.file_handler or not self.file_handler.current_files:
                 return None
-            
+
             # アーカイブ内の場合
             if self.file_handler.current_archive:
                 archive_path = self.file_handler.get_current_archive_path()
                 if archive_path:
                     return str(archive_path.parent)
-            
+
             # フォルダから開いた場合
             if self.base_dir_path:
                 return self.base_dir_path
-            
+
             # 単独ファイルの場合
             current_file = self.file_handler.current_files[self.file_handler.current_index]
-            
+
             # virtual pathの場合（archive://path|filename形式）
             if isinstance(current_file, (str, Path)) and str(current_file).startswith("archive://"):
                 from ez_co.handlers.virtual_path_handler import VirtualPathHandler
@@ -4063,12 +4965,12 @@ class MainWindow(QMainWindow):
                 if result:
                     archive_path, _ = result
                     return str(archive_path.parent)
-            
+
             if isinstance(current_file, str):
                 return str(Path(current_file).parent)
             else:
                 return str(current_file.parent)
         except Exception as e:
+            # フォルダの場所を取れないときはログして、無いものとして戻す。
             logger.error(get_log_text("folder_path_get_error", error=e))
             return None
-

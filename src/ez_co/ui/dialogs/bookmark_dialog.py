@@ -1,3 +1,4 @@
+"""ブックマークの一覧と追加を行うダイアログ。"""
 import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -16,6 +17,15 @@ class BookmarkDialog(QDialog):
     """ブックマーク管理ダイアログ"""
     bookmark_selected = Signal(str, int)  # file_path, page_number
     def __init__(self, parent=None, current_file: str = None, current_page: int = 1, config=None, db_manager=None):
+        """現在のファイルとページを初期値にしてダイアログを開く。
+
+        Args:
+            parent: 親ウィジェット。
+            current_file: 追加欄の初期パス。
+            current_page: 追加欄の初期ページ。
+            config: データベースを自前で作るときに使う設定。
+            db_manager: ブックマークのデータベース。無ければ config から作る。
+        """
         super().__init__(parent)
         self.db_manager = db_manager or DatabaseManager(config)
         self.current_file = current_file
@@ -23,6 +33,7 @@ class BookmarkDialog(QDialog):
         logger.info(get_log_text("bookmark_dialog_opened", current_file=current_file or "None", current_page=current_page))
         self.setup_ui()
         self.load_bookmarks()
+
     def setup_ui(self):
         """UIの初期化"""
         self.setWindowTitle(get_text("ui.bookmarks"))
@@ -86,6 +97,7 @@ class BookmarkDialog(QDialog):
                     archive_path, internal_path = VirtualPathHandler.parse_virtual_path(self.current_file)
                     title = archive_path.name
                 except Exception as e:
+                    # 仮想パスを解けないときはログして、パス全体の名前を題名に使う。
                     logger.error(f"virtual pathの解析に失敗: {self.current_file}, エラー: {e}")
                     title = Path(self.current_file).name
             else:
@@ -105,6 +117,7 @@ class BookmarkDialog(QDialog):
         button_box = QDialogButtonBox(QDialogButtonBox.Close)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
+
     def load_bookmarks(self):
         """ブックマーク一覧を読み込み"""
         self.bookmark_list.clear()
@@ -115,7 +128,7 @@ class BookmarkDialog(QDialog):
             page_number = bookmark['page_number']
             title = bookmark['title'] or Path(file_path).name
             entry_type = bookmark.get('entry_type', EntryType.FILE.value)
-            
+
             # 表示用のテキストを作成
             display_text = f"{title} (ページ {page_number})"
             if len(file_path) > 50:
@@ -125,6 +138,7 @@ class BookmarkDialog(QDialog):
             item = QListWidgetItem(display_text)
             item.setData(Qt.UserRole, bookmark)
             self.bookmark_list.addItem(item)
+
     def add_bookmark(self):
         """ブックマークを追加"""
         file_path = self.file_path_edit.text().strip()
@@ -141,11 +155,12 @@ class BookmarkDialog(QDialog):
                     archive_path, internal_path = VirtualPathHandler.parse_virtual_path(file_path)
                     title = archive_path.name
                 except Exception as e:
+                    # 仮想パスを解けないときはログして、パス全体の名前を題名に使う。
                     logger.error(f"virtual pathの解析に失敗: {file_path}, エラー: {e}")
                     title = Path(file_path).name
             else:
                 title = Path(file_path).name
-        
+
         # フォルダかどうかを判定してentry_typeを設定
         entry_type = EntryType.FOLDER.value if Path(file_path).is_dir() else EntryType.FILE.value
         logger.info(get_log_text("bookmark_add_attempt", file_path=file_path, page=page_number, title=title))
@@ -157,6 +172,7 @@ class BookmarkDialog(QDialog):
         else:
             logger.error(get_log_text("bookmark_add_failed_log", file_path=file_path, page=page_number))
             QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.bookmark_add_failed"))
+
     def delete_selected_bookmark(self):
         """選択されたブックマークを削除"""
         current_item = self.bookmark_list.currentItem()
@@ -165,14 +181,14 @@ class BookmarkDialog(QDialog):
             return
         bookmark = current_item.data(Qt.UserRole)
         reply = QMessageBox.question(
-            self, get_text("dialogs.question"), 
+            self, get_text("dialogs.question"),
             get_text("ui.bookmark_delete_confirm").format(title=bookmark['title'], page=bookmark['page_number']),
             QMessageBox.Yes | QMessageBox.No
         )
         if reply == QMessageBox.Yes:
             logger.info(get_log_text("bookmark_delete_attempt", file_path=bookmark['file_path'], page=bookmark['page_number']))
             success = self.db_manager.remove_bookmark(
-                bookmark['file_path'], 
+                bookmark['file_path'],
                 bookmark['page_number']
             )
             if success:
@@ -182,8 +198,13 @@ class BookmarkDialog(QDialog):
             else:
                 logger.error(get_log_text("bookmark_delete_failed_log", file_path=bookmark['file_path'], page=bookmark['page_number']))
                 QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.bookmark_delete_failed"))
+
     def on_bookmark_double_clicked(self, item):
-        """ブックマークをダブルクリックした時の処理"""
+        """ブックマークをダブルクリックした時の処理
+
+        Args:
+            item: ダブルクリックされた項目。
+        """
         bookmark = item.data(Qt.UserRole)
         self.bookmark_selected.emit(bookmark['file_path'], bookmark['page_number'])
-        self.accept() 
+        self.accept()

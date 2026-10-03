@@ -1,3 +1,4 @@
+"""マウスジェスチャーの登録と割り当てを行うダイアログ。"""
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QPushButton, QLabel, QComboBox, QMessageBox, QHeaderView, QFileDialog, QCompleter
@@ -20,7 +21,15 @@ from ez_co.utils.language_manager import get_text, get_log_text
 
 logger = logging.getLogger(__name__)
 class AddGestureDialog(QDialog):
+    """右ドラッグでジェスチャーを描き、割り当てるアクションを選ぶ。"""
+
     def __init__(self, parent=None, config=None):
+        """描画用のジェスチャーとアクション選択を用意する。
+
+        Args:
+            parent: 親ウィジェット。
+            config: ラベルの字体に使う設定。
+        """
         super().__init__(parent)
         self.setWindowTitle(get_text("ui.gesture_register"))
         self.setMinimumSize(600, 400)
@@ -31,7 +40,9 @@ class AddGestureDialog(QDialog):
         self.config = config
         logger.info(get_log_text("add_gesture_dialog_opened"))
         self.setup_ui()
+
     def setup_ui(self):
+        """説明、認識結果、アクション選択、ボタンを配置する。"""
         layout = QVBoxLayout()
         self.setLayout(layout)
         self.info_label = QLabel(get_text("ui.gesture_draw_instruction"))
@@ -74,12 +85,24 @@ class AddGestureDialog(QDialog):
         btns.addWidget(ok_btn)
         btns.addWidget(cancel_btn)
         layout.addLayout(btns)
+
     def mousePressEvent(self, event):
+        """右ボタンでジェスチャーの記録を始める。
+
+        Args:
+            event: マウス押下イベント。
+        """
         if event.button() == Qt.RightButton:
             self.mouse_gesture.start(event.pos())
             self._gesture_str = ""
             self.gesture_label.setText("")
+
     def mouseMoveEvent(self, event):
+        """記録中なら軌跡を更新し、認識できた文字列を出す。
+
+        Args:
+            event: マウス移動イベント。
+        """
         if self.mouse_gesture.is_active():
             self.mouse_gesture.update(event.pos())
             gesture = self.mouse_gesture.end()  # 一時的に認識
@@ -87,13 +110,21 @@ class AddGestureDialog(QDialog):
                 self._gesture_str = gesture
                 self.gesture_label.setText(gesture)
             self.mouse_gesture.active = True  # 継続
+
     def mouseReleaseEvent(self, event):
+        """右ボタンを離したとき、認識できた文字列を確定して出す。
+
+        Args:
+            event: マウス離しイベント。
+        """
         if event.button() == Qt.RightButton:
             gesture = self.mouse_gesture.end()
             if gesture:
                 self._gesture_str = gesture
                 self.gesture_label.setText(gesture)
+
     def accept(self):
+        """ジェスチャーとアクションが揃っていれば確定する。足りなければ警告して閉じない。"""
         if not self._gesture_str:
             QMessageBox.warning(self, get_text("dialogs.error"), get_text("ui.gesture_input_required"))
             return
@@ -107,8 +138,18 @@ class AddGestureDialog(QDialog):
         self.gesture = self._gesture_str
         self.action = action
         super().accept()
+
+
 class GestureDialog(QDialog):
+    """ジェスチャーとアクションの対応を一覧し、追加・削除・書き出し・読み込みをする。"""
+
     def __init__(self, config, parent=None):
+        """現在の gesture_map をコピーして一覧を出す。
+
+        Args:
+            config: ジェスチャー対応を持つ設定。
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self.setWindowTitle(get_text("ui.gesture_settings"))
         self.setMinimumSize(600, 400)
@@ -117,7 +158,9 @@ class GestureDialog(QDialog):
         logger.info(get_log_text("gesture_dialog_opened"))
         self.setup_ui()
         self.load_gestures()
+
     def setup_ui(self):
+        """一覧と、追加・削除・書き出し・読み込み・OK・キャンセルを配置する。"""
         layout = QVBoxLayout()
         self.setLayout(layout)
         self.table = QTableWidget(0, 2)
@@ -150,14 +193,16 @@ class GestureDialog(QDialog):
         ok_cancel.addWidget(ok_btn)
         ok_cancel.addWidget(cancel_btn)
         layout.addLayout(ok_cancel)
+
     def load_gestures(self):
+        """gesture_map を、割り当て可能なアクションの順で表に出す。"""
         self.table.setRowCount(0)
         sorted_gestures = []
         for action in list_bound_gesture_actions(self.gesture_map.values()):
             for gesture, gesture_action in self.gesture_map.items():
                 if gesture_action == action:
                     sorted_gestures.append((gesture, gesture_action))
-        
+
         for gesture, action in sorted_gestures:
             row = self.table.rowCount()
             self.table.insertRow(row)
@@ -168,7 +213,9 @@ class GestureDialog(QDialog):
             item_gesture.setFlags(item_gesture.flags() & ~Qt.ItemIsEditable)
             self.table.setItem(row, 0, item_action)
             self.table.setItem(row, 1, item_gesture)
+
     def add_gesture(self):
+        """登録ダイアログでジェスチャーを足す。空、未知のアクション、既存のジェスチャーは足さない。"""
         # configをAddGestureDialogに渡す
         dlg = AddGestureDialog(self, self.config)
         if dlg.exec() == QDialog.Accepted:
@@ -191,7 +238,9 @@ class GestureDialog(QDialog):
             self.gesture_map[gesture] = action
             logger.info(get_log_text("gesture_added", gesture=gesture, action=action))
             self.load_gestures()
+
     def remove_gesture(self):
+        """選択中のジェスチャーを対応から外す。"""
         row = self.table.currentRow()
         if row < 0:
             return
@@ -203,7 +252,9 @@ class GestureDialog(QDialog):
             del self.gesture_map[gesture]
             logger.info(get_log_text("gesture_removed", gesture=gesture))
             self.load_gestures()
+
     def export_gestures(self):
+        """gesture_map を JSON ファイルへ書く。"""
         path, _ = QFileDialog.getSaveFileName(self, get_text("ui.export"), "", "JSON Files (*.json)")
         if not path:
             return
@@ -211,7 +262,9 @@ class GestureDialog(QDialog):
             json.dump(self.gesture_map, f, ensure_ascii=False, indent=2)
         logger.info(get_log_text("gestures_exported", path=path))
         QMessageBox.information(self, get_text("dialogs.information"), get_text("ui.export_completed"))
+
     def import_gestures(self):
+        """JSON から既知のアクションだけを読み、対応を置き換える。辞書でなければ失敗の警告にする。"""
         path, _ = QFileDialog.getOpenFileName(self, get_text("ui.import"), "", "JSON Files (*.json)")
         if not path:
             return
@@ -232,16 +285,27 @@ class GestureDialog(QDialog):
             self.load_gestures()
             QMessageBox.information(self, get_text("dialogs.information"), get_text("ui.import_completed"))
         except Exception as e:
+            # 読み込みや形式の失敗はログして、取り込み失敗を知らせる。
             logger.error(get_log_text("gestures_import_failed", error=str(e)))
             QMessageBox.warning(self, get_text("dialogs.error"), get_text("ui.import_failed"))
+
     def get_gesture_map(self):
+        """現在の対応のコピーを返す。
+
+        Returns:
+            gesture_map のコピー。
+        """
         return self.gesture_map.copy()
 
     def on_item_double_clicked(self, item):
-        """アイテムがダブルクリックされた時の処理"""
+        """アイテムがダブルクリックされた時の処理
+
+        Args:
+            item: ダブルクリックされたセル。アクション列以外は何もしない。
+        """
         if item.column() != 0:  # アクション列以外はスキップ
             return
-        
+
         row = item.row()
         # 現在のアクションとジェスチャーを取得
         current_action_name = item.text()
@@ -249,58 +313,59 @@ class GestureDialog(QDialog):
         if not gesture_item:
             return
         gesture = gesture_item.text()
-        
+
         # 現在のアクションを特定
         current_action = item.data(Qt.ItemDataRole.UserRole) or find_gesture_action_by_display_name(current_action_name)
         if not current_action:
             return
-        
+
         # コンボボックスを作成
         combo = QComboBox()
         combo.setEditable(True)
         combo.setInsertPolicy(QComboBox.NoInsert)
-        
+
         # 全アクションを追加
         action_names = []
         for action in list_gesture_assignable_actions():
             display_name = get_action_display_name(action)
             combo.addItem(display_name, action)
             action_names.append(display_name)
-        
+
         # 入力サジェスト機能を追加
         completer = QCompleter(action_names)
         completer.setCaseSensitivity(Qt.CaseInsensitive)
         completer.setFilterMode(Qt.MatchContains)
         combo.setCompleter(completer)
-        
+
         # 現在のアクションを選択
         for i in range(combo.count()):
             if combo.itemData(i) == current_action:
                 combo.setCurrentIndex(i)
                 break
-        
+
         # コンボボックスをテーブルに設定
         self.table.setCellWidget(row, 0, combo)
         combo.setFocus()
-        
+
         # 変更時の処理
         def on_action_changed():
+            """コンボボックスの選択を gesture_map に反映し、一覧を読み直す。"""
             new_action = combo.currentData()
             if new_action is None:
                 new_action = find_gesture_action_by_display_name(combo.currentText())
-            
+
             if new_action and new_action != current_action:
                 # 古いジェスチャーを削除
                 if gesture in self.gesture_map and self.gesture_map[gesture] == current_action:
                     del self.gesture_map[gesture]
-                
+
                 # 新しいアクションにジェスチャーを設定
                 self.gesture_map[gesture] = new_action
-                
+
                 # テーブルを更新
                 self.load_gestures()
-        
+
         # フォーカスが外れた時やEnterキーが押された時に変更を適用
         combo.editTextChanged.connect(on_action_changed)
         combo.currentTextChanged.connect(on_action_changed)
-        combo.focusOutEvent = lambda event: (on_action_changed(), super(QComboBox, combo).focusOutEvent(event)) 
+        combo.focusOutEvent = lambda event: (on_action_changed(), super(QComboBox, combo).focusOutEvent(event))

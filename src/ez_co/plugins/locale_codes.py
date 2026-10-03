@@ -1,13 +1,22 @@
 """言語・国コードと母語表示名。プラグインは import しない。アプリ言語には合わせない。"""
 from __future__ import annotations
 
+# 言語一覧の先頭に置くコード。
 _LANGUAGE_HEAD = ("ja", "en")
+# 国一覧の先頭に置くコード。
 _COUNTRY_HEAD = ("JP",)
+# 言語コードと母語名のキャッシュ。未構築は None。
 _language_rows: tuple[tuple[str, str], ...] | None = None
+# 国コードと母語名のキャッシュ。未構築は None。
 _country_rows: tuple[tuple[str, str], ...] | None = None
 
 
 def language_choices() -> tuple[tuple[str, str], ...]:
+    """Qt の言語コードと母語名を、ja と en を先にして返す。
+
+    Returns:
+        (コード, ラベル) のタプル。二度目以降はキャッシュ。
+    """
     global _language_rows
     if _language_rows is not None:
         return _language_rows
@@ -37,6 +46,11 @@ def language_choices() -> tuple[tuple[str, str], ...]:
 
 
 def country_choices() -> tuple[tuple[str, str], ...]:
+    """Qt の国コードと母語名を、JP を先にして返す。
+
+    Returns:
+        (コード, ラベル) のタプル。二度目以降はキャッシュ。
+    """
     global _country_rows
     if _country_rows is not None:
         return _country_rows
@@ -68,6 +82,14 @@ def country_choices() -> tuple[tuple[str, str], ...]:
 
 
 def _native_country(locale) -> str:
+    """ロケールの母語の国名を返す。
+
+    Args:
+        locale: Qt のロケール。
+
+    Returns:
+        母語の国名。無ければ空文字。
+    """
     for name in ("nativeTerritoryName", "nativeCountryName"):
         getter = getattr(locale, name, None)
         if getter is None:
@@ -79,6 +101,16 @@ def _native_country(locale) -> str:
 
 
 def _head_then_az(rows: dict, head: tuple[str, ...], key_is_lower: bool) -> list[tuple[str, str]]:
+    """指定順を先に、残りはコード順に並べる。
+
+    Args:
+        rows: キーから (コード, ラベル) への対応。
+        head: 先に置くキー。
+        key_is_lower: True なら head を小文字で照合する。
+
+    Returns:
+        並べた (コード, ラベル)。
+    """
     used: set[str] = set()
     ordered: list[tuple[str, str]] = []
     for item in head:

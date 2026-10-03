@@ -13,6 +13,11 @@ from ez_co.plugins.manager import HandlerDecision
 
 
 def _handler(monkeypatch):
+    """メタデータキャッシュを有効にした FileHandler を作る。
+
+    Returns:
+        その FileHandler。
+    """
     monkeypatch.setattr(FileHandler, "_start_workers", lambda self: None)
     config = SimpleNamespace(
         cache={"memory_limit": "8MB", "prefetch_pages": 1, "optimize_large_images": False},
@@ -23,22 +28,40 @@ def _handler(monkeypatch):
 
 
 def _png_bytes():
+    """白い小さな PNG のバイト列を作る。
+
+    Returns:
+        PNG のバイト列。
+    """
     buffer = io.BytesIO()
     Image.new("RGB", (4, 4), "white").save(buffer, format="PNG")
     return buffer.getvalue()
 
 
 def test_same_plugin_read_entry_is_serialized_for_all_callers(monkeypatch):
+    """同じプラグインの read_entry はハンドラが違っても同時には1つだけ走る。"""
     handler = _handler(monkeypatch)
     other_handler = _handler(monkeypatch)
 
     class Plugin:
+        """同時に read_entry へ入った数の最大を数えるプラグイン。"""
+
         def __init__(self):
+            """同時実行数のカウンタを初期化する。"""
             self.active = 0
             self.max_active = 0
             self.lock = threading.Lock()
 
         def read_entry(self, _path, _index):
+            """同時実行数を更新してから、白い PNG のエントリを返す。
+
+            Args:
+                _path: 書庫パス。
+                _index: エントリ番号。
+
+            Returns:
+                名前と PNG バイト列。
+            """
             with self.lock:
                 self.active += 1
                 self.max_active = max(self.max_active, self.active)
@@ -76,12 +99,18 @@ def test_same_plugin_read_entry_is_serialized_for_all_callers(monkeypatch):
 
 
 def test_same_archive_metadata_is_built_once(tmp_path, monkeypatch):
+    """同じ書庫のメタデータ構築は並行しても1回で、全員が同じ一覧を受け取る。"""
     handler = _handler(monkeypatch)
     archive = tmp_path / "book.zip"
     archive.write_bytes(b"archive")
     calls = []
 
     def loader():
+        """呼び出しを数えて少し待ち、ページ名を1件返す。
+
+        Returns:
+            ページ名のリスト。
+        """
         calls.append(1)
         time.sleep(0.03)
         return ["page.png"]
@@ -101,6 +130,7 @@ def test_same_archive_metadata_is_built_once(tmp_path, monkeypatch):
 
 
 def test_different_archive_metadata_builds_can_run_in_parallel(tmp_path, monkeypatch):
+    """別々の書庫のメタデータ構築は同時に完了し、それぞれの書庫名を返す。"""
     handler = _handler(monkeypatch)
     archives = [tmp_path / "a.zip", tmp_path / "b.zip"]
     for archive in archives:
@@ -109,6 +139,11 @@ def test_different_archive_metadata_builds_can_run_in_parallel(tmp_path, monkeyp
     completed = []
 
     def build(archive):
+        """別書庫のメタデータ構築を同時に通す。
+
+        Args:
+            archive: 構築する書庫。
+        """
         result = handler._archive_entries(
             archive,
             lambda: (barrier.wait(timeout=1), [archive.name])[1],
@@ -126,6 +161,7 @@ def test_different_archive_metadata_builds_can_run_in_parallel(tmp_path, monkeyp
 
 
 def test_session_change_keeps_source_lock_and_rejects_old_metadata(tmp_path, monkeypatch):
+    """構築中に読み込みを止めても同じソースロックを使い、止めた結果はキャッシュせず次の構築は別呼び出しになる。"""
     handler = _handler(monkeypatch)
     archive = tmp_path / "book.zip"
     archive.write_bytes(b"archive")
@@ -134,6 +170,11 @@ def test_session_change_keeps_source_lock_and_rejects_old_metadata(tmp_path, mon
     calls = []
 
     def loader():
+        """開始を知らせてから解放を待ち、ページ名を返す。
+
+        Returns:
+            ページ名のリスト。
+        """
         calls.append(1)
         started.set()
         release.wait(2)
@@ -155,12 +196,18 @@ def test_session_change_keeps_source_lock_and_rejects_old_metadata(tmp_path, mon
 
 
 def test_metadata_is_not_published_if_archive_changes_during_build(tmp_path, monkeypatch):
+    """構築中に書庫が変わるとその結果はキャッシュされず、次の構築結果はキャッシュされる。"""
     handler = _handler(monkeypatch)
     archive = tmp_path / "book.zip"
     archive.write_bytes(b"old")
     calls = []
 
     def changing_loader():
+        """構築中に書庫バイト列を変え、古いページ名を返す。
+
+        Returns:
+            古いページ名のリスト。
+        """
         calls.append(1)
         archive.write_bytes(b"changed-size")
         return ["old-page.png"]

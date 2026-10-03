@@ -7,10 +7,20 @@ from ez_co.filters.registry import FilterRecord, FilterRegistry
 
 
 def test_builtin_and_plugin_ids_share_lookup_and_apply():
+    """組み込み ID とプラグイン ID は同じ get で引け、両方を通すと原画は残して結果の左上だけ赤になる。"""
     registry = FilterRegistry()
     register_builtin(registry)
 
     def mark(image, context):
+        """左上の画素を赤にする。
+
+        Args:
+            image: 印を付ける画像。
+            context: フィルタのコンテキスト。
+
+        Returns:
+            印を付けた画像。
+        """
         image.putpixel((0, 0), (255, 0, 0))
         return image
 

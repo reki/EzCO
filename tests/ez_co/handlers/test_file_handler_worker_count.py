@@ -9,6 +9,7 @@ pytestmark = pytest.mark.usefixtures("qapp")
 
 
 def test_multiple_handlers_share_process_fixed_effective_worker_count():
+    """起動時に固めた実効ワーカー数は、その後の設定変更後に作ったハンドラも含め全員が同じになる。"""
     config = Config()
     config.cache["image_loader_workers"] = 4
     config.freeze_image_loader_workers(logical_cpu_count=40)

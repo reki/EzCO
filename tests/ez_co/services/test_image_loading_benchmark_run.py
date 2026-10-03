@@ -27,9 +27,18 @@ class _SmallDataset:
     """小さな素材を作り、置かれたrootを覚えておく。"""
 
     def __init__(self):
+        """生成した root を空のリストで待ち受ける。"""
         self.roots = []
 
     def __call__(self, root: Path) -> Path:
+        """渡された root を覚えて、小さなデータセットのパスを返す。
+
+        Args:
+            root: データセットを置くディレクトリ。
+
+        Returns:
+            生成したデータセットのパス。
+        """
         self.roots.append(Path(root))
         return generate_dataset(
             Path(root),
@@ -39,6 +48,14 @@ class _SmallDataset:
 
 
 def _run(**kwargs):
+    """小さなページ数と 1 回計測でベンチマークを走らせる。
+
+    Args:
+        kwargs: run_image_loading_benchmark へ渡す上書き。
+
+    Returns:
+        計測報告書。
+    """
     defaults = dict(
         logical_cpu_count=4,
         physical_memory_bytes=8 * GIB,
@@ -52,6 +69,7 @@ def _run(**kwargs):
 
 
 def test_single_condition_completes_with_small_dataset(tmp_path):
+    """1 条件の計測は指定したワーカー数と上限と先読みを返し、遅延は正で二重デコードは 0 になる。"""
     dataset_path = generate_dataset(tmp_path, page_count=SMALL_PAGES, page_size=(64, 64))
     condition = BenchmarkCondition(
         stage=STAGE_WORKER,
@@ -80,6 +98,7 @@ def test_single_condition_completes_with_small_dataset(tmp_path):
 
 
 def test_run_measures_every_condition_and_reports_progress():
+    """小容量の実行は段階 A がワーカー 1 と 2、段階 B が 256MB の先読み 5 と 10 になり、進捗は準備のあと各条件の順で総数は 4 になる。"""
     dataset = _SmallDataset()
     progress = []
 
@@ -103,6 +122,7 @@ def test_run_measures_every_condition_and_reports_progress():
 
 
 def test_temporary_dataset_is_removed_after_the_run():
+    """実行が終わると、データセットを置いた一時ディレクトリは消える。"""
     dataset = _SmallDataset()
 
     _run(dataset_factory=dataset)
@@ -112,10 +132,17 @@ def test_temporary_dataset_is_removed_after_the_run():
 
 
 def test_cancel_stops_the_run_without_partial_results():
+    """ワーカー段階でキャンセルすると BenchmarkCancelled になり、一時ディレクトリは残らない。"""
     dataset = _SmallDataset()
     cancel_event = threading.Event()
 
     def progress(stage, *args):
+        """ワーカー段階に入ったらキャンセルを立てる。
+
+        Args:
+            stage: 進捗の段階。
+            args: 段階に続く進捗の値。
+        """
         if stage == STAGE_WORKER:
             cancel_event.set()
 
@@ -130,9 +157,18 @@ def test_cancel_stops_the_run_without_partial_results():
 
 
 def test_dataset_failure_still_removes_the_temporary_directory():
+    """データセット生成が失敗しても、置かれた一時ディレクトリは消える。"""
     roots = []
 
     def failing_factory(root):
+        """置かれた root を覚えてから、データセット生成の失敗を送出する。
+
+        Args:
+            root: データセットを置くディレクトリ。
+
+        Raises:
+            RuntimeError: データセットを作れないとき。
+        """
         roots.append(Path(root))
         raise RuntimeError("dataset generation failed")
 
@@ -143,6 +179,7 @@ def test_dataset_failure_still_removes_the_temporary_directory():
 
 
 def test_running_the_benchmark_does_not_change_the_real_config():
+    """ベンチマークを走らせても、実行前のキャッシュ設定は変わらない。"""
     config = Config()
     before = dict(config.cache)
     dataset = _SmallDataset()
@@ -153,10 +190,16 @@ def test_running_the_benchmark_does_not_change_the_real_config():
 
 
 def test_rss_baseline_is_taken_for_every_condition(monkeypatch: pytest.MonkeyPatch):
+    """各条件の RSS 増分は、開始直前を基準にした同じ値になる。"""
     step = 1024 * 1024
     counter = {"value": 0}
 
     def growing_resident_bytes():
+        """呼ぶたびに RSS を一定量増やす。
+
+        Returns:
+            増やしたあとのバイト数。
+        """
         counter["value"] += 1
         return counter["value"] * step
 

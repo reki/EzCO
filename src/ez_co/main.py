@@ -1,3 +1,5 @@
+"""起動時の引数解析、設定の読み込み、ウィンドウ作成を行う。"""
+
 import sys
 import os
 import yaml
@@ -51,17 +53,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 def parse_config_args(args: List[str]) -> Dict[str, Any]:
     """コマンドライン引数から設定オーバーライドを解析する
-    
+
     Args:
         args: コマンドライン引数のリスト
-        
+
     Returns:
         パースされた設定のオーバーライド辞書
     """
     config_overrides = {}
-    
+
     for arg in args:
         if arg.startswith('--conf:'):
             try:
@@ -69,23 +72,31 @@ def parse_config_args(args: List[str]) -> Dict[str, Any]:
                 config_part = arg[7:]  # '--conf:' を除去
                 if '=' in config_part:
                     key_path, value_str = config_part.split('=', 1)
-                    
+
                     # 値の型を推定して変換
                     value = parse_config_value(value_str)
                     config_overrides[key_path] = value
-                    
+
                     logger.info(f"設定オーバーライド: {key_path} = {value}")
                 else:
                     logger.warning(f"無効な設定オーバーライド形式: {arg}")
             except Exception as e:
+                # 1件の解析に失敗したら警告を残して、次の引数へ進む
                 logger.warning(f"設定オーバーライド解析エラー {arg}: {str(e)}")
-    
+
     return config_overrides
+
 
 def parse_profile_args(args: List[str]) -> Optional[str]:
     """コマンドライン引数からプロファイル指定を解析する
-    
+
     対応形式: --profile=名前 / --profile 名前 / -p=名前 / -p 名前
+
+    Args:
+        args: コマンドライン引数のリスト
+
+    Returns:
+        指定されたプロファイル名。指定が無ければ None
     """
     for i, arg in enumerate(args):
         profile_name = None
@@ -104,12 +115,13 @@ def parse_profile_args(args: List[str]) -> Optional[str]:
                 return profile_name
     return None
 
+
 def parse_config_value(value_str: str) -> Any:
     """設定値文字列を適切な型に変換する
-    
+
     Args:
         value_str: 設定値の文字列
-        
+
     Returns:
         変換された値
     """
@@ -119,7 +131,7 @@ def parse_config_value(value_str: str) -> Any:
         return True
     elif lower_value in ('false', 'no', 'off', '0'):
         return False
-    
+
     # 数値の変換を試行
     try:
         # まず整数として解析を試行
@@ -128,13 +140,19 @@ def parse_config_value(value_str: str) -> Any:
         else:
             return float(value_str)
     except ValueError:
+        # 数値でなければ、このまま文字列として返す
         pass
-    
+
     # 文字列として返す
     return value_str
 
+
 def ensure_data_location() -> bool:
-    """場所の設定が無ければ初回ダイアログを出す。キャンセル／閉じるは起動しない。"""
+    """場所の設定が無ければ初回ダイアログを出す。キャンセル／閉じるは起動しない。
+
+    Returns:
+        起動を続けるとき True。ダイアログをキャンセルまたは閉じたとき False
+    """
     if has_location_file():
         settings = load_location_settings() or default_location_settings()
         set_data_root(apply_data_location(settings))
@@ -158,7 +176,11 @@ def ensure_data_location() -> bool:
 
 
 def maybe_import_legacy_yaml(db_manager: DatabaseManager):
-    """残っている config.yaml があれば取り込み確認を出す"""
+    """残っている config.yaml があれば取り込み確認を出す
+
+    Args:
+        db_manager: 取り込んだ設定の保存先
+    """
     config_path = None
     for candidate in (get_data_root() / "config.yaml", get_project_root() / "config.yaml"):
         if candidate.exists():
@@ -198,12 +220,21 @@ def maybe_import_legacy_yaml(db_manager: DatabaseManager):
             config_path.unlink()
             logger.info(get_log_text("config_yaml_deleted"))
     except Exception as e:
+        # YAML の取り込みに失敗したらログして、警告を出して起動を続ける
         error_logger = get_error_logger()
         error_logger.log_error(get_log_text("main_config_load_error", error=e), e)
         QMessageBox.warning(None, get_text("dialogs.error"), get_text("ui.yaml_import_failed").format(error=e))
 
+
 def load_config_from_db(db_manager: DatabaseManager) -> Config:
-    """現在のプロファイルの設定をDBから読み込む"""
+    """現在のプロファイルの設定をDBから読み込む
+
+    Args:
+        db_manager: プロファイル設定を読むデータベース
+
+    Returns:
+        読み込んだ設定。未保存なら推奨値を保存した新規。失敗時は既定の設定
+    """
     try:
         profile_name = db_manager.current_profile
         data = db_manager.load_profile_config(profile_name)
@@ -225,23 +256,35 @@ def load_config_from_db(db_manager: DatabaseManager) -> Config:
         logger.info(get_log_text("config_loaded"))
         return Config.from_dict(data)
     except Exception as e:
+        # 設定を読めなければログして、空の設定を返す
         error_logger = get_error_logger()
         error_logger.log_error(get_log_text("main_config_load_error", error=e), e)
         return Config()
 
+
 def initialize_language(config: Config):
-    """言語を初期化"""
+    """言語を初期化
+
+    Args:
+        config: 言語コードを読む設定
+    """
     try:
         # 設定から言語を読み込み
         language_code = config.language.get("code", "system")
         set_language(language_code)
         logger.info(get_log_text("language_initialized", language=language_code))
     except Exception as e:
+        # 言語の初期化に失敗したらログして、起動を続ける
         error_logger = get_error_logger()
         error_logger.log_error(get_log_text("main_language_init_error", error=e), e)
 
+
 def initialize_debug_logging(config: Config):
-    """デバッグログ機能を初期化"""
+    """デバッグログ機能を初期化
+
+    Args:
+        config: デバッグ有効フラグを読む設定
+    """
     try:
         if config.debug.get("enabled", False):
             # logsフォルダを作成
@@ -266,11 +309,22 @@ def initialize_debug_logging(config: Config):
             logger.info(get_log_text("main_debug_log_file_created", log_file_path=log_file_path))
             logger.info(get_log_text("application_started"))
     except Exception as e:
+        # デバッグログの初期化に失敗したらログして、起動を続ける
         error_logger = get_error_logger()
         error_logger.log_error(get_log_text("main_debug_log_init_error", error=e), e)
 
+
 def initialize_profile(db_manager: DatabaseManager, config: Config, profile_name: Optional[str] = None):
-    """プロファイルを初期化。引数指定が無い、または存在しない場合は前回のプロファイルを使う。"""
+    """プロファイルを初期化。引数指定が無い、または存在しない場合は前回のプロファイルを使う。
+
+    Args:
+        db_manager: プロファイルの存在確認と切り替えに使うデータベース
+        config: 選んだプロファイルの設定を上書きする対象
+        profile_name: 指定された名前。無ければ前回のプロファイルを使う
+
+    Returns:
+        使うプロファイル名。失敗時は既定のプロファイル名
+    """
     try:
         previous_profile = db_manager.current_profile
         if profile_name:
@@ -292,6 +346,7 @@ def initialize_profile(db_manager: DatabaseManager, config: Config, profile_name
         logger.info(get_log_text("profile_initialized", profile_name=previous_profile))
         return previous_profile
     except Exception as e:
+        # プロファイルの初期化に失敗したらログして、言語上の既定名を返す
         error_logger = get_error_logger()
         error_logger.log_error(get_log_text("main_profile_init_error", error=e), e)
         from ez_co.utils.database import get_default_profile_name
@@ -299,7 +354,15 @@ def initialize_profile(db_manager: DatabaseManager, config: Config, profile_name
 
 
 def connect_plugin_session(window, *, bootstrap=True) -> PluginSession:
-    """プラグイン起動とウィンドウ結線。bootstrap は初回ウィンドウだけ。"""
+    """プラグイン起動とウィンドウ結線。bootstrap は初回ウィンドウだけ。
+
+    Args:
+        window: 結線するウィンドウ
+        bootstrap: 初回だけプラグインを起動する
+
+    Returns:
+        ウィンドウに結んだセッション
+    """
     session = getattr(window, "plugin_session", None) or PluginSession()
     window.plugin_session = session
     if bootstrap:
@@ -331,7 +394,15 @@ def connect_plugin_session(window, *, bootstrap=True) -> PluginSession:
 
 
 def create_new_window(config: Config, parent_window=None):
-    """新規ウィンドウを作成"""
+    """新規ウィンドウを作成
+
+    Args:
+        config: 新しいウィンドウへ渡す設定
+        parent_window: 位置をずらす基準。データベースも引き継ぐ
+
+    Returns:
+        作成したウィンドウ。失敗したとき None
+    """
     try:
         from ez_co.ui.main_window import MainWindow
         # 新しいウィンドウを作成
@@ -348,6 +419,7 @@ def create_new_window(config: Config, parent_window=None):
                 window_font = QFont(font_family, font_size)
                 new_window.setFont(window_font)
         except Exception as e:
+            # ウィンドウのフォント設定に失敗したらログして、生成を続ける
             error_logger = get_error_logger()
             error_logger.log_error(get_log_text("main_new_window_font_error", error=e), e)
         # 親ウィンドウがある場合は位置をずらして表示
@@ -372,9 +444,11 @@ def create_new_window(config: Config, parent_window=None):
         new_window.show()
         return new_window
     except Exception as e:
+        # ウィンドウ生成に失敗したらログして None を返す
         error_logger = get_error_logger()
         error_logger.log_error(get_log_text("main_new_window_create_error", error=e), e)
         return None
+
 
 def log_build_id() -> None:
     """起動ログへ、この source/resource の64桁を1行出す。"""
@@ -389,6 +463,11 @@ def log_build_id() -> None:
 
 
 def main():
+    """アプリケーションを起動し、終了コードを返す。
+
+    Returns:
+        Qt の終了コード。場所選択を閉じたとき 0。起動に失敗したとき 1
+    """
     try:
         # エラーログ機能を初期化
         initialize_error_logger()
@@ -402,6 +481,7 @@ def main():
             with importlib.resources.path("ez_co.resources", "icon.ico") as icon_path:
                 app.setWindowIcon(QIcon(str(icon_path)))
         except Exception as e:
+            # アイコン設定に失敗したらログして、起動を続ける
             error_logger = get_error_logger()
             error_logger.log_error(get_log_text("main_icon_set_error", error=e), e)
         # 言語の初期化（DB読み込み前はシステム既定）
@@ -415,7 +495,7 @@ def main():
         maybe_import_legacy_yaml(db_manager)
         config = load_config_from_db(db_manager)
         db_manager.config = config
-        
+
         # コマンドライン引数から設定オーバーライドを解析
         config_overrides = parse_config_args(sys.argv[1:])
         if config_overrides:
@@ -423,10 +503,10 @@ def main():
             # オーバーライドを設定に適用
             for key_path, value in config_overrides.items():
                 config.set_runtime_override(key_path, value)
-        
+
         # コマンドライン引数からプロファイル指定を解析
         specified_profile = parse_profile_args(sys.argv[1:])
-        
+
         # プロファイルの初期化
         current_profile = initialize_profile(db_manager, config, specified_profile)
         # プロファイル設定の言語を適用
@@ -451,6 +531,7 @@ def main():
                 app.setFont(app_font)
                 logger.info(get_log_text("main_app_font_set", font_family=font_family, font_size=font_size))
         except Exception as e:
+            # アプリのフォント設定に失敗したらログして、起動を続ける
             error_logger = get_error_logger()
             error_logger.log_error(get_log_text("main_app_font_set_error", error=e), e)
         # デバッグログの初期化
@@ -460,10 +541,10 @@ def main():
         session = PluginSession()
         window = MainWindow(config, db_manager=db_manager, plugin_session=session)
         connect_plugin_session(window, bootstrap=True)
-        
+
         # データベースマネージャーに現在のプロファイルを設定
         window.db_manager.set_current_profile(current_profile)
-        
+
         window.show()
         # コマンドライン引数からファイルを開く（オプション引数を除外）
         file_arguments = [arg for arg in sys.argv[1:] if not arg.startswith('-')]
@@ -480,6 +561,7 @@ def main():
                     if nonexistent_files:
                         logger.warning(get_log_text("main_nonexistent_files_specified", files=nonexistent_files))
             except Exception as e:
+                # コマンドラインのファイル処理に失敗したらログして、起動を続ける
                 error_logger = get_error_logger()
                 error_logger.log_error(get_log_text("main_command_line_files_error", error=e), e)
         else:
@@ -489,10 +571,12 @@ def main():
                     logger.info(get_log_text("main_opening_last_file_on_startup"))
                     window.reopen_last_file()
                 except Exception as e:
+                    # 前回のファイルを開けなければログして、起動を続ける
                     error_logger = get_error_logger()
                     error_logger.log_error(get_log_text("main_open_last_file_on_startup_error", error=e), e)
         return app.exec()
     except Exception as e:
+        # 起動に失敗したらログして、終了コード 1 を返す
         logger.exception(get_log_text("main_app_startup_fatal_error", error=e))
         error_logger = get_error_logger()
         error_logger.log_error(get_log_text("main_app_startup_fatal_error", error=e), e)

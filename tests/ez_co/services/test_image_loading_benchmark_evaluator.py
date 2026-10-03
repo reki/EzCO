@@ -28,6 +28,22 @@ def make_result(
     evicted=0,
     rss_delta=100,
 ):
+    """比較用の計測結果を、指定した差だけ変えて作る。
+
+    Args:
+        stage: 段階。
+        worker_count: ワーカー数。
+        memory_limit: キャッシュ上限。
+        prefetch_pages: 先読みページ数。
+        p95: p95 遅延。
+        duplicate: 二重デコード回数。
+        redecode: 再デコード回数。
+        evicted: 使用前に落ちた先読み回数。
+        rss_delta: RSS 増分。
+
+    Returns:
+        計測結果。
+    """
     return BenchmarkConditionResult(
         stage=stage,
         worker_count=worker_count,
@@ -47,6 +63,16 @@ def make_result(
 
 
 def make_report(results, *, winner=4, auto_workers=4):
+    """段階 A の勝者ワーカー数と auto 実効値を持つ報告書を作る。
+
+    Args:
+        results: 計測結果。
+        winner: 段階 A の勝者ワーカー数。
+        auto_workers: auto の実効ワーカー数。
+
+    Returns:
+        報告書。
+    """
     return BenchmarkReport(
         results=list(results),
         stage_a_winner_workers=winner,
@@ -62,6 +88,7 @@ def make_report(results, *, winner=4, auto_workers=4):
 
 
 def test_duplicate_decode_is_rejected_even_when_it_is_fastest():
+    """二重デコードがある条件は、より速くても選ばれない。"""
     fast_but_duplicating = make_result(p95=10.0, duplicate=2, prefetch_pages=10)
     clean = make_result(p95=40.0)
 
@@ -69,6 +96,7 @@ def test_duplicate_decode_is_rejected_even_when_it_is_fastest():
 
 
 def test_churn_free_condition_wins_over_a_slightly_faster_one():
+    """再デコードがある条件は、少し速くても選ばれない。"""
     churning = make_result(p95=30.0, redecode=4, prefetch_pages=10)
     clean = make_result(p95=40.0)
 
@@ -76,6 +104,7 @@ def test_churn_free_condition_wins_over_a_slightly_faster_one():
 
 
 def test_unused_prefetch_eviction_counts_as_churn():
+    """未使用先読みの追い出しがある条件は、少し速くても選ばれない。"""
     evicting = make_result(p95=30.0, evicted=3, prefetch_pages=10)
     clean = make_result(p95=40.0)
 
@@ -83,6 +112,7 @@ def test_unused_prefetch_eviction_counts_as_churn():
 
 
 def test_lower_p95_wins_when_both_are_clean():
+    """どちらも汚れが無ければ、p95 が小さい方が選ばれる。"""
     slow = make_result(p95=60.0, memory_limit="256MB")
     fast = make_result(p95=30.0, memory_limit="512MB")
 
@@ -90,6 +120,7 @@ def test_lower_p95_wins_when_both_are_clean():
 
 
 def test_equivalent_p95_falls_back_to_smaller_rss_delta():
+    """p95 が同等なら、RSS 増分が小さい方が選ばれる。"""
     heavy = make_result(p95=40.0, rss_delta=900_000_000, memory_limit="256MB")
     light = make_result(p95=40.4, rss_delta=100_000_000, memory_limit="512MB")
 
@@ -97,6 +128,7 @@ def test_equivalent_p95_falls_back_to_smaller_rss_delta():
 
 
 def test_equivalent_results_prefer_the_smaller_cache_and_window():
+    """同等なら、キャッシュ上限と先読み窓が小さい方が選ばれる。"""
     large = make_result(p95=40.0, memory_limit="512MB", prefetch_pages=10)
     small = make_result(p95=40.0, memory_limit="256MB", prefetch_pages=5)
 
@@ -104,6 +136,7 @@ def test_equivalent_results_prefer_the_smaller_cache_and_window():
 
 
 def test_selection_is_deterministic_regardless_of_input_order():
+    """入力順を逆にしても、選ばれるキャッシュ上限と先読みは同じになる。"""
     results = [
         make_result(p95=40.0, memory_limit="512MB", prefetch_pages=10),
         make_result(p95=40.0, memory_limit="256MB", prefetch_pages=5),
@@ -120,6 +153,7 @@ def test_selection_is_deterministic_regardless_of_input_order():
 
 
 def test_stage_b_results_are_preferred_over_stage_a_results():
+    """段階 A が速くても、選ばれるのは段階 B の結果になる。"""
     stage_a = make_result(stage=STAGE_WORKER, p95=1.0, memory_limit="256MB")
     stage_b = make_result(stage=STAGE_CACHE, p95=50.0, memory_limit="512MB")
 
@@ -127,6 +161,7 @@ def test_stage_b_results_are_preferred_over_stage_a_results():
 
 
 def test_stage_a_winner_prefers_fewer_workers_on_a_tie():
+    """段階 A の p95 が同等なら、ワーカー数が少ない方が勝者になる。"""
     results = [
         make_result(stage=STAGE_WORKER, worker_count=3, p95=40.0),
         make_result(stage=STAGE_WORKER, worker_count=4, p95=40.2),
@@ -137,6 +172,7 @@ def test_stage_a_winner_prefers_fewer_workers_on_a_tie():
 
 
 def test_stage_a_winner_uses_the_faster_worker_count():
+    """段階 A の勝者は、p95 が小さい方のワーカー数になる。"""
     results = [
         make_result(stage=STAGE_WORKER, worker_count=3, p95=90.0),
         make_result(stage=STAGE_WORKER, worker_count=4, p95=40.0),
@@ -146,11 +182,13 @@ def test_stage_a_winner_uses_the_faster_worker_count():
 
 
 def test_stage_a_winner_requires_stage_a_results():
+    """段階 A の結果が無ければ段階 A の勝者は選べず ValueError になる。"""
     with pytest.raises(ValueError):
         select_stage_a_winner([make_result(stage=STAGE_CACHE)])
 
 
 def test_auto_is_stored_when_the_winner_matches_the_auto_effective_value():
+    """勝者ワーカー数が auto の実効値と同じなら保存値は auto になり、実効値と段階 B の上限、先読み、経過秒が残る。"""
     report = make_report(
         [
             make_result(stage=STAGE_WORKER, worker_count=4),
@@ -170,6 +208,7 @@ def test_auto_is_stored_when_the_winner_matches_the_auto_effective_value():
 
 
 def test_manual_worker_count_is_stored_when_it_beats_the_auto_value():
+    """勝者ワーカー数が auto の実効値と違えば、その整数が保存される。"""
     report = make_report(
         [make_result(stage=STAGE_WORKER, worker_count=5)],
         winner=5,
@@ -183,5 +222,6 @@ def test_manual_worker_count_is_stored_when_it_beats_the_auto_value():
 
 
 def test_evaluating_an_empty_report_raises():
+    """結果の無い報告書の評価は ValueError になる。"""
     with pytest.raises(ValueError):
         evaluate_benchmark(make_report([]))

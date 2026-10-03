@@ -7,6 +7,7 @@ pytestmark = pytest.mark.usefixtures("qapp")
 
 
 def test_runtime_override_wins_on_read_not_to_dict():
+    """実行中オーバーライドは読み取りでは 12 になり、保存辞書は元の閾値のまま。"""
     config = Config()
     original = config.viewer["gesture_threshold"]
     config.set_runtime_override("viewer.gesture_threshold", 12)

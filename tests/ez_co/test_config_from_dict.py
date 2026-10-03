@@ -7,6 +7,7 @@ pytestmark = pytest.mark.usefixtures("qapp")
 
 
 def test_from_dict_applies_viewer_and_plugins():
+    """渡した背景色と閾値とソース選択が入り、拡張子は小文字のドット付きで none になる。"""
     config = Config.from_dict(
         {
             "viewer": {"background_color": "#112233", "gesture_threshold": 80},
@@ -26,16 +27,19 @@ def test_from_dict_applies_viewer_and_plugins():
 
 @pytest.mark.parametrize("mode", ["page", "left", "right"])
 def test_from_dict_keeps_zoom_navigation_mode(mode):
+    """page、left、right のズーム移動は渡した値のまま残る。"""
     config = Config.from_dict({"viewer": {"zoom_navigation_mode": mode}})
     assert config.viewer["zoom_navigation_mode"] == mode
 
 
 def test_from_dict_falls_back_for_invalid_zoom_navigation_mode():
+    """知らないズーム移動は page に戻る。"""
     config = Config.from_dict({"viewer": {"zoom_navigation_mode": "vertical"}})
     assert config.viewer["zoom_navigation_mode"] == "page"
 
 
 def test_from_dict_fills_missing_sections():
+    """空の辞書でもウィンドウ幅と拡張子ハンドラが埋まり、フィルタ pipe は空で gamma は 1.0 になる。"""
     config = Config.from_dict({})
     assert "width" in config.window
     assert "extension_handlers" in config.plugins
@@ -44,6 +48,7 @@ def test_from_dict_fills_missing_sections():
 
 
 def test_from_dict_normalizes_filters_pipe_and_builtin_settings():
+    """pipe は重複と空欄を落とし、builtin の不足項目は既定で埋まり、プラグイン設定は残さない。"""
     config = Config.from_dict(
         {
             "filters": {

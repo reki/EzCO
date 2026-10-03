@@ -16,7 +16,14 @@ from ez_co.utils.language_manager import get_text
 
 
 class AboutDialog(QDialog):
+    """名前、バージョン、作者などの情報を表示する。"""
+
     def __init__(self, parent=None):
+        """アプリ情報を読み、表示とコピーボタンを組み立てる。
+
+        Args:
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         info = load_app_info()
         self._info = info
@@ -69,7 +76,11 @@ class AboutDialog(QDialog):
         layout.addWidget(buttons)
 
     def copy_text(self) -> str:
-        """ダイアログに出している項目だけ。ビルド識別は64桁。"""
+        """ダイアログに出している項目だけ。ビルド識別は64桁。
+
+        Returns:
+            表示中の項目を改行でつないだ文字列。
+        """
         lines = []
         name = self._info.get("name") or get_text("app_name")
         if name:
@@ -94,6 +105,7 @@ class AboutDialog(QDialog):
         return "\n".join(lines)
 
     def copy_to_clipboard(self) -> None:
+        """表示中の項目をクリップボードへコピーする。"""
         clipboard = QApplication.clipboard()
         if clipboard is not None:
             clipboard.setText(self.copy_text())

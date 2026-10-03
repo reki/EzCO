@@ -8,6 +8,7 @@ from ez_co.handlers.file_handler import FileHandler
 
 
 def test_cache_get_put_from_many_threads(tmp_path, monkeypatch):
+    """多数の get と put を同時に走らせても例外が残らない。"""
     monkeypatch.setattr(FileHandler, "_start_workers", lambda self: None)
     config = SimpleNamespace(
         cache={"memory_limit": "8KB", "prefetch_pages": 1, "optimize_large_images": False},
@@ -23,6 +24,7 @@ def test_cache_get_put_from_many_threads(tmp_path, monkeypatch):
     errors = []
 
     def writer():
+        """複数ページへ put を繰り返し、例外は errors に積む。"""
         try:
             for index in range(40):
                 image = Image.new("L", (12, 12))
@@ -32,6 +34,7 @@ def test_cache_get_put_from_many_threads(tmp_path, monkeypatch):
             errors.append(exc)
 
     def reader():
+        """get と追い出しを繰り返し、例外は errors に積む。"""
         try:
             for index in range(40):
                 key = handler._cache_key_for_file(files[index % len(files)])
@@ -50,6 +53,7 @@ def test_cache_get_put_from_many_threads(tmp_path, monkeypatch):
 
 
 def test_navigation_snapshot_retries_when_index_changes(monkeypatch):
+    """走査中にインデックスが変わると、スナップショットは変えたあとのインデックスを返す。"""
     monkeypatch.setattr(FileHandler, "_start_workers", lambda self: None)
     config = SimpleNamespace(
         cache={"memory_limit": "8KB", "prefetch_pages": 1, "optimize_large_images": False},
@@ -58,9 +62,16 @@ def test_navigation_snapshot_retries_when_index_changes(monkeypatch):
     handler = FileHandler(config)
 
     class ChangingList(list):
+        """走査の途中で current_index を変えるリスト。"""
+
         changed = False
 
         def __iter__(self):
+            """最初の走査で current_index を 1 にしてから要素を返す。
+
+            Returns:
+                要素のイテレータ。
+            """
             if not self.changed:
                 self.changed = True
                 handler.current_index = 1

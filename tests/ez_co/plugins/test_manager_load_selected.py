@@ -7,12 +7,18 @@ from ez_co.plugins.manager import PluginManager
 
 
 def _config():
+    """選択もハンドラも空のプラグイン設定を返す。
+
+    Returns:
+        plugins だけを持つ設定オブジェクト。
+    """
     return SimpleNamespace(
         plugins={"source_choice": {}, "extension_handlers": {}, "enabled": {}}
     )
 
 
 def test_load_selected_loads_one_plugin_per_id(tmp_path, dir_plugin):
+    """1 id を二度 load_selected すると plugins が2件になる。"""
     dir_plugin(tmp_path, plugin_id="com.example.one", folder_name="solo")
     manager = PluginManager()
     manager.discover(tmp_path)
@@ -24,6 +30,7 @@ def test_load_selected_loads_one_plugin_per_id(tmp_path, dir_plugin):
 
 
 def test_load_selected_skips_unresolved_duplicates(tmp_path, dir_plugin):
+    """未選択の重複が読み込まれ、skipped が2件にならない。"""
     dir_plugin(tmp_path, plugin_id="com.example.dup", folder_name="one")
     dir_plugin(tmp_path, plugin_id="com.example.dup", folder_name="two", version="2.0.0")
     manager = PluginManager()
@@ -34,6 +41,7 @@ def test_load_selected_skips_unresolved_duplicates(tmp_path, dir_plugin):
 
 
 def test_activate_ui_does_not_run_setup_twice(tmp_path, dir_plugin):
+    """load と activate を重ねても、setup の回数が 1 のままにならない。"""
     counter = tmp_path / "setup_count.txt"
     dir_plugin(tmp_path, plugin_id="com.example.setup", folder_name="setup", setup_counter=counter)
     manager = PluginManager()

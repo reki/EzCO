@@ -1,3 +1,4 @@
+"""パスワード付きアーカイブの入力ダイアログ。PdfPasswordDialog は同じクラスの別名。"""
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
@@ -9,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 from ez_co.utils.language_manager import get_text
 
+# パスワード入力をやめてアプリを閉じるときのダイアログ結果。
 CLOSE_APP_RESULT = 2
 
 
@@ -16,6 +18,12 @@ class ArchivePasswordDialog(QDialog):
     """パスワード付きファイル用の入力ダイアログ。"""
 
     def __init__(self, parent=None, mismatch: bool = False):
+        """パスワード入力ダイアログを組み立てる。
+
+        Args:
+            parent: 親ウィジェット。
+            mismatch: 不一致のメッセージを最初から出すとき True。
+        """
         super().__init__(parent)
         self.setWindowTitle(get_text("ui.archive_password_title"))
         self.setModal(True)
@@ -25,6 +33,11 @@ class ArchivePasswordDialog(QDialog):
         self.setWindowFlag(Qt.WindowType.WindowCloseButtonHint, True)
 
     def _setup_ui(self, mismatch: bool):
+        """入力欄とボタンを配置する。
+
+        Args:
+            mismatch: 不一致のメッセージを表示するとき True。
+        """
         layout = QVBoxLayout()
 
         layout.addWidget(QLabel(get_text("ui.archive_password_label")))
@@ -54,16 +67,24 @@ class ArchivePasswordDialog(QDialog):
         self.password_edit.setFocus()
 
     def _accept(self):
+        """入力中の文字列をパスワードとして確定し、ダイアログを閉じる。"""
         self._password = self.password_edit.text()
         self.accept()
 
     def _close_app(self):
+        """アプリ終了用の結果でダイアログを閉じる。"""
         self.done(CLOSE_APP_RESULT)
 
     def reject(self):
+        """閉じる操作もアプリ終了用の結果にする。"""
         self.done(CLOSE_APP_RESULT)
 
     def password(self) -> str:
+        """確定したパスワードを返す。
+
+        Returns:
+            確定した文字列。未確定のときは空文字列。
+        """
         return self._password
 
 

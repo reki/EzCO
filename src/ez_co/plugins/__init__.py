@@ -1,3 +1,4 @@
+"""プラグイン契約の公開名とマネージャ取得をまとめる。"""
 from ez_co.plugins.api import (
     BUILTIN_PROVIDER_ID,
     SKIP_PROVIDER_ID,

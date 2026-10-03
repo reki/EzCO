@@ -4,10 +4,19 @@ import pytest
 from ez_co.ui.viewer.tab_context_menu import build_tab_context_menu
 from ez_co.utils.language_manager import get_text, set_language
 
+# このモジュールのテストは QApplication 付きで動かす。
 pytestmark = pytest.mark.usefixtures("qapp")
 
 
 def _menu(**kwargs):
+    """日本語でタブのコンテキストメニューを組む。
+
+    Args:
+        **kwargs: タブ位置、ピン、パス、各操作。省略した項目は空タブの既定。
+
+    Returns:
+        組んだメニュー。
+    """
     set_language("ja")
     defaults = dict(
         index=0,
@@ -27,10 +36,19 @@ def _menu(**kwargs):
 
 
 def _labels(menu):
+    """区切りを除いた項目の表示文を取り出す。
+
+    Args:
+        menu: 表示文を読むメニュー。
+
+    Returns:
+        表示文のリスト。
+    """
     return [action.text() for action in menu.actions() if not action.isSeparator()]
 
 
 def test_menu_order_and_disabled_items_match_for_an_empty_tab():
+    """空タブの項目順が言語キーとずれ、他を閉じる・左右・コピーが有効になり、ショートカットが付く。"""
     menu = _menu()
     assert _labels(menu) == [
         get_text("ui.close_tab"),
@@ -57,6 +75,7 @@ def test_menu_order_and_disabled_items_match_for_an_empty_tab():
 
 
 def test_pinned_tab_with_neighbors_enables_close_and_copy():
+    """隣があるピンタブがピン留めの文言のまま、他を閉じると左右とパスのコピーが無効のまま。"""
     menu = _menu(index=1, pinned=[False, True, False], path=r"C:\books\a.zip")
     labels = _labels(menu)
     assert labels[4] == get_text("ui.unpin_tab")

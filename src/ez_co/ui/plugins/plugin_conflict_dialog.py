@@ -20,7 +20,14 @@ from ez_co.utils.language_manager import get_text
 
 
 class NoWheelComboBox(QComboBox):
+    """一覧が開いていないときのホイールは、親のスクロールへ渡す。"""
+
     def wheelEvent(self, event):
+        """一覧が開いているときだけ自分でホイールを処理し、閉じているときは親のスクロール領域へ渡す。
+
+        Args:
+            event: ホイールイベント。
+        """
         if self.view() is not None and self.view().isVisible():
             super().wheelEvent(event)
             return
@@ -34,7 +41,16 @@ class NoWheelComboBox(QComboBox):
 
 
 class PluginConflictDialog(QDialog):
+    """同じプラグイン ID の候補から、使う提供元を選ぶ。"""
+
     def __init__(self, groups: dict[str, list[PluginCandidate]], parent=None, initial=None):
+        """重複グループと初期選択でダイアログを組み立てる。閉じるボタンは出さない。
+
+        Args:
+            groups: プラグイン ID ごとの候補。
+            parent: 親ウィジェット。
+            initial: プラグイン ID から、初期選択のファイル名またはスキップ。
+        """
         super().__init__(parent)
         self._groups = {
             plugin_id: sort_conflict_candidates(list(items))
@@ -52,6 +68,7 @@ class PluginConflictDialog(QDialog):
         self._setup_ui()
 
     def _setup_ui(self):
+        """説明、候補の表、OK ボタンを配置する。"""
         layout = QVBoxLayout(self)
         message = QLabel(get_text("ui.plugin_conflict_message"))
         message.setWordWrap(True)
@@ -103,6 +120,11 @@ class PluginConflictDialog(QDialog):
         layout.addWidget(buttons)
 
     def choices(self) -> dict[str, str]:
+        """各プラグイン ID の選択を返す。
+
+        Returns:
+            プラグイン ID から、ファイル名またはスキップ ID。
+        """
         result = {}
         for plugin_id, combo in self._combos.items():
             value = combo.currentData()
@@ -110,20 +132,32 @@ class PluginConflictDialog(QDialog):
         return result
 
     def accept(self):
+        """OK のときだけ閉じられるようにして確定する。"""
         self._can_close = True
         super().accept()
 
     def reject(self):
+        """OK で閉じてよいときだけ拒否を親へ渡す。"""
         if self._can_close:
             super().reject()
 
     def closeEvent(self, event):
+        """OK で閉じてよいときだけ閉じる。
+
+        Args:
+            event: 閉じるイベント。
+        """
         if self._can_close:
             event.accept()
             return
         event.ignore()
 
     def keyPressEvent(self, event: QKeyEvent):
+        """Esc では閉じない。
+
+        Args:
+            event: キーイベント。
+        """
         if event.key() == Qt.Key.Key_Escape:
             event.ignore()
             return

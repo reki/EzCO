@@ -1,3 +1,5 @@
+"""ブックマーク、履歴、プロファイルとプラグインの設定を SQLite で管理する。"""
+
 import json
 import sqlite3
 import logging
@@ -9,18 +11,30 @@ from ez_co.enums.entry_types import EntryType
 from ez_co.enums.archives import ArchiveInfo
 from ez_co.utils.language_manager import get_log_text, get_text
 
+# 設定データベースのファイル名
 CONFIG_DB_NAME = "config.db"
+# 旧ブックマークデータベースのファイル名
 LEGACY_DB_NAME = "bookmarks.db"
+# 現在のプロファイルを保存するキー
 APP_STATE_CURRENT_PROFILE = "current_profile"
 
 logger = logging.getLogger(__name__)
 
 def get_default_profile_name() -> str:
-    """デフォルトプロファイル名を取得（多言語化対応）"""
+    """デフォルトプロファイル名を取得（多言語化対応）
+
+    Returns:
+        言語ファイル上の既定プロファイル名
+    """
     return get_text("ui.default")
 
+
 def resolve_database_path() -> Path:
-    """config.db のパスを返す。旧 bookmarks.db があればリネームする。"""
+    """config.db のパスを返す。旧 bookmarks.db があればリネームする。
+
+    Returns:
+        使うデータベースファイルのパス。旧名しか無いときはリネームを試し、失敗したら旧パス
+    """
     root = get_data_root()
     config_db = root / CONFIG_DB_NAME
     legacy_db = root / LEGACY_DB_NAME
@@ -29,15 +43,22 @@ def resolve_database_path() -> Path:
             legacy_db.rename(config_db)
             logger.info(get_log_text("database_renamed_from_bookmarks", src=str(legacy_db), dest=str(config_db)))
         except Exception as e:
+            # 旧ファイルの改名に失敗したらログして、旧パスを返す
             logger.error(get_log_text("database_rename_failed", error=e))
             return legacy_db
     elif legacy_db.exists() and config_db.exists():
         logger.info(get_log_text("database_keep_config_db", config_db=str(config_db), legacy_db=str(legacy_db)))
     return config_db
 
+
 class DatabaseManager:
     """ブックマーク・履歴・プロファイル設定を管理するSQLite3データベースクラス"""
     def __init__(self, config=None):
+        """データベースを開き、保存済みの現在プロファイルを読み込む。
+
+        Args:
+            config: アーカイブ設定で一覧を絞り込むときに使う設定
+        """
         self.db_path = resolve_database_path()
         self.config = config
         self.current_profile = get_default_profile_name()
@@ -47,15 +68,25 @@ class DatabaseManager:
             self.current_profile = persisted
 
     def _connect(self) -> sqlite3.Connection:
+        """データベースへ接続する。
+
+        Returns:
+            外部キーを有効にした接続
+        """
         conn = sqlite3.connect(self.db_path)
         conn.execute("PRAGMA foreign_keys = ON")
         return conn
+
     def _init_database(self):
-        """データベースとテーブルを初期化"""
+        """データベースとテーブルを初期化
+
+        Raises:
+            Exception: 初期化に失敗したとき
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
-                
+
                 # プロファイルテーブル（プロファイル名がPK）
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS profiles (
@@ -64,7 +95,7 @@ class DatabaseManager:
                         is_default INTEGER DEFAULT 0
                     )
                 ''')
-                
+
                 # ブックマークテーブル（フォルダ機能付き）
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS bookmarks (
@@ -109,30 +140,30 @@ class DatabaseManager:
                 ''')
                 # 履歴テーブルにインデックスを追加（パフォーマンス向上）
                 cursor.execute('''
-                    CREATE INDEX IF NOT EXISTS idx_history_accessed_at 
+                    CREATE INDEX IF NOT EXISTS idx_history_accessed_at
                     ON history(accessed_at DESC)
                 ''')
                 cursor.execute('''
-                    CREATE INDEX IF NOT EXISTS idx_history_profile 
+                    CREATE INDEX IF NOT EXISTS idx_history_profile
                     ON history(profile_name)
                 ''')
                 # ブックマークフォルダにインデックスを追加
                 cursor.execute('''
-                    CREATE INDEX IF NOT EXISTS idx_bookmarks_folder_id 
+                    CREATE INDEX IF NOT EXISTS idx_bookmarks_folder_id
                     ON bookmarks(folder_id)
                 ''')
                 cursor.execute('''
-                    CREATE INDEX IF NOT EXISTS idx_bookmarks_profile 
+                    CREATE INDEX IF NOT EXISTS idx_bookmarks_profile
                     ON bookmarks(profile_name)
                 ''')
                 cursor.execute('''
-                    CREATE INDEX IF NOT EXISTS idx_bookmark_folders_profile 
+                    CREATE INDEX IF NOT EXISTS idx_bookmark_folders_profile
                     ON bookmark_folders(profile_name)
                 ''')
-                
+
                 # 既存のテーブルにプロファイル外部キーを追加（マイグレーション）
                 self._migrate_existing_tables(cursor)
-                
+
                 # プロファイルテーブルが空の場合、デフォルトプロファイルを作成
                 cursor.execute("SELECT COUNT(*) FROM profiles")
                 profile_count = cursor.fetchone()[0]
@@ -143,35 +174,41 @@ class DatabaseManager:
                         VALUES (?, CURRENT_TIMESTAMP, 1)
                     ''', (default_name,))
                     logger.info(get_log_text("default_profile_created"))
-                
+
                 self._ensure_default_profile_flag(cursor)
                 self._ensure_app_state_current_profile(cursor)
                 conn.commit()
             self._seed_missing_profile_settings()
         except Exception as e:
+            # 初期化に失敗したらログして、例外を送出し直す
             logger.error(get_log_text("database_init_failed", error=e))
             raise
+
     def _migrate_existing_tables(self, cursor):
-        """既存のテーブルにプロファイル外部キーを追加するマイグレーション"""
+        """既存のテーブルにプロファイル外部キーを追加するマイグレーション
+
+        Args:
+            cursor: マイグレーションに使うカーソル
+        """
         try:
             # 履歴テーブルの更新
             cursor.execute("PRAGMA table_info(history)")
             history_columns = [column[1] for column in cursor.fetchall()]
-            
+
             # 既存のentry_typeフィールドが存在しない場合は追加
             if 'entry_type' not in history_columns:
                 cursor.execute('''
                     ALTER TABLE history ADD COLUMN entry_type TEXT DEFAULT 'file'
                 ''')
                 logger.info(get_log_text("database_entry_type_column_added"))
-            
+
             # 既存のaccessed_atフィールドが存在しない場合は追加
             if 'accessed_at' not in history_columns:
                 cursor.execute('''
                     ALTER TABLE history ADD COLUMN accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ''')
                 logger.info(get_log_text("database_accessed_at_column_added"))
-            
+
             # 既存のprofile_nameフィールドが存在しない場合は追加
             if 'profile_name' not in history_columns:
                 default_name = get_default_profile_name()
@@ -185,28 +222,28 @@ class DatabaseManager:
                     ALTER TABLE history ADD COLUMN encrypted_password TEXT
                 ''')
                 logger.info(get_log_text("database_encrypted_password_column_added"))
-            
+
             # ブックマークテーブルの更新
             cursor.execute("PRAGMA table_info(bookmarks)")
             bookmark_columns = [column[1] for column in cursor.fetchall()]
-            
+
             if 'entry_type' not in bookmark_columns:
                 cursor.execute('''
                     ALTER TABLE bookmarks ADD COLUMN entry_type TEXT DEFAULT 'file'
                 ''')
                 logger.info(get_log_text("database_bookmark_entry_type_column_added"))
-            
+
             if 'profile_name' not in bookmark_columns:
                 default_name = get_default_profile_name()
                 cursor.execute(f'''
                     ALTER TABLE bookmarks ADD COLUMN profile_name TEXT DEFAULT '{default_name}'
                 ''')
                 logger.info(get_log_text("database_profile_column_added"))
-            
+
             # ブックマークフォルダテーブルの更新
             cursor.execute("PRAGMA table_info(bookmark_folders)")
             folder_columns = [column[1] for column in cursor.fetchall()]
-            
+
             if 'profile_name' not in folder_columns:
                 default_name = get_default_profile_name()
                 cursor.execute(f'''
@@ -254,16 +291,25 @@ class DatabaseManager:
             if 'is_default' not in profile_columns:
                 cursor.execute('ALTER TABLE profiles ADD COLUMN is_default INTEGER DEFAULT 0')
                 logger.info(get_log_text("database_is_default_column_added"))
-                
+
         except Exception as e:
+            # マイグレーションに失敗したらログして、処理を続ける
             logger.error(get_log_text("database_migration_failed", error=e))
-    
+
     def set_current_profile(self, profile_name: str):
-        """現在のプロファイルをメモリ上に設定"""
+        """現在のプロファイルをメモリ上に設定
+
+        Args:
+            profile_name: メモリ上の現在プロファイルにする名前
+        """
         self.current_profile = profile_name
 
     def set_current_profile_persistent(self, profile_name: str):
-        """現在のプロファイルをDBに保存する"""
+        """現在のプロファイルをDBに保存する
+
+        Args:
+            profile_name: 保存する現在プロファイルの名前
+        """
         self.current_profile = profile_name
         try:
             with self._connect() as conn:
@@ -273,10 +319,15 @@ class DatabaseManager:
                 ''', (APP_STATE_CURRENT_PROFILE, profile_name))
                 conn.commit()
         except Exception as e:
+            # 現在プロファイルの保存に失敗したらログして、メモリ上の値だけ残す
             logger.error(get_log_text("profile_persist_failed", profile_name=profile_name, error=e))
 
     def get_persisted_current_profile(self) -> Optional[str]:
-        """保存されている現在のプロファイル名を取得"""
+        """保存されている現在のプロファイル名を取得
+
+        Returns:
+            保存済みで存在する名前。無ければ削除できない既定名。読み取りに失敗したときは言語上の既定名
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -286,11 +337,16 @@ class DatabaseManager:
                     return row[0]
                 return self.get_default_protected_profile()
         except Exception as e:
+            # 保存済みプロファイルの取得に失敗したらログして、言語上の既定名を返す
             logger.error(get_log_text("profile_get_failed", error=e))
             return get_default_profile_name()
 
     def get_default_protected_profile(self) -> str:
-        """削除できない既定プロファイル名を取得"""
+        """削除できない既定プロファイル名を取得
+
+        Returns:
+            is_default のプロファイル名。無ければ言語上の既定名
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -299,17 +355,40 @@ class DatabaseManager:
                 if row:
                     return row[0]
         except Exception:
+            # 既定プロファイルを読めなければ捨てて、言語上の既定名へ進む
             pass
         return get_default_profile_name()
 
     def is_protected_profile(self, profile_name: str) -> bool:
+        """削除できない既定プロファイルかどうかを返す。
+
+        Args:
+            profile_name: 調べるプロファイル名
+
+        Returns:
+            削除できない既定プロファイルなら True
+        """
         return profile_name == self.get_default_protected_profile()
 
     def _profile_exists_conn(self, cursor, profile_name: str) -> bool:
+        """開いている接続上でプロファイルの有無を調べる。
+
+        Args:
+            cursor: 問い合わせに使うカーソル
+            profile_name: 調べるプロファイル名
+
+        Returns:
+            同名があれば True
+        """
         cursor.execute('SELECT COUNT(*) FROM profiles WHERE name = ?', (profile_name,))
         return cursor.fetchone()[0] > 0
 
     def _ensure_default_profile_flag(self, cursor):
+        """is_default のプロファイルが無ければ一つ立てる。
+
+        Args:
+            cursor: 更新に使うカーソル
+        """
         cursor.execute("SELECT COUNT(*) FROM profiles WHERE is_default = 1")
         if cursor.fetchone()[0] > 0:
             return
@@ -325,6 +404,11 @@ class DatabaseManager:
             cursor.execute("UPDATE profiles SET is_default = 1 WHERE name = ?", (row[0],))
 
     def _ensure_app_state_current_profile(self, cursor):
+        """現在プロファイルの保存値が無効なら既定名を書き込む。
+
+        Args:
+            cursor: 更新に使うカーソル
+        """
         cursor.execute('SELECT value FROM app_state WHERE key = ?', (APP_STATE_CURRENT_PROFILE,))
         row = cursor.fetchone()
         if row and row[0] and self._profile_exists_conn(cursor, row[0]):
@@ -350,9 +434,18 @@ class DatabaseManager:
                 if not self.has_profile_settings(profile_name):
                     self.save_profile_config(profile_name, default_dict)
         except Exception as e:
+            # 初期設定の投入に失敗したらログして、初期化を続ける
             logger.error(get_log_text("database_profile_settings_seed_failed", error=e))
 
     def has_profile_settings(self, profile_name: str) -> bool:
+        """プロファイル設定の行があるかを返す。
+
+        Args:
+            profile_name: 調べるプロファイル名
+
+        Returns:
+            1行でもあれば True。失敗したときは False
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -362,11 +455,20 @@ class DatabaseManager:
                 )
                 return cursor.fetchone()[0] > 0
         except Exception as e:
+            # 設定の有無を数えられなければログして、無いものとして偽を返す
             logger.error(get_log_text("database_profile_settings_check_failed", error=e))
             return False
 
     def save_profile_config(self, profile_name: str, config_dict: Dict[str, Any]) -> bool:
-        """プロファイル単位の設定を保存する"""
+        """プロファイル単位の設定を保存する
+
+        Args:
+            profile_name: 保存先のプロファイル名
+            config_dict: セクションごとの設定
+
+        Returns:
+            保存できれば True。失敗したときは False
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -394,14 +496,33 @@ class DatabaseManager:
                 conn.commit()
             return True
         except Exception as e:
+            # 設定の保存に失敗したらログして偽を返す
             logger.error(get_log_text("database_profile_settings_save_failed", profile_name=profile_name, error=e))
             return False
 
     def _plugin_key(self, plugin_id: str) -> str:
+        """プラグイン id を保存用のキーにする。
+
+        Args:
+            plugin_id: プラグインの id
+
+        Returns:
+            ハッシュした保存キー
+        """
         from ez_co.plugins.settings_key import hash_plugin_id
         return hash_plugin_id(plugin_id)
 
     def get_plugin_setting(self, plugin_id: str, key: str, default: Any = None) -> Any:
+        """現在のプロファイルからプラグイン設定を読む。
+
+        Args:
+            plugin_id: プラグインの id
+            key: 設定キー
+            default: 行が無いとき、または値が空のときに返す値
+
+        Returns:
+            JSON として読めた値。読めなければ保存文字列。失敗したときは default
+        """
         profile_name = self.current_profile
         plugin_key = self._plugin_key(plugin_id)
         try:
@@ -420,12 +541,24 @@ class DatabaseManager:
             try:
                 return json.loads(row[0]) if row[0] is not None else default
             except (TypeError, json.JSONDecodeError):
+                # JSON でなければ保存された文字列のまま返す
                 return row[0]
         except Exception as e:
+            # 設定の読み取りに失敗したらログして default を返す
             logger.error(get_log_text("database_plugin_setting_get_failed", error=e))
             return default
 
     def set_plugin_setting(self, plugin_id: str, key: str, value: Any) -> bool:
+        """現在のプロファイルへプラグイン設定を書く。
+
+        Args:
+            plugin_id: プラグインの id
+            key: 設定キー
+            value: JSON にして保存する値
+
+        Returns:
+            保存できれば True。失敗したときは False
+        """
         profile_name = self.current_profile
         plugin_key = self._plugin_key(plugin_id)
         try:
@@ -442,10 +575,20 @@ class DatabaseManager:
                 conn.commit()
             return True
         except Exception as e:
+            # 設定の保存に失敗したらログして偽を返す
             logger.error(get_log_text("database_plugin_setting_save_failed", error=e))
             return False
 
     def delete_plugin_setting(self, plugin_id: str, key: str) -> bool:
+        """現在のプロファイルからプラグイン設定を消す。
+
+        Args:
+            plugin_id: プラグインの id
+            key: 設定キー
+
+        Returns:
+            削除できれば True。失敗したときは False
+        """
         profile_name = self.current_profile
         plugin_key = self._plugin_key(plugin_id)
         try:
@@ -461,10 +604,20 @@ class DatabaseManager:
                 conn.commit()
             return True
         except Exception as e:
+            # 設定の削除に失敗したらログして偽を返す
             logger.error(get_log_text("database_plugin_setting_delete_failed", error=e))
             return False
 
     def copy_plugin_settings(self, source_profile: str, dest_profile: str) -> bool:
+        """プラグイン設定を別プロファイルへコピーする。
+
+        Args:
+            source_profile: コピー元のプロファイル名
+            dest_profile: コピー先のプロファイル名
+
+        Returns:
+            コピーできれば True。名前が空、同一、または失敗したときは False
+        """
         if not source_profile or not dest_profile or source_profile == dest_profile:
             return False
         try:
@@ -481,11 +634,19 @@ class DatabaseManager:
                 conn.commit()
             return True
         except Exception as e:
+            # 設定の複製に失敗したらログして偽を返す
             logger.error(get_log_text("database_plugin_settings_copy_failed", error=e))
             return False
 
     def load_profile_config(self, profile_name: str) -> Dict[str, Any]:
-        """プロファイル単位の設定を読み込む"""
+        """プロファイル単位の設定を読み込む
+
+        Args:
+            profile_name: 読み込むプロファイル名
+
+        Returns:
+            セクションとキーに展開した設定。失敗したときは読めた範囲
+        """
         result: Dict[str, Any] = {}
         try:
             with self._connect() as conn:
@@ -498,17 +659,27 @@ class DatabaseManager:
                     try:
                         parsed = json.loads(value) if value is not None else None
                     except json.JSONDecodeError:
+                        # JSON でなければ保存された文字列のまま使う
                         parsed = value
                     section_data = result.setdefault(section, {})
                     if key == "":
                         continue
                     section_data[key] = parsed
         except Exception as e:
+            # 設定の読み取りに失敗したらログして、ここまで読めた分を返す
             logger.error(get_log_text("database_profile_settings_load_failed", profile_name=profile_name, error=e))
         return result
 
     def create_profile(self, profile_name: str, settings: Optional[Dict[str, Any]] = None) -> bool:
-        """新しいプロファイルを作成"""
+        """新しいプロファイルを作成
+
+        Args:
+            profile_name: 新しいプロファイル名
+            settings: 初期設定。無いときは推奨値で作る
+
+        Returns:
+            作成できれば True。同名がある、または失敗したときは False
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -534,13 +705,20 @@ class DatabaseManager:
             logger.info(get_log_text("profile_created", profile_name=profile_name))
             return True
         except sqlite3.IntegrityError:
+            # 同じ名前があれば警告を残して偽を返す
             logger.warning(get_log_text("profile_already_exists", profile_name=profile_name))
             return False
         except Exception as e:
+            # 作成に失敗したらログして偽を返す
             logger.error(get_log_text("profile_create_failed", profile_name=profile_name, error=e))
             return False
+
     def get_profiles(self) -> List[str]:
-        """すべてのプロファイル名を取得"""
+        """すべてのプロファイル名を取得
+
+        Returns:
+            作成順のプロファイル名。失敗したときは言語上の既定名だけ
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -551,14 +729,23 @@ class DatabaseManager:
                 rows = cursor.fetchall()
                 return [row[0] for row in rows]
         except Exception as e:
+            # 一覧の取得に失敗したらログして、言語上の既定名だけ返す
             logger.error(get_log_text("profile_get_failed", error=e))
             return [get_default_profile_name()]  # エラー時は多言語化されたデフォルトのみ返す
+
     def delete_profile(self, profile_name: str) -> bool:
-        """プロファイルを削除（既定プロファイルは削除不可）"""
+        """プロファイルを削除（既定プロファイルは削除不可）
+
+        Args:
+            profile_name: 削除するプロファイル名
+
+        Returns:
+            削除できれば True。既定プロファイル、または失敗したときは False
+        """
         if self.is_protected_profile(profile_name):
             logger.warning(get_log_text("default_profile_cannot_delete"))
             return False
-        
+
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -572,11 +759,20 @@ class DatabaseManager:
                 logger.info(get_log_text("profile_deleted", profile_name=profile_name))
                 return True
         except Exception as e:
+            # 削除に失敗したらログして偽を返す
             logger.error(get_log_text("profile_delete_failed", profile_name=profile_name, error=e))
             return False
 
     def rename_profile(self, old_name: str, new_name: str) -> bool:
-        """プロファイル名を変更する"""
+        """プロファイル名を変更する
+
+        Args:
+            old_name: 変更前の名前
+            new_name: 変更後の名前
+
+        Returns:
+            変更できれば True。空、同一、重複、元が無い、失敗したときは False
+        """
         new_name = (new_name or "").strip()
         if not old_name or not new_name or old_name == new_name:
             return False
@@ -616,10 +812,19 @@ class DatabaseManager:
             logger.info(get_log_text("profile_renamed", old_name=old_name, new_name=new_name))
             return True
         except Exception as e:
+            # 改名に失敗したらログして偽を返す
             logger.error(get_log_text("profile_rename_failed", old_name=old_name, new_name=new_name, error=e))
             return False
+
     def profile_exists(self, profile_name: str) -> bool:
-        """プロファイルが存在するかチェック"""
+        """プロファイルが存在するかチェック
+
+        Args:
+            profile_name: 調べるプロファイル名
+
+        Returns:
+            存在すれば True。失敗したときは False
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -627,10 +832,23 @@ class DatabaseManager:
                 count = cursor.fetchone()[0]
                 return count > 0
         except Exception as e:
+            # 存在確認に失敗したらログして偽を返す
             logger.error(get_log_text("profile_check_failed", profile_name=profile_name, error=e))
             return False
+
     def add_bookmark(self, file_path: str, page_number: int, title: str = None, folder_id: int = 0, entry_type: str = EntryType.FILE.value) -> bool:
-        """ブックマークを追加"""
+        """ブックマークを追加
+
+        Args:
+            file_path: 対象のパス
+            page_number: ページ番号
+            title: 表示名
+            folder_id: 入れるフォルダの id
+            entry_type: エントリの種類
+
+        Returns:
+            追加できれば True。失敗したときは False
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -648,25 +866,44 @@ class DatabaseManager:
                 # logger.info(get_log_text("database_bookmark_added", file_path=file_path, page_number=page_number, folder_id=folder_id))
                 return True
         except Exception as e:
+            # ブックマーク追加に失敗したらログして偽を返す
             logger.error(get_log_text("database_bookmark_add_failed", error=e))
             return False
+
     def remove_bookmark(self, file_path: str, page_number: int) -> bool:
-        """ブックマークを削除"""
+        """ブックマークを削除
+
+        Args:
+            file_path: 対象のパス
+            page_number: ページ番号
+
+        Returns:
+            削除できれば True。失敗したときは False
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    DELETE FROM bookmarks 
+                    DELETE FROM bookmarks
                     WHERE file_path = ? AND page_number = ? AND profile_name = ?
                 ''', (file_path, page_number, self.current_profile))
                 conn.commit()
                 # logger.info(get_log_text("database_bookmark_removed", file_path=file_path, page_number=page_number))
                 return True
         except Exception as e:
+            # ブックマーク削除に失敗したらログして偽を返す
             logger.error(get_log_text("database_bookmark_remove_failed", error=e))
             return False
+
     def get_bookmarks(self, folder_id: int = 0) -> List[Dict[str, Any]]:
-        """指定されたフォルダのブックマークを取得"""
+        """指定されたフォルダのブックマークを取得
+
+        Args:
+            folder_id: フォルダの id
+
+        Returns:
+            アーカイブ設定で残したブックマーク。失敗したときは空
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -692,10 +929,21 @@ class DatabaseManager:
                 # アーカイブ設定に基づいてフィルタリング
                 return self._filter_entries_by_archive_settings(bookmark_list)
         except Exception as e:
+            # ブックマーク取得に失敗したらログして空を返す
             logger.error(get_log_text("database_get_bookmarks_failed", error=e))
             return []
+
     def move_bookmark_to_folder(self, file_path: str, page_number: int, folder_id: int) -> bool:
-        """ブックマークを別のフォルダに移動"""
+        """ブックマークを別のフォルダに移動
+
+        Args:
+            file_path: 対象のパス
+            page_number: ページ番号
+            folder_id: 移動先フォルダの id
+
+        Returns:
+            移動できれば True。失敗したときは False
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -705,29 +953,42 @@ class DatabaseManager:
                 conn.commit()
                 return True
         except Exception as e:
+            # ブックマークの移動に失敗したらログして偽を返す
             logger.error(get_log_text("database_bookmark_move_failed", error=e))
             return False
+
     def add_history(self, file_path: str, page_number: int, title: str = None, entry_type: str = EntryType.FILE.value, encrypted_password: str = None) -> bool:
-        """履歴を追加（同じファイル・ページ・タイプ・プロファイルの組み合わせが既に存在する場合は日付だけ更新）"""
+        """履歴を追加（同じファイル・ページ・タイプ・プロファイルの組み合わせが既に存在する場合は日付だけ更新）
+
+        Args:
+            file_path: 対象のパス
+            page_number: ページ番号
+            title: 表示名
+            entry_type: エントリの種類
+            encrypted_password: 暗号化済みのパスワード。無いときは既存の値を残す
+
+        Returns:
+            記録できれば True。失敗したときは False
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
                 # 同じファイル、ページ、タイプ、プロファイルの組み合わせが既に存在するかチェック
                 cursor.execute('''
-                    SELECT id FROM history 
+                    SELECT id FROM history
                     WHERE file_path = ? AND page_number = ? AND entry_type = ? AND profile_name = ?
                 ''', (file_path, page_number, entry_type, self.current_profile))
                 existing_record = cursor.fetchone()
                 if existing_record:
                     if encrypted_password is not None:
                         cursor.execute('''
-                            UPDATE history 
+                            UPDATE history
                             SET accessed_at = CURRENT_TIMESTAMP, title = ?, encrypted_password = ?
                             WHERE file_path = ? AND page_number = ? AND entry_type = ? AND profile_name = ?
                         ''', (title, encrypted_password, file_path, page_number, entry_type, self.current_profile))
                     else:
                         cursor.execute('''
-                            UPDATE history 
+                            UPDATE history
                             SET accessed_at = CURRENT_TIMESTAMP, title = ?
                             WHERE file_path = ? AND page_number = ? AND entry_type = ? AND profile_name = ?
                         ''', (title, file_path, page_number, entry_type, self.current_profile))
@@ -741,11 +1002,19 @@ class DatabaseManager:
                 conn.commit()
                 return True
         except Exception as e:
+            # 履歴の追加に失敗したらログして偽を返す
             logger.error(get_log_text("database_history_add_failed", error=e))
             return False
 
     def get_stored_archive_password(self, file_path: str) -> Optional[str]:
-        """履歴に保存したファイルパスワードを復号して返す。"""
+        """履歴に保存したファイルパスワードを復号して返す。
+
+        Args:
+            file_path: アーカイブ、またはその仮想パス
+
+        Returns:
+            復号したパスワード。無い、または失敗したときは None
+        """
         try:
             from ez_co.utils.password_protect import decrypt_secret
             from ez_co.handlers.archive_password import normalize_archive_path
@@ -755,6 +1024,7 @@ class DatabaseManager:
             try:
                 candidates.add(normalize_archive_path(file_path))
             except Exception:
+                # パスの正規化に失敗したら捨てて、元の候補だけで探す
                 pass
             if VirtualPathHandler.is_virtual_path(file_path):
                 parsed = VirtualPathHandler.parse_virtual_path(file_path)
@@ -763,6 +1033,7 @@ class DatabaseManager:
                     try:
                         candidates.add(normalize_archive_path(str(parsed[0])))
                     except Exception:
+                        # 仮想パスの正規化に失敗したら捨てて、解析できた候補だけで探す
                         pass
 
             with self._connect() as conn:
@@ -782,11 +1053,19 @@ class DatabaseManager:
                     return None
                 return decrypt_secret(row[0])
         except Exception as e:
+            # パスワードの取得に失敗したらログして None を返す
             logger.error(get_log_text("database_get_stored_archive_password_failed", error=e))
             return None
 
     def get_history(self, limit: int = 20) -> List[Dict[str, Any]]:
-        """履歴を取得（最新のものから、現在のプロファイル）"""
+        """履歴を取得（最新のものから、現在のプロファイル）
+
+        Args:
+            limit: 最大件数
+
+        Returns:
+            新しい順で、アーカイブ設定で残した履歴。失敗したときは空
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -811,10 +1090,16 @@ class DatabaseManager:
                 # アーカイブ設定に基づいてフィルタリング
                 return self._filter_entries_by_archive_settings(history_list)
         except Exception as e:
+            # 履歴の取得に失敗したらログして空を返す
             logger.error(get_log_text("database_get_history_failed", error=e))
             return []
+
     def get_latest_history(self) -> Optional[Dict[str, Any]]:
-        """最新の履歴を取得（現在のプロファイル）"""
+        """最新の履歴を取得（現在のプロファイル）
+
+        Returns:
+            最新の1件。無い、または失敗したときは None
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -836,10 +1121,16 @@ class DatabaseManager:
                     }
                 return None
         except Exception as e:
+            # 最新履歴の取得に失敗したらログして None を返す
             logger.error(get_log_text("database_get_latest_history_failed", error=e))
             return None
+
     def clear_history(self) -> bool:
-        """履歴をすべて削除（現在のプロファイル）"""
+        """履歴をすべて削除（現在のプロファイル）
+
+        Returns:
+            削除できれば True。失敗したときは False
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -848,19 +1139,28 @@ class DatabaseManager:
                 logger.info(get_log_text("database_history_cleared"))
                 return True
         except Exception as e:
+            # 履歴の消去に失敗したらログして偽を返す
             logger.error(get_log_text("database_history_clear_failed", error=e))
             return False
+
     def cleanup_old_history(self, max_count: int) -> bool:
-        """古い履歴を削除して最大数を制限（現在のプロファイル）"""
+        """古い履歴を削除して最大数を制限（現在のプロファイル）
+
+        Args:
+            max_count: 残す件数
+
+        Returns:
+            削れれば True。失敗したときは False
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    DELETE FROM history 
+                    DELETE FROM history
                     WHERE profile_name = ? AND id NOT IN (
-                        SELECT id FROM history 
+                        SELECT id FROM history
                         WHERE profile_name = ?
-                        ORDER BY accessed_at DESC 
+                        ORDER BY accessed_at DESC
                         LIMIT ?
                     )
                 ''', (self.current_profile, self.current_profile, max_count))
@@ -868,10 +1168,20 @@ class DatabaseManager:
                 logger.info(get_log_text("database_history_cleaned", max_count=max_count))
                 return True
         except Exception as e:
+            # 古い履歴の削除に失敗したらログして偽を返す
             logger.error(get_log_text("database_history_cleanup_failed", error=e))
             return False
+
     def add_bookmark_folder(self, name: str, parent_id: int = 0) -> int:
-        """ブックマークフォルダを追加"""
+        """ブックマークフォルダを追加
+
+        Args:
+            name: フォルダ名
+            parent_id: 親フォルダの id
+
+        Returns:
+            追加したフォルダの id。失敗したときは 0
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -890,10 +1200,19 @@ class DatabaseManager:
                 # logger.info(get_log_text("database_bookmark_folder_added", folder_name=name, folder_id=folder_id))
                 return folder_id
         except Exception as e:
+            # フォルダ追加に失敗したらログして 0 を返す
             logger.error(get_log_text("database_bookmark_folder_add_failed", error=e))
             return 0
+
     def get_bookmark_folders(self, parent_id: int = 0) -> List[Dict[str, Any]]:
-        """ブックマークフォルダを取得（現在のプロファイル）"""
+        """ブックマークフォルダを取得（現在のプロファイル）
+
+        Args:
+            parent_id: 親フォルダの id
+
+        Returns:
+            フォルダの一覧。失敗したときは空
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -915,14 +1234,28 @@ class DatabaseManager:
                     for row in rows
                 ]
         except Exception as e:
+            # フォルダ一覧の取得に失敗したらログして空を返す
             logger.error(get_log_text("database_get_bookmark_folders_failed", error=e))
             return []
+
     def get_last_used_folder(self) -> int:
-        """最後に使用されたフォルダIDを取得（設定から）"""
+        """最後に使用されたフォルダIDを取得（設定から）
+
+        Returns:
+            ルートを表す 0
+        """
         # ここでは簡単に0（ルート）を返す。実際の実装では設定ファイルから取得
-        return 0 
+        return 0
+
     def delete_bookmark_folder(self, folder_id: int) -> bool:
-        """ブックマークフォルダを削除"""
+        """ブックマークフォルダを削除
+
+        Args:
+            folder_id: 削除するフォルダの id
+
+        Returns:
+            中が空で削除できれば True。中身がある、または失敗したときは False
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -939,10 +1272,20 @@ class DatabaseManager:
                 logger.info(get_log_text("database_bookmark_folder_deleted", folder_id=folder_id))
                 return True
         except Exception as e:
+            # フォルダ削除に失敗したらログして偽を返す
             logger.error(get_log_text("database_bookmark_folder_delete_failed", error=e))
             return False
+
     def rename_bookmark_folder(self, folder_id: int, new_name: str) -> bool:
-        """ブックマークフォルダの名前を変更"""
+        """ブックマークフォルダの名前を変更
+
+        Args:
+            folder_id: フォルダの id
+            new_name: 新しい名前
+
+        Returns:
+            変更できれば True。失敗したときは False
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -951,10 +1294,20 @@ class DatabaseManager:
                 # logger.info(get_log_text("database_bookmark_folder_renamed", folder_id=folder_id, new_name=new_name))
                 return True
         except Exception as e:
+            # フォルダ改名に失敗したらログして偽を返す
             logger.error(get_log_text("database_bookmark_folder_rename_failed", error=e))
             return False
+
     def get_bookmark(self, file_path: str, page_number: int) -> Optional[Dict[str, Any]]:
-        """特定のファイルとページのブックマークを取得（現在のプロファイル）"""
+        """特定のファイルとページのブックマークを取得（現在のプロファイル）
+
+        Args:
+            file_path: 対象のパス
+            page_number: ページ番号
+
+        Returns:
+            見つかったブックマーク。無い、または失敗したときは None
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -975,40 +1328,71 @@ class DatabaseManager:
                     }
                 return None
         except Exception as e:
+            # ブックマークの取得に失敗したらログして None を返す
             logger.error(get_log_text("database_get_bookmark_failed", error=e))
             return None
+
     def delete_history_item(self, file_path: str, page_number: int, entry_type: str = EntryType.FILE.value) -> bool:
-        """履歴アイテムを削除（現在のプロファイル）"""
+        """履歴アイテムを削除（現在のプロファイル）
+
+        Args:
+            file_path: 対象のパス
+            page_number: ページ番号
+            entry_type: エントリの種類
+
+        Returns:
+            削除できれば True。失敗したときは False
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    DELETE FROM history 
+                    DELETE FROM history
                     WHERE file_path = ? AND page_number = ? AND entry_type = ? AND profile_name = ?
                 ''', (file_path, page_number, entry_type, self.current_profile))
                 conn.commit()
                 # logger.info(get_log_text("database_history_item_deleted", file_path=file_path, page_number=page_number, entry_type=entry_type))
                 return True
         except Exception as e:
+            # 履歴の1件削除に失敗したらログして偽を返す
             logger.error(get_log_text("database_history_item_delete_failed", error=e))
             return False
+
     def delete_history_by_file_path(self, file_path: str, entry_type: str = EntryType.FILE.value) -> bool:
-        """同じファイル/フォルダの既存の履歴を削除（現在のプロファイル）"""
+        """同じファイル/フォルダの既存の履歴を削除（現在のプロファイル）
+
+        Args:
+            file_path: 対象のパス
+            entry_type: エントリの種類
+
+        Returns:
+            削除できれば True。失敗したときは False
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    DELETE FROM history 
+                    DELETE FROM history
                     WHERE file_path = ? AND entry_type = ? AND profile_name = ?
                 ''', (file_path, entry_type, self.current_profile))
                 conn.commit()
                 # logger.info(get_log_text("database_history_file_deleted", file_path=file_path, entry_type=entry_type))
                 return True
         except Exception as e:
+            # ファイル単位の履歴削除に失敗したらログして偽を返す
             logger.error(get_log_text("database_history_file_delete_failed", error=e))
             return False
+
     def get_history_by_file_path(self, file_path: str, entry_type: str = EntryType.FILE.value) -> Optional[Dict[str, Any]]:
-        """特定のファイルパスの履歴を取得（現在のプロファイル）"""
+        """特定のファイルパスの履歴を取得（現在のプロファイル）
+
+        Args:
+            file_path: 対象のパス
+            entry_type: エントリの種類
+
+        Returns:
+            最新の1件。無い、または失敗したときは None
+        """
         try:
             with self._connect() as conn:
                 cursor = conn.cursor()
@@ -1030,15 +1414,23 @@ class DatabaseManager:
                     }
                 return None
         except Exception as e:
+            # ファイルの履歴取得に失敗したらログして None を返す
             logger.error(get_log_text("database_get_history_by_file_path_failed", error=e))
             return None
-    
+
     def _should_filter_archive_entry(self, file_path: str) -> bool:
-        """アーカイブ設定に基づいてエントリをフィルタリングするかどうかを判定"""
+        """アーカイブ設定に基づいてエントリをフィルタリングするかどうかを判定
+
+        Args:
+            file_path: 判定するパス
+
+        Returns:
+            一覧から外すなら True
+        """
         if not self.config:
             # logger.info(get_log_text("debug_filter_entry_no_config", file_path=file_path))
             return False
-        
+
         # virtual pathの場合はアーカイブファイル部分を抽出
         actual_archive_path = file_path
         is_virtual_path = file_path.startswith("archive:")
@@ -1049,6 +1441,7 @@ class DatabaseManager:
                 actual_archive_path = str(archive_path)
                 # logger.info(get_log_text("debug_filter_virtual_path", file_path=file_path, archive_path=actual_archive_path))
             except Exception as e:
+                # 仮想パスを分解できなければログして、一覧から外さない
                 logger.error(get_log_text("debug_filter_virtual_path_error", file_path=file_path, error=e))
                 return False
 
@@ -1056,18 +1449,18 @@ class DatabaseManager:
         decision = get_plugin_manager().resolve(actual_archive_path, self.config)
         if decision.is_skipped:
             return True
-        
+
         # アーカイブファイルかどうかを確認
         is_archive = ArchiveInfo.is_archive_file(actual_archive_path) or is_virtual_path
         # logger.info(get_log_text("debug_filter_entry_check", file_path=file_path, is_archive=is_archive))
-        
+
         # アーカイブサポートが無効な場合、すべてのアーカイブファイルをフィルタリング
         archive_enabled = self.config.archive.get("enabled", True)
         if not archive_enabled:
             if is_archive:
                 # logger.info(get_log_text("debug_filter_entry_archive_disabled", file_path=file_path))
                 return True
-        
+
         # 特定のアーカイブタイプが無効な場合、そのタイプのファイルをフィルタリング
         archive_type = ArchiveInfo.get_archive_type_by_path(actual_archive_path)
         if archive_type is not None:
@@ -1077,16 +1470,23 @@ class DatabaseManager:
             if not type_enabled:
                 # logger.info(get_log_text("debug_filter_entry_type_disabled", file_path=file_path, archive_type=ArchiveInfo.get_display_name(archive_type)))
                 return True
-        
+
         # logger.info(get_log_text("debug_filter_entry_not_filtered", file_path=file_path))
         return False
-    
+
     def _filter_entries_by_archive_settings(self, entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """アーカイブ設定に基づいてエントリリストをフィルタリング"""
+        """アーカイブ設定に基づいてエントリリストをフィルタリング
+
+        Args:
+            entries: ブックマークまたは履歴の一覧
+
+        Returns:
+            残したエントリ。設定が無ければそのまま
+        """
         if not self.config:
             logger.info(get_log_text("debug_filter_no_config"))
             return entries
-        
+
         filtered_entries = []
         filtered_count = 0
         for entry in entries:
@@ -1097,6 +1497,6 @@ class DatabaseManager:
                 # logger.info(get_log_text("debug_filter_entry_filtered", file_path=file_path))
             else:
                 filtered_entries.append(entry)
-        
+
         # logger.info(get_log_text("debug_filter_summary", total=len(entries), filtered=filtered_count, remaining=len(filtered_entries)))
-        return filtered_entries 
+        return filtered_entries

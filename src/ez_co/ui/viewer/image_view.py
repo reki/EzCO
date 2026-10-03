@@ -1,3 +1,4 @@
+"""画像の表示、拡大、回転、マウス操作を行うウィジェット。"""
 from typing import Optional, List
 import logging
 import time
@@ -23,8 +24,15 @@ class ImageView(QWidget):
     next_page_requested = Signal()
     prev_page_requested = Signal()
     zoom_changed = Signal(float)  # 拡大縮小率変更シグナル
+    # paintEvent の呼び出し回数を数える。
     _paint_count = 0  # クラス変数でpaintEvent呼び出し回数をカウント
     def __init__(self, parent=None, config=None):
+        """表示、拡大率、回転、マウス操作の状態を初期化する。
+
+        Args:
+            parent: 親ウィジェット。
+            config: 表示と操作の設定。
+        """
         super().__init__(parent)
         self.config = config
         self.setup_ui()
@@ -69,6 +77,7 @@ class ImageView(QWidget):
         try:
             self.mouse_gesture = MouseGesture(self.config)
         except Exception:
+            # ジェスチャーを用意できないときは捨てて、操作なしで続ける。
             self.mouse_gesture = None
         # 起動時に背景色を設定
         color = "#c0ffc0"
@@ -78,6 +87,7 @@ class ImageView(QWidget):
             elif isinstance(self.config, dict):
                 color = self.config.get("viewer", {}).get("background_color", "#c0ffc0")
         self.set_background_color(color)
+
     def setup_ui(self):
         """UIの初期化"""
         layout = QVBoxLayout()
@@ -98,8 +108,13 @@ class ImageView(QWidget):
         # マウストラッキングを有効にして、マウス移動イベントを受け取れるようにする
         self.setMouseTracking(True)
         self.image_label.setMouseTracking(True)
+
     def set_image(self, image: Optional[Image.Image]):
-        """画像を設定"""
+        """画像を設定
+
+        Args:
+            image: 表示する画像。
+        """
         # キャッシュをクリア
         self._display_cache.clear()
         self.current_image = image
@@ -124,14 +139,14 @@ class ImageView(QWidget):
                         details=f"path=display_rgba, rgba_convert_ms={(time.perf_counter() - convert_started) * 1000:.3f}",
                     )
                 )
-            
+
             if self._zoom_navigation_mode() == "page" and self.zoom_factor > 1.0:
                 # page は従来どおり、拡大した新しい画像を右上から表示する。
                 self.cancel_pending_zoom_navigation()
                 self._reset_image_position_to_top_right()
             else:
                 self._consume_pending_zoom_navigation()
-            
+
             self.update_image_display()
             self._is_loading = False  # 画像読み込み完了
             # 画像読み込み完了後、マウスボタンがまだ押されている場合はタイマーを再開
@@ -155,8 +170,24 @@ class ImageView(QWidget):
             self._resume_mouse_repeat_if_pressed()
 
     def combine_spread_images(self, left_image: Image.Image, right_image: Image.Image) -> Image.Image:
-        """2枚の画像を横並びの1枚に合成する"""
+        """2枚の画像を横並びの1枚に合成する
+
+        Args:
+            left_image: 左の画像。
+            right_image: 右の画像。
+
+        Returns:
+            高さを揃えて横に並べた画像。
+        """
         def to_rgba(img: Image.Image) -> Image.Image:
+            """RGBA でなければ変換して返す。
+
+            Args:
+                img: 変換する画像。
+
+            Returns:
+                RGBA の画像。
+            """
             if img.mode == "RGBA":
                 return img
             return img.convert("RGBA")
@@ -166,6 +197,15 @@ class ImageView(QWidget):
         max_h = max(left.height, right.height)
 
         def fit_height(img: Image.Image, height: int) -> Image.Image:
+            """高さを合わせて幅を比例させる。
+
+            Args:
+                img: 変える画像。
+                height: 合わせる高さ。
+
+            Returns:
+                高さを合わせた画像。同じ高さならそのまま。
+            """
             if img.height == height:
                 return img
             width = max(1, int(img.width * height / img.height))
@@ -191,6 +231,11 @@ class ImageView(QWidget):
         return combined
 
     def _zoom_navigation_mode(self) -> str:
+        """拡大中の移動モードを返す。
+
+        Returns:
+            page、left、right のいずれか。それ以外の設定は page。
+        """
         viewer = {}
         if self.config:
             if hasattr(self.config, "viewer") and isinstance(self.config.viewer, dict):
@@ -207,7 +252,17 @@ class ImageView(QWidget):
         zoom_factor: Optional[float] = None,
         rotation_angle: Optional[int] = None,
     ):
-        """回転・拡大後の表示サイズと、画面座標での移動限界を返す。"""
+        """回転・拡大後の表示サイズと、画面座標での移動限界を返す。
+
+        Args:
+            image_size: 元画像のサイズ。無ければ現在の画像。
+            viewport_size: 表示領域。無ければラベルのサイズ。
+            zoom_factor: 拡大率。無ければ現在の拡大率。
+            rotation_angle: 回転角。無ければ現在の角度。
+
+        Returns:
+            表示サイズと、横と縦の移動限界。画像が無ければ空のサイズと 0。
+        """
         if image_size is None:
             if not self.current_qimage:
                 return QSize(), 0, 0
@@ -236,7 +291,16 @@ class ImageView(QWidget):
 
     @staticmethod
     def _axis_positions(start: int, end: int, span: int) -> List[int]:
-        """開始端から1画面ずつ進み、端数を終端へクランプした座標列。"""
+        """開始端から1画面ずつ進み、端数を終端へクランプした座標列。
+
+        Args:
+            start: 開始座標。
+            end: 終了座標。
+            span: 1画面の幅。
+
+        Returns:
+            座標の列。開始と終了が同じなら開始だけ。
+        """
         if start == end:
             return [start]
         step = max(1, span)
@@ -258,7 +322,20 @@ class ImageView(QWidget):
         mode: str,
         direction: str,
     ) -> Optional[QPoint]:
-        """画像内の次位置を計算する。端なら None を返す。"""
+        """画像内の次位置を計算する。端なら None を返す。
+
+        Args:
+            current: いまの位置。
+            max_x: 横の移動限界。
+            max_y: 縦の移動限界。
+            viewport_width: 表示幅。
+            viewport_height: 表示高さ。
+            mode: left か right。
+            direction: next か previous。
+
+        Returns:
+            次の位置。端、または対象外なら None。
+        """
         if mode not in ("left", "right") or direction not in ("next", "previous"):
             return None
         if max_x <= 0 and max_y <= 0:
@@ -272,6 +349,7 @@ class ImageView(QWidget):
         try:
             index = sequence.index(current)
         except ValueError:
+            # 現在位置が一覧に無いときは、先頭の手前として戻す。
             index = -1
         if index >= 0:
             target = index + (1 if direction == "next" else -1)
@@ -312,7 +390,14 @@ class ImageView(QWidget):
         return None
 
     def try_zoom_navigation(self, direction: str) -> bool:
-        """読書順に画像内を移動し、要求を消費した場合は True を返す。"""
+        """読書順に画像内を移動し、要求を消費した場合は True を返す。
+
+        Args:
+            direction: next か previous。
+
+        Returns:
+            画像内を移動したとき True。ページ送りに回すときは False。
+        """
         mode = self._zoom_navigation_mode()
         if mode == "page" or not self.current_qimage:
             return False
@@ -334,16 +419,22 @@ class ImageView(QWidget):
         return True
 
     def prepare_page_transition(self, direction: str):
-        """連続した次／前ページ遷移後の開始角を一度だけ予約する。"""
+        """連続した次／前ページ遷移後の開始角を一度だけ予約する。
+
+        Args:
+            direction: next か previous。それ以外は予約を消す。
+        """
         if direction in ("next", "previous") and self._zoom_navigation_mode() in ("left", "right"):
             self._pending_zoom_navigation_direction = direction
         else:
             self.cancel_pending_zoom_navigation()
 
     def cancel_pending_zoom_navigation(self):
+        """予約したページ遷移の開始位置を消す。"""
         self._pending_zoom_navigation_direction = None
 
     def _consume_pending_zoom_navigation(self):
+        """予約された次か前の開始位置へ、一度だけ移す。"""
         direction = self._pending_zoom_navigation_direction
         self._pending_zoom_navigation_direction = None
         if direction not in ("next", "previous") or not self.current_qimage:
@@ -403,7 +494,7 @@ class ImageView(QWidget):
                     transform = QTransform()
                     transform.rotate(self.rotation_angle)
                     rotated_qimage = self.current_qimage.transformed(transform)
-                
+
                 # スケーリング
                 scaled_size = self.image_label.size() * self.zoom_factor
                 # QImage から直接 QPixmap を生成（メモリ効率が良い）
@@ -460,10 +551,27 @@ class ImageView(QWidget):
             logger.debug(get_log_text("image_view_displaying_image", size=cached_pixmap.size(), zoom_factor=self.zoom_factor, offset=self.image_offset))
         finally:
             self._is_updating = False
+
     def wheelEvent(self, event: QWheelEvent):
-        # QLabelのイベントフィルタで処理するので何もしない
+        """ホイールはここでは処理しない。
+
+        QLabel のイベントフィルタで処理する。
+
+        Args:
+            event: ホイールイベント。
+        """
         pass
+
     def eventFilter(self, obj, event):
+        """画像ラベルのマウス押下で、一時ロックとボタン操作を扱う。
+
+        Args:
+            obj: イベントの対象。
+            event: 受け取ったイベント。
+
+        Returns:
+            処理したとき True。それ以外は親の結果。
+        """
         if obj == self.image_label:
             if event.type() == QEvent.MouseButtonPress or event.type() == QEvent.MouseButtonDblClick:
                 mouse_text = self.mouse_to_string(event)
@@ -610,7 +718,16 @@ class ImageView(QWidget):
             elif event.type() == QEvent.Wheel:
                 return self._handle_wheel_event(event)
         return super().eventFilter(obj, event)
+
     def mouse_to_string(self, event):
+        """マウスボタンをショートカット用の文字列にする。
+
+        Args:
+            event: マウスイベント。
+
+        Returns:
+            ボタンの文字列。該当が無ければ空。
+        """
         if event.button() == Qt.LeftButton:
             return MouseButtons.LEFT.value
         elif event.button() == Qt.RightButton:
@@ -632,8 +749,13 @@ class ImageView(QWidget):
             # その他のボタンの場合は従来通り
             return MouseButtons.DOUBLE.value
         return ""
+
     def _start_mouse_repeat(self, mouse_text):
-        # 既存のタイマーを確実に停止
+        """押しっぱなしのマウス操作を、初期間隔で繰り返し始める。
+
+        Args:
+            mouse_text: 繰り返すボタンの文字列。
+        """
         self._stop_mouse_repeat()
         # 新しいリピートを開始
         self._mouse_repeat_action = mouse_text
@@ -642,7 +764,9 @@ class ImageView(QWidget):
         self._mouse_repeat_timer.setInterval(self._mouse_repeat_initial_delay)
         self._mouse_repeat_timer.start()
         logger.info(get_log_text("image_view_mouse_repeat_started", mouse_text=mouse_text))
+
     def _stop_mouse_repeat(self):
+        """押しっぱなしの繰り返しを止める。"""
         # タイマーを先に停止
         if self._mouse_repeat_timer.isActive():
             self._mouse_repeat_timer.stop()
@@ -650,17 +774,17 @@ class ImageView(QWidget):
         self._mouse_repeat_action = None
         self._mouse_repeat_start_time = 0
         logger.info(get_log_text("image_view_mouse_repeat_stopped"))
-    
+
     def _resume_mouse_repeat_if_pressed(self):
         """画像読み込み完了後、マウスボタンがまだ押されている場合はタイマーを再開"""
         if not self._mouse_repeat_action:
             return
-        
+
         # マウスボタンがまだ押されているか確認
         mouse_buttons = QApplication.mouseButtons()
         is_left_pressed = mouse_buttons & Qt.LeftButton
         is_right_pressed = mouse_buttons & Qt.RightButton
-        
+
         # 対応するボタンが押されている場合はタイマーを再開
         if self._mouse_repeat_action == MouseButtons.LEFT.value and is_left_pressed:
             logger.info(get_log_text("image_view_mouse_repeat_resumed_after_load"))
@@ -677,7 +801,9 @@ class ImageView(QWidget):
         else:
             # ボタンが押されていない場合はタイマーを完全に停止
             self._stop_mouse_repeat()
+
     def _on_mouse_repeat(self):
+        """押しっぱなしのマウス操作を繰り返す。読み込み中は飛ばす。"""
         # 最初にアクションがクリアされていないか確認（最重要チェック）
         if not self._mouse_repeat_action:
             logger.info(get_log_text("image_view_mouse_repeat_cancelled_no_action"))
@@ -685,17 +811,17 @@ class ImageView(QWidget):
             if self._mouse_repeat_timer.isActive():
                 self._mouse_repeat_timer.stop()
             return
-        
+
         # 画像読み込み中の場合はアクションをスキップ（タイマーは継続）
         if self._is_loading:
             logger.info(get_log_text("image_view_mouse_repeat_skipped_loading"))
             return
-        
+
         # マウスボタンがまだ押されているか確認
         mouse_buttons = QApplication.mouseButtons()
         is_left_pressed = mouse_buttons & Qt.LeftButton
         is_right_pressed = mouse_buttons & Qt.RightButton
-        
+
         # 対応するボタンが押されていない場合はリピートを停止
         if self._mouse_repeat_action == MouseButtons.LEFT.value and not is_left_pressed:
             logger.info(get_log_text("image_view_mouse_repeat_stopped_button_released", button="LEFT"))
@@ -705,11 +831,11 @@ class ImageView(QWidget):
             logger.info(get_log_text("image_view_mouse_repeat_stopped_button_released", button="RIGHT"))
             self._stop_mouse_repeat()
             return
-        
+
         # 経過時間を計算
         current_time = time.time() * 1000  # ms
         elapsed_time = current_time - self._mouse_repeat_start_time
-        
+
         # 0.3秒（300ms）経過後から加速開始
         if elapsed_time > self._mouse_repeat_acceleration_start:
             # 加速度的に間隔を短くする（指数関数的減少）
@@ -720,31 +846,40 @@ class ImageView(QWidget):
                 self._mouse_repeat_min_interval,
                 int(self._mouse_repeat_initial_delay * acceleration_factor)
             )
-            
+
             # 間隔が変更された場合のみタイマーを更新
             if new_interval != self._mouse_repeat_interval:
                 self._mouse_repeat_interval = new_interval
                 self._mouse_repeat_timer.setInterval(self._mouse_repeat_interval)
                 logger.info(get_log_text("image_view_mouse_repeat_interval_updated", interval=self._mouse_repeat_interval, elapsed_time=elapsed_time))
-        
+
         result = self._handle_mouse_shortcut(self._mouse_repeat_action, repeat=True)
         # リピート処理では改ページアクションが実行されてもリピートを継続する
+
     def _handle_mouse_shortcut(self, mouse_text, repeat=False):
-        # 画像読み込み中の場合は無視（リピート処理でもチェック）
+        """マウスボタンに割り当てられたアクションを実行する。読み込み中は無視する。
+
+        Args:
+            mouse_text: ボタンの文字列。
+            repeat: 繰り返しから来たとき True。
+
+        Returns:
+            アクションを実行したとき True。
+        """
         if self._is_loading:
             logger.info(get_log_text("image_view_shortcut_ignored_loading"))
             return False
-        
+
         shortcuts = None
         if self.config:
             if hasattr(self.config, 'shortcuts') and isinstance(self.config.shortcuts, dict):
                 shortcuts = self.config.shortcuts
             elif isinstance(self.config, dict):
                 shortcuts = self.config.get("shortcuts", {})
-        
+
         if not shortcuts:
             return False
-        
+
         for act, keys in shortcuts.items():
             if mouse_text in keys:
                 if act == Actions.NEXT_PAGE.value:
@@ -788,23 +923,32 @@ class ImageView(QWidget):
                     if hasattr(main_window, "run_window_action") and main_window.run_window_action(act):
                         return True
         return False
+
     def _handle_action_event(self, event):
+        """クリックをアクションとして扱う。画像が無い、または読み込み中は無視する。
+
+        Args:
+            event: マウスイベント。
+
+        Returns:
+            処理したとき True。
+        """
         if not self.current_image:
             logger.info(get_log_text("image_view_no_image_click_ignored"))
             return False
-        
+
         # 画像読み込み中の場合は無視（最優先チェック）
         if self._is_loading:
             logger.info(get_log_text("image_view_click_ignored_loading"))
             return False
-        
+
         # 連続クリックの制御
         current_time = time.time()
         if current_time - self._last_click_time < self._click_cooldown:
             logger.info(get_log_text("image_view_click_ignored_cooldown"))
             return False
         self._last_click_time = current_time
-        
+
         action = None
         if self.config:
             shortcuts = None
@@ -852,7 +996,16 @@ class ImageView(QWidget):
                 return True
         logger.info(get_log_text("image_view_click_no_page_action"))
         return False
+
     def _handle_wheel_event(self, event):
+        """ホイールをショートカットとして扱う。更新中は無視する。
+
+        Args:
+            event: ホイールイベント。
+
+        Returns:
+            処理したとき True。
+        """
         if self._is_updating:
             return False
         delta = event.angleDelta().y()
@@ -907,17 +1060,29 @@ class ImageView(QWidget):
         self.update_image_display()
         self.zoom_changed.emit(self.zoom_factor)
         return True
+
     def mousePressEvent(self, event: QMouseEvent):
-        # 何もしない（QLabelのイベントフィルタで処理）
+        """押下はイベントフィルタ側で扱う。
+
+        Args:
+            event: マウス押下イベント。
+        """
+        # QLabel のイベントフィルタで処理する
         pass
+
     def set_background_color(self, color: str):
-        """背景色を設定"""
+        """背景色を設定
+
+        Args:
+            color: 背景色。拡大中なら表示も更新する。
+        """
         if self.config:
             self.config.viewer["background_color"] = color
         self.image_label.setStyleSheet(f"background-color: {color};")
         # 画像移動中の場合、背景色の変更を反映
         if self.zoom_factor > 1.0:
             self.update_image_display()
+
     def reset_zoom(self):
         """ズームをリセット"""
         self.cancel_pending_zoom_navigation()
@@ -925,11 +1090,13 @@ class ImageView(QWidget):
         self.reset_image_position()  # 画像位置もリセット
         self.update_image_display()
         self.zoom_changed.emit(self.zoom_factor)
+
     def zoom_in(self):
         """Zoom in"""
         self.zoom_factor *= 1.1
         self.update_image_display()
         self.zoom_changed.emit(self.zoom_factor)
+
     def zoom_out(self):
         """Zoom out"""
         self.zoom_factor *= 0.9
@@ -939,8 +1106,13 @@ class ImageView(QWidget):
             self.reset_image_position()
         self.update_image_display()
         self.zoom_changed.emit(self.zoom_factor)
+
     def rotate(self, angle: int):
-        """回転（90度単位）- 相対角度で回転"""
+        """回転（90度単位）- 相対角度で回転
+
+        Args:
+            angle: 足す角度。
+        """
         self.rotation_angle = (self.rotation_angle + angle) % 360
         logger.info(get_log_text("image_view_rotate", angle=angle, new_rotation=self.rotation_angle))
         # 表示キャッシュをクリア（回転によって画像が変わるため）
@@ -949,19 +1121,33 @@ class ImageView(QWidget):
         self.update_image_display()
 
     def set_rotation(self, angle: int):
-        """回転角度を直接設定"""
+        """回転角度を直接設定
+
+        Args:
+            angle: 設定する角度。
+        """
         self.rotation_angle = angle % 360
         logger.info(get_log_text("image_view_set_rotation", angle=angle, new_rotation=self.rotation_angle))
         # 表示キャッシュをクリア（回転によって画像が変わるため）
         self._display_cache.clear()
         # 画像表示を更新
         self.update_image_display()
+
     def set_page_mode(self, mode: str):
-        """ページモード設定"""
+        """ページモード設定
+
+        Args:
+            mode: 設定するページモード。
+        """
         self.config.display.page_mode = mode
         self.update()
+
     def paintEvent(self, event):
-        """徹底デバッグ: ウィジェット情報・描画範囲・親子関係など全てログ出力"""
+        """徹底デバッグ: ウィジェット情報・描画範囲・親子関係など全てログ出力
+
+        Args:
+            event: 描画イベント。
+        """
         type_self = type(self)
         type_parent = type(self.parent()) if self.parent() else None
         type_window = type(self.window()) if self.window() else None
@@ -990,8 +1176,13 @@ class ImageView(QWidget):
         logger.debug(get_log_text("debug_gesture_drew_red_rect", rect=rect))
         logger.debug(get_log_text("debug_gesture_paint_event_end"))
         super().paintEvent(event)
+
     def mouseMoveEvent(self, event: QMouseEvent):
-        """マウス移動イベント"""
+        """マウス移動イベント
+
+        Args:
+            event: マウス移動イベント。
+        """
         # 右クリックジェスチャー処理中は画像移動を無効にする
         if self._right_press_pos is not None:
             return
@@ -999,16 +1190,32 @@ class ImageView(QWidget):
         if self.handle_mouse_move(event):
             return
         super().mouseMoveEvent(event)
+
     def mouseReleaseEvent(self, event: QMouseEvent):
-        """マウスリリースイベント"""
+        """マウスリリースイベント
+
+        Args:
+            event: マウス離しイベント。
+        """
         if event.button() == Qt.LeftButton:
             self.dragging = False
+
     def resizeEvent(self, event: QResizeEvent):
-        """リサイズイベントの処理"""
+        """リサイズイベントの処理
+
+        Args:
+            event: リサイズイベント。
+        """
         super().resizeEvent(event)
         if self.current_qimage:
-            self.update_image_display() 
+            self.update_image_display()
+
     def set_config(self, config):
+        """設定を差し替え、ジェスチャー閾値、背景色、マウスリピートを反映する。
+
+        Args:
+            config: 新しい設定。
+        """
         self.cancel_pending_zoom_navigation()
         self.config = config
         # MouseGestureの閾値を更新
@@ -1027,7 +1234,13 @@ class ImageView(QWidget):
             self._mouse_repeat_initial_delay = config.viewer.get("mouse_repeat_initial_delay", 100)
             self._mouse_repeat_acceleration_start = config.viewer.get("mouse_repeat_acceleration_start", 100)
             self._mouse_repeat_min_interval = config.viewer.get("mouse_repeat_min_interval", 30)
+
     def keyPressEvent(self, event):
+        """キーをショートカットとして扱う。
+
+        Args:
+            event: キー押下イベント。
+        """
         action = None
         if self.config:
             shortcuts = None
@@ -1071,6 +1284,11 @@ class ImageView(QWidget):
             super().keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
+        """キーを離したとき、一時マウスロックの解放を試す。
+
+        Args:
+            event: キー離しイベント。
+        """
         main_window = self.window()
         if (
             hasattr(main_window, "release_temporary_mouse_lock")
@@ -1079,7 +1297,13 @@ class ImageView(QWidget):
             event.accept()
             return
         super().keyReleaseEvent(event)
+
     def handle_gesture(self, gesture):
+        """ジェスチャーに割り当てられたアクションを表示し、実行する。
+
+        Args:
+            gesture: 認識したジェスチャー。
+        """
         logger.info(get_log_text("image_view_gesture_handle_called", gesture=gesture))
         # ジェスチャーに応じたアクションをConfigから取得して発火
         if hasattr(self.config, 'gesture_map'):
@@ -1100,7 +1324,13 @@ class ImageView(QWidget):
         self._gesture_display_timer.start(800)
         self.update()  # 強制的に再描画
         logger.info(get_log_text("image_view_gesture_no_action", gesture=gesture))
+
     def _fire_action(self, action):
+        """アクションに応じてページ送りや画面の操作を起こす。
+
+        Args:
+            action: 実行するアクション。
+        """
         logger.info(get_log_text("image_view_gesture_fire_action", action=action))
         # アクション名に応じてシグナルやメソッドを呼ぶ
         if action == Actions.NEXT_PAGE.value:
@@ -1177,30 +1407,56 @@ class ImageView(QWidget):
             if hasattr(main_window, "run_window_action"):
                 main_window.run_window_action(action)
         # 必要に応じて他のアクションも追加
+
     def _clear_gesture_display(self):
+        """ジェスチャーの表示を消し、オーバーレイも隠す。"""
         self._gesture_direction = None
         self._gesture_action = None
         self._hide_gesture_message()  # オーバーレイメッセージも隠す
         self.update()
+
     def _show_gesture_message(self, message):
+        """ジェスチャーの文言をオーバーレイに出す。
+
+        Args:
+            message: 出す文言。
+        """
         logger.info(get_log_text("image_view_show_gesture_message", message=message))
         main_window = self.window()
         if hasattr(main_window, 'show_overlay_message'):
             main_window.show_overlay_message(message)
+
     def _hide_gesture_message(self):
+        """ジェスチャーのオーバーレイを隠す。"""
         logger.info(get_log_text("image_view_hide_gesture_message"))
         main_window = self.window()
         if hasattr(main_window, 'hide_overlay_message'):
             main_window.hide_overlay_message()
+
     def on_gesture_update(self, gesture_action):
+        """ジェスチャーの途中経過をオーバーレイに出す。
+
+        Args:
+            gesture_action: 出す文言。
+        """
         logger.info(get_log_text("image_view_gesture_update", gesture_action=gesture_action))
         self._show_gesture_message(gesture_action)
+
     def on_gesture_end(self):
+        """ジェスチャー終了を記録する。表示を隠すのはタイマー側。"""
         logger.info(get_log_text("image_view_gesture_end"))
         # ジェスチャー終了時はメッセージを隠さず、表示タイマーに任せる
         # self._hide_gesture_message()
+
     def handle_mouse_move(self, event):
-        """マウス移動時の画像移動処理"""
+        """マウス移動時の画像移動処理
+
+        Args:
+            event: マウス移動イベント。
+
+        Returns:
+            拡大中の画像をドラッグしたとき True。動かせないときは False。
+        """
         # マウスロックが有効な場合は画像移動を無効にする
         main_window = self.window()
         if hasattr(main_window, 'mouse_locked') and main_window.mouse_locked:
@@ -1232,25 +1488,26 @@ class ImageView(QWidget):
         # 画像表示を更新
         self.update_image_display()
         return True
+
     def reset_image_position(self):
         """画像位置をリセット"""
         self.image_offset = QPoint(0, 0)
         self.last_mouse_pos = None
-        self.update_image_display() 
-     
+        self.update_image_display()
+
     def _reset_image_position_to_top_right(self):
         """画像の表示位置を右上にリセット（拡大時のページ切り替え用）"""
         if not self.current_qimage or self.zoom_factor <= 1.0:
             logger.info(get_log_text("debug_image_position_not_reset_normal_zoom", zoom_factor=self.zoom_factor))
             return
-        
+
         _, max_offset_x, max_offset_y = self._zoom_navigation_geometry()
         # 回転後に画面へ描画された画像の右上。元画像座標へ戻さない。
         offset_x = -max_offset_x
         offset_y = max_offset_y
         self.image_offset = QPoint(offset_x, offset_y)
-        logger.info(get_log_text("debug_image_position_reset_to_top_right", 
+        logger.info(get_log_text("debug_image_position_reset_to_top_right",
                                 zoom_factor=self.zoom_factor,
                                 rotation_angle=self.rotation_angle,
-                                offset_x=offset_x, 
-                                offset_y=offset_y)) 
+                                offset_x=offset_x,
+                                offset_y=offset_y))

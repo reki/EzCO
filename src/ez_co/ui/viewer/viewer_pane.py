@@ -9,7 +9,15 @@ from ez_co.utils.language_manager import get_text
 
 
 class ViewerPane(QWidget):
+    """1タブ分の ImageView と、開いているファイルの状態を持つ。"""
+
     def __init__(self, config, parent=None):
+        """ImageView を置き、ファイルとページの状態を初期化する。
+
+        Args:
+            config: 表示に使う設定。
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self.config = config
         self.file_handler = None
@@ -29,17 +37,32 @@ class ViewerPane(QWidget):
         layout.addWidget(self.image_view)
 
     def is_empty(self) -> bool:
+        """ファイルもフォルダも開いていないかを返す。
+
+        Returns:
+            開いているファイル一覧もパスも無いとき True。
+        """
         if self.file_handler and self.file_handler.current_files:
             return False
         return not self.current_file_path and not self.base_dir_path
 
     def tab_title(self) -> str:
+        """タブに出す名前を返す。
+
+        Returns:
+            開いているファイルまたはフォルダの名前。無ければ新規タブの文言。
+        """
         path = self.current_file_path or self.base_dir_path
         if path:
             return Path(path).name
         return get_text("ui.new_tab")
 
     def closed_state(self) -> dict:
+        """閉じたタブを戻すためのパスとページを返す。
+
+        Returns:
+            file_path と page を持つ辞書。
+        """
         return {
             "file_path": self.current_file_path or self.base_dir_path,
             "page": self.current_page or 1,
@@ -52,6 +75,11 @@ class ViewerPane(QWidget):
             self.file_handler = None
 
     def show_center_message(self, message: str):
+        """中央にメッセージを出す。
+
+        Args:
+            message: 表示する文字列。
+        """
         if self._center_message_label is None:
             self._center_message_label = QLabel(self)
             self._center_message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -73,11 +101,13 @@ class ViewerPane(QWidget):
         QTimer.singleShot(50, self._update_center_message_position)
 
     def hide_center_message(self):
+        """中央のメッセージを隠して文を消す。"""
         if self._center_message_label is not None:
             self._center_message_label.hide()
             self._center_message_label.setText("")
 
     def _update_center_message_position(self):
+        """中央メッセージをペインの中央へ置く。"""
         label = self._center_message_label
         if label is None or not label.isVisible():
             return
@@ -90,5 +120,10 @@ class ViewerPane(QWidget):
         label.move((width - label.width()) // 2, (height - label.height()) // 2)
 
     def resizeEvent(self, event):
+        """サイズ変更に合わせて中央メッセージの位置を更新する。
+
+        Args:
+            event: リサイズイベント。
+        """
         super().resizeEvent(event)
         self._update_center_message_position()

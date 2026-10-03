@@ -41,11 +41,22 @@ from ez_co.ui.plugins.config_widgets import (
 )
 from ez_co.utils.language_manager import get_text
 
+# 必須が欠けた入力へ付ける赤い枠。
 _INVALID_STYLE = "border: 1px solid #c62828;"
 
 
 class PluginConfigDialog(QDialog):
+    """プラグインの設定を表で編集し、即時保存と必須の不足を扱う。"""
+
     def __init__(self, host, plugin_id: str, plugin_name: str = "", parent=None):
+        """項目と現在値の表を作り、開いたときの値を控える。
+
+        Args:
+            host: 設定の読み書きに使うホスト。
+            plugin_id: 対象プラグイン。
+            plugin_name: タイトルに出す名前。空なら ID。
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self._host = host
         self._plugin_id = plugin_id
@@ -71,9 +82,18 @@ class PluginConfigDialog(QDialog):
         self._refresh_required()
 
     def _expand(self, value) -> str:
+        """表示文を展開する。
+
+        Args:
+            value: 展開する文。
+
+        Returns:
+            展開した文字列。
+        """
         return self._scoped.expand_text(value)
 
     def _setup_ui(self):
+        """項目名と値の表を配置し、即時保存する入力をつなぐ。"""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
@@ -128,6 +148,12 @@ class PluginConfigDialog(QDialog):
         layout.addLayout(buttons)
 
     def _connect_sync(self, field, widget):
+        """即時保存の項目なら、値の変化で保存を予約する。
+
+        Args:
+            field: つなぐ項目。
+            widget: つなぐ入力。
+        """
         if not config_field_syncs(field):
             return
         if isinstance(widget, (MultiRows, SuffixRow, RangeRow)):
@@ -136,9 +162,20 @@ class PluginConfigDialog(QDialog):
         widget.valueChanged.connect(lambda _=None, key=field.key: self._on_sync_changed(key))
 
     def _connect_required(self, field, widget):
+        """必須の不足を見るために入力を監視する。
+
+        Args:
+            field: 監視する項目。
+            widget: 監視する入力。
+        """
         self._watch_widget(widget)
 
     def _watch_widget(self, widget):
+        """入力の変化で必須表示を更新する。接尾辞付きは中の入力を見る。
+
+        Args:
+            widget: 監視する入力。
+        """
         if isinstance(widget, MultiRows):
             widget.rowsChanged.connect(self._refresh_required)
             return
@@ -168,6 +205,11 @@ class PluginConfigDialog(QDialog):
             widget.toggled.connect(lambda _=None: self._refresh_required())
 
     def _on_sync_changed(self, key: str):
+        """リセット中でなければ、その項目の即時保存を予約する。
+
+        Args:
+            key: 変わった項目のキー。
+        """
         if self._resetting:
             return
         self._reset_keys.discard(key)
@@ -175,6 +217,11 @@ class PluginConfigDialog(QDialog):
         self._sync_timer.start()
 
     def _flush_sync(self) -> bool:
+        """予約された即時保存を書く。必須が空の項目は書かない。
+
+        Returns:
+            書いたとき True。予約が無ければ False。
+        """
         if not self._dirty_sync:
             return False
         scoped = self._host.scoped(self._plugin_id)
@@ -195,12 +242,21 @@ class PluginConfigDialog(QDialog):
         return True
 
     def _field_for(self, key: str):
+        """キーの項目を返す。
+
+        Args:
+            key: 項目のキー。
+
+        Returns:
+            見つかった項目。無ければ None。
+        """
         for field in self._fields:
             if field.key == key:
                 return field
         return None
 
     def _capture_snapshot(self):
+        """いまの入力を、戻すための値として控える。"""
         self._snapshot = {
             field.key: read_value(field, self._widgets[field.key])
             for field in self._fields
@@ -208,6 +264,14 @@ class PluginConfigDialog(QDialog):
         self._reset_keys.clear()
 
     def _center_widget(self, widget):
+        """入力を中央に置く入れ物を返す。
+
+        Args:
+            widget: 中央に置く入力。
+
+        Returns:
+            その入れ物。
+        """
         holder = QWidget()
         holder_layout = QHBoxLayout(holder)
         holder_layout.setContentsMargins(0, 0, 0, 0)
@@ -216,6 +280,11 @@ class PluginConfigDialog(QDialog):
         return holder
 
     def _missing_required(self):
+        """必須なのに空で、リセット対象でない項目を返す。
+
+        Returns:
+            足りない項目。
+        """
         missing = []
         for field in self._fields:
             value = read_value(field, self._widgets[field.key])
@@ -228,6 +297,7 @@ class PluginConfigDialog(QDialog):
         return missing
 
     def _refresh_required(self):
+        """足りない必須を印し、OK と適用を止める。"""
         if not hasattr(self, "_ok_button"):
             return
         missing_keys = {field.key for field in self._missing_required()}
@@ -260,6 +330,11 @@ class PluginConfigDialog(QDialog):
             self._table.resizeRowsToContents()
 
     def _save(self):
+        """必須が足りなければ警告して保存しない。足りれば書いて、開いたときの値を取り直す。
+
+        Returns:
+            保存したとき True。
+        """
         missing = self._missing_required()
         if missing:
             QMessageBox.warning(
@@ -289,6 +364,7 @@ class PluginConfigDialog(QDialog):
         return True
 
     def _reset_to_defaults(self):
+        """各項目を既定値にし、即時保存の項目は保存も戻す。"""
         self._sync_timer.stop()
         self._dirty_sync.clear()
         scoped = self._host.scoped(self._plugin_id)
@@ -309,6 +385,7 @@ class PluginConfigDialog(QDialog):
         self._refresh_required()
 
     def _restore_preview(self):
+        """即時保存した値を、開いたときの値へ戻す。"""
         self._sync_timer.stop()
         self._dirty_sync.clear()
         if not self._previewed_sync:
@@ -329,13 +406,20 @@ class PluginConfigDialog(QDialog):
         self._reload_if_needed(restored)
 
     def _reload_if_needed(self, fields):
+        """読み直しが要る項目があれば現在を読み直す。
+
+        Args:
+            fields: 保存した項目。
+        """
         if config_should_reload(fields):
             self._host.reload_current()
 
     def _apply_and_accept(self):
+        """保存できたらダイアログを閉じる。"""
         if self._save():
             self.accept()
 
     def reject(self):
+        """即時保存を開いたときの値に戻してから閉じる。"""
         self._restore_preview()
         super().reject()

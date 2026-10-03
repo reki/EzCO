@@ -3,6 +3,7 @@ from ez_co.plugins.charset import charset_names
 
 
 def test_charset_names_put_common_codecs_first():
+    """utf-8、cp932、shift_jis、latin_1 が先頭4つでなく、残りがソートされず、utf-8 が重複する。"""
     names = charset_names()
     assert names[:4] == ("utf-8", "cp932", "shift_jis", "latin_1")
     rest = names[4:]

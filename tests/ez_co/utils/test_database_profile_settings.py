@@ -8,6 +8,7 @@ pytestmark = pytest.mark.usefixtures("qapp")
 
 
 def test_profile_settings_roundtrip(db_manager):
+    """保存した背景色と拡張子ハンドラは、同じプロファイルから読み戻せる。"""
     profile = db_manager.current_profile
     payload = Config().to_dict()
     payload["viewer"]["background_color"] = "#112233"
@@ -19,6 +20,7 @@ def test_profile_settings_roundtrip(db_manager):
 
 
 def test_empty_profile_settings_are_detected(db_manager):
+    """設定を渡して作ったプロファイルは設定ありと判定され、渡した背景色を読み戻せる。"""
     other = "work"
     assert db_manager.create_profile(other, settings={"viewer": {"background_color": "#abcabc"}}) is True
     assert db_manager.has_profile_settings(other) is True
@@ -27,6 +29,7 @@ def test_empty_profile_settings_are_detected(db_manager):
 
 
 def test_new_database_file_is_created(db_manager):
+    """新しい DB ファイルができ、別の管理オブジェクトも同じパスと現在プロファイルを見る。"""
     assert db_manager.db_path.is_file()
     second = DatabaseManager()
     assert second.db_path == db_manager.db_path

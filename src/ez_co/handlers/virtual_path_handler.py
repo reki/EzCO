@@ -26,16 +26,34 @@ from ez_co.enums.images import ImageInfo
 from ez_co.enums.encodings import EncodingInfo
 from ez_co.utils.language_manager import get_text, get_log_text
 logger = logging.getLogger(__name__)
+
+
 class VirtualPathHandler:
     r"""仮想的なパス（archive://path|filename または archive:\path|filename）を処理するユーティリティクラス"""
+
     @staticmethod
     def is_virtual_path(path: Union[str, Path]) -> bool:
-        """パスが仮想的なパスかどうかを判定"""
+        """パスが仮想的なパスかどうかを判定する。
+
+        Args:
+            path: 調べるパス。
+
+        Returns:
+            archive スキームなら真。
+        """
         path_str = str(path)
         return path_str.startswith("archive://") or path_str.startswith("archive:\\")
+
     @staticmethod
     def parse_virtual_path(path: Union[str, Path]) -> Optional[Tuple[Path, str]]:
-        """仮想的なパスを解析してアーカイブパスとファイル名を取得"""
+        """仮想的なパスを解析してアーカイブパスとファイル名を取得する。
+
+        Args:
+            path: 解析するパス。
+
+        Returns:
+            アーカイブパスと正規化した内部ファイル名。仮想パスでなければ None。
+        """
         path_str = str(path)
         if not VirtualPathHandler.is_virtual_path(path_str):
             return None
@@ -62,13 +80,30 @@ class VirtualPathHandler:
         else:
             # logger.error(get_log_text("virtual_path_invalid_format", path=path))
             return None
+
     @staticmethod
     def create_virtual_path(archive_path: Union[str, Path], filename: str) -> str:
-        """仮想的なパスを作成"""
+        """仮想的なパスを作成する。
+
+        Args:
+            archive_path: アーカイブファイルのパス。
+            filename: アーカイブ内のファイル名。
+
+        Returns:
+            archive スキームの仮想パス。
+        """
         return f"archive://{archive_path}|{filename}"
+
     @staticmethod
     def get_archive_parent_dir(path: Union[str, Path]) -> Optional[Path]:
-        """仮想パスからアーカイブファイルの親ディレクトリを取得"""
+        """仮想パスからアーカイブファイルの親ディレクトリを取得する。
+
+        Args:
+            path: 仮想パス。
+
+        Returns:
+            親ディレクトリ。解析できなければ None。
+        """
         result = VirtualPathHandler.parse_virtual_path(path)
         if result:
             archive_path, _ = result

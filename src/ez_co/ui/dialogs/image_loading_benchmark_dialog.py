@@ -28,6 +28,7 @@ from ez_co.utils.language_manager import get_log_text, get_text
 
 logger = logging.getLogger(__name__)
 
+# 測定段階から進捗表示の言語キーへの対応。
 STAGE_TEXT_KEYS = {
     STAGE_PREPARE: "settings.cache_benchmark_stage_prepare",
     STAGE_WORKER: "settings.cache_benchmark_stage_worker",
@@ -44,6 +45,11 @@ class ImageLoadingBenchmarkThread(QThread):
     cancelled = Signal()
 
     def __init__(self, parent=None):
+        """キャンセル用のイベントを用意する。
+
+        Args:
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self.setObjectName("ImageLoadingBenchmarkThread")
         self._cancel_event = threading.Event()
@@ -53,21 +59,33 @@ class ImageLoadingBenchmarkThread(QThread):
         self._cancel_event.set()
 
     def run(self):
+        """測定を実行し、結果、失敗、キャンセルのいずれかを知らせる。"""
         try:
             report = run_image_loading_benchmark(
                 progress=self._emit_progress,
                 cancel_event=self._cancel_event,
             )
         except BenchmarkCancelled:
+            # 測定の中止は失敗にせず、キャンセルを知らせて戻る。
             self.cancelled.emit()
             return
         except Exception as error:
+            # 測定中の失敗はログして、失敗を知らせて戻る。
             logger.error(get_log_text("image_loading_benchmark_failed", error=error))
             self.failed.emit(str(error))
             return
         self.finished_with_outcome.emit(evaluate_benchmark(report))
 
     def _emit_progress(self, stage, stage_index, stage_total, overall_index, overall_total):
+        """段階と全体の進捗を知らせる。
+
+        Args:
+            stage: いまの段階。
+            stage_index: 段階内の位置。
+            stage_total: 段階内の総数。
+            overall_index: 全体の位置。
+            overall_total: 全体の総数。
+        """
         self.progress_changed.emit(
             stage,
             stage_index,
@@ -81,6 +99,11 @@ class ImageLoadingBenchmarkProgressDialog(QDialog):
     """測定中の進捗とキャンセルだけを出す。"""
 
     def __init__(self, parent=None):
+        """段階、進捗バー、キャンセルを配置し、測定スレッドをつなぐ。
+
+        Args:
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self.setWindowTitle(get_text("settings.cache_benchmark_progress_title"))
         self.setModal(True)
@@ -120,6 +143,7 @@ class ImageLoadingBenchmarkProgressDialog(QDialog):
         self._thread.cancelled.connect(self._on_cancelled)
 
     def start(self):
+        """測定スレッドを開始する。"""
         self._thread.start()
 
     def request_cancel(self):
@@ -130,6 +154,15 @@ class ImageLoadingBenchmarkProgressDialog(QDialog):
         self._thread.request_cancel()
 
     def _on_progress(self, stage, stage_index, stage_total, overall_index, overall_total):
+        """段階の文言と全体の進捗バーを更新する。
+
+        Args:
+            stage: いまの段階。
+            stage_index: 段階内の位置。
+            stage_total: 段階内の総数。
+            overall_index: 全体の位置。
+            overall_total: 全体の総数。
+        """
         stage_text = get_text(
             STAGE_TEXT_KEYS.get(stage, "settings.cache_benchmark_stage_prepare")
         )
@@ -146,26 +179,48 @@ class ImageLoadingBenchmarkProgressDialog(QDialog):
         self.progress_bar.setValue(max(0, overall_index - 1))
 
     def _on_finished(self, outcome):
+        """結果を残してダイアログを確定で閉じる。
+
+        Args:
+            outcome: 測定結果。
+        """
         self.outcome = outcome
         self._finish(QDialog.Accepted)
 
     def _on_failed(self, message):
+        """失敗メッセージを残してダイアログを拒否で閉じる。
+
+        Args:
+            message: 失敗の内容。
+        """
         self.error_message = message
         self._finish(QDialog.Rejected)
 
     def _on_cancelled(self):
+        """キャンセル済みにしてダイアログを拒否で閉じる。"""
         self.was_cancelled = True
         self._finish(QDialog.Rejected)
 
     def _finish(self, result):
+        """スレッドの終了を待ってから、指定の結果で閉じる。
+
+        Args:
+            result: ダイアログの結果。
+        """
         self._wait_for_thread()
         self.done(result)
 
     def _wait_for_thread(self):
+        """スレッドが動いていれば終了を待つ。"""
         if self._thread.isRunning():
             self._thread.wait()
 
     def closeEvent(self, event):
+        """スレッドが動いていればキャンセルして終了を待ってから閉じる。
+
+        Args:
+            event: 閉じるイベント。
+        """
         # QThread: Destroyed while thread is still running を起こさない
         if self._thread.isRunning():
             if not self._closing:
@@ -175,6 +230,7 @@ class ImageLoadingBenchmarkProgressDialog(QDialog):
         super().closeEvent(event)
 
     def reject(self):
+        """スレッドが動いていればキャンセルして終了を待ってから拒否する。"""
         if self._thread.isRunning():
             self.request_cancel()
             self._wait_for_thread()
@@ -185,6 +241,13 @@ class ImageLoadingBenchmarkResultDialog(QDialog):
     """測定結果を出し、採用するかを選ばせる。"""
 
     def __init__(self, outcome, current_settings, parent=None):
+        """現在値と測定結果、再起動の注意、採用とキャンセルを出す。
+
+        Args:
+            outcome: 測定結果。
+            current_settings: いまのメモリ上限、先読みページ、ワーカー表示。
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self.setWindowTitle(get_text("settings.cache_benchmark_result_title"))
         self.setModal(True)
@@ -242,6 +305,14 @@ class ImageLoadingBenchmarkResultDialog(QDialog):
         self.setLayout(layout)
 
     def _worker_text(self, outcome):
+        """ワーカー数の表示文を返す。
+
+        Args:
+            outcome: 測定結果。
+
+        Returns:
+            自動のときは実効数入りの文言。それ以外はワーカー数の文字列。
+        """
         if outcome.image_loader_workers == AUTO_IMAGE_LOADER_WORKERS:
             return get_text("settings.cache_recommended_workers_auto").format(
                 count=outcome.effective_workers
@@ -249,13 +320,28 @@ class ImageLoadingBenchmarkResultDialog(QDialog):
         return str(outcome.image_loader_workers)
 
     def _rss_text(self, rss_delta_bytes):
+        """メモリ差分の表示文を返す。
+
+        Args:
+            rss_delta_bytes: メモリ差分のバイト数。無ければ None。
+
+        Returns:
+            人が読める大きさ。無ければ不明の文言。
+        """
         if rss_delta_bytes is None:
             return get_text("settings.cache_benchmark_result_memory_unknown")
         return humanfriendly.format_size(rss_delta_bytes, binary=True)
 
 
 def confirm_image_loading_benchmark(parent=None) -> bool:
-    """所要時間と結果が環境に左右されることを伝えてから始める。"""
+    """所要時間と結果が環境に左右されることを伝えてから始める。
+
+    Args:
+        parent: 親ウィジェット。
+
+    Returns:
+        開始が押されたとき True。
+    """
     message_box = QMessageBox(parent)
     message_box.setIcon(QMessageBox.Question)
     message_box.setWindowTitle(get_text("settings.cache_benchmark_confirm_title"))
@@ -274,7 +360,14 @@ def confirm_image_loading_benchmark(parent=None) -> bool:
 
 
 def current_cache_settings_text(dialog) -> dict:
-    """結果ダイアログへ出す現在値をwidgetから読む。"""
+    """結果ダイアログへ出す現在値をwidgetから読む。
+
+    Args:
+        dialog: メモリ上限、先読みページ、ワーカー表示を持つ設定ダイアログ。
+
+    Returns:
+        memory_limit、prefetch_pages、workers を持つ辞書。空のメモリ上限は -。
+    """
     return {
         "memory_limit": dialog.cache_memory_limit.text().strip() or "-",
         "prefetch_pages": dialog.cache_prefetch_pages.value(),
@@ -283,7 +376,14 @@ def current_cache_settings_text(dialog) -> dict:
 
 
 def run_image_loading_benchmark_dialog(settings_dialog):
-    """確認 → 測定 → 結果の順に出し、採用された結果だけを返す。"""
+    """確認 → 測定 → 結果の順に出し、採用された結果だけを返す。
+
+    Args:
+        settings_dialog: 確認と結果の親にする設定ダイアログ。
+
+    Returns:
+        採用された測定結果。始めない、失敗、中断、結果を閉じたときは None。
+    """
     if not confirm_image_loading_benchmark(settings_dialog):
         return None
     progress_dialog = ImageLoadingBenchmarkProgressDialog(settings_dialog)

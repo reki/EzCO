@@ -1,91 +1,156 @@
+"""キーボードと修飾キーの定数、およびキーイベントの文字列化。"""
 from enum import Enum
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeyEvent
 
 class ModifierKeys(Enum):
     """修飾キーの定数"""
+    # Ctrl 修飾キー
     CTRL = "Ctrl"
+    # Alt 修飾キー
     ALT = "Alt"
+    # Shift 修飾キー
     SHIFT = "Shift"
+    # Meta 修飾キー
     META = "Meta"
+
 
 class KeyboardKeys(Enum):
     """キーボードキーの定数"""
     # 矢印キー
     LEFT = "Left"
+    # 右矢印キー
     RIGHT = "Right"
+    # 上矢印キー
     UP = "Up"
+    # 下矢印キー
     DOWN = "Down"
-    
+
     # 特殊キー
     RETURN = "Return"
+    # Escape キー
     ESCAPE = "Escape"
+    # Space キー
     SPACE = "Space"
+    # Tab キー
     TAB = "Tab"
+    # Backspace キー
     BACKSPACE = "Backspace"
+    # Delete キー
     DELETE = "Delete"
+    # Home キー
     HOME = "Home"
+    # End キー
     END = "End"
+    # PageUp キー
     PAGE_UP = "PageUp"
+    # PageDown キー
     PAGE_DOWN = "PageDown"
-    
+
     # ファンクションキー
     F1 = "F1"
+    # F2 キー
     F2 = "F2"
+    # F3 キー
     F3 = "F3"
+    # F4 キー
     F4 = "F4"
+    # F5 キー
     F5 = "F5"
+    # F6 キー
     F6 = "F6"
+    # F7 キー
     F7 = "F7"
+    # F8 キー
     F8 = "F8"
+    # F9 キー
     F9 = "F9"
+    # F10 キー
     F10 = "F10"
+    # F11 キー
     F11 = "F11"
+    # F12 キー
     F12 = "F12"
-    
+
     # 記号キー
     PLUS = "+"
+    # マイナスキー
     MINUS = "-"
+    # 等号キー
     EQUAL = "="
-    
+
     # 数字キー
     KEY_0 = "0"
+    # 数字キー 1
     KEY_1 = "1"
+    # 数字キー 2
     KEY_2 = "2"
+    # 数字キー 3
     KEY_3 = "3"
+    # 数字キー 4
     KEY_4 = "4"
+    # 数字キー 5
     KEY_5 = "5"
+    # 数字キー 6
     KEY_6 = "6"
+    # 数字キー 7
     KEY_7 = "7"
+    # 数字キー 8
     KEY_8 = "8"
+    # 数字キー 9
     KEY_9 = "9"
-    
+
     # アルファベットキー
     A = "A"
+    # アルファベットの B
     B = "B"
+    # アルファベットの C
     C = "C"
+    # アルファベットの D
     D = "D"
+    # アルファベットの E
     E = "E"
+    # アルファベットの F
     F = "F"
+    # アルファベットの G
     G = "G"
+    # アルファベットの H
     H = "H"
+    # アルファベットの I
     I = "I"
+    # アルファベットの J
     J = "J"
+    # アルファベットの K
     K = "K"
+    # アルファベットの L
     L = "L"
+    # アルファベットの M
     M = "M"
+    # アルファベットの N
     N = "N"
+    # アルファベットの O
     O = "O"
+    # アルファベットの P
     P = "P"
+    # アルファベットの Q
     Q = "Q"
+    # アルファベットの R
     R = "R"
+    # アルファベットの S
     S = "S"
+    # アルファベットの T
     T = "T"
+    # アルファベットの U
     U = "U"
+    # アルファベットの V
     V = "V"
+    # アルファベットの W
     W = "W"
+    # アルファベットの X
     X = "X"
+    # アルファベットの Y
     Y = "Y"
+    # アルファベットの Z
     Z = "Z"
 
 # QtキーからKeyboardKeysへのマッピング
@@ -158,7 +223,14 @@ QT_KEY_TO_KEYBOARD_KEY = {
 }
 
 def key_to_string(event: QKeyEvent) -> str:
-    """統一されたキーイベントを文字列に変換するメソッド"""
+    """統一されたキーイベントを文字列に変換する。
+
+    Args:
+        event: 変換するキーイベント。
+
+    Returns:
+        修飾キーだけのときはその名前。対応するキーは修飾子を + で結んだ文字列。未対応のキーは空文字。
+    """
     modifier_keys = {
         Qt.Key_Control: ModifierKeys.CTRL.value,
         Qt.Key_Alt: ModifierKeys.ALT.value,
@@ -177,15 +249,15 @@ def key_to_string(event: QKeyEvent) -> str:
         modifiers.append(ModifierKeys.SHIFT.value)
     if event.modifiers() & Qt.MetaModifier:
         modifiers.append(ModifierKeys.META.value)
-    
+
     key = event.key()
-    
+
     # QTキーからKeyboardKeysにマッピング
     if key in QT_KEY_TO_KEYBOARD_KEY:
         key_text = QT_KEY_TO_KEYBOARD_KEY[key].value
     else:
         return ""
-    
+
     if modifiers:
         return "+".join(modifiers + [key_text])
     else:
@@ -193,4 +265,5 @@ def key_to_string(event: QKeyEvent) -> str:
 
 # 後方互換性のためのリスト
 KEYBOARD_KEY_LIST = [key.value for key in KeyboardKeys]
-MODIFIER_KEY_LIST = [key.value for key in ModifierKeys] 
+# 修飾キーの値の一覧
+MODIFIER_KEY_LIST = [key.value for key in ModifierKeys]

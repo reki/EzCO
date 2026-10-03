@@ -6,10 +6,12 @@ from ez_co.ui.dialogs import settings_dialog
 from ez_co.ui.dialogs.settings_dialog import SettingsDialog
 
 
+# このモジュールのテストは QApplication 付きで動かす。
 pytestmark = pytest.mark.usefixtures("qapp")
 
 
 def test_worker_combo_matches_all_valid_config_values(monkeypatch):
+    """ワーカー候補が auto と 1 から 8 以外になり、7 を選べず、実効数の表示から 4 が消える。"""
     monkeypatch.setattr(
         settings_dialog,
         "load_location_settings",

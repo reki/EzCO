@@ -24,6 +24,7 @@ from tooling.langs_cli import (
 
 
 def test_key_diff_lists_only_one_side(tmp_path: Path):
+    """両側にあるキーが差分に残り、片方だけにあるキーが落ちる。"""
     ja = {"ui": {"a": "あ", "b": "い"}}
     en = {"ui": {"a": "A", "c": "C"}}
     only_ja, only_en = key_diff(flatten(ja), flatten(en))
@@ -32,6 +33,7 @@ def test_key_diff_lists_only_one_side(tmp_path: Path):
 
 
 def test_sort_lang_data_keeps_meta_then_sections():
+    """メタ情報がセクションより後ろになり、セクション内のキーが名前順にならない。"""
     data = {
         "language_code": "ja",
         "ui": {"z": "Z", "a": "A"},
@@ -45,6 +47,7 @@ def test_sort_lang_data_keeps_meta_then_sections():
 
 
 def test_apply_move_and_merge_write_markdown_log(tmp_path: Path):
+    """移動と統合の節か理由が欠け、移動先の値が残らないか統合元のキーが残る。"""
     ja = {"settings": {"title": "設定", "note": "ログ"}, "ui": {"settings": "設定"}}
     en = {"settings": {"title": "Settings", "note": "log"}, "ui": {"settings": "Settings"}}
     record_move = apply_move(ja, en, "settings.note", "logging.note")
@@ -64,6 +67,7 @@ def test_apply_move_and_merge_write_markdown_log(tmp_path: Path):
 
 
 def test_render_apply_markdown_has_table_headers():
+    """適用ログの表から旧キー・新キー・理由が欠け、統合理由か呼び出し元のファイル名が無い。"""
     text = render_apply_markdown(
         [
             ApplyRecord(
@@ -84,6 +88,7 @@ def test_render_apply_markdown_has_table_headers():
 
 
 def test_find_missing_host_and_plugin(tmp_path: Path):
+    """本体の既存キーが欠落になり、プラグインの未定義キーが落ち、f文字列の穴が欠落になる。"""
     (tmp_path / "src" / "ez_co").mkdir(parents=True)
     (tmp_path / "src" / "ez_co" / "app.py").write_text(
         'from ez_co.utils.language_manager import get_text, get_log_text\n'
@@ -112,6 +117,7 @@ def test_find_missing_host_and_plugin(tmp_path: Path):
 
 
 def test_duplicate_groups_across_sections():
+    """別セクションの同じ日本語が1組にならず、違う文まで同じ組に入る。"""
     groups = duplicate_groups(
         flatten({"ui": {"settings": "設定", "file": "ファイル"}, "settings": {"title": "設定"}})
     )
@@ -122,6 +128,7 @@ def test_duplicate_groups_across_sections():
 
 
 def test_find_missing_action_fstring_accepts_ui_or_actions(tmp_path, monkeypatch):
+    """actions の f文字列が、ui か actions のどちらかにあっても欠落になる。"""
     monkeypatch.setattr(
         "tooling.langs_cli._builtin_action_ids",
         lambda: ["next_page", "first_page", "close_app"],
@@ -144,6 +151,7 @@ def test_find_missing_action_fstring_accepts_ui_or_actions(tmp_path, monkeypatch
 
 
 def test_default_apply_log_is_under_tooling_logs():
+    """既定の適用ログが tooling/logs/langs_apply.md 以外になる。"""
     path = default_apply_log()
     assert path.name == "langs_apply.md"
     assert path.parent.name == "logs"
@@ -151,6 +159,7 @@ def test_default_apply_log_is_under_tooling_logs():
 
 
 def test_write_apply_log_creates_logs_dir(tmp_path: Path):
+    """ログディレクトリが無いと書けず、追加キーか表示用の理由が欠ける。"""
     log = tmp_path / "tooling" / "logs" / "langs_apply.md"
     write_apply_log(log, [ApplyRecord(kind="add", old_key="", new_key="ui.hello")])
     assert log.is_file()
@@ -159,6 +168,7 @@ def test_write_apply_log_creates_logs_dir(tmp_path: Path):
 
 
 def test_infer_reason_by_kind(monkeypatch):
+    """操作の種類と移動先から、重複・ログ用・表示用・未使用・enumに無い・抜けの理由が分かれるのに失敗する。"""
     monkeypatch.setattr("tooling.langs_cli._builtin_action_ids", lambda: ["next_page"])
     assert infer_reason("merge", "settings.title", "ui.settings") == "重複のため"
     assert infer_reason("move", "settings.note", "logging.note") == "ログ用のため"
@@ -170,6 +180,7 @@ def test_infer_reason_by_kind(monkeypatch):
 
 
 def test_apply_delete_reason_can_be_overridden():
+    """削除理由が呼び出し側の文言にならず、既定の理由にもできない。"""
     ja = {"messages": {"loading": "読み込み中..."}}
     en = {"messages": {"loading": "Loading..."}}
     record = apply_delete(ja, en, "messages.loading", reason="未使用のため")
@@ -179,6 +190,7 @@ def test_apply_delete_reason_can_be_overridden():
 
 
 def test_parse_keeps_reason_column(tmp_path: Path):
+    """空の記録で書き直すと重複理由が消え、書き直し前のログから理由列の見出しが欠ける。"""
     log = tmp_path / "langs_apply.md"
     write_apply_log(
         log,
@@ -198,6 +210,7 @@ def test_parse_keeps_reason_column(tmp_path: Path):
 
 
 def test_langs_check_exits_1_on_key_diff(tmp_path: Path):
+    """日英のキーがずれている check が終了コード 1 以外で終わる。"""
     dump_json(tmp_path / "ja.json", {"ui": {"a": "あ"}})
     dump_json(tmp_path / "en.json", {"ui": {"b": "B"}})
     (tmp_path / "src").mkdir()
@@ -214,4 +227,3 @@ def test_langs_check_exits_1_on_key_diff(tmp_path: Path):
             ]
         )
     assert exc.value.code == 1
-

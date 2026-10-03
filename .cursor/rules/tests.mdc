@@ -11,6 +11,7 @@ alwaysApply: true
   - よい: `manager.py` に `test_manager_discover.py` と `test_manager_resolve.py`
   - だめ: `test_plugins.py` が `manager.py` と `zip_loader.py` の両方を見る
 - 依存の呼び出しはしてよいが、そのファイルの対象モジュールは1つ。先頭の docstring に `対象: モジュールパス` を書く
+- `test_` で始まる関数と、そのファイルのヘルパーには、どの失敗を見ているかの docstring を書く。関数名の言い換えだけにしない。pytest の fixture 引数は Args に書かない。戻り値が無いテストは Returns を書かない
 - 共通土台は `tests/conftest.py`。本番の `%APPDATA%`・リポジトリの `config.db`・プラグイン singleton は触らない
 - `MainWindow` 全体や描画の自動テストは書かない
 - 互換レイヤは置かない。import はフルパス

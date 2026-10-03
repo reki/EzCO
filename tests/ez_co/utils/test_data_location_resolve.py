@@ -5,6 +5,7 @@ from ez_co.utils import data_location
 
 
 def test_resolve_data_root_user_mode():
+    """ユーザー置き場はアプリ配置ディレクトリになる。"""
     app_dir = data_location.get_app_location_dir()
     root = data_location.resolve_data_root(
         {"data_location": data_location.LOCATION_USER, "custom_path": ""}
@@ -13,6 +14,7 @@ def test_resolve_data_root_user_mode():
 
 
 def test_resolve_data_root_exe_mode_uses_isolated_project():
+    """実行ファイル置き場は隔離したプロジェクトルートになり、位置ファイルの親もそこになる。"""
     project = data_location.get_project_root()
     root = data_location.resolve_data_root(
         {"data_location": data_location.LOCATION_EXE, "custom_path": ""}
@@ -22,6 +24,7 @@ def test_resolve_data_root_exe_mode_uses_isolated_project():
 
 
 def test_resolve_data_root_custom_mode(tmp_path):
+    """カスタム置き場は指定したパスそのものになる。"""
     custom = tmp_path / "custom-data"
     root = data_location.resolve_data_root(
         {"data_location": data_location.LOCATION_CUSTOM, "custom_path": str(custom)}
@@ -30,6 +33,7 @@ def test_resolve_data_root_custom_mode(tmp_path):
 
 
 def test_exe_config_db_path_is_not_repo_db():
+    """実行ファイル側の config.db は隔離したプロジェクト直下で、リポジトリの config.db ではない。"""
     path = data_location.exe_config_db_path()
     assert path.name == "config.db"
     assert path.parent == data_location.get_project_root()

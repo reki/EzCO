@@ -3,6 +3,7 @@ from ez_co.handlers.session_file import load_session, save_session
 
 
 def test_session_roundtrip(tmp_path):
+    """保存したタブは pinned が False で読み戻され、現在インデックスも残る。"""
     path = tmp_path / "tabs.ezs"
     tabs = [{"path": "C:/a.png", "page": 3}, {"path": "C:/b.png", "page": 1}]
     save_session(path, tabs, 1)
@@ -15,6 +16,7 @@ def test_session_roundtrip(tmp_path):
 
 
 def test_session_roundtrip_keeps_pinned(tmp_path):
+    """保存時の pinned と現在インデックスは読み戻しでそのまま残る。"""
     path = tmp_path / "pinned.ezs"
     tabs = [
         {"path": "C:/a.png", "page": 2, "pinned": True},

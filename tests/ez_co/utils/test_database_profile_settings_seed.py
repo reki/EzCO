@@ -12,17 +12,20 @@ pytestmark = pytest.mark.usefixtures("qapp")
 
 @pytest.fixture
 def small_ram(monkeypatch: pytest.MonkeyPatch):
+    """CPU 4、物理メモリ 8GB に固定する。"""
     monkeypatch.setattr(system_resources, "logical_cpu_count", lambda: 4)
     monkeypatch.setattr(system_resources, "physical_memory_bytes", lambda: 8 * GIB)
 
 
 @pytest.fixture
 def large_ram(monkeypatch: pytest.MonkeyPatch):
+    """CPU 24、物理メモリ 32GB に固定する。"""
     monkeypatch.setattr(system_resources, "logical_cpu_count", lambda: 24)
     monkeypatch.setattr(system_resources, "physical_memory_bytes", lambda: 32 * GIB)
 
 
 def test_first_database_seeds_recommended_values(large_ram):
+    """初回 DB の現在プロファイルは 512MB、先読み 5、ワーカー auto で始まる。"""
     manager = DatabaseManager()
 
     seeded = manager.load_profile_config(manager.current_profile)
@@ -33,6 +36,7 @@ def test_first_database_seeds_recommended_values(large_ram):
 
 
 def test_small_ram_machine_is_seeded_with_safe_cache_limit(small_ram):
+    """小容量メモリでは初回のキャッシュ上限が 256MB になる。"""
     manager = DatabaseManager()
 
     seeded = manager.load_profile_config(manager.current_profile)
@@ -41,6 +45,7 @@ def test_small_ram_machine_is_seeded_with_safe_cache_limit(small_ram):
 
 
 def test_profile_without_given_settings_uses_recommended_values(large_ram):
+    """設定なしで作ったプロファイルは 512MB と先読み 5 になる。"""
     manager = DatabaseManager()
 
     assert manager.create_profile("seed-target", None)
@@ -51,6 +56,7 @@ def test_profile_without_given_settings_uses_recommended_values(large_ram):
 
 
 def test_explicit_settings_are_stored_unchanged(large_ram):
+    """渡した 1GB、先読み 30、ワーカー 8 は推奨値で上書きされない。"""
     manager = DatabaseManager()
     source = Config.from_dict(
         {
@@ -71,6 +77,7 @@ def test_explicit_settings_are_stored_unchanged(large_ram):
 
 
 def test_seeding_again_keeps_existing_rows(large_ram):
+    """再シードしても、既にある先読み 25 は残る。"""
     manager = DatabaseManager()
     source = Config.from_dict({"cache": {"prefetch_pages": 25}})
     assert manager.create_profile("keep-target", source.to_dict())

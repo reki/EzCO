@@ -7,6 +7,7 @@ import sys
 
 
 class _MemoryStatusEx(ctypes.Structure):
+    """GlobalMemoryStatusEx が書き込むメモリ状態。"""
     _fields_ = [
         ("dwLength", ctypes.c_ulong),
         ("dwMemoryLoad", ctypes.c_ulong),
@@ -21,6 +22,7 @@ class _MemoryStatusEx(ctypes.Structure):
 
 
 class _ProcessMemoryCounters(ctypes.Structure):
+    """GetProcessMemoryInfo が書き込むプロセスメモリ情報。"""
     _fields_ = [
         ("cb", ctypes.c_ulong),
         ("PageFaultCount", ctypes.c_ulong),
@@ -36,10 +38,15 @@ class _ProcessMemoryCounters(ctypes.Structure):
 
 
 def logical_cpu_count() -> int | None:
-    """論理CPU数。取得できなければNone。"""
+    """論理CPU数。取得できなければNone。
+
+    Returns:
+        1以上の論理CPU数。取れなければ None
+    """
     try:
         count = os.cpu_count()
     except (OSError, NotImplementedError):
+        # CPU 数を取れなければ None を返す
         return None
     if not count or count < 1:
         return None
@@ -47,7 +54,11 @@ def logical_cpu_count() -> int | None:
 
 
 def physical_memory_bytes() -> int | None:
-    """物理メモリ総量のbytes。取得できなければNone。"""
+    """物理メモリ総量のbytes。取得できなければNone。
+
+    Returns:
+        物理メモリのバイト数。Windows 以外、または失敗したときは None
+    """
     if sys.platform != "win32":
         return None
     try:
@@ -61,11 +72,16 @@ def physical_memory_bytes() -> int | None:
         total = int(status.ullTotalPhys)
         return total if total > 0 else None
     except (AttributeError, OSError, ValueError):
+        # 物理メモリを取れなければ None を返す
         return None
 
 
 def process_resident_bytes() -> int | None:
-    """自processのworking set bytes。取得できなければNone。"""
+    """自processのworking set bytes。取得できなければNone。
+
+    Returns:
+        ワーキングセットのバイト数。Windows 以外、または失敗したときは None
+    """
     if sys.platform != "win32":
         return None
     try:
@@ -88,4 +104,5 @@ def process_resident_bytes() -> int | None:
             return None
         return int(counters.WorkingSetSize)
     except (AttributeError, OSError, ValueError):
+        # ワーキングセットを取れなければ None を返す
         return None

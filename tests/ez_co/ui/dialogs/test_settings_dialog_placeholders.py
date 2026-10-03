@@ -7,10 +7,12 @@ from ez_co.ui.dialogs.settings_dialog import SettingsDialog
 from ez_co.utils.language_manager import language_manager, set_language
 
 
+# このモジュールのテストは QApplication 付きで動かす。
 pytestmark = pytest.mark.usefixtures("qapp")
 
 
 def test_size_placeholders_follow_selected_language(monkeypatch):
+    """英語を選んでも、キャッシュ上限と最適化しきい値のプレースホルダが英語の例にならない。"""
     monkeypatch.setattr(
         settings_dialog,
         "load_location_settings",

@@ -1,3 +1,4 @@
+"""キーボードとマウスのショートカットを割り当てるダイアログ。"""
 from typing import Dict, List, Optional
 import logging
 from PySide6.QtWidgets import (
@@ -22,28 +23,47 @@ class ShortcutInputWidget(QLineEdit):
     """ショートカット入力用ウィジェット"""
     shortcut_changed = Signal(str)
     def __init__(self, parent=None):
+        """プレースホルダと読み取り専用で、空のショートカットにする。
+
+        Args:
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self.setPlaceholderText(get_text("ui.press_key"))
         self.setReadOnly(True)
         self.current_shortcut = ""
+
     def keyPressEvent(self, event: QKeyEvent):
-        """キー入力イベント"""
+        """キー入力イベント
+
+        Args:
+            event: キーイベント。文字列にできるときだけ表示と通知を更新する。
+        """
         shortcut = key_to_string(event)
         if not shortcut:
             return
-        
+
         self.current_shortcut = shortcut
         self.setText(shortcut)
         self.shortcut_changed.emit(shortcut)
         event.accept()
+
+
 class ShortcutDialog(QDialog):
     """ショートカット設定ダイアログ"""
     def __init__(self, config, parent=None):
+        """設定のショートカットをコピーして一覧を出す。
+
+        Args:
+            config: ショートカットを持つ設定。
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self.config = config
         self.shortcuts = config.shortcuts.copy() if hasattr(config, 'shortcuts') else {}
         self.setup_ui()
         self.load_shortcuts()
+
     def setup_ui(self):
         """UIの初期化"""
         self.setWindowTitle(get_text("ui.shortcut_settings"))
@@ -86,6 +106,7 @@ class ShortcutDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         ok_cancel_layout.addWidget(cancel_btn)
         layout.addLayout(ok_cancel_layout)
+
     def update_table(self):
         """テーブルを更新"""
         self.table.clearContents()
@@ -107,6 +128,7 @@ class ShortcutDialog(QDialog):
             shortcut_item = QTableWidgetItem(shortcut)
             shortcut_item.setFlags(shortcut_item.flags() & ~Qt.ItemIsEditable)
             self.table.setItem(row, 1, shortcut_item)
+
     def add_shortcut(self):
         """ショートカットを追加"""
         dialog = AddShortcutDialog(self.shortcuts, self)
@@ -139,6 +161,14 @@ class ShortcutDialog(QDialog):
             self.update_table()
 
     def _find_shortcut_owner(self, shortcut: str):
+        """そのショートカットを持つアクションを返す。
+
+        Args:
+            shortcut: 探すショートカット文字列。
+
+        Returns:
+            アクション。無ければ None。
+        """
         for existing_action, existing_shortcuts in self.shortcuts.items():
             if shortcut in (existing_shortcuts or []):
                 return existing_action
@@ -164,10 +194,17 @@ class ShortcutDialog(QDialog):
         if hasattr(self.config, 'shortcuts'):
             self.shortcuts = self.config.shortcuts.copy()
         self.update_table()
+
     def get_shortcuts(self):
-        """ショートカット設定を取得"""
+        """ショートカット設定を取得
+
+        Returns:
+            アクションからショートカット一覧への辞書。
+        """
         return self.shortcuts
+
     def export_shortcuts(self):
+        """ショートカットを YAML ファイルへ書く。"""
         from PySide6.QtWidgets import QFileDialog, QMessageBox
         import yaml
         path, _ = QFileDialog.getSaveFileName(self, get_text("ui.export_shortcuts"), "shortcuts.yaml", "YAML files (*.yaml *.yml)")
@@ -175,7 +212,9 @@ class ShortcutDialog(QDialog):
             with open(path, "w", encoding="utf-8") as f:
                 yaml.dump({"shortcuts": self.shortcuts}, f, allow_unicode=True)
             QMessageBox.information(self, get_text("dialogs.information"), get_text("ui.shortcuts_saved").format(path=path))
+
     def import_shortcuts(self):
+        """YAML からショートカットを読む。既定に無い項目は足し、上書きの確認のあと表を更新する。"""
         from PySide6.QtWidgets import QFileDialog, QMessageBox
         import yaml
         path, _ = QFileDialog.getOpenFileName(self, get_text("ui.import_shortcuts"), "", "YAML files (*.yaml *.yml)")
@@ -205,10 +244,14 @@ class ShortcutDialog(QDialog):
                     QMessageBox.information(self, get_text("dialogs.information"), get_text("ui.shortcuts_imported"))
 
     def on_item_double_clicked(self, item):
-        """アイテムがダブルクリックされた時の処理"""
+        """アイテムがダブルクリックされた時の処理
+
+        Args:
+            item: ダブルクリックされたセル。アクション列以外は何もしない。
+        """
         if item.column() != 0:  # アクション列以外はスキップ
             return
-        
+
         row = item.row()
         # 現在のアクションとショートカットを取得
         current_action_name = item.text()
@@ -216,71 +259,81 @@ class ShortcutDialog(QDialog):
         if not shortcut_item:
             return
         shortcut = shortcut_item.text()
-        
+
         # 現在のアクションを特定
         current_action = item.data(Qt.ItemDataRole.UserRole) or find_action_by_display_name(current_action_name)
         if not current_action:
             return
-        
+
         # コンボボックスを作成
         combo = QComboBox()
         combo.setEditable(True)
         combo.setInsertPolicy(QComboBox.NoInsert)
-        
+
         # 全アクションを追加
         action_names = []
         for action in list_assignable_actions():
             display_name = get_action_display_name(action)
             combo.addItem(display_name, action)
             action_names.append(display_name)
-        
+
         # 入力サジェスト機能を追加
         completer = QCompleter(action_names)
         completer.setCaseSensitivity(Qt.CaseInsensitive)
         completer.setFilterMode(Qt.MatchContains)
         combo.setCompleter(completer)
-        
+
         # 現在のアクションを選択
         for i in range(combo.count()):
             if combo.itemData(i) == current_action:
                 combo.setCurrentIndex(i)
                 break
-        
+
         # コンボボックスをテーブルに設定
         self.table.setCellWidget(row, 0, combo)
         combo.setFocus()
-        
+
         # 変更時の処理
         def on_action_changed():
+            """コンボボックスの選択へショートカットを移し、表を更新する。"""
             new_action = combo.currentData()
             if new_action is None:
                 new_action = find_action_by_display_name(combo.currentText())
-            
+
             if new_action and new_action != current_action:
                 # 古いアクションからショートカットを削除
                 if current_action in self.shortcuts and shortcut in self.shortcuts[current_action]:
                     self.shortcuts[current_action].remove(shortcut)
                     if not self.shortcuts[current_action]:
                         del self.shortcuts[current_action]
-                
+
                 # 新しいアクションにショートカットを追加
                 if new_action not in self.shortcuts:
                     self.shortcuts[new_action] = []
                 self.shortcuts[new_action].append(shortcut)
-                
+
                 # テーブルを更新
                 self.update_table()
-        
+
         # フォーカスが外れた時やEnterキーが押された時に変更を適用
         combo.editTextChanged.connect(on_action_changed)
         combo.currentTextChanged.connect(on_action_changed)
         combo.focusOutEvent = lambda event: (on_action_changed(), super(QComboBox, combo).focusOutEvent(event))
+
+
 class AddShortcutDialog(QDialog):
     """ショートカット追加ダイアログ"""
     def __init__(self, shortcuts, parent=None):
+        """既存のショートカットを受け取り、追加画面を出す。
+
+        Args:
+            shortcuts: 既存の割り当て。
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self.shortcuts = shortcuts
         self.setup_ui()
+
     def setup_ui(self):
         """UIの初期化"""
         self.setWindowTitle(get_text("ui.add_shortcut"))
@@ -337,17 +390,27 @@ class AddShortcutDialog(QDialog):
         cancel_button.clicked.connect(self.reject)
         button_layout.addWidget(cancel_button)
         layout.addRow(button_layout)
+
     def on_shortcut_type_changed(self, text):
-        """ショートカットタイプが変更された時の処理"""
+        """ショートカットタイプが変更された時の処理
+
+        Args:
+            text: 選ばれた種類の表示文。キーボードの文言のときだけキー入力を出す。
+        """
         if text == get_text("ui.keyboard_colon"):
             self.keyboard_input.setVisible(True)
             self.mouse_combo.setVisible(False)
         else:
             self.keyboard_input.setVisible(False)
             self.mouse_combo.setVisible(True)
+
     @property
     def shortcut_input(self):
-        """現在選択されているショートカット入力ウィジェット"""
+        """現在選択されているショートカット入力ウィジェット
+
+        Returns:
+            キーボードなら入力欄。マウスなら current_shortcut だけを持つオブジェクト。
+        """
         if self.shortcut_type_combo.currentData() == "keyboard":
             return self.keyboard_input
         else:
@@ -355,14 +418,25 @@ class AddShortcutDialog(QDialog):
             return type('obj', (object,), {
                 'current_shortcut': self.mouse_combo.currentData()
             })()
+
+
 class EditShortcutDialog(QDialog):
     """ショートカット編集ダイアログ"""
     def __init__(self, action, shortcuts_list, shortcuts, parent=None):
+        """対象アクションのショートカット一覧を編集する画面を出す。
+
+        Args:
+            action: 編集するアクション。
+            shortcuts_list: そのアクションのショートカット。
+            shortcuts: 全体の割り当て。
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self.action = action
         self.shortcuts = shortcuts_list.copy()
         self.shortcuts_dict = shortcuts
         self.setup_ui()
+
     def setup_ui(self):
         """UIの初期化"""
         self.setWindowTitle(get_text("ui.shortcut_edit_title").format(action=get_action_display_name(self.action)))
@@ -421,16 +495,28 @@ class EditShortcutDialog(QDialog):
         cancel_button.clicked.connect(self.reject)
         button_layout.addWidget(cancel_button)
         layout.addLayout(button_layout)
+
     def update_shortcut(self, index, text):
-        """ショートカットを更新"""
+        """ショートカットを更新
+
+        Args:
+            index: 更新する位置。
+            text: 新しいショートカット。
+        """
         if index < len(self.shortcuts):
             self.shortcuts[index] = text
+
     def remove_shortcut(self, index):
-        """ショートカットを削除"""
+        """ショートカットを削除
+
+        Args:
+            index: 削除する位置。
+        """
         if index < len(self.shortcuts):
             del self.shortcuts[index]
             self.setup_ui()  # UIを再構築
+
     def add_shortcut(self):
         """ショートカットを追加"""
         self.shortcuts.append("")
-        self.setup_ui()  # UIを再構築 
+        self.setup_ui()  # UIを再構築

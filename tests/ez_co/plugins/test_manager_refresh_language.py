@@ -7,12 +7,18 @@ from ez_co.plugins.manager import PluginManager
 
 
 def _config():
+    """選択もハンドラも空のプラグイン設定を返す。
+
+    Returns:
+        plugins だけを持つ設定オブジェクト。
+    """
     return SimpleNamespace(
         plugins={"source_choice": {}, "extension_handlers": {}, "enabled": {}}
     )
 
 
 def test_refresh_language_does_not_rerun_setup_or_add_listeners(tmp_path, dir_plugin):
+    """言語更新で setup が再実行され、language_changed の回数が更新回数とずれ、ui が落ち、unmount が走り、listener が増える。"""
     counter = tmp_path / "setup.txt"
     root = dir_plugin(
         tmp_path,
@@ -59,6 +65,7 @@ def test_refresh_language_does_not_rerun_setup_or_add_listeners(tmp_path, dir_pl
 
 
 def test_language_changed_exception_keeps_plugin_and_continues(tmp_path, dir_plugin):
+    """language_changed の例外でそのプラグインが無効になり、後続プラグインの hook が呼ばれない。"""
     boom = dir_plugin(
         tmp_path,
         plugin_id="com.example.boom",
@@ -108,6 +115,7 @@ def test_language_changed_exception_keeps_plugin_and_continues(tmp_path, dir_plu
 
 
 def test_missing_language_changed_is_not_an_error(tmp_path, dir_plugin):
+    """language_changed が無いプラグインがエラーになり、ui が無効になる。"""
     dir_plugin(tmp_path, plugin_id="com.example.plain", folder_name="plain")
     manager = PluginManager()
     manager.discover(tmp_path)
@@ -120,6 +128,7 @@ def test_missing_language_changed_is_not_an_error(tmp_path, dir_plugin):
 
 
 def test_language_changed_cannot_register(tmp_path, dir_plugin):
+    """language 中の register_sidebar が拒否されず、サイドバーか listener が増えるか、ui が無効になる。"""
     root = dir_plugin(
         tmp_path,
         plugin_id="com.example.deny",

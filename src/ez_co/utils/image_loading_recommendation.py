@@ -12,7 +12,9 @@ from ez_co.utils.image_loader_workers import (
 RECOMMENDED_PREFETCH_PAGES = 5
 # 性能境界ではなく、複数タブでcacheが線形に増えることへの安全境界。
 MEMORY_LIMIT_RAM_THRESHOLD_BYTES = 16 * 1024**3
+# メモリが閾値以下のときの上限
 SAFE_MEMORY_LIMIT = "256MB"
+# メモリが閾値を超えたときの上限
 LARGE_MEMORY_LIMIT = "512MB"
 
 
@@ -29,7 +31,15 @@ def recommend_image_loading_settings(
     logical_cpu_count: int | None,
     physical_memory_bytes: int | None,
 ) -> ImageLoadingRecommendation:
-    """RAM量から安全側のcache上限を選ぶ。1GBは自動では勧めない。"""
+    """RAM量から安全側のcache上限を選ぶ。1GBは自動では勧めない。
+
+    Args:
+        logical_cpu_count: 論理CPU数。この関数では参照しない
+        physical_memory_bytes: 物理メモリのバイト数
+
+    Returns:
+        memory_limit、prefetch_pages、image_loader_workers の推奨
+    """
     if (
         physical_memory_bytes is not None
         and physical_memory_bytes >= MEMORY_LIMIT_RAM_THRESHOLD_BYTES
@@ -45,7 +55,14 @@ def recommend_image_loading_settings(
 
 
 def auto_effective_workers(logical_cpu_count: int | None) -> int:
-    """autoを選んだときの実worker数。推奨labelとbenchmarkで基準を揃える。"""
+    """autoを選んだときの実worker数。推奨labelとbenchmarkで基準を揃える。
+
+    Args:
+        logical_cpu_count: 論理CPU数
+
+    Returns:
+        auto のときに使う worker 数
+    """
     return resolve_image_loader_workers(
         AUTO_IMAGE_LOADER_WORKERS,
         logical_cpu_count,
@@ -53,7 +70,15 @@ def auto_effective_workers(logical_cpu_count: int | None) -> int:
 
 
 def apply_recommendation(config, recommendation=None) -> ImageLoadingRecommendation:
-    """新規設定を作るときだけ、cacheの3キーを推奨値で埋める。"""
+    """新規設定を作るときだけ、cacheの3キーを推奨値で埋める。
+
+    Args:
+        config: cache の3キーを書き込む設定
+        recommendation: 使う推奨値。無いときはこの機械から決める
+
+    Returns:
+        設定へ書いた推奨値
+    """
     if recommendation is None:
         from ez_co.utils.system_resources import (
             logical_cpu_count,

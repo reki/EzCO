@@ -1,3 +1,4 @@
+"""プロファイルの削除と名前変更を行うダイアログ。"""
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QListWidget, QPushButton,
     QInputDialog, QMessageBox
@@ -13,6 +14,12 @@ class ProfileManageDialog(QDialog):
     """プロファイルの削除・名前変更"""
 
     def __init__(self, db_manager, parent=None):
+        """データベースと一覧を用意する。
+
+        Args:
+            db_manager: プロファイルを操作するデータベース。
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self.db_manager = db_manager
         self.deleted_current = False
@@ -22,6 +29,7 @@ class ProfileManageDialog(QDialog):
         self.refresh_list()
 
     def setup_ui(self):
+        """一覧と、名前変更・削除・閉じるボタンを配置する。"""
         layout = QVBoxLayout()
         self.list_widget = QListWidget()
         layout.addWidget(self.list_widget)
@@ -42,6 +50,7 @@ class ProfileManageDialog(QDialog):
         self.resize(360, 280)
 
     def refresh_list(self):
+        """プロファイル一覧を読み直す。現在のプロファイルにはその旨を付ける。"""
         self.list_widget.clear()
         current = self.db_manager.current_profile
         for name in self.db_manager.get_profiles():
@@ -52,12 +61,18 @@ class ProfileManageDialog(QDialog):
             self.list_widget.item(self.list_widget.count() - 1).setData(Qt.UserRole, name)
 
     def _selected_name(self):
+        """選択中のプロファイル名を返す。
+
+        Returns:
+            選択中の名前。未選択なら None。
+        """
         item = self.list_widget.currentItem()
         if not item:
             return None
         return item.data(Qt.UserRole)
 
     def rename_selected(self):
+        """選択中のプロファイル名を変える。空、同じ名前、既存名は警告して変えない。"""
         old_name = self._selected_name()
         if not old_name:
             return
@@ -90,6 +105,7 @@ class ProfileManageDialog(QDialog):
             QMessageBox.critical(self, get_text("dialogs.error"), get_text("ui.profile_rename_failed"))
 
     def delete_selected(self):
+        """選択中のプロファイルを消す。保護された名前は消さない。現在のプロファイルを消したときはその旨を残す。"""
         name = self._selected_name()
         if not name:
             return

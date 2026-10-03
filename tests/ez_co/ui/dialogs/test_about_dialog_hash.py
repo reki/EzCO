@@ -6,10 +6,12 @@ from ez_co.ui.dialogs import about_dialog
 from ez_co.ui.dialogs.about_dialog import AboutDialog
 from ez_co.utils.language_manager import get_text
 
+# このモジュールのテストは QApplication 付きで動かす。
 pytestmark = pytest.mark.usefixtures("qapp")
 
 
 def test_dialog_shows_16_digits_and_tooltip_keeps_64(monkeypatch: pytest.MonkeyPatch):
+    """画面のビルド識別が先頭16文字以外になり、ツールチップから64文字が消える。"""
     full = "ab" * 32
     monkeypatch.setattr(about_dialog, "current_build_id", lambda: full)
     dialog = AboutDialog()
@@ -26,6 +28,7 @@ def test_dialog_shows_16_digits_and_tooltip_keeps_64(monkeypatch: pytest.MonkeyP
 
 
 def test_empty_build_id_adds_no_row(monkeypatch: pytest.MonkeyPatch):
+    """ビルド識別が空なのに、日英どちらかの見出し行が増える。"""
     monkeypatch.setattr(about_dialog, "current_build_id", lambda: "")
     dialog = AboutDialog()
     try:
@@ -37,6 +40,7 @@ def test_empty_build_id_adds_no_row(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_copy_text_uses_the_full_build_id(monkeypatch: pytest.MonkeyPatch):
+    """コピー文が16文字の省略になり、64文字の識別子かバージョン行が欠ける。"""
     full = "ab" * 32
     monkeypatch.setattr(about_dialog, "current_build_id", lambda: full)
     dialog = AboutDialog()
@@ -53,6 +57,7 @@ def test_copy_text_uses_the_full_build_id(monkeypatch: pytest.MonkeyPatch):
 def test_copy_button_writes_the_same_text_to_the_clipboard(
     monkeypatch: pytest.MonkeyPatch,
 ):
+    """コピーボタンが copy_text と違う文を書き、全文の識別子がクリップボードに無い。"""
     full = "cd" * 32
     monkeypatch.setattr(about_dialog, "current_build_id", lambda: full)
     dialog = AboutDialog()

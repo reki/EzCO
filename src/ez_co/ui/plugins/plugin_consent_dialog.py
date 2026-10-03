@@ -8,7 +8,18 @@ from ez_co.utils.language_manager import get_text
 
 
 class _ConsentBrowser(QTextBrowser):
+    """http と https のリソースは読まず、それ以外は親の読み込みに任せる。"""
+
     def loadResource(self, resource_type, name):
+        """http と https は読み込まず、それ以外は親に任せる。
+
+        Args:
+            resource_type: Qt が渡すリソース種別。
+            name: 読み込むリソースの名前または URL。
+
+        Returns:
+            http または https のとき None。それ以外は親の読み込み結果。
+        """
         url = QUrl(name) if not isinstance(name, QUrl) else name
         scheme = (url.scheme() or "").lower()
         if scheme in ("http", "https"):
@@ -17,7 +28,14 @@ class _ConsentBrowser(QTextBrowser):
 
 
 class PluginConsentDialog(QDialog):
+    """プラグイン導入の知情同意をはい／いいえで尋ねる。"""
+
     def __init__(self, parent=None):
+        """同意文とはい／いいえのボタンを載せてダイアログを組み立てる。
+
+        Args:
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self.setWindowTitle(get_text("ui.plugin_consent_title"))
         self.setMinimumSize(480, 360)
@@ -42,6 +60,11 @@ class PluginConsentDialog(QDialog):
         layout.addWidget(buttons)
 
     def _open_link(self, url: QUrl):
+        """http または https のリンクを外部で開く。
+
+        Args:
+            url: クリックされたリンク。
+        """
         scheme = (url.scheme() or "").lower()
         if scheme in ("http", "https"):
             QDesktopServices.openUrl(url)

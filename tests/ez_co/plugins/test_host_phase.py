@@ -8,11 +8,19 @@ from ez_co.utils.language_manager import get_text
 
 
 def _denied(host: PluginHost, plugin_id: str, action):
+    """登録が phase 違反の文言で拒否されることを確かめる。
+
+    Args:
+        host: 呼び出し側が渡すホスト。検査は action だけを見る。
+        plugin_id: 呼び出し側が渡すプラグイン ID。検査は action だけを見る。
+        action: 拒否されるはずの登録。
+    """
     with pytest.raises(PluginRegistrationDenied, match=get_text("ui.plugin_register_wrong_phase")):
         action()
 
 
 def test_init_rejects_every_register():
+    """init で config、sidebar、config_sidebar、required_setting_sidebar、action、filter、on のいずれかが通る。"""
     host = PluginHost()
     host.set_manifest_provides("com.example.x", sidebar=True)
     host.set_manifest_permissions("com.example.x", {"filter": True})
@@ -28,6 +36,7 @@ def test_init_rejects_every_register():
 
 
 def test_load_allows_config_rejects_ui_register():
+    """load で config が登録されず、sidebar 以降の UI 登録が通る。"""
     host = PluginHost()
     host.set_manifest_provides("com.example.x", sidebar=True)
     host.set_manifest_permissions("com.example.x", {"filter": True})
@@ -44,6 +53,7 @@ def test_load_allows_config_rejects_ui_register():
 
 
 def test_setup_allows_config_and_ui_register():
+    """setup で config、sidebar、action、filter、on が台帳に残らない。"""
     host = PluginHost()
     host.set_manifest_provides("com.example.x", sidebar=True)
     host.set_manifest_permissions("com.example.x", {"filter": True})
@@ -59,6 +69,7 @@ def test_setup_allows_config_and_ui_register():
 
 
 def test_language_rejects_every_register():
+    """language で登録と off が通る。"""
     host = PluginHost()
     host.set_manifest_provides("com.example.x", sidebar=True)
     host.set_manifest_permissions("com.example.x", {"filter": True})
@@ -75,6 +86,7 @@ def test_language_rejects_every_register():
 
 
 def test_abort_load_drops_own_schema_keeps_other_plugin():
+    """load 中断で自分の schema が残るか、他プラグインの schema が消え、phase が idle に戻らない。"""
     host = PluginHost()
     host.enter_phase("com.example.keep", "load")
     host.scoped("com.example.keep").register_config("keep", "bool", True)

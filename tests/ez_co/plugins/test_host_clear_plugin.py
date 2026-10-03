@@ -5,6 +5,7 @@ from ez_co.plugins.host import PluginHost, make_plugin_action_id, make_sidebar_a
 
 
 def test_clear_plugin_drops_listeners_sidebars_actions_without_off():
+    """clear_plugin のあとサイドバー、アクション、listener が残る。"""
     host = PluginHost()
     host.set_manifest_provides("com.example.x", sidebar=True)
     scoped = host.scoped("com.example.x")
@@ -28,6 +29,7 @@ def test_clear_plugin_drops_listeners_sidebars_actions_without_off():
 
 
 def test_clear_plugin_keeps_other_plugin_listeners():
+    """別プラグインの config_changed まで clear_plugin で消える。"""
     host = PluginHost()
     kept = []
     host.scoped("com.example.keep").on("config_changed", lambda payload: kept.append(payload))

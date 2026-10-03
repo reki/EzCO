@@ -7,12 +7,18 @@ from ez_co.plugins.manager import PluginManager
 
 
 def _config():
+    """選択もハンドラも空のプラグイン設定を返す。
+
+    Returns:
+        plugins だけを持つ設定オブジェクト。
+    """
     return SimpleNamespace(
         plugins={"source_choice": {}, "extension_handlers": {}, "enabled": {}}
     )
 
 
 def test_setup_exception_after_sidebar_clears_ui_keeps_schema(tmp_path, dir_plugin):
+    """setup の例外のあとエラーが残らず、ui が有効のまま、サイドバーが残るか、load で登録した schema が消える。"""
     root = dir_plugin(
         tmp_path,
         plugin_id="com.example.roll",

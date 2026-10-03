@@ -13,18 +13,49 @@ pytestmark = pytest.mark.usefixtures("qapp")
 
 
 class _MemoryDb:
+    """プラグイン設定を辞書に持つ、テスト用の DB。"""
+
     def __init__(self):
+        """行の辞書を空にする。"""
         self.rows = {}
 
     def get_plugin_setting(self, plugin_id, key, default=None):
+        """保存済みの値を返す。
+
+        Args:
+            plugin_id: プラグイン ID。
+            key: 設定キー。
+            default: 行が無いときの値。
+
+        Returns:
+            保存値。無ければ default。
+        """
         return self.rows.get((plugin_id, key), default)
 
     def set_plugin_setting(self, plugin_id, key, value):
+        """設定を辞書へ書く。
+
+        Args:
+            plugin_id: プラグイン ID。
+            key: 設定キー。
+            value: 保存する値。
+
+        Returns:
+            常に真。
+        """
         self.rows[(plugin_id, key)] = value
         return True
 
 
 def _host(reloads=None):
+    """サイドバー宣言済みで setup 中のホストとスコープを返す。
+
+    Args:
+        reloads: 再読み込みのたびにページを足すリスト。無ければ再読み込みは結ばない。
+
+    Returns:
+        ホストと com.example.x のスコープ。
+    """
     host = PluginHost()
     kwargs = {"parent": None, "db_manager": _MemoryDb()}
     if reloads is not None:
@@ -36,6 +67,7 @@ def _host(reloads=None):
 
 
 def test_register_config_sidebar_accepts_declared_flag():
+    """宣言済み sidebar で config サイドバーが1件載らず、title がテンプレートでなく、中身が PluginConfigForm でない。"""
     host, scoped = _host()
     scoped.register_config("flag", "bool", True)
     scoped.register_config_sidebar("main", "{title}")
@@ -47,6 +79,7 @@ def test_register_config_sidebar_accepts_declared_flag():
 
 
 def test_register_config_sidebar_requires_manifest_flag():
+    """sidebar 未宣言でも register_config_sidebar が権限不足で拒否されない。"""
     host = PluginHost()
     host.enter_phase("com.example.ui", "setup")
     scoped = host.scoped("com.example.ui")
@@ -56,12 +89,14 @@ def test_register_config_sidebar_requires_manifest_flag():
 
 
 def test_required_setting_sidebar_rejects_empty_schema():
+    """設定が空でも required_setting_sidebar がプラグイン ID 付きの ValueError にならない。"""
     _host_obj, scoped = _host()
     with pytest.raises(ValueError, match="com.example.x"):
         scoped.required_setting_sidebar()
 
 
 def test_required_setting_sidebar_returns_form():
+    """設定があるとき required_setting_sidebar が PluginConfigForm を返さない。"""
     _host_obj, scoped = _host()
     scoped.register_config("flag", "bool", True)
     widget = scoped.required_setting_sidebar()
@@ -69,6 +104,7 @@ def test_required_setting_sidebar_returns_form():
 
 
 def test_register_config_sidebar_writes_bool_immediately():
+    """チェックを外しても bool がすぐに false として保存されない。"""
     host, scoped = _host()
     scoped.register_config("flag", "bool", True)
     scoped.register_config_sidebar("main", "Title")
@@ -78,6 +114,7 @@ def test_register_config_sidebar_writes_bool_immediately():
 
 
 def test_register_config_sidebar_reloads_only_when_field_reload():
+    """reload の無い項目の変更で再読み込みが走り、reload のある項目でページ None の再読み込みが走らない。"""
     reloads = []
     host, scoped = _host(reloads)
     scoped.register_config("flag", "bool", True)
@@ -91,6 +128,7 @@ def test_register_config_sidebar_reloads_only_when_field_reload():
 
 
 def test_register_config_sidebar_signature_keeps_aliases():
+    """引数名と順が sidebar_id、title、aliases から変わる。"""
     host = PluginHost()
     params = inspect.signature(host.scoped("com.example.x").register_config_sidebar).parameters
     assert list(params) == ["sidebar_id", "title", "aliases"]

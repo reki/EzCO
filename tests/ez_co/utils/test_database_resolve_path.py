@@ -4,6 +4,7 @@ from ez_co.utils.database import CONFIG_DB_NAME, LEGACY_DB_NAME, resolve_databas
 
 
 def test_resolve_database_path_is_under_temp_data_root():
+    """解決した DB は一時データ置き場の config.db で、プロジェクト直下の同名ファイルではない。"""
     path = resolve_database_path()
     assert path.name == CONFIG_DB_NAME
     assert path.parent == data_location.get_data_root()
@@ -11,6 +12,7 @@ def test_resolve_database_path_is_under_temp_data_root():
 
 
 def test_resolve_database_path_renames_legacy_bookmarks():
+    """旧ブックマーク DB だけがあるときは config.db へ中身ごと移し、旧ファイルは消える。"""
     root = data_location.get_data_root()
     legacy = root / LEGACY_DB_NAME
     legacy.write_bytes(b"legacy")
@@ -22,6 +24,7 @@ def test_resolve_database_path_renames_legacy_bookmarks():
 
 
 def test_resolve_database_path_keeps_config_when_both_exist():
+    """config.db と旧ファイルが両方あるときは config.db の中身を残し、旧ファイルも残す。"""
     root = data_location.get_data_root()
     config_db = root / CONFIG_DB_NAME
     legacy = root / LEGACY_DB_NAME

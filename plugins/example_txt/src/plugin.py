@@ -26,6 +26,7 @@ from layout import (
     resolve_settings,
 )
 
+# テキスト画像の初期設定。
 _DEFAULTS = {
     "font_family": "",
     "font_size": 0,
@@ -37,11 +38,15 @@ _DEFAULTS = {
     "writing": HORIZONTAL,
     "charset": "utf-8",
 }
+# 担当する拡張子。
 _SOURCE_SUFFIXES = (".txt", ".log")
 
 
 class TextImagePlugin:
+    """テキストをページ画像にするプラグイン。"""
+
     def __init__(self):
+        """root、get_text、host と、ページ分割のキャッシュを空で作る。"""
         self.root = None
         self.get_text = None
         self.host = None
@@ -51,15 +56,38 @@ class TextImagePlugin:
         self._last_txt = None
 
     def load(self, root, get_text, host):
+        """root、get_text、host を保持し、設定 JSON を登録する。
+
+        Args:
+            root: プラグインルート。
+            get_text: 文言取得関数。
+            host: スコープ付きホスト。
+        """
         self.root = root
         self.get_text = get_text
         self.host = host
         self.host.register_config_json("fields.json")
 
     def get_file_count(self, file_path):
+        """ページ数を返す。
+
+        Args:
+            file_path: 対象テキスト。
+
+        Returns:
+            ページ数。
+        """
         return len(self.list_entries(file_path))
 
     def list_entries(self, file_path):
+        """ページ画像名を返し、最後に開いたパスを覚える。
+
+        Args:
+            file_path: 対象テキスト。
+
+        Returns:
+            page_NNN.png のリスト。ページが無ければ page_001.png の1件。
+        """
         self._last_txt = str(file_path)
         pages = self._pages_for(file_path)
         if not pages:
@@ -67,6 +95,15 @@ class TextImagePlugin:
         return [_page_name(index) for index in range(len(pages))]
 
     def read_entry(self, file_path, index):
+        """指定ページの PNG を返す。
+
+        Args:
+            file_path: 対象テキスト。
+            index: ページ番号。範囲外は端に寄せる。
+
+        Returns:
+            名前と PNG バイト列を持つエントリ。
+        """
         text, pages, settings = self._layout_for(file_path)
         if not pages:
             pages = [(0, 0)]
@@ -76,15 +113,22 @@ class TextImagePlugin:
         return _Entry(_page_name(index), render_page(text, start, end, settings))
 
     def setup(self):
+        """設定変更を購読し、設定サイドバーを登録する。"""
         if not self._listening:
             self.host.on("config_changed", self._on_config)
             self._listening = True
         self.host.register_config_sidebar("text_image", "{title}")
 
     def teardown(self):
+        """購読フラグを下ろす。"""
         self._listening = False
 
     def _on_config(self, payload=None):
+        """文字コード変更で本文キャッシュを捨て、収まる設定なら現在位置から読み直す。
+
+        Args:
+            payload: config_changed の内容。charset のときだけキャッシュを捨てる。
+        """
         if isinstance(payload, dict) and payload.get("key") == "charset":
             self._drop_text_cache()
         settings = self._resolved(self._raw_settings())
@@ -93,18 +137,21 @@ class TextImagePlugin:
         self._reload_from_anchor()
 
     def _reload_from_anchor(self):
+        """今のページ先頭文字を保ってページを組み直し、そのページを読み直す。"""
         path = self._current_txt_path()
         if not path:
             return
         try:
             text = read_text(path, self._charset())
         except OSError as exc:
+            # 本文を読めなければ記録して再読み込みをやめる。
             self.host.report_error("read_text", exc)
             return
         page = self.host.get_current("page")
         try:
             page_index = max(0, int(page) - 1)
         except (TypeError, ValueError):
+            # ページ番号にできなければ先頭ページにする。
             page_index = 0
         old_pages = None
         with self._lock:
@@ -131,6 +178,11 @@ class TextImagePlugin:
         self.host.reload_current(new_page)
 
     def _current_txt_path(self):
+        """今のパスから元テキストのパスを取り、無ければ最後に開いたパスを使う。
+
+        Returns:
+            テキストのパス。見つからなければ None。
+        """
         parsed = _txt_path(self.host.get_current("path"))
         if parsed:
             self._last_txt = parsed
@@ -145,9 +197,15 @@ class TextImagePlugin:
         return None
 
     def _charset(self) -> str:
+        """設定の文字コードを返す。
+
+        Returns:
+            文字コード。空なら utf-8。
+        """
         return str(self.host.get_config("charset", _DEFAULTS["charset"]) or "utf-8")
 
     def _drop_text_cache(self):
+        """今のテキストのキャッシュを捨てる。"""
         path = self._current_txt_path()
         if not path:
             return
@@ -155,6 +213,11 @@ class TextImagePlugin:
             self._cache.pop(_norm(path), None)
 
     def _raw_settings(self) -> PageSettings:
+        """設定値から PageSettings を作る。
+
+        Returns:
+            プラグイン設定の PageSettings。
+        """
         return PageSettings(
             font_family=str(self.host.get_config("font_family", _DEFAULTS["font_family"]) or ""),
             font_size=int(self.host.get_config("font_size", _DEFAULTS["font_size"]) or 0),
@@ -167,27 +230,58 @@ class TextImagePlugin:
         )
 
     def _app_font(self):
+        """アプリの ui_font から字体とサイズを読む。
+
+        Returns:
+            字体名とサイズ。読めなければ空と 0。
+        """
         ui = {}
         try:
             ui = dict(self.host.get_app_config().get("ui_font") or {})
         except Exception:
+            # アプリ字体を読めなければ空として続ける。
             ui = {}
         family = str(ui.get("font_family") or "")
         try:
             size = int(ui.get("font_size") or 0)
         except (TypeError, ValueError):
+            # サイズを整数にできなければ 0 にする。
             size = 0
         return family, size
 
     def _resolved(self, raw: PageSettings) -> PageSettings:
+        """アプリ字体で空欄を埋めた PageSettings を返す。
+
+        Args:
+            raw: プラグイン設定の値。
+
+        Returns:
+            補完後の PageSettings。
+        """
         family, size = self._app_font()
         return resolve_settings(raw, family, size)
 
     def _pages_for(self, file_path):
+        """ファイルのページ範囲だけ返す。
+
+        Args:
+            file_path: 対象テキスト。
+
+        Returns:
+            ページの開始と終了。
+        """
         _text, pages, _settings = self._layout_for(file_path)
         return pages
 
     def _layout_for(self, file_path):
+        """キャッシュか再分割で本文、ページ範囲、設定を返す。
+
+        Args:
+            file_path: 対象テキスト。
+
+        Returns:
+            本文、ページ範囲、設定。読めなければ空本文と1ページ。
+        """
         path = str(file_path)
         key = _norm(path)
         mtime = _mtime(path)
@@ -205,6 +299,7 @@ class TextImagePlugin:
         try:
             text = read_text(path, charset)
         except OSError as exc:
+            # 本文を読めなければ記録して空のページを返す。
             self.host.report_error("read_text", exc)
             return "", [(0, 0)], settings
         pages = paginate(text, settings)
@@ -222,32 +317,83 @@ class TextImagePlugin:
 
 
 class _Entry:
+    """エントリ名とバイト列。"""
+
     def __init__(self, name, data):
+        """名前とバイト列を保持する。
+
+        Args:
+            name: エントリ名。
+            data: バイト列。
+        """
         self.name = name
         self.data = data
 
 
 def _page_name(index: int) -> str:
+    """1始まり3桁のページ画像名を返す。
+
+    Args:
+        index: 0始まりのページ番号。
+
+    Returns:
+        page_NNN.png。
+    """
     return f"page_{index + 1:03d}.png"
 
 
 def _norm(path: str) -> str:
+    """パスを比較用に正規化する。
+
+    Args:
+        path: 対象パス。
+
+    Returns:
+        大文字小文字を揃えた正規パス。
+    """
     return os.path.normcase(os.path.normpath(str(path)))
 
 
 def _mtime(path: str) -> float:
+    """更新時刻を返し、読めなければ -1。
+
+    Args:
+        path: 対象パス。
+
+    Returns:
+        更新時刻。読めなければ -1。
+    """
     try:
         return os.path.getmtime(path)
     except OSError:
+        # 更新時刻を読めなければ -1 を返す。
         return -1
 
 
 def _has_source_suffix(name: str, suffixes=_SOURCE_SUFFIXES) -> bool:
+    """名前が担当拡張子で終わるなら True。
+
+    Args:
+        name: ファイル名。
+        suffixes: 照合する拡張子。
+
+    Returns:
+        どれかで終われば True。
+    """
     lowered = name.lower()
     return any(lowered.endswith(suffix) for suffix in suffixes)
 
 
 def _txt_path(raw, suffixes=_SOURCE_SUFFIXES) -> str | None:
+    """現在パスから元のテキストパスを取り出す。
+
+    Args:
+        raw: 現在のパス。archive: 形式も読む。
+        suffixes: 担当拡張子。
+
+    Returns:
+        テキストのパス。担当拡張子でなければ None。
+    """
     if not raw:
         return None
     value = str(raw)

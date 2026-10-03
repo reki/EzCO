@@ -24,7 +24,9 @@ from ez_co.plugins.api import BUILTIN_PROVIDER_ID, SKIP_PROVIDER_ID, FileKind
 from ez_co.plugins.manager import get_plugin_manager
 from ez_co.utils.language_manager import get_text
 
+# プラグイン一覧の列キー。
 PLUGIN_COLUMNS = ("enabled", "name", "id", "version", "kind", "extensions", "status", "settings", "license")
+# プラグイン一覧の初期列幅。
 PLUGIN_DEFAULT_WIDTHS = {
     "enabled": 56,
     "name": 160,
@@ -36,11 +38,14 @@ PLUGIN_DEFAULT_WIDTHS = {
     "settings": 100,
     "license": 110,
 }
+# プラグイン一覧でこれより狭くしない列幅。
 PLUGIN_MIN_WIDTHS = {
     "settings": 88,
     "license": 100,
 }
+# 拡張子一覧の列キー。
 EXT_COLUMNS = ("extension", "kind", "handler")
+# 拡張子一覧の初期列幅。
 EXT_DEFAULT_WIDTHS = {
     "extension": 100,
     "kind": 110,
@@ -52,6 +57,11 @@ class NoWheelComboBox(QComboBox):
     """閉じているときはホイールで値を変えず、親の一覧をスクロールさせる。"""
 
     def wheelEvent(self, event):
+        """一覧が開いているときだけ自分でホイールを処理し、閉じているときは親のスクロールへ渡す。
+
+        Args:
+            event: ホイールイベント。
+        """
         if self.view() is not None and self.view().isVisible():
             super().wheelEvent(event)
             return
@@ -65,9 +75,16 @@ class NoWheelComboBox(QComboBox):
 
 
 class PluginDialog(QDialog):
+    """プラグインの有効、拡張子の読み込み方式、重複の提供元を選ぶ。"""
     applied = Signal()
 
     def __init__(self, config, parent=None):
+        """有効、拡張子の方式、提供元の選択を控えて画面を出す。
+
+        Args:
+            config: プラグイン設定を持つ設定。
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self.config = config
         self.plugin_manager = get_plugin_manager()
@@ -92,9 +109,15 @@ class PluginDialog(QDialog):
         self.finished.connect(self.apply_layout_to_config)
 
     def _enabled_ids(self):
+        """有効なプラグイン ID を返す。
+
+        Returns:
+            有効な ID の集合。
+        """
         return {plugin_id for plugin_id, enabled in self._enabled.items() if enabled}
 
     def _setup_ui(self):
+        """プラグイン表、拡張子の絞り込み、拡張子表を配置する。"""
         layout = QVBoxLayout()
 
         list_header = QHBoxLayout()
@@ -157,6 +180,7 @@ class PluginDialog(QDialog):
         self.setLayout(layout)
 
     def _apply(self):
+        """変更が無ければ何もしない。あれば設定へ書き、元の値を更新する。提供元が変わっていれば表を読み直す。"""
         if not self.has_changes():
             return
         self.last_applied_source_changes = self.has_source_choice_changes()
@@ -176,6 +200,11 @@ class PluginDialog(QDialog):
             self._refresh_extension_rows()
 
     def _prepare_table(self, table: QTableWidget):
+        """列の幅変更と行選択だけができる表にする。
+
+        Args:
+            table: 整える表。
+        """
         header = table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         header.setSectionsClickable(True)
@@ -191,6 +220,14 @@ class PluginDialog(QDialog):
         table.setHorizontalScrollMode(QTableWidget.ScrollMode.ScrollPerPixel)
 
     def _dialog_table_state(self, key: str) -> dict:
+        """保存された表レイアウトを返す。
+
+        Args:
+            key: 表のキー。
+
+        Returns:
+            そのキーの辞書。無ければ空。
+        """
         dialog = self.config.plugins.get("dialog") or {}
         if not isinstance(dialog, dict):
             return {}
@@ -198,6 +235,14 @@ class PluginDialog(QDialog):
         return state if isinstance(state, dict) else {}
 
     def _restore_table_layout(self, table: QTableWidget, keys, default_widths, state_key: str):
+        """保存された幅と列順を表へ戻す。
+
+        Args:
+            table: 戻す表。
+            keys: 列のキー。
+            default_widths: 保存が無いときの幅。
+            state_key: 保存されたレイアウトのキー。
+        """
         state = self._dialog_table_state(state_key)
         widths = dict(default_widths)
         saved_widths = state.get("widths") or {}
@@ -207,6 +252,7 @@ class PluginDialog(QDialog):
                     try:
                         widths[key] = max(PLUGIN_MIN_WIDTHS.get(key, 48), int(value))
                     except (TypeError, ValueError):
+                        # 保存された列幅が整数でないときは捨てて、既定幅のままにする。
                         pass
         for logical, key in enumerate(keys):
             table.setColumnWidth(logical, widths[key])
@@ -223,6 +269,15 @@ class PluginDialog(QDialog):
                 header.moveSection(current, visual)
 
     def _table_layout(self, table: QTableWidget, keys) -> dict:
+        """いまの列順と幅を返す。
+
+        Args:
+            table: 読む表。
+            keys: 列のキー。
+
+        Returns:
+            order と widths を持つ辞書。
+        """
         header = table.horizontalHeader()
         visual_keys = [None] * len(keys)
         widths = {}
@@ -237,17 +292,34 @@ class PluginDialog(QDialog):
         }
 
     def apply_layout_to_config(self):
+        """プラグイン表と拡張子表の列順と幅を設定へ書く。"""
         dialog = dict(self.config.plugins.get("dialog") or {})
         dialog["plugin_table"] = self._table_layout(self.plugin_table, PLUGIN_COLUMNS)
         dialog["ext_table"] = self._table_layout(self.ext_table, EXT_COLUMNS)
         self.config.plugins["dialog"] = dialog
 
     def _text_item(self, text: str) -> QTableWidgetItem:
+        """同じ文字をツールチップにしたセルを返す。
+
+        Args:
+            text: セルの文字。
+
+        Returns:
+            そのセル。
+        """
         item = QTableWidgetItem(text)
         item.setToolTip(text)
         return item
 
     def _plugin_kind_label(self, plugin) -> str:
+        """ファイル、サイドバー、両方のどれかを返す。
+
+        Args:
+            plugin: 種類を見るプラグイン。
+
+        Returns:
+            種類の表示文。
+        """
         has_file = bool(plugin.formats)
         has_sidebar = plugin.has_sidebar
         if has_file and has_sidebar:
@@ -257,6 +329,7 @@ class PluginDialog(QDialog):
         return get_text("ui.plugin_kind_file")
 
     def _fill_plugin_table(self):
+        """読み込めたプラグイン、読み飛ばし、失敗を表に出す。"""
         rows = list(self.plugin_manager.plugins)
         skipped = list(self.plugin_manager.skipped)
         failed = list(self.plugin_manager.failed)
@@ -328,13 +401,33 @@ class PluginDialog(QDialog):
         self.plugin_table.setSortingEnabled(True)
 
     def _column(self, key: str) -> int:
+        """列キーの番号を返す。
+
+        Args:
+            key: 列のキー。
+
+        Returns:
+            列番号。
+        """
         return PLUGIN_COLUMNS.index(key)
 
     def _set_dash_cells(self, index: int, *keys: str):
+        """指定列をハイフンにする。
+
+        Args:
+            index: 行番号。
+            keys: ハイフンにする列のキー。
+        """
         for key in keys:
             self.plugin_table.setItem(index, self._column(key), self._text_item("-"))
 
     def _set_action_cells(self, index: int, plugin):
+        """設定とライセンスのボタンを置く。無い列はハイフンにする。
+
+        Args:
+            index: 行番号。
+            plugin: その行のプラグイン。
+        """
         from ez_co.plugins.zip_loader import peek_license
 
         fields = self.plugin_manager.host.configs_for(plugin.plugin_id)
@@ -355,6 +448,13 @@ class PluginDialog(QDialog):
             self._set_dash_cells(index, "license")
 
     def _set_button_cell(self, index: int, key: str, button: QPushButton):
+        """ボタンを列の中に置く。
+
+        Args:
+            index: 行番号。
+            key: 列のキー。
+            button: 置くボタン。
+        """
         button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         hint = button.sizeHint()
         button.setMinimumSize(hint)
@@ -367,6 +467,12 @@ class PluginDialog(QDialog):
         self.plugin_table.setCellWidget(index, self._column(key), holder)
 
     def _open_plugin_license(self, plugin, info):
+        """LICENSE のダイアログを出す。
+
+        Args:
+            plugin: 表示するプラグイン。
+            info: kind と text を持つライセンス情報。
+        """
         from ez_co.ui.plugins.plugin_license_dialog import PluginLicenseDialog
 
         dialog = PluginLicenseDialog(
@@ -378,6 +484,11 @@ class PluginDialog(QDialog):
         dialog.exec()
 
     def _open_plugin_config(self, plugin):
+        """プラグイン設定のダイアログを出す。
+
+        Args:
+            plugin: 設定するプラグイン。
+        """
         from ez_co.ui.plugins.plugin_config_dialog import PluginConfigDialog
 
         dialog = PluginConfigDialog(
@@ -389,10 +500,24 @@ class PluginDialog(QDialog):
         dialog.exec()
 
     def _on_enabled_changed(self, plugin_id: str, checked: bool):
+        """有効を更新し、拡張子の行を読み直す。
+
+        Args:
+            plugin_id: 変わったプラグイン。
+            checked: 有効にするとき True。
+        """
         self._enabled[plugin_id] = bool(checked)
         self._refresh_extension_rows()
 
     def _fallback_provider(self, row) -> str:
+        """ビルトイン、それ以外、スキップの順で残す提供元を返す。
+
+        Args:
+            row: 拡張子の行。
+
+        Returns:
+            残す提供元。候補が無ければ None。
+        """
         valid = [provider_id for provider_id, _name in row.providers]
         if BUILTIN_PROVIDER_ID in valid:
             return BUILTIN_PROVIDER_ID
@@ -404,6 +529,7 @@ class PluginDialog(QDialog):
         return valid[0] if valid else SKIP_PROVIDER_ID
 
     def _refresh_extension_rows(self):
+        """有効なプラグインに合わせて拡張子の行と選択を組み直す。消えた選択は控える。"""
         new_rows = self.plugin_manager.extension_rows(self.config, enabled_ids=self._enabled_ids())
         new_exts = {row.extension for row in new_rows}
         old_exts = {row.extension for row in self._ext_rows}
@@ -422,11 +548,28 @@ class PluginDialog(QDialog):
         self._render_extension_table()
 
     def _kind_label(self, kind: FileKind) -> str:
+        """画像かアーカイブの表示を返す。
+
+        Args:
+            kind: ファイルの種類。
+
+        Returns:
+            種類の表示文。
+        """
         if kind == FileKind.IMAGE:
             return get_text("ui.plugin_kind_image")
         return get_text("ui.plugin_kind_archive")
 
     def _provider_label(self, provider_id: str, plugin_name: str) -> str:
+        """ビルトイン、スキップ、または名前と ID の表示を返す。
+
+        Args:
+            provider_id: 提供元の ID。
+            plugin_name: プラグイン名。空でもよい。
+
+        Returns:
+            表示文。
+        """
         if provider_id == BUILTIN_PROVIDER_ID:
             return get_text("ui.plugin_handler_builtin")
         if provider_id == SKIP_PROVIDER_ID:
@@ -436,6 +579,11 @@ class PluginDialog(QDialog):
         return provider_id or ""
 
     def _on_ext_header_clicked(self, column: int):
+        """同じ列なら昇降を反転し、別の列なら昇順で並べ直す。
+
+        Args:
+            column: クリックされた列。
+        """
         if column == self._ext_sort_column:
             self._ext_sort_asc = not self._ext_sort_asc
         else:
@@ -444,6 +592,11 @@ class PluginDialog(QDialog):
         self._render_extension_table()
 
     def _visible_ext_rows(self):
+        """絞り込みと並びを適用した拡張子の行を返す。
+
+        Returns:
+            表示する行。
+        """
         query = self.ext_filter.text().strip().lower()
         rows = list(self._ext_rows)
         if query:
@@ -461,6 +614,14 @@ class PluginDialog(QDialog):
         column = self._ext_sort_column
 
         def sort_key(row):
+            """いまの並び列に応じた比較用の文字列を返す。
+
+            Args:
+                row: 拡張子の行。
+
+            Returns:
+                種類、提供元、または拡張子の文字列。
+            """
             if column == 1:
                 return self._kind_label(row.kind)
             if column == 2:
@@ -473,6 +634,7 @@ class PluginDialog(QDialog):
         return rows
 
     def _render_extension_table(self):
+        """見える拡張子の行を表に出す。無ければ空の文言を出す。"""
         rows = self._visible_ext_rows()
         self._combos.clear()
         self.ext_table.clearContents()
@@ -505,21 +667,47 @@ class PluginDialog(QDialog):
             self._combos[row.extension] = combo
 
     def _on_handler_changed(self, extension: str, combo: QComboBox):
+        """選ばれた提供元を控え、ツールチップを更新する。
+
+        Args:
+            extension: 変わった拡張子。
+            combo: 提供元の選択。
+        """
         combo.setToolTip(combo.currentText())
         provider_id = combo.currentData()
         if provider_id:
             self._handler_choices[extension] = provider_id
 
     def has_handler_changes(self) -> bool:
+        """拡張子の読み込み方式に変更があるかを返す。
+
+        Returns:
+            変更があるとき True。
+        """
         return self._handler_choices != self._original_handlers
 
     def has_enabled_changes(self) -> bool:
+        """プラグインの有効に変更があるかを返す。
+
+        Returns:
+            変更があるとき True。
+        """
         return self._enabled != self._original_enabled
 
     def has_source_choice_changes(self) -> bool:
+        """重複の提供元に変更があるかを返す。
+
+        Returns:
+            変更があるとき True。
+        """
         return self._source_choices != self._original_source_choices
 
     def has_changes(self) -> bool:
+        """方式、有効、提供元のいずれかに変更があるかを返す。
+
+        Returns:
+            変更があるとき True。
+        """
         return (
             self.has_handler_changes()
             or self.has_enabled_changes()
@@ -527,6 +715,7 @@ class PluginDialog(QDialog):
         )
 
     def _open_conflict_dialog(self):
+        """重複が無ければその旨を出す。あれば選ばせて提供元の選択を更新する。"""
         groups = self.plugin_manager.conflict_groups()
         if not groups:
             QMessageBox.information(
@@ -542,6 +731,7 @@ class PluginDialog(QDialog):
         self._source_choices.update(dialog.choices())
 
     def apply_to_config(self):
+        """拡張子の方式、有効、提供元、アーカイブの有効を設定へ書く。"""
         handlers = {}
         archive_enabled_by_key = {}
         for extension, provider_id in self._handler_choices.items():

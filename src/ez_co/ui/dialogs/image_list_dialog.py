@@ -1,3 +1,4 @@
+"""画像サムネイルの一覧から選ぶダイアログ。"""
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QScrollArea, QWidget, QGridLayout, QLabel, QSizePolicy, QCheckBox, QHBoxLayout
 from PySide6.QtCore import Qt, QSize, QThread, Signal, QObject, QTimer
 from PySide6.QtGui import QPixmap, QImage, QPainter, QColor, QFont
@@ -8,14 +9,24 @@ from ez_co.utils.language_manager import get_log_text, get_text
 from ez_co.handlers.virtual_path_handler import VirtualPathHandler
 logger = logging.getLogger(__name__)
 class ThumbnailLoader(QThread):
+    """画像パスからサムネイルを作り、読み込みごとに知らせるスレッド。"""
     thumbnail_loaded = Signal(int, QPixmap)
     def __init__(self, image_paths, thumb_size, file_handler=None):
+        """読み込むパスとサムネイルサイズを持つ。
+
+        Args:
+            image_paths: 読み込む画像パス。
+            thumb_size: サムネイルの幅と高さ。
+            file_handler: アーカイブ内画像の取得に使う。無ければ仮想パスは読めない。
+        """
         super().__init__()
         self.setObjectName("ImageListThumbnailLoader")
         self.image_paths = image_paths
         self.thumb_size = thumb_size
         self.file_handler = file_handler
+
     def run(self):
+        """各パスのサムネイルを作り、番号と画像を知らせる。失敗した枠は None。"""
         for idx, path in enumerate(self.image_paths):
             try:
                 # 仮想パスかどうかで判定（current_archiveではなく）
@@ -32,22 +43,51 @@ class ThumbnailLoader(QThread):
                 else:
                     pixmap = None
             except Exception:
+                # サムネイルを作れない画像は捨てて、空の枠にする。
                 pixmap = None
             self.thumbnail_loaded.emit(idx, pixmap)
+
+
 class LoadingWidget(QWidget):
+    """読み込み中の灰色の枠に文字を描く。"""
+
     def __init__(self, size=(120, 120), parent=None):
+        """指定サイズの枠にする。
+
+        Args:
+            size: 幅と高さ。
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         # サムネイルサイズを設定
         self.setFixedSize(*size)
-    
+
     def paintEvent(self, event):
+        """灰色の背景の中央に読み込み中の文字を描く。
+
+        Args:
+            event: 描画イベント。
+        """
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor(128, 128, 128))
         painter.setPen(Qt.white)
         rect = self.rect()
         painter.drawText(rect, Qt.AlignCenter, "Image\nLoading")
+
+
 class ImageListDialog(QDialog):
+    """画像のサムネイル一覧から番号を選ぶダイアログ。"""
+
     def __init__(self, image_paths, parent=None, on_select=None, file_handler=None, config=None):
+        """パス一覧と選択時の処理でダイアログを開き、サムネイルの読み込みを始める。
+
+        Args:
+            image_paths: 一覧にする画像パス。
+            parent: 親ウィジェット。
+            on_select: 選んだ番号を受け取る処理。
+            file_handler: アーカイブ内画像の取得に使う。
+            config: 選択後に閉じるかの初期値。
+        """
         super().__init__(parent)
         self.setWindowTitle(get_text("ui.image_list"))
         self.resize(800, 600)
@@ -55,7 +95,7 @@ class ImageListDialog(QDialog):
         self.on_select = on_select
         self.file_handler = file_handler
         self.config = config
-        
+
         # 動的レイアウト用の変数
         self.base_thumb_size = 180  # 基本サムネイルサイズ
         self.min_cols = 1  # 最小列数
@@ -64,32 +104,34 @@ class ImageListDialog(QDialog):
         self.grid_cols = 4
         self.widgets = []
         self._loading_timer = None
-        
+
         self.setup_ui()
         # 初期レイアウト計算（サイズが確定していない場合があるため、showEventでも実行）
         self._update_grid_layout()
         self.start_loading()
+
     def setup_ui(self):
+        """選択後に閉じるチェックと、サムネイルの格子を配置する。"""
         layout = QVBoxLayout(self)
-        
+
         # チェックボックス
         checkbox_layout = QHBoxLayout()
         self.close_after_select_checkbox = QCheckBox(get_text("ui.close_after_select"))
-        
+
         # 設定から初期値を取得
         default_checked = True
         if self.config and hasattr(self.config, 'image_list'):
             default_checked = self.config.image_list.get("close_after_select", True)
-        
+
         self.close_after_select_checkbox.setChecked(default_checked)
-        
+
         # チェックボックスの状態変更時に設定を保存
         self.close_after_select_checkbox.stateChanged.connect(self._save_checkbox_state)
-        
+
         checkbox_layout.addWidget(self.close_after_select_checkbox)
         checkbox_layout.addStretch()
         layout.addLayout(checkbox_layout)
-        
+
         # スクロールエリア
         self.scroll = QScrollArea(self)
         self.scroll.setWidgetResizable(True)
@@ -98,17 +140,25 @@ class ImageListDialog(QDialog):
         self.grid.setSpacing(8)
         self.scroll.setWidget(self.container)
         layout.addWidget(self.scroll)
-        
+
         # プレースホルダーは後で_update_grid_layoutで作成
-    
+
     def showEvent(self, event):
-        """ダイアログ表示時の処理"""
+        """ダイアログ表示時の処理
+
+        Args:
+            event: 表示イベント。
+        """
         super().showEvent(event)
         # 表示時に正しいレイアウトを適用
         QTimer.singleShot(10, self._calculate_and_update_layout)
-    
+
     def resizeEvent(self, event):
-        """ダイアログサイズ変更時の処理"""
+        """ダイアログサイズ変更時の処理
+
+        Args:
+            event: リサイズイベント。
+        """
         super().resizeEvent(event)
         # 少し遅延させてレイアウト更新（連続したリサイズを避ける）
         if hasattr(self, '_resize_timer'):
@@ -118,28 +168,32 @@ class ImageListDialog(QDialog):
             self._resize_timer.timeout.connect(self._on_resize_finished)
             self._resize_timer.setSingleShot(True)
         self._resize_timer.start(100)  # 100ms後にレイアウト更新
-    
+
     def _on_resize_finished(self):
         """リサイズ完了時の処理"""
         self._calculate_and_update_layout()
-    
+
     def _calculate_optimal_layout(self):
-        """現在のダイアログサイズに基づいて最適なレイアウトを計算"""
+        """現在のダイアログサイズに基づいて最適なレイアウトを計算
+
+        Returns:
+            列数と、サムネイルの幅と高さ。スクロールが無ければ今の値。
+        """
         if not hasattr(self, 'scroll'):
             return self.grid_cols, self.thumb_size
-        
+
         # スクロールエリアの有効幅を取得（スクロールバー分を除外）
         available_width = self.scroll.viewport().width() - 20  # マージン考慮
-        
+
         # 基本的なスペーシング
         spacing = 8
-        
+
         # 最適な列数を計算（1〜6の範囲）
         optimal_cols = self.max_cols
-        
+
         # 6列で基本サイズが入るかチェック
         required_width = (self.base_thumb_size * self.max_cols) + (spacing * (self.max_cols - 1))
-        
+
         if required_width <= available_width:
             # 基本サイズ以上にできる場合は、サムネイルを拡大
             extra_space = available_width - required_width
@@ -156,27 +210,25 @@ class ImageListDialog(QDialog):
                     break
             else:
                 optimal_cols = self.min_cols
-        
+
         return optimal_cols, (new_thumb_size, new_thumb_size)
-    
+
     def _calculate_and_update_layout(self):
         """レイアウト計算と更新"""
         new_cols, new_thumb_size = self._calculate_optimal_layout()
-        
+
         # レイアウトが変更された場合のみ更新
         if new_cols != self.grid_cols or new_thumb_size != self.thumb_size:
             old_thumb_size = self.thumb_size
             old_cols = self.grid_cols
             self.grid_cols = new_cols
             self.thumb_size = new_thumb_size
-            
+
             # レイアウトが変更された場合は完全に再読み込み
             # （既存画像を保持するより、確実な動作を優先）
             self._update_grid_layout()
             self._reload_thumbnails()
-    
 
-    
     def _update_grid_layout(self):
         """グリッドレイアウトを更新"""
         # 既存のウィジェットをクリア
@@ -184,7 +236,7 @@ class ImageListDialog(QDialog):
             self.grid.removeWidget(widget)
             widget.deleteLater()
         self.widgets.clear()
-        
+
         # 新しいプレースホルダーを追加
         for idx, path in enumerate(self.image_paths):
             widget = LoadingWidget(self.thumb_size)
@@ -193,7 +245,7 @@ class ImageListDialog(QDialog):
             col = idx % self.grid_cols
             self.grid.addWidget(widget, row, col)
             self.widgets.append(widget)
-    
+
     def _reload_thumbnails(self):
         """サムネイルを再読み込み"""
         # 既存のタイマーを確実に停止・削除
@@ -201,24 +253,27 @@ class ImageListDialog(QDialog):
             self._loading_timer.stop()
             self._loading_timer.deleteLater()
             self._loading_timer = None
-        
+
         # 少し遅延させて新しい読み込みを開始
         QTimer.singleShot(50, self.start_loading)
-    
+
     def start_loading(self):
+        """短い間隔でサムネイルを1枚ずつ読み始める。"""
         logger.info(get_log_text("image_list_start_loading", count=len(self.image_paths)))
-        
+
         # 既存のタイマーがある場合は停止
         if hasattr(self, '_loading_timer') and self._loading_timer:
             self._loading_timer.stop()
             self._loading_timer.deleteLater()
-        
+
         # 新しいタイマーを作成
         self._thumb_idx = 0
         self._loading_timer = QTimer(self)
         self._loading_timer.timeout.connect(self._load_next_thumb)
         self._loading_timer.start(10)
+
     def _load_next_thumb(self):
+        """次の1枚を読み、格子へ置く。最後まで来たらタイマーを止める。"""
         if self._thumb_idx >= len(self.image_paths):
             logger.info(get_log_text("image_list_all_thumbnails_loaded"))
             self._loading_timer.stop()
@@ -243,11 +298,19 @@ class ImageListDialog(QDialog):
                 logger.error(get_log_text("image_list_thumbnail_failed_no_data", path=path))
                 pixmap = None
         except Exception as e:
+            # サムネイル生成の失敗はログして、その枠は空にする。
             logger.error(get_log_text("image_list_thumbnail_failed_error", path=path, error=str(e)))
             pixmap = None
         self.set_thumbnail(idx, pixmap)
         self._thumb_idx += 1
+
     def set_thumbnail(self, idx, pixmap):
+        """読み込んだ画像を格子のその位置へ置く。画像が無ければそのまま。
+
+        Args:
+            idx: 置き換える番号。
+            pixmap: 置く画像。無ければ何もしない。
+        """
         logger.info(get_log_text("image_list_set_thumbnail", index=idx, pixmap_status='OK' if pixmap else 'None'))
         if pixmap:
             label = QLabel(self)
@@ -264,31 +327,43 @@ class ImageListDialog(QDialog):
             self.grid.addWidget(label, row, col)
             self.widgets[idx] = label
             label.update()
+
     def thumbnail_clicked(self, event, idx):
+        """左クリックで選択処理を呼び、設定どおりならダイアログを閉じる。
+
+        Args:
+            event: クリックイベント。
+            idx: 選ばれた番号。
+        """
         if event.button() != Qt.LeftButton:
             return
         if self.on_select:
             self.on_select(idx)
-        
+
         # チェックボックスの状態に応じてダイアログを閉じる
         if self.close_after_select_checkbox.isChecked():
             self.accept()
 
     def refresh_file_list(self, new_image_paths, new_file_handler=None):
-        """ファイルリストを更新"""
+        """ファイルリストを更新
+
+        Args:
+            new_image_paths: 新しい画像パス。
+            new_file_handler: 差し替える取得先。無ければ今のまま。
+        """
         self.image_paths = new_image_paths
         if new_file_handler:
             self.file_handler = new_file_handler
-        
+
         # 既存のタイマーを確実に停止・削除
         if hasattr(self, '_loading_timer') and self._loading_timer:
             self._loading_timer.stop()
             self._loading_timer.deleteLater()
             self._loading_timer = None
-        
+
         # レイアウトを更新
         self._update_grid_layout()
-        
+
         # 少し遅延させてサムネイル読み込みを再開
         QTimer.singleShot(50, self.start_loading)
 

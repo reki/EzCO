@@ -13,6 +13,7 @@ FIXTURE_ZIP = Path(__file__).parent / "fixtures" / "probe.zip"
 
 
 def test_peek_manifest_from_directory():
+    """ディレクトリの id、name、version、formats、sidebar の偽が読めない。"""
     info = peek_manifest(FIXTURE_DIR)
     assert info["id"] == "com.ezco.test.probe"
     assert info["name"] == "Probe"
@@ -22,12 +23,14 @@ def test_peek_manifest_from_directory():
 
 
 def test_peek_manifest_from_zip():
+    """ZIP の id と name が読めない。"""
     info = peek_manifest(FIXTURE_ZIP)
     assert info["id"] == "com.ezco.test.probe"
     assert info["name"] == "Probe"
 
 
 def test_peek_manifest_name_falls_back_to_path(tmp_path, dir_plugin):
+    """name が無いときフォルダ名が name に入らない。"""
     root = dir_plugin(tmp_path, plugin_id="com.example.anon", name="", folder_name="anon-folder")
     manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
     manifest.pop("name", None)
@@ -38,6 +41,7 @@ def test_peek_manifest_name_falls_back_to_path(tmp_path, dir_plugin):
 
 
 def test_peek_manifest_missing_file_raises(tmp_path):
+    """manifest が無いディレクトリが manifest の ValueError にならない。"""
     empty = tmp_path / "empty"
     empty.mkdir()
     with pytest.raises(ValueError, match="manifest"):
@@ -45,6 +49,7 @@ def test_peek_manifest_missing_file_raises(tmp_path):
 
 
 def test_peek_manifest_missing_id_raises(tmp_path, dir_plugin):
+    """id の無い manifest が manifest.id の ValueError にならない。"""
     root = dir_plugin(tmp_path, plugin_id="com.example.x")
     (root / "manifest.json").write_text(json.dumps({"name": "NoId"}), encoding="utf-8")
     with pytest.raises(ValueError, match="manifest.id"):
@@ -52,6 +57,7 @@ def test_peek_manifest_missing_id_raises(tmp_path, dir_plugin):
 
 
 def test_peek_manifest_broken_zip_raises(tmp_path):
+    """ZIP でないファイルが例外にならない。"""
     broken = tmp_path / "broken.zip"
     broken.write_bytes(b"not a zip")
     with pytest.raises(Exception):
@@ -59,6 +65,7 @@ def test_peek_manifest_broken_zip_raises(tmp_path):
 
 
 def test_peek_manifest_generated_zip(tmp_path, zip_plugin):
+    """作った ZIP の id と name が読めない。"""
     zip_path = zip_plugin(tmp_path, plugin_id="com.example.zipped", name="Zipped")
     info = peek_manifest(zip_path)
     assert info["id"] == "com.example.zipped"

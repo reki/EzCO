@@ -17,6 +17,7 @@ class PluginSession:
     """起動時の同意／重複と、ウィンドウへの host.bind・ドック載せ。"""
 
     def __init__(self):
+        """同意、ホスト、サイドバーの入れ物を空で用意する。"""
         self._consented = False
         self._consent_known = False
         self._manager = None
@@ -38,12 +39,23 @@ class PluginSession:
         self._refresh_display = None
 
     def consent_accepted(self) -> bool:
-        """導入同意済みか。起動時に一度だけ user.json を見る。"""
+        """導入同意済みか。起動時に一度だけ user.json を見る。
+
+        Returns:
+            同意済みのとき True。
+        """
         self._ensure_consent_cache()
         return self._consented
 
     def bootstrap(self, parent, config, rebuild_menu=None, save_profile=None) -> None:
-        """同意と重複選択のあと、選ばれたプラグインをロードする。"""
+        """同意と重複選択のあと、選ばれたプラグインをロードする。
+
+        Args:
+            parent: 同意と重複ダイアログの親。
+            config: 選択の記録に使う設定。
+            rebuild_menu: 同意した直後にメニューを組み直す処理。
+            save_profile: 重複の選択を保存する処理。
+        """
         self._config = config
         self._rebuild_menu = rebuild_menu
         self._save_profile = save_profile
@@ -90,7 +102,26 @@ class PluginSession:
         refresh_display=None,
         after_plugin_config=None,
     ) -> None:
-        """ホストをこのウィンドウに結び、UI を有効化する。ロードはしない。"""
+        """ホストをこのウィンドウに結び、UI を有効化する。ロードはしない。
+
+        Args:
+            window: 結び付けるウィンドウ。
+            config: 有効化に使う設定。
+            db_manager: ホストへ渡すデータベース。
+            current: path、folder、page を取る処理。
+            reload_current: 現在の表示を読み直す処理。
+            run_action: アクションを実行する処理。
+            app_config: アプリ設定を読む処理。
+            restore_docks: ドック配置を戻す処理。
+            first_shortcut: アクション名から最初のショートカットを取る処理。
+            sidebar_menu: サイドバー用メニューを返す処理。
+            setup_shortcuts: ショートカットを組み直す処理。
+            reload_open_files: 開いているファイルを載せ替える処理。
+            rebuild_menu: メニューを組み直す処理。
+            save_profile: プロファイルを保存する処理。
+            refresh_display: 表示を更新する処理。
+            after_plugin_config: プラグイン設定のあとに呼ぶ処理。
+        """
         self._window = window
         self._config = config
         self._current = current
@@ -131,7 +162,11 @@ class PluginSession:
             self.notify_current_changed()
 
     def notify_current_changed(self, plugin_id: str | None = None) -> None:
-        """開いている path / folder / page をプラグインへ知らせる。"""
+        """開いている path / folder / page をプラグインへ知らせる。
+
+        Args:
+            plugin_id: 知らせるプラグイン。無ければホストの購読範囲。
+        """
         host = self._host
         if host is None:
             return
@@ -144,7 +179,14 @@ class PluginSession:
         host.emit("current_changed", payload, plugin_id=plugin_id)
 
     def sidebar_visible(self, plugin_id: str) -> bool:
-        """そのプラグインのドックが1つでも表示中なら True。"""
+        """そのプラグインのドックが1つでも表示中なら True。
+
+        Args:
+            plugin_id: 調べるプラグイン。
+
+        Returns:
+            表示中のドックがあるとき True。
+        """
         return any(
             record["dock"].isVisible()
             for key, record in self._sidebars.items()
@@ -152,14 +194,25 @@ class PluginSession:
         )
 
     def invoke_registered(self, action_id: str) -> bool:
-        """プラグイン登録アクションを実行する。未結線なら False。"""
+        """プラグイン登録アクションを実行する。未結線なら False。
+
+        Args:
+            action_id: 実行するアクション。
+
+        Returns:
+            実行できたとき True。未結線なら False。
+        """
         host = self._host
         if host is None:
             return False
         return host.invoke_registered(action_id)
 
     def after_config_change(self, reload_sources=False) -> None:
-        """プラグイン設定の適用後に UI と開いているファイルを載せ替える。"""
+        """プラグイン設定の適用後に UI と開いているファイルを載せ替える。
+
+        Args:
+            reload_sources: 選ばれたプラグインを読み直すとき True。
+        """
         manager = self._manager_ref()
         config = self._config
         if reload_sources:
@@ -178,7 +231,14 @@ class PluginSession:
         self.notify_current_changed()
 
     def mount_sidebar(self, plugin_id: str, sidebar_id: str, title: str, widget) -> None:
-        """プラグインのサイドバーをドックとして載せる。"""
+        """プラグインのサイドバーをドックとして載せる。
+
+        Args:
+            plugin_id: プラグイン。
+            sidebar_id: サイドバー。
+            title: ドックのタイトル。
+            widget: ドックに載せるウィジェット。
+        """
         window = self._window
         if window is None:
             return
@@ -223,7 +283,12 @@ class PluginSession:
         }
 
     def unmount_sidebar(self, plugin_id: str, sidebar_id: str) -> None:
-        """載せたサイドバーを外す。"""
+        """載せたサイドバーを外す。
+
+        Args:
+            plugin_id: プラグイン。
+            sidebar_id: 外すサイドバー。
+        """
         record = self._sidebars.pop((plugin_id, sidebar_id), None)
         if record is None:
             return
@@ -238,7 +303,15 @@ class PluginSession:
         dock.deleteLater()
 
     def toggle_sidebar(self, plugin_id: str, sidebar_id: str) -> bool:
-        """サイドバーの表示を切り替える。開けたときの current_changed は visibilityChanged。"""
+        """サイドバーの表示を切り替える。開けたときの current_changed は visibilityChanged。
+
+        Args:
+            plugin_id: プラグイン。
+            sidebar_id: 切り替えるサイドバー。
+
+        Returns:
+            ドックが無いとき False。切り替えたとき True。
+        """
         record = self._sidebars.get((plugin_id, sidebar_id))
         if record is None:
             return False
@@ -250,7 +323,13 @@ class PluginSession:
         return True
 
     def _on_sidebar_visibility(self, plugin_id: str, action, visible) -> None:
-        """表示になったプラグインへだけ current_changed を出す。"""
+        """表示になったプラグインへだけ current_changed を出す。
+
+        Args:
+            plugin_id: 表示が変わったプラグイン。
+            action: チェックを合わせるメニュー項目。
+            visible: 表示中のとき True。
+        """
         action.setChecked(bool(visible))
         if visible:
             self.notify_current_changed(plugin_id=plugin_id)
@@ -270,7 +349,11 @@ class PluginSession:
                 self._apply_sidebar_shortcut(action, action_id)
 
     def hide_visible_sidebars(self) -> list:
-        """表示中のプラグインサイドバーを閉じ、隠したレコードを返す。"""
+        """表示中のプラグインサイドバーを閉じ、隠したレコードを返す。
+
+        Returns:
+            隠したサイドバーのレコード。
+        """
         hidden = []
         for record in self._sidebars.values():
             dock = record["dock"]
@@ -281,13 +364,21 @@ class PluginSession:
         return hidden
 
     def restore_sidebars(self, records) -> None:
-        """hide_visible_sidebars が返したサイドバーを戻す。"""
+        """hide_visible_sidebars が返したサイドバーを戻す。
+
+        Args:
+            records: 戻すレコード。無ければ何もしない。
+        """
         for record in records or []:
             record["dock"].show()
             record["action"].setChecked(True)
 
     def _manager_ref(self):
-        """マネージャと host を一度だけ取る。"""
+        """マネージャと host を一度だけ取る。
+
+        Returns:
+            プラグインマネージャ。
+        """
         if self._manager is None:
             self._manager = get_plugin_manager()
             self._host = self._manager.host
@@ -301,12 +392,25 @@ class PluginSession:
         self._consent_known = True
 
     def _sidebar_object_name(self, plugin_id: str, sidebar_id: str) -> str:
-        """ドック復元用の objectName。"""
+        """ドック復元用の objectName。
+
+        Args:
+            plugin_id: プラグイン。
+            sidebar_id: サイドバー。空なら main。
+
+        Returns:
+            ドックの objectName。
+        """
         safe_id = "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in str(sidebar_id or "main"))
         return f"plugin_sidebar_{hash_plugin_id(plugin_id)[:16]}_{safe_id}"
 
     def _apply_sidebar_shortcut(self, action: QAction, action_id: str) -> None:
-        """サイドバー開閉に割り当てられたショートカットを付ける。"""
+        """サイドバー開閉に割り当てられたショートカットを付ける。
+
+        Args:
+            action: ショートカットを付ける項目。
+            action_id: ショートカットを探すアクション ID。
+        """
         host = self._host
         names = host.action_ids_for(action_id) if host is not None else None
         names = names or [action_id]

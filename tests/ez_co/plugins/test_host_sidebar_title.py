@@ -7,6 +7,14 @@ from ez_co.utils.language_manager import language_manager
 
 
 def _languages(*items):
+    """言語コードとファイルパスから available_languages の形を作る。
+
+    Args:
+        *items: 言語コードとパスの組。
+
+    Returns:
+        コードをキーにした言語情報。
+    """
     return {
         code: {"name": code, "code": code, "file": path}
         for code, path in items
@@ -14,6 +22,7 @@ def _languages(*items):
 
 
 def test_stem_strips_prefix_and_suffix_from_each_loaded_language(tmp_path, monkeypatch):
+    """読み込んだ各言語のトグル文言の前後が残るか、大小文字の違いで剥がれず、素のタイトルまで欠ける。"""
     ja = tmp_path / "ja.json"
     en = tmp_path / "en.json"
     de = tmp_path / "de.json"
@@ -46,6 +55,7 @@ def test_stem_strips_prefix_and_suffix_from_each_loaded_language(tmp_path, monke
 
 
 def test_stem_ignores_language_file_without_template(tmp_path, monkeypatch):
+    """トグル文言の無い言語ファイルがあると、剥がせないタイトルまで変わる。"""
     bare = tmp_path / "fr.json"
     bare.write_text(json.dumps({"ui": {"other": "x"}}), encoding="utf-8")
     monkeypatch.setattr(
@@ -58,6 +68,7 @@ def test_stem_ignores_language_file_without_template(tmp_path, monkeypatch):
 
 
 def test_bundled_ja_en_templates_strip(monkeypatch):
+    """同梱の ja と en のトグル文言が、日本語と英語のタイトルから剥がれない。"""
     langs = resources.files("ez_co.resources").joinpath("langs")
     monkeypatch.setattr(
         language_manager,
@@ -73,6 +84,7 @@ def test_bundled_ja_en_templates_strip(monkeypatch):
 
 
 def test_toggle_label_wraps_stem(monkeypatch):
+    """空のタイトルが sidebar に置き換わらず、stem がトグル文言の title に入らない。"""
     monkeypatch.setattr(
         "ez_co.plugins.host.get_text",
         lambda key, **kwargs: f"wrap:{kwargs.get('title')}",

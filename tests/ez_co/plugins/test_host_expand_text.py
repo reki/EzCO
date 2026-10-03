@@ -4,12 +4,23 @@ from ez_co.utils.language_manager import set_language
 
 
 def _bind(host: PluginHost, plugin_id: str, mapping: dict[str, str]):
+    """プラグインに固定の訳語表を結び、スコープした host を返す。
+
+    Args:
+        host: 結び先のホスト。
+        plugin_id: プラグイン ID。
+        mapping: キーから訳語への対応。
+
+    Returns:
+        そのプラグインにスコープした host。
+    """
     scoped = host.scoped(plugin_id)
     scoped.bind_plugin(None, lambda key, **kwargs: mapping.get(key, key))
     return scoped
 
 
 def test_action_label_expands_at_display_ledger_stays():
+    """台帳のラベルが {go} のまま残らず、表示用ラベルが実行にならない。"""
     host = PluginHost()
     host.enter_phase("com.example.x", "setup")
     scoped = _bind(host, "com.example.x", {"go": "実行"})
@@ -20,6 +31,7 @@ def test_action_label_expands_at_display_ledger_stays():
 
 
 def test_config_label_stays_template_across_language_switch():
+    """言語を切り替えても台帳の label が {title} から変わり、表示展開が新しい訳語に追従しない。"""
     set_language("ja")
     host = PluginHost()
     host.enter_phase("com.example.x", "load")
@@ -38,14 +50,29 @@ def test_config_label_stays_template_across_language_switch():
 
 
 def test_refresh_display_titles_remounts_without_unmount():
+    """表示タイトルが新しい訳に差し替わらず、unmount が走り、台帳の title がテンプレートでなくなり、ウィジェットが別物になる。"""
     host = PluginHost()
     mounted = []
     unmounted = []
 
     def mount(plugin_id, sidebar_id, title, widget):
+        """マウントされたプラグイン、サイドバー、タイトル、ウィジェットを記録する。
+
+        Args:
+            plugin_id: プラグイン ID。
+            sidebar_id: サイドバー ID。
+            title: 表示タイトル。
+            widget: 載せたウィジェット。
+        """
         mounted.append((plugin_id, sidebar_id, title, widget))
 
     def unmount(plugin_id, sidebar_id):
+        """外されたプラグインとサイドバーを記録する。
+
+        Args:
+            plugin_id: プラグイン ID。
+            sidebar_id: サイドバー ID。
+        """
         unmounted.append((plugin_id, sidebar_id))
 
     host.bind(parent=None, mount_sidebar=mount, unmount_sidebar=unmount)
@@ -65,16 +92,21 @@ def test_refresh_display_titles_remounts_without_unmount():
 
 
 def test_refresh_display_titles_calls_refresh_labels():
+    """refresh_display_titles がウィジェットの refresh_labels を一度も呼ばない。"""
     host = PluginHost()
     host.bind(parent=None, mount_sidebar=lambda *_args: None)
     host.set_manifest_provides("com.example.x", sidebar=True)
     host.enter_phase("com.example.x", "setup")
 
     class _Labeled:
+        """refresh_labels の回数を数えるウィジェット。"""
+
         def __init__(self):
+            """呼び出し回数を 0 にする。"""
             self.calls = 0
 
         def refresh_labels(self):
+            """呼び出し回数を 1 増やす。"""
             self.calls += 1
 
     widget = _Labeled()

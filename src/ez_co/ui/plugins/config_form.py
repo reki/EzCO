@@ -25,7 +25,16 @@ from ez_co.utils.language_manager import get_text
 
 
 class PluginConfigForm(QWidget):
+    """プラグインの登録済み設定をサイドバー用フォームにする。"""
+
     def __init__(self, host, plugin_id: str, parent=None):
+        """ホストとプラグイン ID から項目と、数値保存の遅延を用意する。
+
+        Args:
+            host: 設定の読み書きに使うホスト。
+            plugin_id: 対象プラグイン。
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self._host = host
         self._plugin_id = plugin_id
@@ -44,6 +53,7 @@ class PluginConfigForm(QWidget):
         self._scoped.on("config_changed", self._on_config)
 
     def refresh_labels(self) -> None:
+        """項目名、説明、接尾辞、リセットボタンの文言を現在の言語で出し直す。"""
         for field in self._fields:
             label = self._labels.get(field.key)
             if label is not None:
@@ -57,9 +67,18 @@ class PluginConfigForm(QWidget):
             self._reset_button.setText(get_text("ui.reset"))
 
     def _expand(self, value) -> str:
+        """表示文のプレースホルダを展開する。
+
+        Args:
+            value: 展開する文。
+
+        Returns:
+            展開した文字列。
+        """
         return self._scoped.expand_text(value)
 
     def _setup_ui(self):
+        """各設定の入力とリセットボタンを配置する。"""
         outer = QVBoxLayout(self)
         outer.setContentsMargins(8, 8, 8, 8)
         outer.setSpacing(8)
@@ -87,6 +106,11 @@ class PluginConfigForm(QWidget):
         outer.addWidget(reset, 0)
 
     def _on_edited(self, key: str):
+        """編集を保存する。数値は間隔を空け、それ以外はすぐ書く。
+
+        Args:
+            key: 編集された項目のキー。
+        """
         if self._applying:
             return
         field = self._field_for(key)
@@ -99,12 +123,18 @@ class PluginConfigForm(QWidget):
         self._write_keys((key,))
 
     def _flush(self):
+        """溜まっている数値項目を保存する。"""
         keys = tuple(self._dirty)
         self._dirty.clear()
         if keys:
             self._write_keys(keys)
 
     def _write_keys(self, keys):
+        """指定キーを読み取り、必須が空なら戻して書かない。reload の項目があれば現在を読み直す。
+
+        Args:
+            keys: 書く項目のキー。
+        """
         if self._timer.isActive():
             pending = tuple(self._dirty)
             self._timer.stop()
@@ -130,6 +160,11 @@ class PluginConfigForm(QWidget):
             self._host.reload_current()
 
     def _on_config(self, payload=None):
+        """外からの設定変更をウィジェットへ反映する。自分が書いている最中は無視する。
+
+        Args:
+            payload: 変わったキーを持つ辞書。無ければ全項目。
+        """
         if self._applying:
             return
         key = payload.get("key") if isinstance(payload, dict) else None
@@ -149,6 +184,7 @@ class PluginConfigForm(QWidget):
             self._applying = False
 
     def _reset_to_defaults(self):
+        """確認のあと、各項目を既定値に戻す。"""
         reply = QMessageBox.question(
             self,
             get_text("ui.reset"),
@@ -175,6 +211,11 @@ class PluginConfigForm(QWidget):
             self._host.reload_current()
 
     def _restore_widget(self, field):
+        """ウィジェットを保存されている値に戻す。
+
+        Args:
+            field: 戻す項目。
+        """
         widget = self._widgets.get(field.key)
         if widget is None:
             return
@@ -186,6 +227,14 @@ class PluginConfigForm(QWidget):
             self._applying = was
 
     def _field_for(self, key: str):
+        """キーに対応する項目を返す。
+
+        Args:
+            key: 項目のキー。
+
+        Returns:
+            見つかった項目。無ければ None。
+        """
         for field in self._fields:
             if field.key == key:
                 return field

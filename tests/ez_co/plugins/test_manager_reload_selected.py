@@ -7,12 +7,18 @@ from ez_co.plugins.manager import PluginManager
 
 
 def _config():
+    """選択もハンドラも空のプラグイン設定を返す。
+
+    Returns:
+        plugins だけを持つ設定オブジェクト。
+    """
     return SimpleNamespace(
         plugins={"source_choice": {}, "extension_handlers": {}, "enabled": {}}
     )
 
 
 def test_reload_selected_rediscovers_and_loads(tmp_path, dir_plugin):
+    """追加したプラグインが載らず、同じ id のインスタンスが作り直されない。"""
     dir_plugin(tmp_path, plugin_id="com.example.first", folder_name="first")
     manager = PluginManager()
     manager.discover(tmp_path)
@@ -27,6 +33,7 @@ def test_reload_selected_rediscovers_and_loads(tmp_path, dir_plugin):
 
 
 def test_reload_selected_runs_setup_again(tmp_path, dir_plugin):
+    """reload のあとの activate で setup がもう一度走らない。"""
     counter = tmp_path / "setup_count.txt"
     dir_plugin(tmp_path, plugin_id="com.example.setup", folder_name="setup", setup_counter=counter)
     manager = PluginManager()

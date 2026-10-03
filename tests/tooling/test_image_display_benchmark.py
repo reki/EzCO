@@ -19,6 +19,7 @@ from tooling.image_display_benchmark import (
 
 @pytest.mark.parametrize("mode", MODES)
 def test_run_mode_measures_all_display_preparation_stages(qapp, mode):
+    """準備段階が欠け、合計が内訳の和にならず、見開き以外で2ページ目のフィルター時間が残る。"""
     result = run_mode(
         mode,
         warmups=0,
@@ -66,10 +67,22 @@ def test_run_mode_measures_all_display_preparation_stages(qapp, mode):
 def test_rgba_convert_is_measured_only_during_set_image_and_restored(
     qapp, monkeypatch
 ):
+    """RGBA 以外の変換が記録される、または計測後に convert が計測前の関数へ戻らない。"""
     original = Image.Image.convert
     converted_modes = []
 
     def convert_spy(source, mode=None, *args, **kwargs):
+        """変換先モードを記録してから、元の convert を呼ぶ。
+
+        Args:
+            source: 変換する画像。
+            mode: 変換先のモード。
+            *args: 元の convert へ渡す残りの位置引数。
+            **kwargs: 元の convert へ渡すキーワード引数。
+
+        Returns:
+            元の convert の結果。
+        """
         converted_modes.append(mode)
         return original(source, mode, *args, **kwargs)
 
@@ -90,6 +103,7 @@ def test_rgba_convert_is_measured_only_during_set_image_and_restored(
 
 
 def test_aggregate_stages_returns_nonnegative_values():
+    """同じ時間の2標本で、平均・最小・最大が標本のままにならず、合計が2倍にならない。"""
     sample = {name: 1.5 for name in STAGE_NAMES}
     stages = aggregate_stages([sample, sample])
 
@@ -103,12 +117,15 @@ def test_aggregate_stages_returns_nonnegative_values():
 
 
 def test_gui_work_is_rejected_outside_qapplication_thread(qapp):
+    """GUI スレッド以外の計測前提が通り、拒否文が残らないかワーカーが終わらない。"""
     errors = []
 
     def check_from_worker():
+        """ワーカーから GUI スレッド前提を確認し、拒否文を残す。"""
         try:
             ensure_gui_main_thread(qapp)
         except RuntimeError as exc:
+            # GUI スレッド以外の拒否を文として残し、スレッドは終わらせる。
             errors.append(str(exc))
 
     thread = threading.Thread(target=check_from_worker)
@@ -120,6 +137,7 @@ def test_gui_work_is_rejected_outside_qapplication_thread(qapp):
 
 
 def test_single_mode_runs_in_isolated_subprocess():
+    """サブプロセスの1条件でモード・反復・明るさ10・RGBA 時間・コンポジタ除外のどれかが欠ける。"""
     result = run_mode_subprocess(
         "builtin_basic",
         warmups=0,
@@ -136,6 +154,7 @@ def test_single_mode_runs_in_isolated_subprocess():
 
 
 def test_markdown_states_scope_and_stage_summary(qapp):
+    """Markdown からモード名、または Qt の paint とコンポジタを測っていないことが消える。"""
     mode_result = run_mode(
         "filter_off",
         warmups=0,

@@ -10,11 +10,19 @@ from typing import Any
 
 # src/ からの相対パス。このファイル自身は識別子に入れない。
 INFO_JSON_RELATIVE = "ez_co/resources/about/info.json"
+# 画面に出すビルド識別子の文字数
 BUILD_ID_DISPLAY_LENGTH = 16
 
 
 def load_app_info() -> dict[str, Any]:
-    """アプリ名・バージョン・制作者などを辞書で返す。説明は言語を分けない。"""
+    """アプリ名・バージョン・制作者などを辞書で返す。説明は言語を分けない。
+
+    Returns:
+        name、version、author、years、license、homepage、description、hash
+
+    Raises:
+        ValueError: 中身がオブジェクトでないとき
+    """
     raw = (
         resources.files("ez_co.resources")
         .joinpath("about", "info.json")
@@ -36,7 +44,14 @@ def load_app_info() -> dict[str, Any]:
 
 
 def source_tree_hash(src_root: Path) -> str:
-    """src 配下の通常ファイルを、パス順の1本の SHA-256 にする。"""
+    """src 配下の通常ファイルを、パス順の1本の SHA-256 にする。
+
+    Args:
+        src_root: ハッシュを取る src ディレクトリ
+
+    Returns:
+        パス順にまとめた SHA-256 の16進
+    """
     files = []
     for path in src_root.rglob("*"):
         if not path.is_file():
@@ -57,12 +72,23 @@ def source_tree_hash(src_root: Path) -> str:
 
 
 def short_build_id(build_id: str) -> str:
-    """ダイアログに出す先頭だけ。元の64桁は呼び出し側が持つ。"""
+    """ダイアログに出す先頭だけ。元の64桁は呼び出し側が持つ。
+
+    Args:
+        build_id: 元の識別子
+
+    Returns:
+        表示用に切った先頭
+    """
     return build_id[:BUILD_ID_DISPLAY_LENGTH]
 
 
 def current_build_id() -> str:
-    """Nuitka 版は保存値、ソース起動はその場の計算。info.json には書かない。"""
+    """Nuitka 版は保存値、ソース起動はその場の計算。info.json には書かない。
+
+    Returns:
+        ビルド識別子。取れなければ unknown
+    """
     from ez_co.utils.path_utils import get_project_root, is_nuitka
 
     if is_nuitka():
@@ -74,7 +100,11 @@ def current_build_id() -> str:
 
 
 def build_id_error_header() -> str:
-    """未処理例外ログの先頭。計算は current_build_id に任せる。"""
+    """未処理例外ログの先頭。計算は current_build_id に任せる。
+
+    Returns:
+        バージョンとビルド識別子の見出し
+    """
     info = load_app_info()
     version = info.get("version") or ""
     return f"EzCo version={version}\nBuild id={current_build_id()}"
@@ -82,7 +112,15 @@ def build_id_error_header() -> str:
 
 @contextmanager
 def stamped_info_json(info_path: Path, build_id: str):
-    """hash だけを書き、抜けるとき（Ctrl+C を含む）に元のバイト列へ戻す。"""
+    """hash だけを書き、抜けるとき（Ctrl+C を含む）に元のバイト列へ戻す。
+
+    Args:
+        info_path: 書き換える info.json
+        build_id: 書き込む hash
+
+    Raises:
+        ValueError: 中身がオブジェクトでないとき
+    """
     original = info_path.read_bytes()
     data = json.loads(original.decode("utf-8"))
     if not isinstance(data, dict):

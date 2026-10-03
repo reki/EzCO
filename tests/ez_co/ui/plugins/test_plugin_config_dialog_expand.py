@@ -4,10 +4,19 @@ import pytest
 from ez_co.plugins.host import PluginHost
 from ez_co.ui.plugins.plugin_config_dialog import PluginConfigDialog, config_field_display_name
 
+# このモジュールのテストは QApplication 付きで動かす。
 pytestmark = pytest.mark.usefixtures("qapp")
 
 
 def _host_with_label(mapping):
+    """label が {title} の bool 項目を持つ host を組む。
+
+    Args:
+        mapping: 展開に使うキーと文。
+
+    Returns:
+        load フェーズの host。
+    """
     host = PluginHost()
     host.enter_phase("com.example.x", "load")
     scoped = host.scoped("com.example.x")
@@ -17,6 +26,7 @@ def _host_with_label(mapping):
 
 
 def test_dialog_expands_whole_string_key_as_item_name():
+    """項目名が {title} の展開文にならず、台帳の label がテンプレート以外に書き換わる。"""
     host = _host_with_label({"title": "題名"})
     dialog = PluginConfigDialog(host, "com.example.x", "Name")
     try:
@@ -27,6 +37,7 @@ def test_dialog_expands_whole_string_key_as_item_name():
 
 
 def test_reopen_picks_up_new_language():
+    """開き直しても新しい get_text の文にならず、台帳の label が {title} 以外になる。"""
     host = _host_with_label({"title": "題名"})
     first = PluginConfigDialog(host, "com.example.x", "Name")
     try:
@@ -43,6 +54,7 @@ def test_reopen_picks_up_new_language():
 
 
 def test_range_name_expands_before_bounds_suffix():
+    """範囲項目が展開前のテンプレートに下限上限を足す、または展開後の名前から範囲が消える。"""
     host = PluginHost()
     host.enter_phase("com.example.x", "load")
     scoped = host.scoped("com.example.x")

@@ -4,19 +4,30 @@ from enum import Enum
 
 from PySide6.QtWidgets import QFormLayout, QLabel, QWidget
 
+# パスワード型の設定キー。
 _PASSWORD_KEYS = ("secret", "secret_multi")
+# 色型の設定キー。
 _COLOR_KEYS = ("tint", "tint_multi")
+# 日付型の設定キー。
 _DATE_KEYS = ("day", "day_multi")
+# 日時型の設定キー。
 _DATETIME_KEYS = ("moment", "moment_multi")
 
 
 class Style(Enum):
+    """確認用の choice に使う書式。"""
+
+    # 通常の書式。
     PLAIN = "plain"
+    # 太字の書式。
     BOLD = "bold"
 
 
 class ConfigTypesPlugin:
+    """全設定種別の保存値をサイドバーに出す。"""
+
     def __init__(self):
+        """root、get_text、host と、表示ラベルの入れ物を空で作る。"""
         self.root = None
         self.get_text = None
         self.host = None
@@ -27,6 +38,13 @@ class ConfigTypesPlugin:
         self._keys = []
 
     def load(self, root, get_text, host):
+        """設定 JSON と Enum の choice を登録し、表示するキーを並べる。
+
+        Args:
+            root: プラグインルート。
+            get_text: 文言取得関数。
+            host: スコープ付きホスト。
+        """
         self.root = root
         self.get_text = get_text
         self.host = host
@@ -88,6 +106,7 @@ class ConfigTypesPlugin:
         ]
 
     def setup(self):
+        """値と保存形のラベルを作り、変更を購読してサイドバーを登録する。"""
         if self.widget is None:
             self.widget = QWidget()
             layout = QFormLayout(self.widget)
@@ -108,15 +127,22 @@ class ConfigTypesPlugin:
         self.host.register_sidebar("config_types", "{title}", self.widget)
 
     def teardown(self):
+        """ウィジェットと表示ラベルを捨て、購読フラグを下ろす。"""
         self._listening = False
         self.widget = None
         self._values = {}
         self._raw = {}
 
     def _on_config(self, _payload=None):
+        """表示を読み直す。
+
+        Args:
+            _payload: config_changed の内容。表示の更新には使わない。
+        """
         self._refresh()
 
     def _refresh(self):
+        """各キーの表示と repr を更新し、パスワードは伏せ、単色は背景色にする。"""
         for key in self._keys:
             value = self.host.get_config(key)
             label = self._values.get(key)
@@ -140,6 +166,15 @@ class ConfigTypesPlugin:
 
 
 def _display(key, value) -> str:
+    """値を画面用の文字列にする。
+
+    Args:
+        key: 設定キー。日付系のとき書式を選ぶ。
+        value: 表示する値。列なら要素を繋ぐ。
+
+    Returns:
+        画面用の文字列。Enum は名前。
+    """
     if isinstance(value, list):
         return ", ".join(_display(key, item) for item in value)
     if isinstance(value, Enum):
@@ -152,14 +187,32 @@ def _display(key, value) -> str:
 
 
 def _utc(value, fmt) -> str:
+    """UNIX 秒を UTC の書式にする。
+
+    Args:
+        value: UNIX 秒。
+        fmt: strftime の書式。
+
+    Returns:
+        UTC の文字列。整数にできなければそのまま文字列。
+    """
     try:
         seconds = int(value)
     except (TypeError, ValueError):
+        # 秒にできなければそのまま文字列にする。
         return str(value)
     return datetime.fromtimestamp(seconds, tz=timezone.utc).strftime(fmt)
 
 
 def _contrast(color: str) -> str:
+    """背景色に対する文字色を返す。
+
+    Args:
+        color: #rrggbb。
+
+    Returns:
+        明るい背景なら暗い文字色、暗い背景なら明るい文字色。
+    """
     text = (color or "").lstrip("#")
     if len(text) != 6:
         return "#111111"
@@ -168,6 +221,7 @@ def _contrast(color: str) -> str:
         green = int(text[2:4], 16)
         blue = int(text[4:6], 16)
     except ValueError:
+        # 色コードを解釈できなければ暗い文字色を返す。
         return "#111111"
     if (red * 299 + green * 587 + blue * 114) >= 140000:
         return "#111111"

@@ -15,17 +15,30 @@ from ez_co.utils.app_info import (
 
 
 def _write(root: Path, relative: str, data: bytes) -> None:
+    """相対パスへバイト列を書き、親ディレクトリも作る。
+
+    Args:
+        root: 書き込み先の根。
+        relative: 根からの相対パス。
+        data: 書き込むバイト列。
+    """
     path = root / relative
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
 
 
 def _tree(root: Path) -> None:
+    """ハッシュ比較用に同じ2ファイルを置く。
+
+    Args:
+        root: ファイルを置く根。
+    """
     _write(root, "ez_co/a.txt", b"alpha")
     _write(root, "ez_co/b/c.txt", b"beta")
 
 
 def test_hash_is_64_lowercase_hex(tmp_path: Path):
+    """ソースツリーのハッシュは 64 桁の小文字16進になる。"""
     _tree(tmp_path)
     digest = source_tree_hash(tmp_path)
     assert len(digest) == 64
@@ -34,6 +47,7 @@ def test_hash_is_64_lowercase_hex(tmp_path: Path):
 
 
 def test_walk_order_does_not_change_the_hash(tmp_path: Path):
+    """同じ内容なら書き込み順が違ってもハッシュは一致する。"""
     first = tmp_path / "first"
     second = tmp_path / "second"
     _write(first, "ez_co/b/c.txt", b"beta")
@@ -44,6 +58,7 @@ def test_walk_order_does_not_change_the_hash(tmp_path: Path):
 
 
 def test_content_change_changes_the_hash(tmp_path: Path):
+    """ファイル内容が変わるとハッシュも変わる。"""
     _tree(tmp_path)
     before = source_tree_hash(tmp_path)
     _write(tmp_path, "ez_co/a.txt", b"alpha2")
@@ -51,6 +66,7 @@ def test_content_change_changes_the_hash(tmp_path: Path):
 
 
 def test_path_change_changes_the_hash(tmp_path: Path):
+    """ファイルのパスが変わるとハッシュも変わる。"""
     _tree(tmp_path)
     before = source_tree_hash(tmp_path)
     source = tmp_path / "ez_co/a.txt"
@@ -59,6 +75,7 @@ def test_path_change_changes_the_hash(tmp_path: Path):
 
 
 def test_adding_and_removing_a_file_changes_the_hash(tmp_path: Path):
+    """ファイルを足すとハッシュが変わり、消すと元に戻る。"""
     _tree(tmp_path)
     before = source_tree_hash(tmp_path)
     _write(tmp_path, "ez_co/extra.txt", b"more")
@@ -69,6 +86,7 @@ def test_adding_and_removing_a_file_changes_the_hash(tmp_path: Path):
 
 
 def test_info_json_and_pycache_are_excluded(tmp_path: Path):
+    """info.json と __pycache__ を足してもハッシュは変わらない。"""
     _tree(tmp_path)
     before = source_tree_hash(tmp_path)
     _write(tmp_path, INFO_JSON_RELATIVE, b'{"hash":"should-not-count"}')
@@ -77,6 +95,7 @@ def test_info_json_and_pycache_are_excluded(tmp_path: Path):
 
 
 def test_short_build_id_is_the_leading_16_characters():
+    """短縮ビルド ID は全体の先頭 16 文字になる。"""
     full = "ab" * 32
     assert short_build_id(full) == full[:16]
     assert len(short_build_id(full)) == 16
@@ -86,6 +105,7 @@ def test_source_launch_computes_and_nuitka_uses_the_stored_value(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ):
+    """ソース起動はツリーのハッシュを使い、Nuitka 起動は保存済みの hash を使う。"""
     from ez_co.utils import path_utils
 
     src = tmp_path / "src"
@@ -101,6 +121,7 @@ def test_source_launch_computes_and_nuitka_uses_the_stored_value(
 
 
 def test_stamp_changes_only_hash_and_restore_matches_original_bytes(tmp_path: Path):
+    """スタンプ中は hash だけがビルド ID になり、割り込みのあと元のバイト列に戻る。"""
     info_path = tmp_path / "info.json"
     original = (
         '{\n  "name": "EzCo",\n  "version": "1.1.2",\n  "hash": ""\n}\n'

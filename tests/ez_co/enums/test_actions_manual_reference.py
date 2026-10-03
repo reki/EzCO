@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[3]
     ["action-reference.html", "action-reference-en.html"],
 )
 def test_manual_lists_each_canonical_action_once(name):
+    """日英のアクションリファレンスは、正規アクションを重複なく ACTION_LIST と同じ集合で列挙する。"""
     text = (ROOT / "resources" / "UserManual" / "files" / name).read_text(
         encoding="utf-8"
     )

@@ -3,10 +3,12 @@ from ez_co.plugins.host import PluginHost, make_plugin_action_id
 
 
 def test_make_plugin_action_id():
+    """公開 ID が plugin:プラグインID:アクション にならない。"""
     assert make_plugin_action_id("com.example.x", "go") == "plugin:com.example.x:go"
 
 
 def test_register_action_stores_public_id_and_aliases():
+    """公開 ID と next_page 別名が同じレコードを指さず、両方の ID が並ばない。"""
     host = PluginHost()
     called = []
     host.scoped("com.example.x").register_action(

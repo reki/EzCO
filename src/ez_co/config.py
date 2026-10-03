@@ -1,3 +1,5 @@
+"""アプリ設定の既定値、フィルターの正規化、辞書との変換、ランタイムオーバーライドを扱う。"""
+
 import locale
 import os
 from PySide6.QtGui import QFontDatabase
@@ -15,23 +17,48 @@ from ez_co.utils.image_loader_workers import (
     resolve_image_loader_workers,
 )
 
-
+# CPU 数をまだ取得していないことを示す番兵
 _CPU_COUNT_UNSET = object()
+
 
 class OverrideDict(dict):
     """ランタイムオーバーライドを考慮する辞書プロキシ"""
     def __init__(self, original_dict: dict, config_instance, section_name: str):
+        """元の辞書と、参照する設定・セクション名を保持する。
+
+        Args:
+            original_dict: 元になる辞書
+            config_instance: ランタイムオーバーライドを持つ設定
+            section_name: キーパスの先頭になるセクション名
+        """
         super().__init__(original_dict)
         self._config = config_instance
         self._section_name = section_name
-    
+
     def __getitem__(self, key):
+        """ランタイムオーバーライドがあればその値、無ければ元の辞書の値を返す。
+
+        Args:
+            key: セクション内のキー
+
+        Returns:
+            オーバーライドされた値、または元の辞書の値
+        """
         key_path = f"{self._section_name}.{key}"
         if self._config.is_runtime_overridden(key_path):
             return self._config.get_runtime_override(key_path)
         return super().__getitem__(key)
-    
+
     def get(self, key, default=None):
+        """ランタイムオーバーライドがあればその値、無ければ元の辞書から取る。
+
+        Args:
+            key: セクション内のキー
+            default: 元の辞書にキーが無いときの値
+
+        Returns:
+            オーバーライドされた値、元の辞書の値、または default
+        """
         key_path = f"{self._section_name}.{key}"
         if self._config.is_runtime_overridden(key_path):
             return self._config.get_runtime_override(key_path)
@@ -39,6 +66,11 @@ class OverrideDict(dict):
 
 
 def default_filters() -> dict:
+    """空の pipe と、組み込みフィルターの既定設定を返す。
+
+    Returns:
+        pipe と settings を持つ辞書
+    """
     return {
         "pipe": [],
         "settings": {
@@ -48,6 +80,14 @@ def default_filters() -> dict:
 
 
 def normalize_filter_pipe(raw) -> list:
+    """フィルター pipe を、空でなく重複しない公開 ID のリストにする。
+
+    Args:
+        raw: 保存されていた pipe。リストでなければ空にする
+
+    Returns:
+        公開 ID のリスト
+    """
     if not isinstance(raw, list):
         return []
     seen = set()
@@ -62,6 +102,14 @@ def normalize_filter_pipe(raw) -> list:
 
 
 def normalize_filter_settings(raw) -> dict:
+    """フィルター設定を、組み込みフィルターの正規化済み辞書にする。
+
+    Args:
+        raw: 保存されていた設定。辞書でなければ空として扱う
+
+    Returns:
+        組み込みフィルター ID をキーにした辞書
+    """
     incoming = raw if isinstance(raw, dict) else {}
     return {
         BUILTIN_FILTER_ID: normalize_basic_settings(incoming.get(BUILTIN_FILTER_ID)),
@@ -69,6 +117,14 @@ def normalize_filter_settings(raw) -> dict:
 
 
 def normalize_filters(raw) -> dict:
+    """フィルター設定全体を pipe と settings に分けて正規化する。
+
+    Args:
+        raw: 保存されていたフィルター節。辞書でなければ空として扱う
+
+    Returns:
+        pipe と settings を持つ辞書
+    """
     data = raw if isinstance(raw, dict) else {}
     return {
         "pipe": normalize_filter_pipe(data.get("pipe")),
@@ -77,13 +133,15 @@ def normalize_filters(raw) -> dict:
 
 
 class Config:
+    """ウィンドウや閲覧、キャッシュなどのアプリ設定を保持する。"""
     def __init__(self):
+        """各セクションの既定値を置き、オーバーライド用のプロキシを掛ける。"""
         # ランタイムオーバーライド用の辞書（コマンドライン引数で指定された設定）
         self.runtime_overrides = {}
         self._effective_image_loader_workers = None
         self._image_loader_workers_configured_at_start = None
         self._image_loader_logical_cpu_count = None
-        
+
         self.window = {
             "width": 800,
             "height": 600,
@@ -149,7 +207,7 @@ class Config:
         for archive_type in ArchiveInfo.get_all_archive_types():
             config_key = ArchiveInfo.get_config_key(archive_type)
             self.archive[config_key] = True
-        
+
         self.shortcuts = {
             Actions.NEXT_PAGE.value: [MouseButtons.LEFT.value, KeyboardKeys.RIGHT.value, KeyboardKeys.SPACE.value],
             Actions.PREV_PAGE.value: [MouseButtons.RIGHT.value, KeyboardKeys.V.value, KeyboardKeys.LEFT.value],
@@ -208,7 +266,7 @@ class Config:
         }
         # 言語コード取得してデフォルトフォントを決定
         lang_code = locale.getdefaultlocale()[0]
-        
+
         # FontFamilyManagerを使用してデフォルトフォントを取得
         default_font = FontFamilyManager.get_default_font_for_language(lang_code)
         self.ui_font = {
@@ -218,7 +276,7 @@ class Config:
             "bg_color": "#ffffff",
             "alpha": 150
         }
-        
+
         # 画像一覧ダイアログ設定
         self.image_list = {
             "close_after_select": True
@@ -230,10 +288,10 @@ class Config:
             "source_choice": {},
         }
         self.filters = default_filters()
-        
+
         # 設定辞書をオーバーライド対応に変換
         self._apply_override_proxies()
-    
+
     def _apply_override_proxies(self):
         """設定辞書をオーバーライド対応プロキシに変換"""
         self.window = OverrideDict(self.window, self, "window")
@@ -247,10 +305,14 @@ class Config:
         self.image_list = OverrideDict(self.image_list, self, "image_list")
         self.plugins = OverrideDict(self.plugins, self, "plugins")
         self.filters = OverrideDict(self.filters, self, "filters")
-    
+
     @classmethod
     def get_default_config(cls) -> Dict[str, Any]:
-        """デフォルト設定の辞書を取得"""
+        """デフォルト設定の辞書を取得
+
+        Returns:
+            既定値から作った辞書
+        """
         config = cls()
         return config.to_dict()
     # ユーザーが消した割り当てを、起動時にデフォルトで埋め戻さない
@@ -258,7 +320,14 @@ class Config:
 
     @classmethod
     def merge_with_defaults(cls, data: Dict[str, Any]) -> Dict[str, Any]:
-        """YAMLデータとデフォルト設定をマージして不足項目を追加"""
+        """YAMLデータとデフォルト設定をマージして不足項目を追加
+
+        Args:
+            data: 読み込んだ設定辞書
+
+        Returns:
+            不足セクションを既定値で補った辞書
+        """
         default_config = cls.get_default_config()
         merged_config = {}
         # トップレベルのセクションをマージ
@@ -281,7 +350,15 @@ class Config:
 
     @staticmethod
     def _resolve_last_spread_mode(original_data: Dict[str, Any], viewer_data: Dict[str, Any]) -> str:
-        """前回の両開き方向を復元する。未保存なら現在の両開き、それも無ければ右。"""
+        """前回の両開き方向を復元する。未保存なら現在の両開き、それも無ければ右。
+
+        Args:
+            original_data: マージ前の読み込みデータ
+            viewer_data: マージ後の viewer 節
+
+        Returns:
+            spread_left または spread_right
+        """
         original_viewer = original_data.get("viewer") if isinstance(original_data, dict) else None
         saved = None
         if isinstance(original_viewer, dict) and "last_spread_mode" in original_viewer:
@@ -295,6 +372,14 @@ class Config:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Config':
+        """辞書を既定値とマージして設定を組み立てる。
+
+        Args:
+            data: 読み込んだ設定辞書
+
+        Returns:
+            辞書の内容を反映した設定
+        """
         # デフォルト設定とマージして不足項目を追加
         merged_data = cls.merge_with_defaults(data)
         config = cls()
@@ -393,7 +478,7 @@ class Config:
             for archive_type in ArchiveInfo.get_all_archive_types():
                 config_key = ArchiveInfo.get_config_key(archive_type)
                 config.archive[config_key] = archive_data.get(config_key, True)
-        
+
         if "shortcuts" in merged_data:
             loaded_shortcuts = merged_data["shortcuts"]
             if isinstance(loaded_shortcuts, dict):
@@ -463,22 +548,34 @@ class Config:
             })
         if "filters" in merged_data:
             config.filters.update(normalize_filters(merged_data.get("filters")))
-        
+
         # 設定辞書をオーバーライド対応に変換
         config._apply_override_proxies()
         return config
+
     def to_dict(self, exclude_runtime_overrides: bool = True) -> dict:
         """設定を辞書形式で返す
-        
+
         Args:
             exclude_runtime_overrides: ランタイムオーバーライドを除外するかどうか
+
+        Returns:
+            各セクションを持つ辞書
         """
         # プロキシを通さずに元の辞書データを取得
         def get_original_dict(proxy_dict):
+            """プロキシを通さずに元の辞書データを取得する。
+
+            Args:
+                proxy_dict: セクションの辞書、または OverrideDict
+
+            Returns:
+                OverrideDict なら元の項目だけの辞書。それ以外は渡された値
+            """
             if isinstance(proxy_dict, OverrideDict):
                 return dict(proxy_dict)  # 元の辞書部分のみを返す
             return proxy_dict
-        
+
         result = {
             "window": get_original_dict(self.window),
             "viewer": get_original_dict(self.viewer),
@@ -494,41 +591,46 @@ class Config:
             "plugins": get_original_dict(self.plugins),
             "filters": get_original_dict(self.filters),
         }
-        
+
         return result
+
     def set_runtime_override(self, key_path: str, value: Any):
         """ランタイムオーバーライドを設定する
-        
+
         Args:
             key_path: 'section.key' 形式のキーパス（例: 'archive.enabled'）
             value: 設定する値
         """
         self.runtime_overrides[key_path] = value
-    
+
     def get_runtime_override(self, key_path: str) -> Any:
         """ランタイムオーバーライドを取得する
-        
+
         Args:
             key_path: 'section.key' 形式のキーパス
-            
+
         Returns:
             オーバーライドされた値、または None（オーバーライドされていない場合）
         """
         return self.runtime_overrides.get(key_path)
-    
+
     def is_runtime_overridden(self, key_path: str) -> bool:
         """指定されたキーパスがランタイムオーバーライドされているかチェック
-        
+
         Args:
             key_path: 'section.key' 形式のキーパス
-            
+
         Returns:
             オーバーライドされている場合 True
         """
         return key_path in self.runtime_overrides
-    
+
     def apply_dict(self, data: Dict[str, Any]):
-        """辞書の内容をこのインスタンスへ上書きする（ランタイムオーバーライドは維持）"""
+        """辞書の内容をこのインスタンスへ上書きする（ランタイムオーバーライドは維持）
+
+        Args:
+            data: 上書きに使う設定辞書
+        """
         loaded = Config.from_dict(data)
         runtime = dict(self.runtime_overrides)
         section_names = (
@@ -548,7 +650,14 @@ class Config:
         self.runtime_overrides = runtime
 
     def freeze_image_loader_workers(self, logical_cpu_count=_CPU_COUNT_UNSET) -> int:
-        """今回のprocessで使うworker数を初回呼出し時に固定する。"""
+        """今回のprocessで使うworker数を初回呼出し時に固定する。
+
+        Args:
+            logical_cpu_count: 初回の解決に使う論理 CPU 数。省略すると os.cpu_count の戻り値
+
+        Returns:
+            固定した worker 数
+        """
         if self._effective_image_loader_workers is not None:
             return self._effective_image_loader_workers
         if logical_cpu_count is _CPU_COUNT_UNSET:
@@ -566,21 +675,43 @@ class Config:
 
     @property
     def effective_image_loader_workers(self) -> int:
+        """今回の process で使う worker 数を返す。
+
+        Returns:
+            初回に固定した worker 数
+        """
         return self.freeze_image_loader_workers()
 
     @property
     def image_loader_workers_configured_at_start(self):
+        """固定したときに読んだ image_loader_workers の設定値を返す。
+
+        Returns:
+            正規化済みの設定値。未固定なら固定してから返す
+        """
         self.freeze_image_loader_workers()
         return self._image_loader_workers_configured_at_start
 
     @property
     def image_loader_logical_cpu_count(self):
+        """固定したときに使った論理 CPU 数を返す。
+
+        Returns:
+            解決に使った論理 CPU 数。未固定なら固定してから返す
+        """
         self.freeze_image_loader_workers()
         return self._image_loader_logical_cpu_count
 
     @staticmethod
     def strip_profile_section(data: Dict[str, Any]) -> Dict[str, Any]:
-        """旧config.yamlのprofile節を除いたコピーを返す"""
+        """旧config.yamlのprofile節を除いたコピーを返す
+
+        Args:
+            data: 読み込んだ辞書。辞書でなければ空の辞書にする
+
+        Returns:
+            profile 節を除いたコピー。辞書でなければ空の辞書
+        """
         if not isinstance(data, dict):
             return {}
         cleaned = dict(data)

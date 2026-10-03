@@ -1,3 +1,5 @@
+"""言語ファイルを読み、画面とログの文言を返す。"""
+
 import json
 import os
 import locale
@@ -9,11 +11,13 @@ logger = logging.getLogger(__name__)
 class LanguageManager:
     """言語管理クラス"""
     def __init__(self):
+        """言語一覧を読み、現在の言語データを入れる。"""
         self.current_language = "system"
         self.language_data = {}
         self.available_languages = {}
         self._load_available_languages()
         self._load_language()
+
     def _load_available_languages(self):
         """利用可能な言語を読み込み"""
         self.available_languages = {}
@@ -28,6 +32,7 @@ class LanguageManager:
                     "file": None
                 }
         except Exception as e:
+            # システム言語を取れなければ警告を残し、日本語にする
             logger.warning(f"システム言語の取得に失敗: {e}")
             self.available_languages["system"] = {
                 "name": "",
@@ -52,12 +57,19 @@ class LanguageManager:
                         "file": file_path
                     }
                 except Exception as e:
+                    # 1件の言語ファイルが壊れていれば警告を残して次へ進む
                     logger.warning(f"言語ファイルの読み込みに失敗 {file_path}: {e}")
         except Exception as e:
+            # 同梱の言語フォルダを読めなければ警告を残して、外部の読み込みへ進む
             logger.warning(f"resources/langsフォルダの読み込みに失敗: {e}")
         self._load_external_language_dirs()
 
     def _load_langs_from_dir(self, langs_dir: Path) -> None:
+        """ディレクトリ内の言語 JSON を一覧へ足す。
+
+        Args:
+            langs_dir: 言語ファイルのディレクトリ
+        """
         if not langs_dir.exists() or not langs_dir.is_dir():
             return
         for file_path in langs_dir.glob("*.json"):
@@ -74,6 +86,7 @@ class LanguageManager:
                     "file": file_path,
                 }
             except Exception as e:
+                # 1件の言語ファイルが壊れていれば警告を残して次へ進む
                 logger.warning(f"言語ファイルの読み込みに失敗 {file_path}: {e}")
 
     def _load_external_language_dirs(self) -> None:
@@ -87,19 +100,27 @@ class LanguageManager:
                 try:
                     resolved = langs_dir.resolve()
                 except OSError:
+                    # パスを解決できなければ、そのフォルダを飛ばす
                     continue
                 if resolved in seen:
                     continue
                 seen.add(resolved)
                 self._load_langs_from_dir(langs_dir)
         except Exception as e:
+            # 外部の言語フォルダを読めなければ警告を残して終わる
             logger.warning(f"外部 langs フォルダの読み込みに失敗: {e}")
 
     def reload_external_languages(self) -> None:
+        """外部の言語ディレクトリを読み直し、現在の言語を入れ直す。"""
         self._load_external_language_dirs()
         self._load_language()
+
     def _load_language(self, language_code: Optional[str] = None):
-        """言語データを読み込み"""
+        """言語データを読み込み
+
+        Args:
+            language_code: 読み込む言語コード。無いときは現在の言語
+        """
         if language_code is None:
             language_code = self.current_language
         if language_code == "system":
@@ -111,6 +132,7 @@ class LanguageManager:
                 else:
                     lang_code = "ja"  # デフォルトは日本語
             except Exception:
+                # システム言語を取れなければ日本語にする
                 lang_code = "ja"
         else:
             lang_code = language_code
@@ -136,45 +158,61 @@ class LanguageManager:
                     self.language_data = json.load(f)
                 logger.info(f"言語ファイルを読み込みました: {lang_code}")
             except Exception as e:
+                # 言語ファイルを読めなければエラーを残し、空のデータにする
                 logger.error(f"言語ファイルの読み込みに失敗: {e}")
                 self.language_data = {}
         else:
             # ファイルが存在しない場合は空のデータを使用
             self.language_data = {}
+
     def get_text(self, key: str, **kwargs) -> str:
-        """テキストを取得"""
+        """テキストを取得
+
+        Args:
+            key: ドット区切りのキー
+            **kwargs: 文言へ埋め込む値
+
+        Returns:
+            見つかった文言。無ければキー
+        """
         if not self.language_data:
             # 言語データがない場合はキー名を返す
             return key
-        
+
         # ドット区切りのキーを処理（例: "ui.file"）
         keys = key.split('.')
         value = self.language_data
-        
+
         try:
             for k in keys:
                 value = value[k]
         except (KeyError, TypeError):
             # キーが存在しない場合はキー名を返す
             return key
-        
+
         # 文字列でない場合はキー名を返す
         if not isinstance(value, str):
             return key
-        
+
         # エスケープされた改行コードを実際の改行文字に変換
         value = value.replace('\\n', '\n')
-        
+
         # フォーマット文字列の処理
         if kwargs:
             try:
                 return value.format(**kwargs)
             except (KeyError, ValueError):
+                # 埋め込みに失敗したら、未整形の文言を返す
                 return value
-        
+
         return value
+
     def get_available_languages(self) -> Dict[str, Dict[str, Any]]:
-        """利用可能な言語の一覧を取得"""
+        """利用可能な言語の一覧を取得
+
+        Returns:
+            言語コードから名前、コード、ファイルへの対応。system の名前は文言で埋める
+        """
         languages = {
             code: dict(info) for code, info in self.available_languages.items()
         }
@@ -182,30 +220,83 @@ class LanguageManager:
         if system is not None:
             system["name"] = self.get_text("settings.system_default")
         return languages
+
     def set_language(self, language_code: str) -> bool:
-        """言語を設定"""
+        """言語を設定
+
+        Args:
+            language_code: 設定する言語コード
+
+        Returns:
+            一覧にあれば True
+        """
         if language_code not in self.available_languages:
             return False
         self.current_language = language_code
         self._load_language(language_code)
         logger.info(f"言語を変更しました: {language_code}")
         return True
+
     def get_current_language(self) -> str:
-        """現在の言語コードを取得"""
+        """現在の言語コードを取得
+
+        Returns:
+            現在の言語コード
+        """
         return self.current_language
+
+
 # グローバルインスタンス
 language_manager = LanguageManager()
+
+
 def get_text(key: str, **kwargs) -> str:
-    """テキストを取得する便利関数"""
+    """テキストを取得する便利関数
+
+    Args:
+        key: ドット区切りのキー
+        **kwargs: 文言へ埋め込む値
+
+    Returns:
+        見つかった文言
+    """
     return language_manager.get_text(key, **kwargs)
+
+
 def set_language(language_code: str) -> bool:
-    """言語を設定する便利関数"""
+    """言語を設定する便利関数
+
+    Args:
+        language_code: 設定する言語コード
+
+    Returns:
+        設定できれば True
+    """
     return language_manager.set_language(language_code)
+
+
 def get_available_languages() -> Dict[str, Dict[str, Any]]:
-    """利用可能な言語の一覧を取得する便利関数"""
+    """利用可能な言語の一覧を取得する便利関数
+
+    Returns:
+        言語コードから情報への対応
+    """
     return language_manager.get_available_languages()
+
+
 def reload_external_languages() -> None:
+    """外部の言語ディレクトリを読み直す。"""
     language_manager.reload_external_languages()
+
+
 def get_log_text(key: str, **kwargs) -> str:
-    """ログメッセージ用のテキストを取得する関数"""
-    return language_manager.get_text(f"logging.{key}", **kwargs) 
+    """ログメッセージ用のテキストを取得する関数
+
+    Args:
+        key: logging セクション内のキー
+        **kwargs: 文言へ埋め込む値
+
+    Returns:
+        見つかったログ文言
+    """
+    return language_manager.get_text(f"logging.{key}", **kwargs)

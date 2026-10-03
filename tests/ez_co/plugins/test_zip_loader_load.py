@@ -9,6 +9,7 @@ from ez_co.utils.language_manager import get_text
 
 
 def test_load_plugin_calls_load_once(tmp_path, dir_plugin):
+    """load が1回で終わらず、host がスコープしたものでなく、root が渡らない。"""
     root = dir_plugin(tmp_path, plugin_id="com.example.load", folder_name="once")
     (root / "src" / "plugin.py").write_text(
         "class ProbePlugin:\n"
@@ -30,6 +31,7 @@ def test_load_plugin_calls_load_once(tmp_path, dir_plugin):
 
 
 def test_old_constructor_signature_fails(tmp_path, dir_plugin):
+    """root、get_text、host を取る古い __init__ が TypeError にならない。"""
     root = dir_plugin(tmp_path, plugin_id="com.example.old", folder_name="old")
     (root / "src" / "plugin.py").write_text(
         "class ProbePlugin:\n"
@@ -44,6 +46,7 @@ def test_old_constructor_signature_fails(tmp_path, dir_plugin):
 
 
 def test_register_config_in_init_fails(tmp_path, dir_plugin):
+    """__init__ の register_config が phase 違反で落ちず、schema が残る。"""
     root = dir_plugin(tmp_path, plugin_id="com.example.initcfg", folder_name="initcfg")
     (root / "src" / "plugin.py").write_text(
         "class ProbePlugin:\n"
@@ -60,6 +63,7 @@ def test_register_config_in_init_fails(tmp_path, dir_plugin):
 
 
 def test_register_sidebar_in_load_fails(tmp_path, dir_plugin):
+    """load 中の register_sidebar が phase 違反で落ちず、サイドバーが残る。"""
     root = dir_plugin(
         tmp_path,
         plugin_id="com.example.ui",
@@ -82,6 +86,7 @@ def test_register_sidebar_in_load_fails(tmp_path, dir_plugin):
 
 
 def test_missing_load_fails(tmp_path, dir_plugin):
+    """load が無いクラスが、プラグイン ID を含む ValueError にならない。"""
     root = dir_plugin(tmp_path, plugin_id="com.example.noload", folder_name="noload")
     (root / "src" / "plugin.py").write_text(
         "class ProbePlugin:\n"
@@ -94,6 +99,7 @@ def test_missing_load_fails(tmp_path, dir_plugin):
 
 
 def test_register_config_json_failure_aborts_schema(tmp_path, dir_plugin):
+    """JSON の途中失敗で load が落ちず、途中までの schema が残る。"""
     root = dir_plugin(tmp_path, plugin_id="com.example.cfgjson", folder_name="cfgjson")
     config_dir = root / "resources" / "config"
     config_dir.mkdir(parents=True)
@@ -118,6 +124,7 @@ def test_register_config_json_failure_aborts_schema(tmp_path, dir_plugin):
 
 
 def test_register_config_json_keeps_template_on_load(tmp_path, dir_plugin):
+    """load で読んだ label が {flag} のテンプレートのまま残らない。"""
     root = dir_plugin(tmp_path, plugin_id="com.example.cfgok", folder_name="cfgok")
     config_dir = root / "resources" / "config"
     config_dir.mkdir(parents=True)

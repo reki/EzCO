@@ -9,6 +9,15 @@ from ez_co.handlers.image_load_scheduler import ImageLoadScheduler
 
 
 def _wait_until(predicate, timeout=2.0):
+    """条件が真になるか、期限まで短く待って成否を返す。
+
+    Args:
+        predicate: 完了判定。
+        timeout: 待つ秒数。
+
+    Returns:
+        期限内に真になれば真。
+    """
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if predicate():
@@ -19,6 +28,7 @@ def _wait_until(predicate, timeout=2.0):
 
 @pytest.mark.parametrize("worker_count", [1, 3, 6, 8])
 def test_configured_worker_count_starts_and_shuts_down(worker_count):
+    """指定したワーカー数だけ起動し、待機付き停止ですべていなくなる。"""
     scheduler = ImageLoadScheduler(
         lambda _task: True,
         lambda _session: True,
@@ -31,11 +41,20 @@ def test_configured_worker_count_starts_and_shuts_down(worker_count):
 
 
 def test_three_workers_can_start_in_parallel():
+    """3 ワーカーは同時に 3 件のタスクを開始できる。"""
     started = []
     lock = threading.Lock()
     release = threading.Event()
 
     def load(task):
+        """開始した cache_key を記録し、解放まで待つ。
+
+        Args:
+            task: 実行するタスク。
+
+        Returns:
+            完了を表す真。
+        """
         with lock:
             started.append(task.cache_key)
         release.wait(2)
@@ -61,11 +80,20 @@ def test_three_workers_can_start_in_parallel():
 
 
 def test_priority_queue_uses_priority_then_stable_sequence():
+    """開始順は優先度の昇順で、同じ優先度は投入順のままになる。"""
     started = []
     first_started = threading.Event()
     release_first = threading.Event()
 
     def load(task):
+        """開始順を記録し、最初の1件は解放までブロックする。
+
+        Args:
+            task: 実行するタスク。
+
+        Returns:
+            完了を表す真。
+        """
         started.append(task.cache_key)
         if task.cache_key == "blocker":
             first_started.set()
@@ -102,11 +130,20 @@ def test_priority_queue_uses_priority_then_stable_sequence():
 
 
 def test_new_generation_discards_unstarted_old_tasks():
+    """世代を進めると未開始の旧タスクは実行されず、新しい世代のタスクは実行される。"""
     started = []
     blocker_started = threading.Event()
     release = threading.Event()
 
     def load(task):
+        """開始した cache_key を記録し、ブロッカーは解放まで待つ。
+
+        Args:
+            task: 実行するタスク。
+
+        Returns:
+            完了を表す真。
+        """
         started.append(task.cache_key)
         if task.cache_key == "blocker":
             blocker_started.set()
@@ -152,11 +189,20 @@ def test_new_generation_discards_unstarted_old_tasks():
 
 
 def test_foreground_claim_invalidates_queued_prefetch():
+    """前景が確保したページの先読みは実行されず、先に動いていたタスクだけが残る。"""
     started = []
     blocker_started = threading.Event()
     release = threading.Event()
 
     def load(task):
+        """開始した cache_key を記録し、解放まで待つ。
+
+        Args:
+            task: 実行するタスク。
+
+        Returns:
+            完了を表す真。
+        """
         started.append(task.cache_key)
         blocker_started.set()
         release.wait(2)
@@ -194,11 +240,20 @@ def test_foreground_claim_invalidates_queued_prefetch():
 
 
 def test_foreground_waits_for_in_progress_decode():
+    """実行中のデコードに対する前景確保は待ちになり、そのデコード完了でイベントが立つ。"""
     started = threading.Event()
     release = threading.Event()
     calls = []
 
     def load(task):
+        """開始を知らせて解放まで待ち、その cache_key を記録する。
+
+        Args:
+            task: 実行するタスク。
+
+        Returns:
+            完了を表す真。
+        """
         calls.append(task.cache_key)
         started.set()
         release.wait(2)
@@ -228,9 +283,21 @@ def test_foreground_waits_for_in_progress_decode():
 
 
 def test_worker_continues_after_task_exception():
+    """タスクが SystemExit を送っても、次のタスクは処理される。"""
     processed = []
 
     def load(task):
+        """壊れたキーでは SystemExit を送り、それ以外は処理済みに積む。
+
+        Args:
+            task: 実行するタスク。
+
+        Returns:
+            壊れていなければ完了を表す真。
+
+        Raises:
+            SystemExit: cache_key が broken のとき。
+        """
         if task.cache_key == "broken":
             raise SystemExit("boom")
         processed.append(task.cache_key)
@@ -254,6 +321,7 @@ def test_worker_continues_after_task_exception():
 
 
 def test_inactive_session_task_is_discarded():
+    """セッションが無効なタスクはキューから消え、処理されない。"""
     processed = []
     active_session = {"value": 1}
     scheduler = ImageLoadScheduler(
@@ -279,6 +347,7 @@ def test_inactive_session_task_is_discarded():
 
 
 def test_old_foreground_owner_cannot_finish_new_session_owner():
+    """古いセッションの完了は新しい所有者を終わらせず、新しいトークンの完了だけがイベントを立てる。"""
     scheduler = ImageLoadScheduler(lambda _task: True, lambda _session: True, worker_count=1)
     try:
         claim, _event, old_token = scheduler.claim_foreground("page", 1)
@@ -301,6 +370,7 @@ def test_old_foreground_owner_cannot_finish_new_session_owner():
 
 
 def test_shutdown_waits_for_all_workers():
+    """待機付き停止は全ワーカーがいなくなるまで戻らない。"""
     scheduler = ImageLoadScheduler(lambda _task: True, lambda _session: True, worker_count=3)
     scheduler.shutdown(wait=True)
     snapshot = scheduler.snapshot()
@@ -309,10 +379,19 @@ def test_shutdown_waits_for_all_workers():
 
 
 def test_waiting_shutdown_joins_after_prior_non_waiting_shutdown():
+    """待たない停止のあとでも、待機付き停止はワーカーの終了を待ってから戻る。"""
     started = threading.Event()
     release = threading.Event()
 
     def load(_task):
+        """開始を知らせて解放まで待つ。
+
+        Args:
+            _task: 実行するタスク。
+
+        Returns:
+            完了を表す真。
+        """
         started.set()
         release.wait(2)
         return True
@@ -337,10 +416,19 @@ def test_waiting_shutdown_joins_after_prior_non_waiting_shutdown():
 
 
 def test_generation_changes_compact_unstarted_queue():
+    """世代を進めるたびに未開始キューは新しい世代の件数までに収まり、捨てた件数は古い投入の合計以上になる。"""
     blocker_started = threading.Event()
     release = threading.Event()
 
     def load(task):
+        """ブロッカーは解放まで待ち、それ以外はすぐ終わる。
+
+        Args:
+            task: 実行するタスク。
+
+        Returns:
+            完了を表す真。
+        """
         if task.cache_key == "blocker":
             blocker_started.set()
             release.wait(2)

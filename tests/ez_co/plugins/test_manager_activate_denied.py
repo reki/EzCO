@@ -8,12 +8,23 @@ from ez_co.utils.language_manager import get_text
 
 
 def _config():
+    """選択もハンドラも空のプラグイン設定を返す。
+
+    Returns:
+        plugins だけを持つ設定オブジェクト。
+    """
     return SimpleNamespace(
         plugins={"source_choice": {}, "extension_handlers": {}, "enabled": {}}
     )
 
 
 def _write_setup(root, body: str) -> None:
+    """setup の本体だけを差し替えた ProbePlugin を書く。
+
+    Args:
+        root: プラグインのルート。
+        body: setup に入れる行。
+    """
     (root / "src" / "plugin.py").write_text(
         "class ProbePlugin:\n"
         "    def __init__(self):\n"
@@ -27,6 +38,7 @@ def _write_setup(root, body: str) -> None:
 
 
 def test_load_selected_denies_register_in_init(tmp_path, dir_plugin):
+    """__init__ の register_sidebar で読み込みが成功し、phase 違反が failed に残らない。"""
     root = dir_plugin(tmp_path, plugin_id="com.example.ui", folder_name="ui")
     (root / "src" / "plugin.py").write_text(
         "class ProbePlugin:\n"
@@ -45,6 +57,7 @@ def test_load_selected_denies_register_in_init(tmp_path, dir_plugin):
 
 
 def test_activate_ui_denies_undeclared_sidebar(tmp_path, dir_plugin):
+    """未宣言の sidebar 登録が有効のままになり、権限不足のエラーにならず、台帳が空にならない。"""
     root = dir_plugin(tmp_path, plugin_id="com.example.ui", folder_name="ui")
     _write_setup(root, '        self.host.register_sidebar("main", "Title", object())\n')
     manager = PluginManager()
@@ -58,6 +71,7 @@ def test_activate_ui_denies_undeclared_sidebar(tmp_path, dir_plugin):
 
 
 def test_activate_ui_denies_filter_without_permission(tmp_path, dir_plugin):
+    """filter 権限が無い register_filter が有効のままになり、権限不足のエラーにならない。"""
     root = dir_plugin(tmp_path, plugin_id="com.example.filter", folder_name="filter")
     _write_setup(
         root,

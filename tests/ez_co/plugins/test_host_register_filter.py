@@ -9,10 +9,20 @@ from ez_co.utils.language_manager import get_text
 
 
 def _process(image, context):
+    """渡された画像をそのまま返す。
+
+    Args:
+        image: 処理対象。
+        context: フィルター文脈。未使用。
+
+    Returns:
+        渡された画像。
+    """
     return image
 
 
 def test_register_filter_requires_permission():
+    """filter 権限が無くても登録が通り、台帳に ID が残る。"""
     host = PluginHost()
     with pytest.raises(PluginRegistrationDenied, match=get_text("ui.plugin_register_not_permitted")):
         host.scoped("com.example.x").register_filter("sharp", "Sharp", _process)
@@ -20,6 +30,7 @@ def test_register_filter_requires_permission():
 
 
 def test_register_filter_rejects_non_callable():
+    """process が None でも、プラグイン ID を含む ValueError にならない。"""
     host = PluginHost()
     host.set_manifest_permissions("com.example.x", {"filter": True})
     with pytest.raises(ValueError, match="com.example.x"):
@@ -27,6 +38,7 @@ def test_register_filter_rejects_non_callable():
 
 
 def test_register_filter_accepts_permission():
+    """権限があっても台帳にタイトルとプラグイン ID が残らない。"""
     host = PluginHost()
     host.set_manifest_permissions("com.example.x", {"filter": True})
     host.scoped("com.example.x").register_filter("sharp", "Sharp", _process)
@@ -37,6 +49,7 @@ def test_register_filter_accepts_permission():
 
 
 def test_clear_plugin_drops_registry_keeps_pipe():
+    """clear_plugin のあと台帳にフィルターが残るか、呼び出し側の pipe まで書き換わる。"""
     host = PluginHost()
     host.set_manifest_permissions("com.example.x", {"filter": True})
     host.scoped("com.example.x").register_filter("sharp", "Sharp", _process)
@@ -48,6 +61,7 @@ def test_clear_plugin_drops_registry_keeps_pipe():
 
 
 def test_unregister_filter_drops_one_keeps_pipe():
+    """unregister が指定した1件以外も消し、pipe まで書き換わる。"""
     host = PluginHost()
     host.set_manifest_permissions("com.example.x", {"filter": True})
     host.scoped("com.example.x").register_filter("sharp", "Sharp", _process)

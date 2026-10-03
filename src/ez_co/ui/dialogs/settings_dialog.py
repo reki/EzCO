@@ -1,3 +1,4 @@
+"""アプリ設定のダイアログ。"""
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QLabel, QLineEdit,
     QSpinBox, QCheckBox, QPushButton, QDialogButtonBox, QColorDialog,
@@ -45,6 +46,12 @@ CACHE_BENCHMARK_OVERRIDE_KEYS = (
 class SettingsDialog(QDialog):
     """設定ダイアログ"""
     def __init__(self, config, parent=None):
+        """設定から画面を組み立て、起動時の上書きを反映する。
+
+        Args:
+            config: 編集する設定。
+            parent: 親ウィジェット。
+        """
         super().__init__(parent)
         self.config = config
         self._setting_tip_widgets = {}
@@ -52,18 +59,32 @@ class SettingsDialog(QDialog):
         self.apply_runtime_overrides()
 
     def _set_image_loader_workers_value(self, value):
+        """正規化したワーカー数をコンボで選ぶ。
+
+        Args:
+            value: 選ぶ値。
+        """
         normalized = normalize_image_loader_workers(value)
         index = self.cache_image_loader_workers.findData(normalized)
         self.cache_image_loader_workers.setCurrentIndex(max(0, index))
 
     def _image_loading_recommendation(self):
-        """このPCの推奨値と、判断に使ったRAM量・autoの実効worker数を返す。"""
+        """このPCの推奨値と、判断に使ったRAM量・autoの実効worker数を返す。
+
+        Returns:
+            推奨、メモリのバイト数、auto の実効ワーカー数。
+        """
         cpu_count = logical_cpu_count()
         memory_bytes = physical_memory_bytes()
         recommendation = recommend_image_loading_settings(cpu_count, memory_bytes)
         return recommendation, memory_bytes, auto_effective_workers(cpu_count)
 
     def current_worker_display(self):
+        """ワーカー数の表示文を返す。
+
+        Returns:
+            自動ならその文言。そうでなければ数の文字列。
+        """
         value = normalize_image_loader_workers(
             self.cache_image_loader_workers.currentData()
         )
@@ -108,6 +129,11 @@ class SettingsDialog(QDialog):
         self._update_cache_recommendation_label()
 
     def _cache_benchmark_blocked_by_override(self):
+        """測定で書くキーが起動時の上書きになっているかを返す。
+
+        Returns:
+            どれか上書きされているとき True。
+        """
         return any(
             self.config.is_runtime_overridden(key)
             for key in CACHE_BENCHMARK_OVERRIDE_KEYS
@@ -137,14 +163,25 @@ class SettingsDialog(QDialog):
         self.apply_benchmark_outcome(outcome)
 
     def apply_benchmark_outcome(self, outcome):
-        """測定結果をwidgetへ反映する。Configへは保存しない。"""
+        """測定結果をwidgetへ反映する。Configへは保存しない。
+
+        Args:
+            outcome: 反映する測定結果。
+        """
         self.cache_memory_limit.setText(outcome.memory_limit)
         self.cache_prefetch_pages.setValue(int(outcome.prefetch_pages))
         self._set_image_loader_workers_value(outcome.image_loader_workers)
         self._update_cache_recommendation_label()
 
     def _setting_tip_text(self, key):
-        """設定項目の詳細説明を取得（tip → description の順）"""
+        """設定項目の詳細説明を取得（tip → description の順）
+
+        Args:
+            key: 設定項目のキー。
+
+        Returns:
+            tip。無ければ description。どちらも無ければ空。
+        """
         tip_key = f"settings.{key}_tip"
         tip = get_text(tip_key)
         if tip != tip_key:
@@ -156,12 +193,27 @@ class SettingsDialog(QDialog):
         return ""
 
     def _format_tooltip(self, text):
+        """説明をツールチップ用の HTML にする。
+
+        Args:
+            text: 説明。空なら空を返す。
+
+        Returns:
+            HTML。空なら空文字。
+        """
         if not text:
             return ""
         escaped = html.escape(text).replace("\n", "<br>")
         return f"<p style='white-space:pre-wrap; max-width:380px;'>{escaped}</p>"
 
     def _apply_setting_tip(self, key, *widgets, extra_text=""):
+        """項目の説明をウィジェットのツールチップにする。
+
+        Args:
+            key: 設定項目のキー。
+            extra_text: 説明のあとに足す文。
+            widgets: ツールチップを付けるウィジェット。
+        """
         text = self._setting_tip_text(key)
         if extra_text:
             text = f"{text}\n\n{extra_text}" if text else extra_text
@@ -178,11 +230,27 @@ class SettingsDialog(QDialog):
                 registered.append(widget)
 
     def _form_label(self, key, suffix=":"):
+        """設定名のラベルを作り、説明をツールチップにする。
+
+        Args:
+            key: 設定項目のキー。
+            suffix: 名前の後ろに足す文字。
+
+        Returns:
+            そのラベル。
+        """
         label = QLabel(get_text(f"settings.{key}") + suffix)
         self._apply_setting_tip(key, label)
         return label
 
     def _disable_if_overridden(self, config_key, tip_key, *widgets):
+        """起動時に上書きされた項目を無効にし、その旨をツールチップに足す。
+
+        Args:
+            config_key: 上書きを見る設定キー。
+            tip_key: 説明を付けるキー。
+            widgets: 無効にするウィジェット。
+        """
         if not self.config.is_runtime_overridden(config_key):
             return
         override = get_text("settings.runtime_override_tooltip")
@@ -203,53 +271,53 @@ class SettingsDialog(QDialog):
         """UIの初期化"""
         self.setWindowTitle(get_text("ui.settings"))
         self.setFixedSize(550, 560)
-        
+
         layout = QVBoxLayout()
-        
+
         # タブウィジェットを作成
         self.tab_widget = QTabWidget()
-        
+
         # 各タブを作成
         self.create_general_tab()
         self.create_display_tab()
         self.create_behavior_tab()
         self.create_development_tab()
-        
+
         layout.addWidget(self.tab_widget)
-        
+
         # ボタンレイアウト
         button_layout = QHBoxLayout()
-        
+
         # エクスポート・インポートボタン追加
         export_button = QPushButton(get_text("ui.export"))
         export_button.clicked.connect(self.export_config)
         button_layout.addWidget(export_button)
-        
+
         import_button = QPushButton(get_text("ui.import"))
         import_button.clicked.connect(self.import_config)
         button_layout.addWidget(import_button)
-        
+
         button_layout.addStretch()
-        
+
         # 初期化ボタン
         reset_button = QPushButton(get_text("ui.reset"))
         reset_button.clicked.connect(self.reset_settings)
         button_layout.addWidget(reset_button)
-        
+
         # 適用ボタン
         apply_button = QPushButton(get_text("ui.apply"))
         apply_button.clicked.connect(self.apply_settings)
         button_layout.addWidget(apply_button)
-        
+
         # OK/Cancelボタン
         ok_button = QPushButton(get_text("ui.ok"))
         ok_button.clicked.connect(self.accept)
         button_layout.addWidget(ok_button)
-        
+
         cancel_button = QPushButton(get_text("ui.cancel"))
         cancel_button.clicked.connect(self.reject)
         button_layout.addWidget(cancel_button)
-        
+
         layout.addLayout(button_layout)
         self.setLayout(layout)
 
@@ -313,7 +381,7 @@ class SettingsDialog(QDialog):
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setWidget(general_widget)
-        
+
         layout = QVBoxLayout()
 
         location_group = QGroupBox(get_text("settings.data_location"))
@@ -362,17 +430,17 @@ class SettingsDialog(QDialog):
         # 言語設定
         language_group = QGroupBox(get_text("settings.language_settings"))
         language_layout = QFormLayout()
-        
+
         self.language_combo = QComboBox()
         self.language_combo.setMaximumWidth(200)  # 最大幅を制限
         available_languages = get_available_languages()
         current_language = self.config.language.get("code", "system")
-        
+
         for lang_code, lang_info in available_languages.items():
             self.language_combo.addItem(lang_info["name"], lang_code)
             if lang_code == current_language:
                 self.language_combo.setCurrentText(lang_info["name"])
-        
+
         language_layout.addRow(self._form_label("language"), self.language_combo)
         self._apply_setting_tip("language", self.language_combo)
         self.language_plugin_layout_note = QLabel(get_text("settings.language_plugin_layout_note"))
@@ -380,38 +448,39 @@ class SettingsDialog(QDialog):
         language_layout.addRow(self.language_plugin_layout_note)
         language_group.setLayout(language_layout)
         layout.addWidget(language_group)
-        
+
         # ウィンドウ設定
         window_group = QGroupBox(get_text("settings.window_settings"))
         window_layout = QFormLayout()
-        
+
         # ウィンドウサイズの自動調整
         self.auto_resize_checkbox = QCheckBox(get_text("settings.auto_resize"))
         self.auto_resize_checkbox.setChecked(self.config.window["auto_resize"])
         self._apply_setting_tip("auto_resize", self.auto_resize_checkbox)
         window_layout.addRow(self.auto_resize_checkbox)
-        
+
         # ウィンドウサイズを保存
         self.save_window_state_checkbox = QCheckBox(get_text("settings.save_window_state"))
         self.save_window_state_checkbox.setChecked(self.config.window.get("save_window_state", True))
         self._apply_setting_tip("save_window_state", self.save_window_state_checkbox)
         window_layout.addRow(self.save_window_state_checkbox)
-        
+
         # 起動時に最大化
         self.maximize_on_startup_checkbox = QCheckBox(get_text("settings.maximize_on_startup"))
         self.maximize_on_startup_checkbox.setChecked(self.config.window.get("maximize_on_startup", False))
         self._apply_setting_tip("maximize_on_startup", self.maximize_on_startup_checkbox)
         window_layout.addRow(self.maximize_on_startup_checkbox)
-        
+
         window_group.setLayout(window_layout)
         layout.addWidget(window_group)
-        
+
         layout.addStretch()
         general_widget.setLayout(layout)
-        
+
         self.tab_widget.addTab(scroll_area, get_text("settings.tab_general"))
 
     def _update_location_controls(self):
+        """選んだデータの置き場に合わせて、入力と注意の表示を切り替える。"""
         custom = self.location_custom_radio.isChecked()
         self.location_custom_edit.setEnabled(custom)
         self.location_browse_button.setEnabled(custom)
@@ -419,6 +488,7 @@ class SettingsDialog(QDialog):
         self.location_exe_warning.setVisible(self.location_exe_radio.isChecked())
 
     def _browse_data_location(self):
+        """フォルダを選び、カスタムの置き場として入れる。"""
         path = QFileDialog.getExistingDirectory(
             self,
             get_text("settings.data_location_browse"),
@@ -430,6 +500,11 @@ class SettingsDialog(QDialog):
             self._update_location_controls()
 
     def _current_location_settings(self) -> dict:
+        """画面で選ばれているデータの置き場を返す。
+
+        Returns:
+            data_location と custom_path を持つ辞書。
+        """
         if self.location_exe_radio.isChecked():
             mode = LOCATION_EXE
         elif self.location_custom_radio.isChecked():
@@ -447,13 +522,13 @@ class SettingsDialog(QDialog):
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setWidget(display_widget)
-        
+
         layout = QVBoxLayout()
-        
+
         # ビューア設定
         viewer_group = QGroupBox(get_text("settings.viewer_settings"))
         viewer_layout = QFormLayout()
-        
+
         # 背景色
         self.bg_color_button = QPushButton()
         self.bg_color_button.setStyleSheet(
@@ -463,13 +538,13 @@ class SettingsDialog(QDialog):
         self.bg_color_button.clicked.connect(self.select_background_color)
         viewer_layout.addRow(self._form_label("background_color"), self.bg_color_button)
         self._apply_setting_tip("background_color", self.bg_color_button)
-        
+
         # 画像をウィンドウに合わせる
         self.fit_to_window_checkbox = QCheckBox(get_text("settings.fit_to_window"))
         self.fit_to_window_checkbox.setChecked(self.config.viewer["fit_to_window"])
         self._apply_setting_tip("fit_to_window", self.fit_to_window_checkbox)
         viewer_layout.addRow(self.fit_to_window_checkbox)
-        
+
         # 画像の最小縮小率を全画面までに制限
         self.fit_to_window_min_checkbox = QCheckBox(get_text("settings.fit_to_window_minimum"))
         self.fit_to_window_min_checkbox.setChecked(self.config.viewer.get("fit_to_window_minimum", True))
@@ -499,67 +574,67 @@ class SettingsDialog(QDialog):
         self.spread_toggle_preference_combo.setCurrentIndex(pref_index if pref_index >= 0 else 0)
         viewer_layout.addRow(self._form_label("spread_toggle_preference"), self.spread_toggle_preference_combo)
         self._apply_setting_tip("spread_toggle_preference", self.spread_toggle_preference_combo)
-        
+
         # 画像移動感度
         sensitivity_layout = QHBoxLayout()
         self.sensitivity_slider = QSlider(Qt.Horizontal)
         self.sensitivity_slider.setRange(5, 40)  # 0.5～4.0を50～400で表現
         sensitivity_value = self.config.viewer.get("image_move_sensitivity", 2.0)
         self.sensitivity_slider.setValue(int(sensitivity_value * 10))
-        
+
         self.sensitivity_input = QLineEdit()
         self.sensitivity_input.setText(f"{sensitivity_value:.1f}")
         self.sensitivity_input.setPlaceholderText("0.5～4.0")
         self.sensitivity_input.setMaximumWidth(80)  # 最大幅を制限
-        
+
         # スライダーとテキストボックスの連動
         self.sensitivity_slider.valueChanged.connect(self.on_sensitivity_slider_changed)
         self.sensitivity_input.textChanged.connect(self.on_sensitivity_input_changed)
         self.sensitivity_input.editingFinished.connect(self.on_sensitivity_input_finished)
-        
+
         sensitivity_layout.addWidget(self.sensitivity_slider)
         sensitivity_layout.addWidget(self.sensitivity_input)
         viewer_layout.addRow(self._form_label("image_move_sensitivity"), sensitivity_layout)
         self._apply_setting_tip("image_move_sensitivity", self.sensitivity_slider, self.sensitivity_input)
-        
+
         # マウスジェスチャー判定距離
         gesture_layout = QHBoxLayout()
         self.gesture_threshold_slider = QSlider(Qt.Horizontal)
         self.gesture_threshold_slider.setRange(20, 100)  # 20～100ピクセル
         gesture_threshold_value = self.config.viewer.get("gesture_threshold", 50)
         self.gesture_threshold_slider.setValue(gesture_threshold_value)
-        
+
         self.gesture_threshold_input = QLineEdit()
         self.gesture_threshold_input.setText(str(gesture_threshold_value))
         self.gesture_threshold_input.setPlaceholderText("20～100")
         self.gesture_threshold_input.setMaximumWidth(80)  # 最大幅を制限
-        
+
         # スライダーとテキストボックスの連動
         self.gesture_threshold_slider.valueChanged.connect(self.on_gesture_threshold_slider_changed)
         self.gesture_threshold_input.textChanged.connect(self.on_gesture_threshold_input_changed)
         self.gesture_threshold_input.editingFinished.connect(self.on_gesture_threshold_input_finished)
-        
+
         gesture_layout.addWidget(self.gesture_threshold_slider)
         gesture_layout.addWidget(self.gesture_threshold_input)
         viewer_layout.addRow(self._form_label("gesture_threshold"), gesture_layout)
         self._apply_setting_tip("gesture_threshold", self.gesture_threshold_slider, self.gesture_threshold_input)
-        
+
         # マウスリピート初期間隔
         mouse_repeat_initial_delay_layout = QHBoxLayout()
         self.mouse_repeat_initial_delay_slider = QSlider(Qt.Horizontal)
         self.mouse_repeat_initial_delay_slider.setRange(50, 500)  # 50～500ms
         mouse_repeat_initial_delay_value = self.config.viewer.get("mouse_repeat_initial_delay", 100)
         self.mouse_repeat_initial_delay_slider.setValue(mouse_repeat_initial_delay_value)
-        
+
         self.mouse_repeat_initial_delay_input = QLineEdit()
         self.mouse_repeat_initial_delay_input.setText(str(mouse_repeat_initial_delay_value))
         self.mouse_repeat_initial_delay_input.setPlaceholderText("50～500")
         self.mouse_repeat_initial_delay_input.setMaximumWidth(80)
-        
+
         self.mouse_repeat_initial_delay_slider.valueChanged.connect(self.on_mouse_repeat_initial_delay_slider_changed)
         self.mouse_repeat_initial_delay_input.textChanged.connect(self.on_mouse_repeat_initial_delay_input_changed)
         self.mouse_repeat_initial_delay_input.editingFinished.connect(self.on_mouse_repeat_initial_delay_input_finished)
-        
+
         mouse_repeat_initial_delay_layout.addWidget(self.mouse_repeat_initial_delay_slider)
         mouse_repeat_initial_delay_layout.addWidget(self.mouse_repeat_initial_delay_input)
         viewer_layout.addRow(self._form_label("mouse_repeat_initial_delay"), mouse_repeat_initial_delay_layout)
@@ -567,23 +642,23 @@ class SettingsDialog(QDialog):
             "mouse_repeat_initial_delay",
             self.mouse_repeat_initial_delay_slider, self.mouse_repeat_initial_delay_input
         )
-        
+
         # マウスリピート加速開始時刻
         mouse_repeat_acceleration_start_layout = QHBoxLayout()
         self.mouse_repeat_acceleration_start_slider = QSlider(Qt.Horizontal)
         self.mouse_repeat_acceleration_start_slider.setRange(50, 500)  # 50～500ms
         mouse_repeat_acceleration_start_value = self.config.viewer.get("mouse_repeat_acceleration_start", 100)
         self.mouse_repeat_acceleration_start_slider.setValue(mouse_repeat_acceleration_start_value)
-        
+
         self.mouse_repeat_acceleration_start_input = QLineEdit()
         self.mouse_repeat_acceleration_start_input.setText(str(mouse_repeat_acceleration_start_value))
         self.mouse_repeat_acceleration_start_input.setPlaceholderText("50～500")
         self.mouse_repeat_acceleration_start_input.setMaximumWidth(80)
-        
+
         self.mouse_repeat_acceleration_start_slider.valueChanged.connect(self.on_mouse_repeat_acceleration_start_slider_changed)
         self.mouse_repeat_acceleration_start_input.textChanged.connect(self.on_mouse_repeat_acceleration_start_input_changed)
         self.mouse_repeat_acceleration_start_input.editingFinished.connect(self.on_mouse_repeat_acceleration_start_input_finished)
-        
+
         mouse_repeat_acceleration_start_layout.addWidget(self.mouse_repeat_acceleration_start_slider)
         mouse_repeat_acceleration_start_layout.addWidget(self.mouse_repeat_acceleration_start_input)
         viewer_layout.addRow(self._form_label("mouse_repeat_acceleration_start"), mouse_repeat_acceleration_start_layout)
@@ -591,23 +666,23 @@ class SettingsDialog(QDialog):
             "mouse_repeat_acceleration_start",
             self.mouse_repeat_acceleration_start_slider, self.mouse_repeat_acceleration_start_input
         )
-        
+
         # マウスリピート最小間隔
         mouse_repeat_min_interval_layout = QHBoxLayout()
         self.mouse_repeat_min_interval_slider = QSlider(Qt.Horizontal)
         self.mouse_repeat_min_interval_slider.setRange(10, 100)  # 10～100ms
         mouse_repeat_min_interval_value = self.config.viewer.get("mouse_repeat_min_interval", 30)
         self.mouse_repeat_min_interval_slider.setValue(mouse_repeat_min_interval_value)
-        
+
         self.mouse_repeat_min_interval_input = QLineEdit()
         self.mouse_repeat_min_interval_input.setText(str(mouse_repeat_min_interval_value))
         self.mouse_repeat_min_interval_input.setPlaceholderText("10～100")
         self.mouse_repeat_min_interval_input.setMaximumWidth(80)
-        
+
         self.mouse_repeat_min_interval_slider.valueChanged.connect(self.on_mouse_repeat_min_interval_slider_changed)
         self.mouse_repeat_min_interval_input.textChanged.connect(self.on_mouse_repeat_min_interval_input_changed)
         self.mouse_repeat_min_interval_input.editingFinished.connect(self.on_mouse_repeat_min_interval_input_finished)
-        
+
         mouse_repeat_min_interval_layout.addWidget(self.mouse_repeat_min_interval_slider)
         mouse_repeat_min_interval_layout.addWidget(self.mouse_repeat_min_interval_input)
         viewer_layout.addRow(self._form_label("mouse_repeat_min_interval"), mouse_repeat_min_interval_layout)
@@ -615,44 +690,44 @@ class SettingsDialog(QDialog):
             "mouse_repeat_min_interval",
             self.mouse_repeat_min_interval_slider, self.mouse_repeat_min_interval_input
         )
-        
+
         viewer_group.setLayout(viewer_layout)
         layout.addWidget(viewer_group)
-        
+
         # UIフォント設定
         ui_font_group = QGroupBox(get_text("settings.ui_font_settings"))
         ui_font_layout = QFormLayout()
-        
+
         # フォントファミリー選択（フィルタリング対応）
         self.ui_font_family = QComboBox()
         self.ui_font_family.setEditable(True)
         self.ui_font_family.setMaximumWidth(200)  # 最大幅を制限
         font_families = FontFamilyManager.get_available_font_families()
         self.ui_font_family.addItems(font_families)
-        
+
         # フォントファミリー用コンプリーター設定
         self.font_family_completer = QCompleter(font_families)
         self.font_family_completer.setCaseSensitivity(Qt.CaseInsensitive)
         self.font_family_completer.setFilterMode(Qt.MatchContains)
         self.ui_font_family.setCompleter(self.font_family_completer)
-        
+
         # プレースホルダーテキストを設定
         if self.ui_font_family.lineEdit():
             self.ui_font_family.lineEdit().setPlaceholderText(get_text("settings.font_family_placeholder"))
-        
+
         # フォントバリアント選択（フィルタリング対応）
         self.ui_font_variant = QComboBox()
         self.ui_font_variant.setEditable(True)
         self.ui_font_variant.setMaximumWidth(200)  # 最大幅を制限
-        
+
         # フォントファミリー変更時にバリアントを更新
         self.ui_font_family.currentTextChanged.connect(self.update_font_variants)
         self.ui_font_family.editTextChanged.connect(self.update_font_variants)
-        
+
         # 現在の設定値に基づいて選択
         current_font = self.config.ui_font.get("font_family", "メイリオ")
         normalized_font = FontFamilyManager.normalize_font_name(current_font)
-        
+
         # フォントファミリーを設定
         if normalized_font in font_families:
             self.ui_font_family.setEditText(normalized_font)
@@ -661,40 +736,40 @@ class SettingsDialog(QDialog):
         else:
             # 見つからない場合は正規化した名前を設定
             self.ui_font_family.setEditText(normalized_font)
-        
+
         # 初回のバリアント更新
         self.update_font_variants()
-        
+
         # バリアントが複数ある場合は現在の設定に最も近いものを選択
         if current_font != normalized_font:
             # バリアント一覧から現在のフォントを探す
             current_variants = [self.ui_font_variant.itemText(i) for i in range(self.ui_font_variant.count())]
             if current_font in current_variants:
                 self.ui_font_variant.setEditText(current_font)
-        
+
         self.ui_font_size = QSpinBox()
         self.ui_font_size.setMaximumWidth(100)  # 最大幅を制限
         self.ui_font_size.setRange(8, 64)
         self.ui_font_size.setValue(self.config.ui_font.get("font_size", 18))
-        
+
         # 文字色
         self.ui_font_color_btn = QPushButton()
         font_color = self.config.ui_font.get('font_color', '#0000ff')
         self.ui_font_color_btn.setStyleSheet(f"background-color: {font_color}; min-width: 100px; max-width: 150px; min-height: 20px;")
         self.ui_font_color_btn.clicked.connect(self.select_ui_font_color)
-        
+
         # 背景色
         self.ui_bg_color_btn = QPushButton()
         bg_color = self.config.ui_font.get('bg_color', '#ffffff')
         self.ui_bg_color_btn.setStyleSheet(f"background-color: {bg_color}; min-width: 100px; max-width: 150px; min-height: 20px;")
         self.ui_bg_color_btn.clicked.connect(self.select_ui_bg_color)
-        
+
         # 透過度
         self.ui_alpha = QSpinBox()
         self.ui_alpha.setMaximumWidth(100)  # 最大幅を制限
         self.ui_alpha.setRange(0, 255)
         self.ui_alpha.setValue(self.config.ui_font.get('alpha', 170))
-        
+
         ui_font_layout.addRow(self._form_label("font_family", suffix=""), self.ui_font_family)
         ui_font_layout.addRow(self._form_label("font_style", suffix=""), self.ui_font_variant)
         ui_font_layout.addRow(self._form_label("font_size", suffix=""), self.ui_font_size)
@@ -707,13 +782,13 @@ class SettingsDialog(QDialog):
         self._apply_setting_tip("font_color", self.ui_font_color_btn)
         self._apply_setting_tip("background_color_popup", self.ui_bg_color_btn)
         self._apply_setting_tip("transparency", self.ui_alpha)
-        
+
         ui_font_group.setLayout(ui_font_layout)
         layout.addWidget(ui_font_group)
-        
+
         layout.addStretch()
         display_widget.setLayout(layout)
-        
+
         self.tab_widget.addTab(scroll_area, get_text("ui.view"))
 
     def create_behavior_tab(self):
@@ -722,13 +797,13 @@ class SettingsDialog(QDialog):
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setWidget(behavior_widget)
-        
+
         layout = QVBoxLayout()
-        
+
         # 履歴設定
         history_group = QGroupBox(get_text("settings.history_settings"))
         history_layout = QFormLayout()
-        
+
         # 履歴の最大数
         self.history_max_count_spin = QSpinBox()
         self.history_max_count_spin.setMaximumWidth(100)  # 最大幅を制限
@@ -736,19 +811,19 @@ class SettingsDialog(QDialog):
         self.history_max_count_spin.setValue(self.config.history.get("max_count", 20))
         history_layout.addRow(self._form_label("max_history_count"), self.history_max_count_spin)
         self._apply_setting_tip("max_history_count", self.history_max_count_spin)
-        
+
         # 履歴ページ復元オプション
         self.restore_page_checkbox = QCheckBox(get_text("settings.restore_page_on_reopen"))
         self.restore_page_checkbox.setChecked(self.config.history.get("restore_page_on_reopen", False))
         self._apply_setting_tip("restore_page_on_reopen", self.restore_page_checkbox)
         history_layout.addRow(self.restore_page_checkbox)
-        
+
         # 起動時最後のファイル復元オプション
         self.open_last_file_checkbox = QCheckBox(get_text("settings.open_last_file_on_startup"))
         self.open_last_file_checkbox.setChecked(self.config.history.get("open_last_file_on_startup", False))
         self._apply_setting_tip("open_last_file_on_startup", self.open_last_file_checkbox)
         history_layout.addRow(self.open_last_file_checkbox)
-        
+
         history_group.setLayout(history_layout)
         layout.addWidget(history_group)
 
@@ -772,11 +847,11 @@ class SettingsDialog(QDialog):
         tab_layout.addRow(self.open_folders_own_tab_checkbox)
         tab_group.setLayout(tab_layout)
         layout.addWidget(tab_group)
-        
+
         # キャッシュ設定
         cache_group = QGroupBox(get_text("settings.cache_settings"))
         cache_layout = QFormLayout()
-        
+
         # メモリキャッシュサイズ
         self.cache_memory_limit = QLineEdit()
         self.cache_memory_limit.setMaximumWidth(200)
@@ -784,14 +859,14 @@ class SettingsDialog(QDialog):
         self.cache_memory_limit.setPlaceholderText(get_text("settings.cache_memory_limit_placeholder"))
         cache_layout.addRow(self._form_label("cache_memory_limit"), self.cache_memory_limit)
         self._apply_setting_tip("cache_memory_limit", self.cache_memory_limit)
-        
+
         # キャッシュサイズの説明
         cache_description = QLabel(get_text("settings.cache_memory_limit_description"))
         cache_description.setStyleSheet("color: #666; font-size: 10px;")
         cache_description.setWordWrap(True)
         self._apply_setting_tip("cache_memory_limit", cache_description)
         cache_layout.addRow(cache_description)
-        
+
         # プリフェッチページ数
         self.cache_prefetch_pages = QSpinBox()
         self.cache_prefetch_pages.setMaximumWidth(100)
@@ -799,7 +874,7 @@ class SettingsDialog(QDialog):
         self.cache_prefetch_pages.setValue(self.config.cache.get("prefetch_pages", 5))
         cache_layout.addRow(self._form_label("cache_prefetch_pages"), self.cache_prefetch_pages)
         self._apply_setting_tip("cache_prefetch_pages", self.cache_prefetch_pages)
-        
+
         # プリフェッチページ数の説明
         prefetch_description = QLabel(get_text("settings.cache_prefetch_pages_description"))
         prefetch_description.setStyleSheet("color: #666; font-size: 10px;")
@@ -899,13 +974,13 @@ class SettingsDialog(QDialog):
             self._update_cache_recommendation_label
         )
         self._update_cache_recommendation_label()
-        
+
         # 大きな画像の最適化
         self.optimize_large_images_checkbox = QCheckBox(get_text("settings.optimize_large_images"))
         self.optimize_large_images_checkbox.setChecked(self.config.cache.get("optimize_large_images", True))
         self._apply_setting_tip("optimize_large_images", self.optimize_large_images_checkbox)
         cache_layout.addRow(self.optimize_large_images_checkbox)
-        
+
         # 最適化閾値
         self.optimize_threshold = QLineEdit()
         self.optimize_threshold.setMaximumWidth(200)
@@ -913,14 +988,14 @@ class SettingsDialog(QDialog):
         self.optimize_threshold.setPlaceholderText(get_text("settings.optimize_threshold_placeholder"))
         cache_layout.addRow(self._form_label("optimize_threshold"), self.optimize_threshold)
         self._apply_setting_tip("optimize_threshold", self.optimize_threshold)
-        
+
         # 最適化閾値の説明
         optimize_threshold_description = QLabel(get_text("settings.optimize_threshold_description"))
         optimize_threshold_description.setStyleSheet("color: #666; font-size: 10px;")
         optimize_threshold_description.setWordWrap(True)
         self._apply_setting_tip("optimize_threshold", optimize_threshold_description)
         cache_layout.addRow(optimize_threshold_description)
-        
+
         # 最大解像度
         self.optimize_max_resolution = QSpinBox()
         self.optimize_max_resolution.setMaximumWidth(100)
@@ -928,20 +1003,20 @@ class SettingsDialog(QDialog):
         self.optimize_max_resolution.setValue(self.config.cache.get("optimize_max_resolution", 4000))
         cache_layout.addRow(self._form_label("optimize_max_resolution"), self.optimize_max_resolution)
         self._apply_setting_tip("optimize_max_resolution", self.optimize_max_resolution)
-        
+
         # 最大解像度の説明
         optimize_max_resolution_description = QLabel(get_text("settings.optimize_max_resolution_description"))
         optimize_max_resolution_description.setStyleSheet("color: #666; font-size: 10px;")
         optimize_max_resolution_description.setWordWrap(True)
         self._apply_setting_tip("optimize_max_resolution", optimize_max_resolution_description)
         cache_layout.addRow(optimize_max_resolution_description)
-        
+
         cache_group.setLayout(cache_layout)
         layout.addWidget(cache_group)
-        
+
         layout.addStretch()
         behavior_widget.setLayout(layout)
-        
+
         self.tab_widget.addTab(scroll_area, get_text("settings.tab_behavior"))
 
     def create_development_tab(self):
@@ -950,44 +1025,44 @@ class SettingsDialog(QDialog):
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setWidget(development_widget)
-        
+
         layout = QVBoxLayout()
-        
+
         # デバッグ設定
         debug_group = QGroupBox(get_text("settings.debug_settings"))
         debug_layout = QFormLayout()
-        
+
         # デバッグモード
         self.debug_mode_checkbox = QCheckBox(get_text("settings.debug_mode"))
         self.debug_mode_checkbox.setChecked(self.config.debug.get("enabled", False))
         self._apply_setting_tip("debug_mode", self.debug_mode_checkbox)
         debug_layout.addRow(self.debug_mode_checkbox)
-        
+
         # デバッグモードの説明
         debug_description = QLabel(get_text("settings.debug_mode_description"))
         debug_description.setStyleSheet("color: #666; font-size: 10px;")
         self._apply_setting_tip("debug_mode", debug_description)
         debug_layout.addRow(debug_description)
-        
+
         # ファイルハンドル管理設定
         self.keep_archive_handles_checkbox = QCheckBox(get_text("settings.keep_archive_handles"))
         self.keep_archive_handles_checkbox.setChecked(self.config.debug.get("keep_archive_handles", False))
         self._apply_setting_tip("keep_archive_handles", self.keep_archive_handles_checkbox)
         debug_layout.addRow(self.keep_archive_handles_checkbox)
-        
+
         # ファイルハンドル管理の警告説明
         handle_warning = QLabel(get_text("settings.keep_archive_handles_description"))
         handle_warning.setStyleSheet("color: #d63031; font-size: 10px; font-weight: bold;")
         handle_warning.setWordWrap(True)
         self._apply_setting_tip("keep_archive_handles", handle_warning)
         debug_layout.addRow(handle_warning)
-        
+
         # アーカイブメタデータキャッシュ設定
         self.cache_archive_metadata_checkbox = QCheckBox(get_text("settings.cache_archive_metadata"))
         self.cache_archive_metadata_checkbox.setChecked(self.config.debug.get("cache_archive_metadata", True))
         self._apply_setting_tip("cache_archive_metadata", self.cache_archive_metadata_checkbox)
         debug_layout.addRow(self.cache_archive_metadata_checkbox)
-        
+
         # アーカイブメタデータキャッシュの説明
         metadata_description = QLabel(get_text("settings.cache_archive_metadata_description"))
         metadata_description.setStyleSheet("color: #666; font-size: 10px;")
@@ -1005,13 +1080,13 @@ class SettingsDialog(QDialog):
         error_log_description.setWordWrap(True)
         self._apply_setting_tip("show_error_log", error_log_description)
         debug_layout.addRow(error_log_description)
-        
+
         debug_group.setLayout(debug_layout)
         layout.addWidget(debug_group)
-        
+
         layout.addStretch()
         development_widget.setLayout(layout)
-        
+
         self.tab_widget.addTab(scroll_area, get_text("settings.tab_development"))
 
     def select_background_color(self):
@@ -1027,32 +1102,48 @@ class SettingsDialog(QDialog):
                 f"background-color: {color.name()};"
                 "min-width: 100px; max-width: 150px; min-height: 20px;"
             )
+
     def select_ui_font_color(self):
+        """文字色を選び、ボタンの背景にする。無効な色なら変えない。"""
         color = QColorDialog.getColor(QColor(self.config.ui_font.get("font_color", "#0000ff")), self, get_text("settings.select_font_color"))
         if color.isValid():
             rgb = color.name()
             self.ui_font_color_btn.setStyleSheet(f"background-color: {rgb}; min-width: 100px; max-width: 150px; min-height: 20px;")
+
     def select_ui_bg_color(self):
+        """背景色を選び、ボタンの背景にする。無効な色なら変えない。"""
         color = QColorDialog.getColor(QColor(self.config.ui_font.get("bg_color", "#ffffff")), self, get_text("settings.select_background_color"))
         if color.isValid():
             rgb = color.name()
             self.ui_bg_color_btn.setStyleSheet(f"background-color: {rgb}; min-width: 100px; max-width: 150px; min-height: 20px;")
+
     def on_sensitivity_slider_changed(self, value):
-        """スライダーの値が変更された時の処理"""
+        """スライダーの値が変更された時の処理
+
+        Args:
+            value: スライダーの値。10で割った小数を入力へ出す。
+        """
         # 無限ループを防ぐため、一時的にシグナルを切断
         self.sensitivity_input.blockSignals(True)
         self.sensitivity_input.setText(f"{value / 10:.1f}")
         self.sensitivity_input.blockSignals(False)
+
     def on_sensitivity_input_changed(self, text):
-        """テキストボックスの値が変更された時の処理"""
+        """テキストボックスの値が変更された時の処理
+
+        Args:
+            text: 入力された文字。小数にできるときスライダーへ反映する。
+        """
         # 無限ループを防ぐため、一時的にシグナルを切断
         self.sensitivity_slider.blockSignals(True)
         try:
             value = float(text)
             self.sensitivity_slider.setValue(int(value * 10))
         except ValueError:
+            # 小数にできない入力はスライダーへ反映せず捨てる。
             pass
         self.sensitivity_slider.blockSignals(False)
+
     def on_sensitivity_input_finished(self):
         """テキストボックスの編集が終了した時の処理"""
         try:
@@ -1074,20 +1165,29 @@ class SettingsDialog(QDialog):
             self.sensitivity_slider.blockSignals(False)
 
     def on_gesture_threshold_slider_changed(self, value):
-        """ジェスチャー判定距離スライダーの値が変更された時の処理"""
+        """ジェスチャー判定距離スライダーの値が変更された時の処理
+
+        Args:
+            value: スライダーの値。
+        """
         # 無限ループを防ぐため、一時的にシグナルを切断
         self.gesture_threshold_input.blockSignals(True)
         self.gesture_threshold_input.setText(str(value))
         self.gesture_threshold_input.blockSignals(False)
 
     def on_gesture_threshold_input_changed(self, text):
-        """ジェスチャー判定距離テキストボックスの値が変更された時の処理"""
+        """ジェスチャー判定距離テキストボックスの値が変更された時の処理
+
+        Args:
+            text: 入力された文字。整数にできるときスライダーへ反映する。
+        """
         # 無限ループを防ぐため、一時的にシグナルを切断
         self.gesture_threshold_slider.blockSignals(True)
         try:
             value = int(text)
             self.gesture_threshold_slider.setValue(value)
         except ValueError:
+            # 整数にできない入力はスライダーへ反映せず捨てる。
             pass
         self.gesture_threshold_slider.blockSignals(False)
 
@@ -1112,18 +1212,27 @@ class SettingsDialog(QDialog):
             self.gesture_threshold_slider.blockSignals(False)
 
     def on_mouse_repeat_initial_delay_slider_changed(self, value):
-        """マウスリピート初期間隔スライダーの値が変更された時の処理"""
+        """マウスリピート初期間隔スライダーの値が変更された時の処理
+
+        Args:
+            value: スライダーの値。
+        """
         self.mouse_repeat_initial_delay_input.blockSignals(True)
         self.mouse_repeat_initial_delay_input.setText(str(value))
         self.mouse_repeat_initial_delay_input.blockSignals(False)
 
     def on_mouse_repeat_initial_delay_input_changed(self, text):
-        """マウスリピート初期間隔テキストボックスの値が変更された時の処理"""
+        """マウスリピート初期間隔テキストボックスの値が変更された時の処理
+
+        Args:
+            text: 入力された文字。整数にできるときスライダーへ反映する。
+        """
         self.mouse_repeat_initial_delay_slider.blockSignals(True)
         try:
             value = int(text)
             self.mouse_repeat_initial_delay_slider.setValue(value)
         except ValueError:
+            # 整数にできない入力はスライダーへ反映せず捨てる。
             pass
         self.mouse_repeat_initial_delay_slider.blockSignals(False)
 
@@ -1138,24 +1247,34 @@ class SettingsDialog(QDialog):
             self.mouse_repeat_initial_delay_slider.setValue(value)
             self.mouse_repeat_initial_delay_slider.blockSignals(False)
         except ValueError:
+            # 数値でない場合はデフォルト値（100）に戻す。
             self.mouse_repeat_initial_delay_input.setText("100")
             self.mouse_repeat_initial_delay_slider.blockSignals(True)
             self.mouse_repeat_initial_delay_slider.setValue(100)
             self.mouse_repeat_initial_delay_slider.blockSignals(False)
 
     def on_mouse_repeat_acceleration_start_slider_changed(self, value):
-        """マウスリピート加速開始時刻スライダーの値が変更された時の処理"""
+        """マウスリピート加速開始時刻スライダーの値が変更された時の処理
+
+        Args:
+            value: スライダーの値。
+        """
         self.mouse_repeat_acceleration_start_input.blockSignals(True)
         self.mouse_repeat_acceleration_start_input.setText(str(value))
         self.mouse_repeat_acceleration_start_input.blockSignals(False)
 
     def on_mouse_repeat_acceleration_start_input_changed(self, text):
-        """マウスリピート加速開始時刻テキストボックスの値が変更された時の処理"""
+        """マウスリピート加速開始時刻テキストボックスの値が変更された時の処理
+
+        Args:
+            text: 入力された文字。整数にできるときスライダーへ反映する。
+        """
         self.mouse_repeat_acceleration_start_slider.blockSignals(True)
         try:
             value = int(text)
             self.mouse_repeat_acceleration_start_slider.setValue(value)
         except ValueError:
+            # 整数にできない入力はスライダーへ反映せず捨てる。
             pass
         self.mouse_repeat_acceleration_start_slider.blockSignals(False)
 
@@ -1170,24 +1289,34 @@ class SettingsDialog(QDialog):
             self.mouse_repeat_acceleration_start_slider.setValue(value)
             self.mouse_repeat_acceleration_start_slider.blockSignals(False)
         except ValueError:
+            # 数値でない場合はデフォルト値（100）に戻す。
             self.mouse_repeat_acceleration_start_input.setText("100")
             self.mouse_repeat_acceleration_start_slider.blockSignals(True)
             self.mouse_repeat_acceleration_start_slider.setValue(100)
             self.mouse_repeat_acceleration_start_slider.blockSignals(False)
 
     def on_mouse_repeat_min_interval_slider_changed(self, value):
-        """マウスリピート最小間隔スライダーの値が変更された時の処理"""
+        """マウスリピート最小間隔スライダーの値が変更された時の処理
+
+        Args:
+            value: スライダーの値。
+        """
         self.mouse_repeat_min_interval_input.blockSignals(True)
         self.mouse_repeat_min_interval_input.setText(str(value))
         self.mouse_repeat_min_interval_input.blockSignals(False)
 
     def on_mouse_repeat_min_interval_input_changed(self, text):
-        """マウスリピート最小間隔テキストボックスの値が変更された時の処理"""
+        """マウスリピート最小間隔テキストボックスの値が変更された時の処理
+
+        Args:
+            text: 入力された文字。整数にできるときスライダーへ反映する。
+        """
         self.mouse_repeat_min_interval_slider.blockSignals(True)
         try:
             value = int(text)
             self.mouse_repeat_min_interval_slider.setValue(value)
         except ValueError:
+            # 整数にできない入力はスライダーへ反映せず捨てる。
             pass
         self.mouse_repeat_min_interval_slider.blockSignals(False)
 
@@ -1202,6 +1331,7 @@ class SettingsDialog(QDialog):
             self.mouse_repeat_min_interval_slider.setValue(value)
             self.mouse_repeat_min_interval_slider.blockSignals(False)
         except ValueError:
+            # 数値でない場合はデフォルト値（30）に戻す。
             self.mouse_repeat_min_interval_input.setText("30")
             self.mouse_repeat_min_interval_slider.blockSignals(True)
             self.mouse_repeat_min_interval_slider.setValue(30)
@@ -1213,18 +1343,18 @@ class SettingsDialog(QDialog):
         current_family = self.ui_font_family.currentText()
         if not current_family:
             current_family = self.ui_font_family.lineEdit().text() if self.ui_font_family.lineEdit() else ""
-        
+
         if not current_family:
             return
-        
+
         # バリアント一覧を取得
         variants = FontFamilyManager.get_font_family_variants(current_family)
-        
+
         # コンボボックスを更新
         self.ui_font_variant.blockSignals(True)
         self.ui_font_variant.clear()
         self.ui_font_variant.addItems(variants)
-        
+
         # バリアント用コンプリーター設定
         if not hasattr(self, 'font_variant_completer'):
             self.font_variant_completer = QCompleter(variants)
@@ -1234,15 +1364,15 @@ class SettingsDialog(QDialog):
         else:
             # コンプリーターのモデルを更新
             self.font_variant_completer.model().setStringList(variants)
-        
+
         # プレースホルダーテキストを設定
         if self.ui_font_variant.lineEdit():
             self.ui_font_variant.lineEdit().setPlaceholderText(get_text("settings.font_style_placeholder"))
-        
+
         # デフォルトで最初のバリアント（通常はRegular）を選択
         if variants:
             self.ui_font_variant.setEditText(variants[0])
-        
+
         self.ui_font_variant.blockSignals(False)
 
     def reset_settings(self):
@@ -1254,14 +1384,14 @@ class SettingsDialog(QDialog):
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
-        
+
         if reply == QMessageBox.Yes:
             # デフォルト設定を取得
             default_config = Config.get_default_config()
-            
+
             # 各UI要素をデフォルト値で更新
             self._update_ui_with_config(default_config)
-            
+
             # 初期化完了を通知
             QMessageBox.information(
                 self,
@@ -1270,7 +1400,11 @@ class SettingsDialog(QDialog):
             )
 
     def _update_ui_with_config(self, config_dict):
-        """設定辞書の値でUIを更新"""
+        """設定辞書の値でUIを更新
+
+        Args:
+            config_dict: 画面へ反映する設定。
+        """
         # このメソッドはreset/import時のUI同期だけを行う。
         font_changed = False
         language_changed = False
@@ -1298,7 +1432,7 @@ class SettingsDialog(QDialog):
                 f"background-color: {bg_color};"
                 "min-width: 100px; max-width: 150px; min-height: 20px;"
             )
-            
+
             # その他のビューア設定
             self.fit_to_window_checkbox.setChecked(config_dict["viewer"].get("fit_to_window", True))
             self.fit_to_window_min_checkbox.setChecked(config_dict["viewer"].get("fit_to_window_minimum", True))
@@ -1311,26 +1445,26 @@ class SettingsDialog(QDialog):
             spread_pref = config_dict["viewer"].get("spread_toggle_preference", "keep_previous")
             pref_index = self.spread_toggle_preference_combo.findData(spread_pref)
             self.spread_toggle_preference_combo.setCurrentIndex(pref_index if pref_index >= 0 else 0)
-            
+
             # 画像移動感度
             sensitivity = config_dict["viewer"].get("image_move_sensitivity", 2.0)
             self.sensitivity_input.setText(f"{sensitivity:.1f}")
             self.sensitivity_slider.setValue(int(sensitivity * 10))
-            
+
             # ジェスチャー判定距離
             gesture_threshold = config_dict["viewer"].get("gesture_threshold", 50)
             self.gesture_threshold_input.setText(str(gesture_threshold))
             self.gesture_threshold_slider.setValue(gesture_threshold)
-            
+
             # マウスリピート設定
             mouse_repeat_initial_delay = config_dict["viewer"].get("mouse_repeat_initial_delay", 100)
             self.mouse_repeat_initial_delay_input.setText(str(mouse_repeat_initial_delay))
             self.mouse_repeat_initial_delay_slider.setValue(mouse_repeat_initial_delay)
-            
+
             mouse_repeat_acceleration_start = config_dict["viewer"].get("mouse_repeat_acceleration_start", 100)
             self.mouse_repeat_acceleration_start_input.setText(str(mouse_repeat_acceleration_start))
             self.mouse_repeat_acceleration_start_slider.setValue(mouse_repeat_acceleration_start)
-            
+
             mouse_repeat_min_interval = config_dict["viewer"].get("mouse_repeat_min_interval", 30)
             self.mouse_repeat_min_interval_input.setText(str(mouse_repeat_min_interval))
             self.mouse_repeat_min_interval_slider.setValue(mouse_repeat_min_interval)
@@ -1359,7 +1493,7 @@ class SettingsDialog(QDialog):
             self.keep_archive_handles_checkbox.setChecked(config_dict["debug"].get("keep_archive_handles", False))
             self.cache_archive_metadata_checkbox.setChecked(config_dict["debug"].get("cache_archive_metadata", True))
             self.show_error_log_checkbox.setChecked(config_dict["debug"].get("show_error_log", False))
-        
+
         # キャッシュ設定
         if "cache" in config_dict:
             self.cache_memory_limit.setText(config_dict["cache"].get("memory_limit", "256MB"))
@@ -1382,7 +1516,7 @@ class SettingsDialog(QDialog):
         selected_variant = self.ui_font_variant.currentText()
         if not selected_variant and self.ui_font_variant.lineEdit():
             selected_variant = self.ui_font_variant.lineEdit().text()
-        
+
         if selected_variant:
             self.config.ui_font["font_family"] = selected_variant
         else:
@@ -1390,13 +1524,11 @@ class SettingsDialog(QDialog):
             if not selected_family and self.ui_font_family.lineEdit():
                 selected_family = self.ui_font_family.lineEdit().text()
             self.config.ui_font["font_family"] = selected_family
-        
+
         self.config.ui_font["font_size"] = self.ui_font_size.value()
         self.config.ui_font["font_color"] = self.ui_font_color_btn.palette().button().color().name()
         self.config.ui_font["bg_color"] = self.ui_bg_color_btn.palette().button().color().name()
         self.config.ui_font["alpha"] = self.ui_alpha.value()
-
-
 
         # フォントが変更された場合、アプリケーション全体のフォントを更新
         if font_changed:
@@ -1413,6 +1545,7 @@ class SettingsDialog(QDialog):
                     if self.parent():
                         self.parent().setFont(app_font)
             except Exception as e:
+                # フォント適用に失敗したらログして、設定の保存は続ける。
                 logger.error(get_log_text("settings_dialog_font_update_error", error=e))
 
         # 言語が変更された場合、即座に言語を切り替えてメニューを再構築
@@ -1434,7 +1567,11 @@ class SettingsDialog(QDialog):
             )
 
     def apply_settings(self):
-        """設定を適用"""
+        """設定を適用
+
+        Returns:
+            保存できたとき True。
+        """
         return self._save_settings()
 
     def accept(self):
@@ -1444,13 +1581,16 @@ class SettingsDialog(QDialog):
         super().accept()
 
     def export_config(self):
+        """プロファイル節を除いた設定を YAML へ書く。"""
         path, _ = QFileDialog.getSaveFileName(self, get_text("ui.export"), "config_export.yaml", get_text("ui.yaml_file_filter"))
         if path:
             export_data = Config.strip_profile_section(self.config.to_dict())
             with open(path, "w", encoding="utf-8") as f:
                 yaml.dump(export_data, f, allow_unicode=True)
             QMessageBox.information(self, get_text("dialogs.information"), get_text("ui.settings_saved_to_path", path=path))
+
     def import_config(self):
+        """YAML を読み、不足を既定で補って知らせ、上書きの確認のあと設定と画面へ反映する。"""
         path, _ = QFileDialog.getOpenFileName(self, get_text("ui.import"), "", get_text("ui.yaml_file_filter"))
         if path:
             with open(path, "r", encoding="utf-8") as f:
@@ -1485,7 +1625,11 @@ class SettingsDialog(QDialog):
                 QMessageBox.information(self, get_text("dialogs.information"), get_text("ui.settings_imported"))
 
     def _save_settings(self):
-        """設定を保存する共通処理"""
+        """設定を保存する共通処理
+
+        Returns:
+            カスタムの置き場が空なら False。それ以外は True。
+        """
         location = self._current_location_settings()
         if location["data_location"] == LOCATION_CUSTOM and not location["custom_path"]:
             QMessageBox.warning(
@@ -1544,6 +1688,7 @@ class SettingsDialog(QDialog):
                 sensitivity_value = 2.0
             self.config.viewer["image_move_sensitivity"] = sensitivity_value
         except ValueError:
+            # 数値でない感度はデフォルト値（2.0）に戻す。
             self.config.viewer["image_move_sensitivity"] = 2.0
 
         # ジェスチャー判定距離設定
@@ -1554,8 +1699,9 @@ class SettingsDialog(QDialog):
                 gesture_threshold_value = 50
             self.config.viewer["gesture_threshold"] = gesture_threshold_value
         except ValueError:
+            # 数値でない判定距離はデフォルト値（50）に戻す。
             self.config.viewer["gesture_threshold"] = 50
-        
+
         # マウスリピート設定
         try:
             mouse_repeat_initial_delay_value = int(self.mouse_repeat_initial_delay_input.text())
@@ -1563,22 +1709,25 @@ class SettingsDialog(QDialog):
                 mouse_repeat_initial_delay_value = 100
             self.config.viewer["mouse_repeat_initial_delay"] = mouse_repeat_initial_delay_value
         except ValueError:
+            # 数値でない初期間隔はデフォルト値（100）に戻す。
             self.config.viewer["mouse_repeat_initial_delay"] = 100
-        
+
         try:
             mouse_repeat_acceleration_start_value = int(self.mouse_repeat_acceleration_start_input.text())
             if mouse_repeat_acceleration_start_value < 50 or mouse_repeat_acceleration_start_value > 500:
                 mouse_repeat_acceleration_start_value = 100
             self.config.viewer["mouse_repeat_acceleration_start"] = mouse_repeat_acceleration_start_value
         except ValueError:
+            # 数値でない加速開始はデフォルト値（100）に戻す。
             self.config.viewer["mouse_repeat_acceleration_start"] = 100
-        
+
         try:
             mouse_repeat_min_interval_value = int(self.mouse_repeat_min_interval_input.text())
             if mouse_repeat_min_interval_value < 10 or mouse_repeat_min_interval_value > 100:
                 mouse_repeat_min_interval_value = 30
             self.config.viewer["mouse_repeat_min_interval"] = mouse_repeat_min_interval_value
         except ValueError:
+            # 数値でない最小間隔はデフォルト値（30）に戻す。
             self.config.viewer["mouse_repeat_min_interval"] = 30
 
         # 履歴設定
@@ -1591,7 +1740,7 @@ class SettingsDialog(QDialog):
         self.config.debug["keep_archive_handles"] = self.keep_archive_handles_checkbox.isChecked()
         self.config.debug["cache_archive_metadata"] = self.cache_archive_metadata_checkbox.isChecked()
         self.config.debug["show_error_log"] = self.show_error_log_checkbox.isChecked()
-        
+
         # キャッシュ設定
         # キャッシュサイズの入力値を検証
         cache_memory_limit_text = self.cache_memory_limit.text().strip()
@@ -1608,15 +1757,15 @@ class SettingsDialog(QDialog):
                 get_text("dialogs.warning"),
                 get_text("settings.invalid_cache_size_warning")
             )
-        
+
         self.config.cache["prefetch_pages"] = self.cache_prefetch_pages.value()
         self.config.cache["image_loader_workers"] = (
             self.cache_image_loader_workers.currentData()
         )
-        
+
         # 画像最適化設定
         self.config.cache["optimize_large_images"] = self.optimize_large_images_checkbox.isChecked()
-        
+
         # 最適化閾値の検証
         optimize_threshold_text = self.optimize_threshold.text().strip()
         try:
@@ -1632,7 +1781,7 @@ class SettingsDialog(QDialog):
                 get_text("dialogs.warning"),
                 get_text("settings.invalid_optimize_threshold_warning")
             )
-        
+
         self.config.cache["optimize_max_resolution"] = self.optimize_max_resolution.value()
 
         # UIフォント設定
@@ -1640,7 +1789,7 @@ class SettingsDialog(QDialog):
         selected_variant = self.ui_font_variant.currentText()
         if not selected_variant and self.ui_font_variant.lineEdit():
             selected_variant = self.ui_font_variant.lineEdit().text()
-        
+
         if selected_variant:
             self.config.ui_font["font_family"] = selected_variant
         else:
@@ -1648,13 +1797,11 @@ class SettingsDialog(QDialog):
             if not selected_family and self.ui_font_family.lineEdit():
                 selected_family = self.ui_font_family.lineEdit().text()
             self.config.ui_font["font_family"] = selected_family
-        
+
         self.config.ui_font["font_size"] = self.ui_font_size.value()
         self.config.ui_font["font_color"] = self.ui_font_color_btn.palette().button().color().name()
         self.config.ui_font["bg_color"] = self.ui_bg_color_btn.palette().button().color().name()
         self.config.ui_font["alpha"] = self.ui_alpha.value()
-
-
 
         # フォントが変更された場合、アプリケーション全体のフォントを更新
         if font_changed:
@@ -1671,6 +1818,7 @@ class SettingsDialog(QDialog):
                     if self.parent():
                         self.parent().setFont(app_font)
             except Exception as e:
+                # フォント適用に失敗したらログして、設定の保存は続ける。
                 logger.error(get_log_text("settings_dialog_font_update_error", error=e))
 
         # 言語が変更された場合、即座に言語を切り替えてメニューを再構築
@@ -1690,7 +1838,7 @@ class SettingsDialog(QDialog):
                 get_text("dialogs.information"),
                 get_text("settings.debug_log_enabled")
             )
-        
+
         # 設定を保存（親ウィンドウのメソッドを使用）
         if hasattr(self.parent(), 'save_config'):
             self.parent().save_config()
@@ -1709,4 +1857,3 @@ class SettingsDialog(QDialog):
     def reject(self):
         """Cancelボタンが押された時の処理"""
         super().reject()
- 

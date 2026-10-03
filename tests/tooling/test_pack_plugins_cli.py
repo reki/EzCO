@@ -15,6 +15,17 @@ from tooling.pack_plugins_cli import (
 
 
 def _write_plugin(root: Path, folder: str, *, manifest=None, module_name="plugin") -> Path:
+    """manifest と入口モジュールを持つプラグインディレクトリを作る。
+
+    Args:
+        root: 親ディレクトリ。
+        folder: プラグインのフォルダ名。
+        manifest: 既定の manifest へ上書きする項目。
+        module_name: 入口モジュールのファイル名。
+
+    Returns:
+        作成したプラグインディレクトリ。
+    """
     src = root / folder
     (src / "src").mkdir(parents=True)
     body = {
@@ -32,6 +43,7 @@ def _write_plugin(root: Path, folder: str, *, manifest=None, module_name="plugin
 
 
 def test_iter_plugin_dirs_requires_manifest(tmp_path: Path):
+    """manifest.json が無いディレクトリや README が列挙され、manifest があるものが落ちる。"""
     plugins = tmp_path / "plugins"
     (plugins / "ok").mkdir(parents=True)
     (plugins / "ok" / "manifest.json").write_text("{}", encoding="utf-8")
@@ -41,10 +53,12 @@ def test_iter_plugin_dirs_requires_manifest(tmp_path: Path):
 
 
 def test_zip_name_includes_version():
+    """zip 名がフォルダ名とバージョンをハイフンでつないだものにならない。"""
     assert zip_name_for("example_zip", "1.1.0") == "example_zip-1.1.0.zip"
 
 
 def test_pack_plugin_dir_puts_manifest_at_zip_root(tmp_path: Path):
+    """zip 直下の manifest か src/plugin.py が欠け、__pycache__ かフォルダ名の接頭辞が入る。"""
     src = _write_plugin(tmp_path, "sample")
     cache = src / "src" / "__pycache__"
     cache.mkdir()
@@ -62,6 +76,7 @@ def test_pack_plugin_dir_puts_manifest_at_zip_root(tmp_path: Path):
 
 
 def test_pack_plugins_writes_versioned_zip(tmp_path: Path):
+    """指定したプラグインのバージョン付き zip が書けず、指定外の zip が出る。"""
     plugins = tmp_path / "plugins"
     _write_plugin(plugins, "keep_me", manifest={"version": "2.3.0"})
     _write_plugin(plugins, "skip_me")
@@ -75,6 +90,7 @@ def test_pack_plugins_writes_versioned_zip(tmp_path: Path):
 
 
 def test_pack_plugins_unknown_name_is_failure_not_abort(tmp_path: Path):
+    """存在しない名前で全体が中断し、続く存在するプラグインの成功が残らない。"""
     plugins = tmp_path / "plugins"
     _write_plugin(plugins, "only")
     report = pack_plugins(tmp_path, ["missing", "only"])
@@ -84,6 +100,7 @@ def test_pack_plugins_unknown_name_is_failure_not_abort(tmp_path: Path):
 
 
 def test_lint_rejects_invalid_json(tmp_path: Path):
+    """壊れた JSON が構文エラーとして拒否されない。"""
     src = _write_plugin(tmp_path, "broken")
     (src / "manifest.json").write_text("{", encoding="utf-8")
     with pytest.raises(ValueError, match="構文エラー"):
@@ -91,18 +108,21 @@ def test_lint_rejects_invalid_json(tmp_path: Path):
 
 
 def test_lint_rejects_invalid_version(tmp_path: Path):
+    """不正なバージョン文字列が valid version として拒否されない。"""
     src = _write_plugin(tmp_path, "badver", manifest={"version": "not-a-version"})
     with pytest.raises(ValueError, match="valid version"):
         lint_plugin_dir(src)
 
 
 def test_lint_rejects_unknown_permission(tmp_path: Path):
+    """知らない権限キーが unknown key として拒否されない。"""
     src = _write_plugin(tmp_path, "badperm", manifest={"permissions": {"location": True}})
     with pytest.raises(ValueError, match="unknown key"):
         lint_plugin_dir(src)
 
 
 def test_lint_rejects_non_bool_permission(tmp_path: Path):
+    """権限の値が bool でなくても must be a bool として拒否されない。"""
     src = _write_plugin(
         tmp_path, "badperm", manifest={"permissions": {"inactive_callback": "yes"}}
     )
@@ -111,6 +131,7 @@ def test_lint_rejects_non_bool_permission(tmp_path: Path):
 
 
 def test_pack_plugins_skips_invalid_and_continues(tmp_path: Path, capsys):
+    """壊れた manifest で他の zip が書けず、失敗名か ERROR 行が stderr に残らない。"""
     plugins = tmp_path / "plugins"
     _write_plugin(plugins, "good")
     bad = _write_plugin(plugins, "bad", manifest={"version": "??"})

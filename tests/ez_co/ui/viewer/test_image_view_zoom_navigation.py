@@ -6,10 +6,19 @@ from PySide6.QtCore import QPoint, QSize
 from ez_co.config import Config
 from ez_co.ui.viewer.image_view import ImageView
 
+# このモジュールのテストは QApplication 付きで動かす。
 pytestmark = pytest.mark.usefixtures("qapp")
 
 
 def _walk(mode: str):
+    """next を移動先が無くなるまで進めた位置の列を返す。
+
+    Args:
+        mode: 左開きか右開き。
+
+    Returns:
+        開始位置から最後の移動先までの点。
+    """
     current = QPoint(-900 if mode == "left" else 900, 700)
     positions = [QPoint(current)]
     while True:
@@ -23,6 +32,7 @@ def _walk(mode: str):
 
 
 def test_left_mode_moves_across_then_down():
+    """左開きが右端の次に下段の左へ移らず、最後が右下にならない。"""
     positions = _walk("left")
     assert positions[:5] == [
         QPoint(-900, 700),
@@ -35,6 +45,7 @@ def test_left_mode_moves_across_then_down():
 
 
 def test_right_mode_is_horizontally_mirrored():
+    """右開きの位置列が、左開きの水平方向だけ反転したものと一致しない。"""
     left = _walk("left")
     right = _walk("right")
     assert right == [QPoint(-point.x(), point.y()) for point in left]
@@ -42,6 +53,7 @@ def test_right_mode_is_horizontally_mirrored():
 
 @pytest.mark.parametrize("mode", ["left", "right"])
 def test_previous_follows_the_complete_sequence_in_reverse(mode):
+    """previous が next で通った位置の逆順にならない。"""
     positions = _walk(mode)
     current = QPoint(positions[-1])
     reversed_positions = [QPoint(current)]
@@ -57,6 +69,7 @@ def test_previous_follows_the_complete_sequence_in_reverse(mode):
 
 
 def test_exact_fit_does_not_pan():
+    """表示が枠に収まっているのに、next のパン先が出る。"""
     assert (
         ImageView.calculate_zoom_navigation_offset(
             QPoint(), 0, 0, 800, 600, "left", "next"
@@ -66,6 +79,7 @@ def test_exact_fit_does_not_pan():
 
 
 def test_geometry_uses_rotated_display_coordinates():
+    """90度回転後も回転前の縦横でパン上限を出し、表示サイズが入れ替わらない。"""
     view = ImageView(config=Config())
     displayed, max_x, max_y = view._zoom_navigation_geometry(
         QSize(1200, 800), QSize(800, 600), 2.0, 90
@@ -75,6 +89,7 @@ def test_geometry_uses_rotated_display_coordinates():
 
 
 def test_one_pixel_remainder_is_clamped_to_edge():
+    """ビューポートで割り切れない1ピクセルが、途中位置か端のどちらかから落ちる。"""
     assert ImageView._axis_positions(0, 801, 800) == [0, 800, 801]
 
 
@@ -86,6 +101,7 @@ def test_one_pixel_remainder_is_clamped_to_edge():
     ],
 )
 def test_horizontal_only_reaches_edge_before_page_turn(mode, start, end):
+    """縦のはみ出しが無いのに水平端の前で止まる、または端を越えた位置になる。"""
     current = QPoint(start)
     while True:
         target = ImageView.calculate_zoom_navigation_offset(
@@ -99,6 +115,7 @@ def test_horizontal_only_reaches_edge_before_page_turn(mode, start, end):
 
 @pytest.mark.parametrize("mode", ["left", "right"])
 def test_vertical_only_moves_top_to_bottom(mode):
+    """横のはみ出しが無いのに開き方向へ左右に動き、上から下の段が欠ける。"""
     current = QPoint(0, 700)
     positions = [QPoint(current)]
     while True:
@@ -129,6 +146,7 @@ def test_vertical_only_moves_top_to_bottom(mode):
 def test_page_transition_starts_at_reading_order_corner(
     monkeypatch, mode, direction, expected
 ):
+    """ページ切替の開始位置が読書順の角にならず、使い終わった方向が残る。"""
     config = Config()
     config.viewer["zoom_navigation_mode"] = mode
     view = ImageView(config=config)
@@ -144,6 +162,7 @@ def test_page_transition_starts_at_reading_order_corner(
 
 
 def test_pending_transition_is_consumed_once_and_does_not_leak_to_jump(monkeypatch):
+    """切替位置が次の画像でもう一度入る、またはキャンセル後の画像でオフセットが上書きされる。"""
     config = Config()
     config.viewer["zoom_navigation_mode"] = "left"
     view = ImageView(config=config)

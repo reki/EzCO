@@ -17,7 +17,6 @@ from ez_co.utils.image_loader_workers import AUTO_IMAGE_LOADER_WORKERS
 # p95がこの幅に収まる条件は同等とみなし、次の基準（RSS増分・小さい資源）で選ぶ
 P95_EQUIVALENCE_MS = 2.0
 
-
 @dataclass(frozen=True)
 class BenchmarkOutcome:
     """採用候補と、画面へ出す根拠。"""
@@ -33,18 +32,42 @@ class BenchmarkOutcome:
 
 
 def _memory_limit_bytes(memory_limit: str) -> int:
+    """メモリ上限の文字列をバイト数にする。
+
+    Args:
+        memory_limit: サイズを表す文字列
+
+    Returns:
+        バイト数。解釈できないとき 0
+    """
     try:
         return int(humanfriendly.parse_size(memory_limit))
     except Exception:
+        # サイズを解釈できなければ 0 を返す
         return 0
 
 
 def _has_churn(result: BenchmarkConditionResult) -> bool:
+    """再デコードか、先読みの使用前破棄があるかを返す。
+
+    Args:
+        result: 判定する測定値
+
+    Returns:
+        どちらかがあれば True
+    """
     return result.redecode_count > 0 or result.prefetched_evicted_before_use > 0
 
 
 def condition_sort_key(result: BenchmarkConditionResult) -> tuple:
-    """duplicate decodeなし → churnなし → p95が低い → RSS増分が小 → 小さい資源。"""
+    """duplicate decodeなし → churnなし → p95が低い → RSS増分が小 → 小さい資源。
+
+    Args:
+        result: 並べる測定値
+
+    Returns:
+        小さいほど優先される比較キー
+    """
     return (
         1 if result.duplicate_decode_count > 0 else 0,
         1 if _has_churn(result) else 0,
@@ -57,7 +80,17 @@ def condition_sort_key(result: BenchmarkConditionResult) -> tuple:
 
 
 def select_stage_a_winner(results) -> int:
-    """worker候補の勝者。同等ならworker数が少ない方を選ぶ。"""
+    """worker候補の勝者。同等ならworker数が少ない方を選ぶ。
+
+    Args:
+        results: 測定結果。worker 段階以外は無視する
+
+    Returns:
+        選ばれた worker 数
+
+    Raises:
+        ValueError: worker 段階の結果が無いとき
+    """
     stage_a = [result for result in results if result.stage == STAGE_WORKER]
     if not stage_a:
         raise ValueError("stage A results are required to pick a worker count")
@@ -65,7 +98,17 @@ def select_stage_a_winner(results) -> int:
 
 
 def select_best_condition(results) -> BenchmarkConditionResult:
-    """Stage Bがあればその中から、無ければStage Aから決定的に選ぶ。"""
+    """Stage Bがあればその中から、無ければStage Aから決定的に選ぶ。
+
+    Args:
+        results: 測定結果
+
+    Returns:
+        選ばれた条件の測定値
+
+    Raises:
+        ValueError: 候補が無いとき
+    """
     stage_b = [result for result in results if result.stage == STAGE_CACHE]
     candidates = stage_b or list(results)
     if not candidates:
@@ -74,7 +117,14 @@ def select_best_condition(results) -> BenchmarkConditionResult:
 
 
 def evaluate_benchmark(report: BenchmarkReport) -> BenchmarkOutcome:
-    """保存候補を作る。Stage A勝者がauto実効値と同じなら ``"auto"`` で保存する。"""
+    """保存候補を作る。Stage A勝者がauto実効値と同じなら ``"auto"`` で保存する。
+
+    Args:
+        report: 測定全体の結果
+
+    Returns:
+        保存するメモリ上限、先読み、worker を含む採用結果
+    """
     best = select_best_condition(report.results)
     if report.stage_a_winner_workers == report.auto_effective_workers:
         workers: str | int = AUTO_IMAGE_LOADER_WORKERS

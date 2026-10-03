@@ -6,11 +6,21 @@ from ez_co.filters.registry import FilterRecord, FilterRegistry
 
 
 def test_inplace_process_does_not_mutate_original():
+    """process が受け取った画像を塗っても、渡した原画の画素は残り、結果だけが塗られる。"""
     original = Image.new("RGB", (4, 4), (1, 2, 3))
     snapshot = list(original.getdata())
     registry = FilterRegistry()
 
     def mutate(image, context):
+        """画像全体を単色で塗り替える。
+
+        Args:
+            image: 塗り替える画像。
+            context: フィルタのコンテキスト。
+
+        Returns:
+            塗り替えた画像。
+        """
         image.paste((9, 9, 9), (0, 0, 4, 4))
         return image
 

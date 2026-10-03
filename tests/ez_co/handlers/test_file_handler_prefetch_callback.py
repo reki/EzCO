@@ -7,6 +7,11 @@ from ez_co.handlers.file_handler import FileHandler
 
 
 def _handler(monkeypatch):
+    """ワーカーを起動しない FileHandler を作る。
+
+    Returns:
+        その FileHandler。
+    """
     monkeypatch.setattr(FileHandler, "_start_workers", lambda self: None)
     monkeypatch.setattr(FileHandler, "_is_plugin_image", lambda self, file: False)
     config = SimpleNamespace(
@@ -19,6 +24,7 @@ def _handler(monkeypatch):
 
 
 def test_prefetch_load_does_not_call_image_loaded(tmp_path, monkeypatch):
+    """先読みの読み込みは表示コールバックを呼ばず、キャッシュには入る。"""
     handler = _handler(monkeypatch)
     path = tmp_path / "page.png"
     Image.new("RGB", (8, 8), "white").save(path)
@@ -31,6 +37,7 @@ def test_prefetch_load_does_not_call_image_loaded(tmp_path, monkeypatch):
 
 
 def test_current_load_schedules_image_loaded(qapp, tmp_path, monkeypatch):
+    """表示中の読み込みは、イベント処理後に表示コールバックへそのパスを渡す。"""
     handler = _handler(monkeypatch)
     path = tmp_path / "page.png"
     Image.new("RGB", (8, 8), "white").save(path)

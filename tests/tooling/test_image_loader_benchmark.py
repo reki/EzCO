@@ -35,25 +35,37 @@ from tooling.image_loader_benchmark import (
     worker_order,
 )
 
+# 計測に使うデータセット名。
 DATASET_NAMES = ("jpg_folder", "jpg_png_zip", "high_resolution_zip")
 
 
 def _stub_datasets(root: Path) -> list[Dataset]:
+    """実ファイルを作らず、名前だけの Dataset を返す。
+
+    Args:
+        root: 各データセットの親パス。
+
+    Returns:
+        3種の Dataset。
+    """
     return [Dataset(name, root / name) for name in DATASET_NAMES]
 
 
 def test_worker_order_is_seeded_and_contains_all_manual_values():
+    """同じ種のワーカー順が再現せず、1 から 8 のどれかが欠ける。"""
     assert worker_order(10) == worker_order(10)
     assert sorted(worker_order(10)) == list(range(1, 9))
 
 
 def test_percentile_interpolates_sorted_samples():
+    """空の標本が 0 以外になり、中央か 95% 点の内分がずれる。"""
     assert percentile([], 0.95) == 0.0
     assert percentile([40, 10, 20, 30], 0.5) == 25.0
     assert percentile([1, 2, 3, 4, 5], 0.95) == 4.8
 
 
 def test_generate_datasets_and_run_actual_loading_paths(tmp_path: Path):
+    """3種のどれかが欠け、成功ページが 3 以外になるか重複デコードが出る。"""
     datasets = generate_datasets(
         tmp_path,
         page_count=3,
@@ -84,6 +96,7 @@ def test_generate_datasets_and_run_actual_loading_paths(tmp_path: Path):
 
 
 def test_aggregate_results_uses_all_runs():
+    """片方の実行を落とすと合わない遅延・ヒット・追い出し・キュー最大・RSS 差を、2回分で使う。"""
     results = [
         RunResult(
             dataset="pages",
@@ -165,6 +178,7 @@ def test_aggregate_results_uses_all_runs():
 
 
 def test_matrix_has_all_24_unique_conditions_in_seeded_order():
+    """同じ種の行列が順まで一致せず、24 件が重複するかワーカーかメモリの集合が欠ける。"""
     first = matrix_conditions(99)
     second = matrix_conditions(99)
 
@@ -176,12 +190,14 @@ def test_matrix_has_all_24_unique_conditions_in_seeded_order():
 
 
 def test_benchmark_config_applies_memory_and_prefetch_values():
+    """計測用設定のメモリ上限か先読みページが、渡した値のまま入らない。"""
     config = _benchmark_config("1GB", 9)
     assert config.cache["memory_limit"] == "1GB"
     assert config.cache["prefetch_pages"] == 9
 
 
 def test_markdown_contains_sorted_matrix_fields():
+    """行列の Markdown 行が、メモリ・ワーカー・p95・ヒット率・再デコード・追い出し・RSS の順にならない。"""
     result = {
         "memory_limit": "512MB",
         "worker_count": 2,
@@ -198,11 +214,13 @@ def test_markdown_contains_sorted_matrix_fields():
 
 
 def test_duplicate_decode_counter_is_thread_safe():
+    """同じキーのデコードが重なると重複が 1 件以外になり、加算が割れる。"""
     handler = BenchmarkFileHandler(_benchmark_config(), worker_count=1)
     entered = threading.Barrier(3)
     release = threading.Event()
 
     def decode_scope():
+        """同じキーのデコード区間に入り、両スレッドがそろうまで待つ。"""
         with handler._track_decode("same"):
             entered.wait(timeout=2)
             release.wait(timeout=2)
@@ -222,6 +240,7 @@ def test_duplicate_decode_counter_is_thread_safe():
 
 
 def test_single_condition_runs_in_isolated_subprocess(tmp_path: Path):
+    """サブプロセスの1条件でデータセット・ワーカー・メモリ・先読み・標本数・デコード量・RSS のどれかが欠ける。"""
     dataset = generate_datasets(
         tmp_path,
         page_count=2,
@@ -250,6 +269,7 @@ def test_single_condition_runs_in_isolated_subprocess(tmp_path: Path):
 
 
 def test_cache_and_prefetch_batches_have_expected_conditions(tmp_path: Path):
+    """キャッシュ候補が全データセットの2メモリ以外になり、先読みにフォルダが入るか zip の窓が欠ける。"""
     datasets = generate_datasets(
         tmp_path,
         page_count=64,
@@ -280,6 +300,7 @@ def test_cache_and_prefetch_batches_have_expected_conditions(tmp_path: Path):
 
 
 def test_measurement_span_limits_64_page_source_to_20(tmp_path: Path):
+    """64ページのソースで計測ページを20にしても、成功ページか遅延標本が20で止まらない。"""
     dataset = generate_datasets(
         tmp_path,
         page_count=64,
@@ -304,6 +325,7 @@ def test_measurement_span_limits_64_page_source_to_20(tmp_path: Path):
 def test_source_span_reset_does_not_count_setup_decode_as_redecode(
     tmp_path: Path,
 ):
+    """ソース幅と計測幅が同じ20のとき、準備のデコードを再デコードに数える。"""
     dataset = generate_datasets(
         tmp_path,
         page_count=24,
@@ -326,6 +348,7 @@ def test_source_span_reset_does_not_count_setup_decode_as_redecode(
 
 
 def test_scheduler_observer_records_state_change_queue_samples():
+    """投入から世代破棄までのどれかの理由が、キューの状態変化から欠ける。"""
     loaded = threading.Event()
     scheduler = BenchmarkImageLoadScheduler(
         lambda _task: loaded.set() or True,
@@ -354,6 +377,7 @@ def test_scheduler_observer_records_state_change_queue_samples():
 
 
 def test_foreground_cold_jump_and_collision_are_deterministic(tmp_path: Path):
+    """コールドジャンプの前提が外れ、衝突の待ちか再利用が1以外になるか重複デコードが出る。"""
     datasets = generate_datasets(
         tmp_path,
         page_count=8,
@@ -384,6 +408,7 @@ def test_foreground_cold_jump_and_collision_are_deterministic(tmp_path: Path):
 
 
 def test_multi_handler_conditions_and_close_release_resources(tmp_path: Path):
+    """複数ハンドラ条件が12件で重複し、close 後にキャッシュかワーカーが残る。"""
     conditions = multi_handler_conditions(seed=9)
     assert len(conditions) == 12
     assert len(set(conditions)) == 12
@@ -410,6 +435,7 @@ def test_multi_handler_conditions_and_close_release_resources(tmp_path: Path):
 
 
 def test_policy_matrix_has_27_unique_conditions_in_seeded_order(tmp_path: Path):
+    """同じ種の方針行列が順まで一致せず、27件が重複するかメモリか先読みの集合が欠ける。"""
     datasets = _stub_datasets(tmp_path)
 
     first = policy_matrix_conditions(datasets, seed=99)
@@ -430,6 +456,7 @@ def test_policy_matrix_has_27_unique_conditions_in_seeded_order(tmp_path: Path):
 
 
 def test_policy_matrix_covers_every_cache_and_prefetch_per_dataset(tmp_path: Path):
+    """各データセットが、メモリと先読みの全組み合わせ9件を持たない。"""
     keys = [
         (dataset.name, memory, pages)
         for dataset, memory, pages in policy_matrix_conditions(
@@ -456,6 +483,7 @@ def test_policy_matrix_report_fixes_condition_values_and_records_elapsed(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ):
+    """方針行列のワーカー・ソース・計測ページ・27条件が固定されず、経過時間が負になる。"""
     calls = []
 
     monkeypatch.setattr(
@@ -465,6 +493,15 @@ def test_policy_matrix_report_fixes_condition_values_and_records_elapsed(
     )
 
     def fake_condition(dataset, **kwargs):
+        """呼ばれた条件を記録し、データセット名だけの結果を返す。
+
+        Args:
+            dataset: 計測対象。
+            **kwargs: サブプロセスへ渡す条件。
+
+        Returns:
+            データセット名だけを持つ結果。
+        """
         calls.append(kwargs)
         return {"dataset": dataset.name}
 
@@ -502,15 +539,34 @@ def test_policy_matrix_source_pages_ignore_pages_flag(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ):
+    """--pages 1 で方針行列の生成ページかソースページが定義値以外になり、既存モードが走る。"""
     generated = []
 
     def fake_generate(root, *, page_count=20):
+        """生成に使ったページ数を記録し、実ファイルは作らない。
+
+        Args:
+            root: 生成先。使わない。
+            page_count: 要求されたページ数。
+
+        Returns:
+            名前だけの Dataset。
+        """
         generated.append(page_count)
         return _stub_datasets(tmp_path)
 
     calls = []
 
     def fake_condition(dataset, **kwargs):
+        """呼ばれた条件を記録し、データセット名だけの結果を返す。
+
+        Args:
+            dataset: 計測対象。
+            **kwargs: サブプロセスへ渡す条件。
+
+        Returns:
+            データセット名だけを持つ結果。
+        """
         calls.append(kwargs)
         return {"dataset": dataset.name}
 
@@ -533,9 +589,19 @@ def test_existing_modes_keep_their_pages_contract(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ):
+    """既存の3モードが --pages 1 を受けず、性能バッチの生成ページが 64 以外になる。"""
     generated = []
 
     def fake_generate(root, *, page_count=20):
+        """生成に使ったページ数を記録し、実ファイルは作らない。
+
+        Args:
+            root: 生成先。使わない。
+            page_count: 要求されたページ数。
+
+        Returns:
+            名前だけの Dataset。
+        """
         generated.append(page_count)
         return _stub_datasets(tmp_path)
 
@@ -564,6 +630,7 @@ def test_existing_modes_keep_their_pages_contract(
 
 
 def test_policy_matrix_markdown_lists_dataset_cache_and_prefetch():
+    """方針行列の Markdown からデータセット・メモリ・先読みの行、キューが壁時計でないこと、バッチ合計秒が消える。"""
     report = {
         "conditions": {
             "worker_count": 4,
@@ -605,6 +672,7 @@ def test_policy_matrix_markdown_lists_dataset_cache_and_prefetch():
 
 
 def test_policy_matrix_condition_runs_in_isolated_subprocess(tmp_path: Path):
+    """方針行列の1条件でページ数かワーカーが戻りと違い、重複デコードが出る。"""
     dataset = generate_datasets(
         tmp_path,
         page_count=6,

@@ -8,6 +8,11 @@ from ez_co.handlers.file_handler import FileHandler
 
 
 def _handler(monkeypatch):
+    """ワーカーを起動しない FileHandler を作る。
+
+    Returns:
+        その FileHandler。
+    """
     monkeypatch.setattr(FileHandler, "_start_workers", lambda self: None)
     config = SimpleNamespace(
         cache={
@@ -22,10 +27,26 @@ def _handler(monkeypatch):
 
 
 def _virtual_pages(archive: Path, count: int) -> list[str]:
+    """連番の仮想パスを作る。
+
+    Args:
+        archive: 書庫パス。
+        count: ページ数。
+
+    Returns:
+        archive:// 形式のパス列。
+    """
     return [f"archive://{archive}|{index:04d}.jpg" for index in range(count)]
 
 
 def _put_pages(handler, files, indexes):
+    """指定インデックスのページを先読み未使用としてキャッシュに入れる。
+
+    Args:
+        handler: キャッシュを持つハンドラ。
+        files: ページ列。
+        indexes: 入れるインデックス。
+    """
     for index in indexes:
         image = Image.new("L", (8, 8))
         key = handler._cache_key_for_file(files[index])
@@ -35,6 +56,7 @@ def _put_pages(handler, files, indexes):
 
 
 def test_eviction_uses_index_map_without_scanning_files(tmp_path, monkeypatch):
+    """表がある追い出しはファイル走査をせず、現在と隣を残して遠いページを落とす。"""
     handler = _handler(monkeypatch)
     archive = tmp_path / "book.zip"
     archive.write_bytes(b"")
@@ -49,6 +71,15 @@ def test_eviction_uses_index_map_without_scanning_files(tmp_path, monkeypatch):
     original = handler._find_file_index_by_cache_key
 
     def counting(cache_key, *, files=None):
+        """ファイル走査の回数を数えて元の検索を呼ぶ。
+
+        Args:
+            cache_key: 探すキャッシュキー。
+            files: 走査するファイル列。省略時はハンドラ側の既定。
+
+        Returns:
+            見つかったインデックス。
+        """
         scans["count"] += 1
         return original(cache_key, files=files)
 
@@ -62,6 +93,7 @@ def test_eviction_uses_index_map_without_scanning_files(tmp_path, monkeypatch):
 
 
 def test_index_lookup_does_not_resolve_after_the_map_is_built(tmp_path, monkeypatch):
+    """表を作ったあとの距離計算は Path.resolve を増やさない。"""
     handler = _handler(monkeypatch)
     archive = tmp_path / "book.zip"
     archive.write_bytes(b"")
@@ -73,6 +105,15 @@ def test_index_lookup_does_not_resolve_after_the_map_is_built(tmp_path, monkeypa
     real_resolve = Path.resolve
 
     def counting_resolve(self, *args, **kwargs):
+        """Path.resolve の回数を数えて元の解決を呼ぶ。
+
+        Args:
+            args: resolve へ渡す位置引数。
+            kwargs: resolve へ渡すキーワード引数。
+
+        Returns:
+            解決したパス。
+        """
         resolves["count"] += 1
         return real_resolve(self, *args, **kwargs)
 
@@ -87,6 +128,7 @@ def test_index_lookup_does_not_resolve_after_the_map_is_built(tmp_path, monkeypa
 
 
 def test_rebuilt_map_follows_replaced_file_list(tmp_path, monkeypatch):
+    """ファイル一覧を差し替えて表を作り直すと、旧キーは消え新キーの位置が入る。"""
     handler = _handler(monkeypatch)
     first = _virtual_pages(tmp_path / "first.zip", 5)
     second = _virtual_pages(tmp_path / "second.zip", 5)
@@ -102,6 +144,7 @@ def test_rebuilt_map_follows_replaced_file_list(tmp_path, monkeypatch):
 
 
 def test_duplicate_cache_key_keeps_the_first_index(tmp_path, monkeypatch):
+    """同じキャッシュキーが複数あっても表は最初のインデックスを残す。"""
     handler = _handler(monkeypatch)
     archive = tmp_path / "book.zip"
     page = f"archive://{archive}|same.jpg"
@@ -114,6 +157,7 @@ def test_duplicate_cache_key_keeps_the_first_index(tmp_path, monkeypatch):
 
 
 def test_unknown_cache_key_uses_file_scan(tmp_path, monkeypatch):
+    """表に無いキーの距離はファイル走査 1 回で計算される。"""
     handler = _handler(monkeypatch)
     files = [tmp_path / f"{index}.png" for index in range(4)]
     for path in files:
@@ -128,6 +172,15 @@ def test_unknown_cache_key_uses_file_scan(tmp_path, monkeypatch):
     original = handler._find_file_index_by_cache_key
 
     def counting(cache_key, *, files=None):
+        """ファイル走査の回数を数えて元の検索を呼ぶ。
+
+        Args:
+            cache_key: 探すキャッシュキー。
+            files: 走査するファイル列。省略時はハンドラ側の既定。
+
+        Returns:
+            見つかったインデックス。
+        """
         scans["count"] += 1
         return original(cache_key, files=files)
 
@@ -137,10 +190,16 @@ def test_unknown_cache_key_uses_file_scan(tmp_path, monkeypatch):
 
 
 def test_open_files_rebuilds_the_map_once_after_appends(tmp_path, monkeypatch):
+    """open_files は空のときと追加が終わった 6 件のときだけ表を作り、インデックス 4 の位置は 4 になる。"""
     sizes = []
     original = FileHandler._rebuild_file_index_map
 
     def wrapped(self):
+        """再構築時のファイル数を記録して元の再構築を呼ぶ。
+
+        Returns:
+            元の再構築の結果。
+        """
         sizes.append(len(self.current_files))
         return original(self)
 
@@ -165,6 +224,7 @@ def test_open_files_rebuilds_the_map_once_after_appends(tmp_path, monkeypatch):
 
 
 def test_open_archive_refreshes_the_map(tmp_path, monkeypatch):
+    """書庫を開くと展開後のページ位置が表に入る。"""
     handler = _handler(monkeypatch)
     archive = tmp_path / "book.zip"
     pages = _virtual_pages(archive, 4)

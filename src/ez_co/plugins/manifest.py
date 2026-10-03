@@ -8,13 +8,18 @@ from typing import Any, Optional
 
 from ez_co.plugins.api import FormatSpec, normalize_formats
 
+# 権限が空のときの読み取り専用 dict。
 _EMPTY_PERMISSIONS: Mapping[str, bool] = MappingProxyType({})
+# マニフェストで受け付ける権限名。
 KNOWN_PERMISSIONS = frozenset({"inactive_callback", "filter"})
+# 既知の権限名。公開定数と同じ集合。
 _KNOWN_PERMISSIONS = KNOWN_PERMISSIONS
 
 
 @dataclass(frozen=True)
 class PluginManifest:
+    """manifest.json から読んだプラグインの宣言。"""
+
     plugin_id: str
     name: str
     version: str
@@ -28,6 +33,11 @@ class PluginManifest:
 
     @property
     def entry_module(self) -> str:
+        """entry のモジュール部分をドット区切りで返す。
+
+        Returns:
+            コロンより前のモジュール名。末尾の .py は除く。
+        """
         module, _sep, _cls = self.entry.partition(":")
         module = module.strip().replace("\\", "/")
         if module.endswith(".py"):
@@ -36,6 +46,11 @@ class PluginManifest:
 
     @property
     def entry_class(self) -> Optional[str]:
+        """entry のクラス名を返す。
+
+        Returns:
+            コロンより後のクラス名。無ければ None。
+        """
         _module, sep, cls = self.entry.partition(":")
         if not sep:
             return None
@@ -43,7 +58,17 @@ class PluginManifest:
 
 
 def parse_permissions(raw: Any) -> Mapping[str, bool]:
-    """本体が読む既知のマニフェスト権限。未知キーは権限にならない。既知キーの値は JSON bool のみ。"""
+    """本体が読む既知のマニフェスト権限だけを残し、未知キーは権限にせず、既知キーの値は JSON bool のみとする。
+
+    Args:
+        raw: permissions オブジェクト。None なら空。
+
+    Returns:
+        既知キーだけの読み取り専用対応。空なら空の対応。
+
+    Raises:
+        ValueError: オブジェクトでない、または既知キーの値が bool でないとき。
+    """
     if raw is None:
         return _EMPTY_PERMISSIONS
     if not isinstance(raw, Mapping):
@@ -62,7 +87,17 @@ def parse_permissions(raw: Any) -> Mapping[str, bool]:
 
 
 def parse_formats(raw: Any) -> tuple[FormatSpec, ...]:
-    """本体が読む担当形式。解釈できない要素だけなら失敗。"""
+    """本体が読む担当形式を返し、解釈できない要素だけなら失敗する。
+
+    Args:
+        raw: formats の配列。None なら空。
+
+    Returns:
+        正規化した FormatSpec。
+
+    Raises:
+        ValueError: 配列でない、または有効な要素が無いとき。
+    """
     if raw is None:
         return ()
     if not isinstance(raw, list):
@@ -74,6 +109,17 @@ def parse_formats(raw: Any) -> tuple[FormatSpec, ...]:
 
 
 def parse_sidebar(raw: Any) -> bool:
+    """sidebar 宣言を bool として読む。
+
+    Args:
+        raw: 宣言値。None なら False。
+
+    Returns:
+        宣言された bool。
+
+    Raises:
+        ValueError: bool でないとき。
+    """
     if raw is None:
         return False
     if not isinstance(raw, bool):
@@ -82,6 +128,17 @@ def parse_sidebar(raw: Any) -> bool:
 
 
 def parse_manifest(data: Any) -> PluginManifest:
+    """manifest の必須項目を PluginManifest にする。
+
+    Args:
+        data: manifest のオブジェクト。
+
+    Returns:
+        検証済みの PluginManifest。
+
+    Raises:
+        ValueError: オブジェクトでない、必須が空、entry が module:Class でない、または api_version が整数でないとき。
+    """
     if not isinstance(data, dict):
         raise ValueError("manifest must be an object")
     plugin_id = str(data.get("id") or "").strip()
@@ -102,6 +159,7 @@ def parse_manifest(data: Any) -> PluginManifest:
     try:
         api_version = int(data.get("api_version"))
     except (TypeError, ValueError) as exc:
+        # api_version を整数にできなければ ValueError にして返す。
         raise ValueError("manifest.api_version is required") from exc
     return PluginManifest(
         plugin_id=plugin_id,
