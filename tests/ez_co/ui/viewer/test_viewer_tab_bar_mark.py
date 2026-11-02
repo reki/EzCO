@@ -2,6 +2,7 @@
 from PySide6.QtCore import QRect
 from PySide6.QtGui import QColor
 
+from ez_co.enums.config_defaults import ViewerDefaults
 from ez_co.ui.viewer.viewer_tab_bar import (
     ViewerTabBar,
     current_tab_mark_brush,
@@ -24,9 +25,9 @@ def test_invalid_mark_falls_back_and_alpha_is_clamped():
     """読めない色や範囲外の透過度が、そのまま塗る値になる。"""
     color = current_tab_mark_color("not-a-color", 999)
     assert color is not None
-    assert color.name() == QColor("#3a7bd5").name()
+    assert color.name() == QColor(ViewerDefaults.CURRENT_TAB_COLOR.default).name()
     assert color.alpha() == 255
-    assert current_tab_mark_color("#112233", "nope").alpha() == 170
+    assert current_tab_mark_color("#112233", "nope").alpha() == ViewerDefaults.CURRENT_TAB_ALPHA.default
 
 
 def test_marked_tab_paints_without_error(qapp):

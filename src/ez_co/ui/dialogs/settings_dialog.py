@@ -12,6 +12,15 @@ import yaml
 import logging
 import humanfriendly
 from ez_co.enums.fonts import FontInfo, FontFamilyManager
+from ez_co.enums.config_defaults import (
+    CacheDefaults,
+    DebugDefaults,
+    HistoryDefaults,
+    LanguageDefaults,
+    UiFontDefaults,
+    ViewerDefaults,
+    WindowDefaults,
+)
 from ez_co.config import Config
 from ez_co.utils.image_loader_workers import (
     AUTO_IMAGE_LOADER_WORKERS,
@@ -439,7 +448,7 @@ class SettingsDialog(QDialog):
         self.language_combo = QComboBox()
         self.language_combo.setMaximumWidth(200)  # 最大幅を制限
         available_languages = get_available_languages()
-        current_language = self.config.language.get("code", "system")
+        current_language = self.config.language.get("code", LanguageDefaults.CODE.default)
 
         for lang_code, lang_info in available_languages.items():
             self.language_combo.addItem(lang_info["name"], lang_code)
@@ -466,13 +475,13 @@ class SettingsDialog(QDialog):
 
         # ウィンドウサイズを保存
         self.save_window_state_checkbox = QCheckBox(get_text("settings.save_window_state"))
-        self.save_window_state_checkbox.setChecked(self.config.window.get("save_window_state", True))
+        self.save_window_state_checkbox.setChecked(self.config.window.get("save_window_state", WindowDefaults.SAVE_WINDOW_STATE.default))
         self._apply_setting_tip("save_window_state", self.save_window_state_checkbox)
         window_layout.addRow(self.save_window_state_checkbox)
 
         # 起動時に最大化
         self.maximize_on_startup_checkbox = QCheckBox(get_text("settings.maximize_on_startup"))
-        self.maximize_on_startup_checkbox.setChecked(self.config.window.get("maximize_on_startup", False))
+        self.maximize_on_startup_checkbox.setChecked(self.config.window.get("maximize_on_startup", WindowDefaults.MAXIMIZE_ON_STARTUP.default))
         self._apply_setting_tip("maximize_on_startup", self.maximize_on_startup_checkbox)
         window_layout.addRow(self.maximize_on_startup_checkbox)
 
@@ -544,7 +553,7 @@ class SettingsDialog(QDialog):
         viewer_layout.addRow(self._form_label("background_color"), self.bg_color_button)
         self._apply_setting_tip("background_color", self.bg_color_button)
 
-        current_tab_color = self.config.viewer.get("current_tab_color", "#3a7bd5")
+        current_tab_color = self.config.viewer.get("current_tab_color", ViewerDefaults.CURRENT_TAB_COLOR.default)
         self.current_tab_color_button = QPushButton()
         self.current_tab_color_button.setStyleSheet(
             f"background-color: {current_tab_color}; min-width: 100px; max-width: 150px; min-height: 20px;"
@@ -555,11 +564,11 @@ class SettingsDialog(QDialog):
         self.current_tab_alpha = QSpinBox()
         self.current_tab_alpha.setMaximumWidth(100)
         self.current_tab_alpha.setRange(0, 255)
-        self.current_tab_alpha.setValue(int(self.config.viewer.get("current_tab_alpha", 170)))
+        self.current_tab_alpha.setValue(int(self.config.viewer.get("current_tab_alpha", ViewerDefaults.CURRENT_TAB_ALPHA.default)))
         viewer_layout.addRow(self._form_label("transparency"), self.current_tab_alpha)
         self._apply_setting_tip("current_tab_color", self.current_tab_alpha)
         self.current_tab_gradient_checkbox = QCheckBox(get_text("settings.current_tab_gradient"))
-        self.current_tab_gradient_checkbox.setChecked(bool(self.config.viewer.get("current_tab_gradient", True)))
+        self.current_tab_gradient_checkbox.setChecked(bool(self.config.viewer.get("current_tab_gradient", ViewerDefaults.CURRENT_TAB_GRADIENT.default)))
         self._apply_setting_tip("current_tab_gradient", self.current_tab_gradient_checkbox)
         viewer_layout.addRow(self.current_tab_gradient_checkbox)
 
@@ -571,13 +580,13 @@ class SettingsDialog(QDialog):
 
         # 画像の最小縮小率を全画面までに制限
         self.fit_to_window_min_checkbox = QCheckBox(get_text("settings.fit_to_window_minimum"))
-        self.fit_to_window_min_checkbox.setChecked(self.config.viewer.get("fit_to_window_minimum", True))
+        self.fit_to_window_min_checkbox.setChecked(self.config.viewer.get("fit_to_window_minimum", ViewerDefaults.FIT_TO_WINDOW_MINIMUM.default))
         self._apply_setting_tip("fit_to_window_minimum", self.fit_to_window_min_checkbox)
         viewer_layout.addRow(self.fit_to_window_min_checkbox)
 
         # 両開きは選択ページを軸にする
         self.spread_selected_as_axis_checkbox = QCheckBox(get_text("settings.spread_selected_as_axis"))
-        self.spread_selected_as_axis_checkbox.setChecked(self.config.viewer.get("spread_selected_as_axis", False))
+        self.spread_selected_as_axis_checkbox.setChecked(self.config.viewer.get("spread_selected_as_axis", ViewerDefaults.SPREAD_SELECTED_AS_AXIS.default))
         self._apply_setting_tip("spread_selected_as_axis", self.spread_selected_as_axis_checkbox)
         viewer_layout.addRow(self.spread_selected_as_axis_checkbox)
 
@@ -593,7 +602,7 @@ class SettingsDialog(QDialog):
         self.spread_toggle_preference_combo.addItem(
             get_text("settings.spread_toggle_prefer_left"), "prefer_left"
         )
-        current_spread_pref = self.config.viewer.get("spread_toggle_preference", "keep_previous")
+        current_spread_pref = self.config.viewer.get("spread_toggle_preference", ViewerDefaults.SPREAD_TOGGLE_PREFERENCE.default)
         pref_index = self.spread_toggle_preference_combo.findData(current_spread_pref)
         self.spread_toggle_preference_combo.setCurrentIndex(pref_index if pref_index >= 0 else 0)
         viewer_layout.addRow(self._form_label("spread_toggle_preference"), self.spread_toggle_preference_combo)
@@ -603,7 +612,7 @@ class SettingsDialog(QDialog):
         sensitivity_layout = QHBoxLayout()
         self.sensitivity_slider = QSlider(Qt.Horizontal)
         self.sensitivity_slider.setRange(5, 40)  # 0.5～4.0を50～400で表現
-        sensitivity_value = self.config.viewer.get("image_move_sensitivity", 2.0)
+        sensitivity_value = self.config.viewer.get("image_move_sensitivity", ViewerDefaults.IMAGE_MOVE_SENSITIVITY.default)
         self.sensitivity_slider.setValue(int(sensitivity_value * 10))
 
         self.sensitivity_input = QLineEdit()
@@ -625,7 +634,7 @@ class SettingsDialog(QDialog):
         gesture_layout = QHBoxLayout()
         self.gesture_threshold_slider = QSlider(Qt.Horizontal)
         self.gesture_threshold_slider.setRange(20, 100)  # 20～100ピクセル
-        gesture_threshold_value = self.config.viewer.get("gesture_threshold", 50)
+        gesture_threshold_value = self.config.viewer.get("gesture_threshold", ViewerDefaults.GESTURE_THRESHOLD.default)
         self.gesture_threshold_slider.setValue(gesture_threshold_value)
 
         self.gesture_threshold_input = QLineEdit()
@@ -647,7 +656,7 @@ class SettingsDialog(QDialog):
         mouse_repeat_initial_delay_layout = QHBoxLayout()
         self.mouse_repeat_initial_delay_slider = QSlider(Qt.Horizontal)
         self.mouse_repeat_initial_delay_slider.setRange(50, 500)  # 50～500ms
-        mouse_repeat_initial_delay_value = self.config.viewer.get("mouse_repeat_initial_delay", 100)
+        mouse_repeat_initial_delay_value = self.config.viewer.get("mouse_repeat_initial_delay", ViewerDefaults.MOUSE_REPEAT_INITIAL_DELAY.default)
         self.mouse_repeat_initial_delay_slider.setValue(mouse_repeat_initial_delay_value)
 
         self.mouse_repeat_initial_delay_input = QLineEdit()
@@ -671,7 +680,7 @@ class SettingsDialog(QDialog):
         mouse_repeat_acceleration_start_layout = QHBoxLayout()
         self.mouse_repeat_acceleration_start_slider = QSlider(Qt.Horizontal)
         self.mouse_repeat_acceleration_start_slider.setRange(50, 500)  # 50～500ms
-        mouse_repeat_acceleration_start_value = self.config.viewer.get("mouse_repeat_acceleration_start", 100)
+        mouse_repeat_acceleration_start_value = self.config.viewer.get("mouse_repeat_acceleration_start", ViewerDefaults.MOUSE_REPEAT_ACCELERATION_START.default)
         self.mouse_repeat_acceleration_start_slider.setValue(mouse_repeat_acceleration_start_value)
 
         self.mouse_repeat_acceleration_start_input = QLineEdit()
@@ -695,7 +704,7 @@ class SettingsDialog(QDialog):
         mouse_repeat_min_interval_layout = QHBoxLayout()
         self.mouse_repeat_min_interval_slider = QSlider(Qt.Horizontal)
         self.mouse_repeat_min_interval_slider.setRange(10, 100)  # 10～100ms
-        mouse_repeat_min_interval_value = self.config.viewer.get("mouse_repeat_min_interval", 30)
+        mouse_repeat_min_interval_value = self.config.viewer.get("mouse_repeat_min_interval", ViewerDefaults.MOUSE_REPEAT_MIN_INTERVAL.default)
         self.mouse_repeat_min_interval_slider.setValue(mouse_repeat_min_interval_value)
 
         self.mouse_repeat_min_interval_input = QLineEdit()
@@ -784,7 +793,7 @@ class SettingsDialog(QDialog):
 
         # 背景色
         self.ui_bg_color_btn = QPushButton()
-        bg_color = self.config.ui_font.get('bg_color', '#ffffff')
+        bg_color = self.config.ui_font.get('bg_color', UiFontDefaults.BG_COLOR.default)
         self.ui_bg_color_btn.setStyleSheet(f"background-color: {bg_color}; min-width: 100px; max-width: 150px; min-height: 20px;")
         self.ui_bg_color_btn.clicked.connect(self.select_ui_bg_color)
 
@@ -832,19 +841,19 @@ class SettingsDialog(QDialog):
         self.history_max_count_spin = QSpinBox()
         self.history_max_count_spin.setMaximumWidth(100)  # 最大幅を制限
         self.history_max_count_spin.setRange(1, 99)
-        self.history_max_count_spin.setValue(self.config.history.get("max_count", 20))
+        self.history_max_count_spin.setValue(self.config.history.get("max_count", HistoryDefaults.MAX_COUNT.default))
         history_layout.addRow(self._form_label("max_history_count"), self.history_max_count_spin)
         self._apply_setting_tip("max_history_count", self.history_max_count_spin)
 
         # 履歴ページ復元オプション
         self.restore_page_checkbox = QCheckBox(get_text("settings.restore_page_on_reopen"))
-        self.restore_page_checkbox.setChecked(self.config.history.get("restore_page_on_reopen", False))
+        self.restore_page_checkbox.setChecked(self.config.history.get("restore_page_on_reopen", HistoryDefaults.RESTORE_PAGE_ON_REOPEN.default))
         self._apply_setting_tip("restore_page_on_reopen", self.restore_page_checkbox)
         history_layout.addRow(self.restore_page_checkbox)
 
         # 起動時最後のファイル復元オプション
         self.open_last_file_checkbox = QCheckBox(get_text("settings.open_last_file_on_startup"))
-        self.open_last_file_checkbox.setChecked(self.config.history.get("open_last_file_on_startup", False))
+        self.open_last_file_checkbox.setChecked(self.config.history.get("open_last_file_on_startup", HistoryDefaults.OPEN_LAST_FILE_ON_STARTUP.default))
         self._apply_setting_tip("open_last_file_on_startup", self.open_last_file_checkbox)
         history_layout.addRow(self.open_last_file_checkbox)
 
@@ -857,16 +866,16 @@ class SettingsDialog(QDialog):
         self.drop_opens_combo.setMaximumWidth(280)
         self.drop_opens_combo.addItem(get_text("settings.drop_open_current"), False)
         self.drop_opens_combo.addItem(get_text("ui.open_in_new_tab"), True)
-        drop_index = 1 if self.config.viewer.get("drop_opens_new_tab", False) else 0
+        drop_index = 1 if self.config.viewer.get("drop_opens_new_tab", ViewerDefaults.DROP_OPENS_NEW_TAB.default) else 0
         self.drop_opens_combo.setCurrentIndex(drop_index)
         tab_layout.addRow(self._form_label("drop_opens_new_tab"), self.drop_opens_combo)
         self._apply_setting_tip("drop_opens_new_tab", self.drop_opens_combo)
         self.open_archives_own_tab_checkbox = QCheckBox(get_text("settings.open_archives_in_own_tab"))
-        self.open_archives_own_tab_checkbox.setChecked(self.config.viewer.get("open_archives_in_own_tab", True))
+        self.open_archives_own_tab_checkbox.setChecked(self.config.viewer.get("open_archives_in_own_tab", ViewerDefaults.OPEN_ARCHIVES_IN_OWN_TAB.default))
         self._apply_setting_tip("open_archives_in_own_tab", self.open_archives_own_tab_checkbox)
         tab_layout.addRow(self.open_archives_own_tab_checkbox)
         self.open_folders_own_tab_checkbox = QCheckBox(get_text("settings.open_folders_in_own_tab"))
-        self.open_folders_own_tab_checkbox.setChecked(self.config.viewer.get("open_folders_in_own_tab", False))
+        self.open_folders_own_tab_checkbox.setChecked(self.config.viewer.get("open_folders_in_own_tab", ViewerDefaults.OPEN_FOLDERS_IN_OWN_TAB.default))
         self._apply_setting_tip("open_folders_in_own_tab", self.open_folders_own_tab_checkbox)
         tab_layout.addRow(self.open_folders_own_tab_checkbox)
         tab_group.setLayout(tab_layout)
@@ -879,7 +888,7 @@ class SettingsDialog(QDialog):
         # メモリキャッシュサイズ
         self.cache_memory_limit = QLineEdit()
         self.cache_memory_limit.setMaximumWidth(200)
-        self.cache_memory_limit.setText(self.config.cache.get("memory_limit", "256MB"))
+        self.cache_memory_limit.setText(self.config.cache.get("memory_limit", CacheDefaults.MEMORY_LIMIT.default))
         self.cache_memory_limit.setPlaceholderText(get_text("settings.cache_memory_limit_placeholder"))
         cache_layout.addRow(self._form_label("cache_memory_limit"), self.cache_memory_limit)
         self._apply_setting_tip("cache_memory_limit", self.cache_memory_limit)
@@ -895,7 +904,7 @@ class SettingsDialog(QDialog):
         self.cache_prefetch_pages = QSpinBox()
         self.cache_prefetch_pages.setMaximumWidth(100)
         self.cache_prefetch_pages.setRange(1, 50)
-        self.cache_prefetch_pages.setValue(self.config.cache.get("prefetch_pages", 5))
+        self.cache_prefetch_pages.setValue(self.config.cache.get("prefetch_pages", CacheDefaults.PREFETCH_PAGES.default))
         cache_layout.addRow(self._form_label("cache_prefetch_pages"), self.cache_prefetch_pages)
         self._apply_setting_tip("cache_prefetch_pages", self.cache_prefetch_pages)
 
@@ -1001,14 +1010,14 @@ class SettingsDialog(QDialog):
 
         # 大きな画像の最適化
         self.optimize_large_images_checkbox = QCheckBox(get_text("settings.optimize_large_images"))
-        self.optimize_large_images_checkbox.setChecked(self.config.cache.get("optimize_large_images", True))
+        self.optimize_large_images_checkbox.setChecked(self.config.cache.get("optimize_large_images", CacheDefaults.OPTIMIZE_LARGE_IMAGES.default))
         self._apply_setting_tip("optimize_large_images", self.optimize_large_images_checkbox)
         cache_layout.addRow(self.optimize_large_images_checkbox)
 
         # 最適化閾値
         self.optimize_threshold = QLineEdit()
         self.optimize_threshold.setMaximumWidth(200)
-        self.optimize_threshold.setText(self.config.cache.get("optimize_threshold", "50MB"))
+        self.optimize_threshold.setText(self.config.cache.get("optimize_threshold", CacheDefaults.OPTIMIZE_THRESHOLD.default))
         self.optimize_threshold.setPlaceholderText(get_text("settings.optimize_threshold_placeholder"))
         cache_layout.addRow(self._form_label("optimize_threshold"), self.optimize_threshold)
         self._apply_setting_tip("optimize_threshold", self.optimize_threshold)
@@ -1024,7 +1033,7 @@ class SettingsDialog(QDialog):
         self.optimize_max_resolution = QSpinBox()
         self.optimize_max_resolution.setMaximumWidth(100)
         self.optimize_max_resolution.setRange(1000, 10000)
-        self.optimize_max_resolution.setValue(self.config.cache.get("optimize_max_resolution", 4000))
+        self.optimize_max_resolution.setValue(self.config.cache.get("optimize_max_resolution", CacheDefaults.OPTIMIZE_MAX_RESOLUTION.default))
         cache_layout.addRow(self._form_label("optimize_max_resolution"), self.optimize_max_resolution)
         self._apply_setting_tip("optimize_max_resolution", self.optimize_max_resolution)
 
@@ -1058,7 +1067,7 @@ class SettingsDialog(QDialog):
 
         # デバッグモード
         self.debug_mode_checkbox = QCheckBox(get_text("settings.debug_mode"))
-        self.debug_mode_checkbox.setChecked(self.config.debug.get("enabled", False))
+        self.debug_mode_checkbox.setChecked(self.config.debug.get("enabled", DebugDefaults.ENABLED.default))
         self._apply_setting_tip("debug_mode", self.debug_mode_checkbox)
         debug_layout.addRow(self.debug_mode_checkbox)
 
@@ -1070,7 +1079,7 @@ class SettingsDialog(QDialog):
 
         # ファイルハンドル管理設定
         self.keep_archive_handles_checkbox = QCheckBox(get_text("settings.keep_archive_handles"))
-        self.keep_archive_handles_checkbox.setChecked(self.config.debug.get("keep_archive_handles", False))
+        self.keep_archive_handles_checkbox.setChecked(self.config.debug.get("keep_archive_handles", DebugDefaults.KEEP_ARCHIVE_HANDLES.default))
         self._apply_setting_tip("keep_archive_handles", self.keep_archive_handles_checkbox)
         debug_layout.addRow(self.keep_archive_handles_checkbox)
 
@@ -1083,7 +1092,7 @@ class SettingsDialog(QDialog):
 
         # アーカイブメタデータキャッシュ設定
         self.cache_archive_metadata_checkbox = QCheckBox(get_text("settings.cache_archive_metadata"))
-        self.cache_archive_metadata_checkbox.setChecked(self.config.debug.get("cache_archive_metadata", True))
+        self.cache_archive_metadata_checkbox.setChecked(self.config.debug.get("cache_archive_metadata", DebugDefaults.CACHE_ARCHIVE_METADATA.default))
         self._apply_setting_tip("cache_archive_metadata", self.cache_archive_metadata_checkbox)
         debug_layout.addRow(self.cache_archive_metadata_checkbox)
 
@@ -1095,7 +1104,7 @@ class SettingsDialog(QDialog):
         debug_layout.addRow(metadata_description)
 
         self.show_error_log_checkbox = QCheckBox(get_text("settings.show_error_log"))
-        self.show_error_log_checkbox.setChecked(self.config.debug.get("show_error_log", False))
+        self.show_error_log_checkbox.setChecked(self.config.debug.get("show_error_log", DebugDefaults.SHOW_ERROR_LOG.default))
         self._apply_setting_tip("show_error_log", self.show_error_log_checkbox)
         debug_layout.addRow(self.show_error_log_checkbox)
 
@@ -1116,7 +1125,7 @@ class SettingsDialog(QDialog):
     def select_current_tab_color(self):
         """分割中のカレントタブの色を選び、ボタンの背景にする。無効な色なら変えない。"""
         color = QColorDialog.getColor(
-            QColor(self.config.viewer.get("current_tab_color", "#3a7bd5")),
+            QColor(self.config.viewer.get("current_tab_color", ViewerDefaults.CURRENT_TAB_COLOR.default)),
             self,
             get_text("settings.select_current_tab_color"),
         )
@@ -1149,7 +1158,7 @@ class SettingsDialog(QDialog):
 
     def select_ui_bg_color(self):
         """背景色を選び、ボタンの背景にする。無効な色なら変えない。"""
-        color = QColorDialog.getColor(QColor(self.config.ui_font.get("bg_color", "#ffffff")), self, get_text("settings.select_background_color"))
+        color = QColorDialog.getColor(QColor(self.config.ui_font.get("bg_color", UiFontDefaults.BG_COLOR.default)), self, get_text("settings.select_background_color"))
         if color.isValid():
             rgb = color.name()
             self.ui_bg_color_btn.setStyleSheet(f"background-color: {rgb}; min-width: 100px; max-width: 150px; min-height: 20px;")
@@ -1445,10 +1454,10 @@ class SettingsDialog(QDialog):
         # このメソッドはreset/import時のUI同期だけを行う。
         font_changed = False
         language_changed = False
-        selected_language = self.config.language.get("code", "system")
+        selected_language = self.config.language.get("code", LanguageDefaults.CODE.default)
         # 言語設定
         if "language" in config_dict:
-            language_code = config_dict["language"].get("code", "system")
+            language_code = config_dict["language"].get("code", LanguageDefaults.CODE.default)
             selected_language = language_code
             for i in range(self.language_combo.count()):
                 if self.language_combo.itemData(i) == language_code:
@@ -1458,8 +1467,8 @@ class SettingsDialog(QDialog):
         # ウィンドウ設定
         if "window" in config_dict:
             self.auto_resize_checkbox.setChecked(config_dict["window"].get("auto_resize", True))
-            self.save_window_state_checkbox.setChecked(config_dict["window"].get("save_window_state", True))
-            self.maximize_on_startup_checkbox.setChecked(config_dict["window"].get("maximize_on_startup", False))
+            self.save_window_state_checkbox.setChecked(config_dict["window"].get("save_window_state", WindowDefaults.SAVE_WINDOW_STATE.default))
+            self.maximize_on_startup_checkbox.setChecked(config_dict["window"].get("maximize_on_startup", WindowDefaults.MAXIMIZE_ON_STARTUP.default))
 
         # ビューア設定
         if "viewer" in config_dict:
@@ -1472,99 +1481,99 @@ class SettingsDialog(QDialog):
 
             # その他のビューア設定
             self.fit_to_window_checkbox.setChecked(config_dict["viewer"].get("fit_to_window", True))
-            self.fit_to_window_min_checkbox.setChecked(config_dict["viewer"].get("fit_to_window_minimum", True))
+            self.fit_to_window_min_checkbox.setChecked(config_dict["viewer"].get("fit_to_window_minimum", ViewerDefaults.FIT_TO_WINDOW_MINIMUM.default))
             self.spread_selected_as_axis_checkbox.setChecked(
                 config_dict["viewer"].get(
                     "spread_selected_as_axis",
-                    config_dict["viewer"].get("spread_cover_single", False),
+                    config_dict["viewer"].get("spread_cover_single", ViewerDefaults.SPREAD_SELECTED_AS_AXIS.default),
                 )
             )
-            spread_pref = config_dict["viewer"].get("spread_toggle_preference", "keep_previous")
+            spread_pref = config_dict["viewer"].get("spread_toggle_preference", ViewerDefaults.SPREAD_TOGGLE_PREFERENCE.default)
             pref_index = self.spread_toggle_preference_combo.findData(spread_pref)
             self.spread_toggle_preference_combo.setCurrentIndex(pref_index if pref_index >= 0 else 0)
 
             # 画像移動感度
-            sensitivity = config_dict["viewer"].get("image_move_sensitivity", 2.0)
+            sensitivity = config_dict["viewer"].get("image_move_sensitivity", ViewerDefaults.IMAGE_MOVE_SENSITIVITY.default)
             self.sensitivity_input.setText(f"{sensitivity:.1f}")
             self.sensitivity_slider.setValue(int(sensitivity * 10))
 
             # ジェスチャー判定距離
-            gesture_threshold = config_dict["viewer"].get("gesture_threshold", 50)
+            gesture_threshold = config_dict["viewer"].get("gesture_threshold", ViewerDefaults.GESTURE_THRESHOLD.default)
             self.gesture_threshold_input.setText(str(gesture_threshold))
             self.gesture_threshold_slider.setValue(gesture_threshold)
 
             # マウスリピート設定
-            mouse_repeat_initial_delay = config_dict["viewer"].get("mouse_repeat_initial_delay", 100)
+            mouse_repeat_initial_delay = config_dict["viewer"].get("mouse_repeat_initial_delay", ViewerDefaults.MOUSE_REPEAT_INITIAL_DELAY.default)
             self.mouse_repeat_initial_delay_input.setText(str(mouse_repeat_initial_delay))
             self.mouse_repeat_initial_delay_slider.setValue(mouse_repeat_initial_delay)
 
-            mouse_repeat_acceleration_start = config_dict["viewer"].get("mouse_repeat_acceleration_start", 100)
+            mouse_repeat_acceleration_start = config_dict["viewer"].get("mouse_repeat_acceleration_start", ViewerDefaults.MOUSE_REPEAT_ACCELERATION_START.default)
             self.mouse_repeat_acceleration_start_input.setText(str(mouse_repeat_acceleration_start))
             self.mouse_repeat_acceleration_start_slider.setValue(mouse_repeat_acceleration_start)
 
-            mouse_repeat_min_interval = config_dict["viewer"].get("mouse_repeat_min_interval", 30)
+            mouse_repeat_min_interval = config_dict["viewer"].get("mouse_repeat_min_interval", ViewerDefaults.MOUSE_REPEAT_MIN_INTERVAL.default)
             self.mouse_repeat_min_interval_input.setText(str(mouse_repeat_min_interval))
             self.mouse_repeat_min_interval_slider.setValue(mouse_repeat_min_interval)
 
         # 履歴設定
         if "history" in config_dict:
-            self.history_max_count_spin.setValue(config_dict["history"].get("max_count", 20))
-            self.restore_page_checkbox.setChecked(config_dict["history"].get("restore_page_on_reopen", False))
-            self.open_last_file_checkbox.setChecked(config_dict["history"].get("open_last_file_on_startup", False))
+            self.history_max_count_spin.setValue(config_dict["history"].get("max_count", HistoryDefaults.MAX_COUNT.default))
+            self.restore_page_checkbox.setChecked(config_dict["history"].get("restore_page_on_reopen", HistoryDefaults.RESTORE_PAGE_ON_REOPEN.default))
+            self.open_last_file_checkbox.setChecked(config_dict["history"].get("open_last_file_on_startup", HistoryDefaults.OPEN_LAST_FILE_ON_STARTUP.default))
 
         if "viewer" in config_dict and hasattr(self, "drop_opens_combo"):
-            drop_index = 1 if config_dict["viewer"].get("drop_opens_new_tab", False) else 0
+            drop_index = 1 if config_dict["viewer"].get("drop_opens_new_tab", ViewerDefaults.DROP_OPENS_NEW_TAB.default) else 0
             self.drop_opens_combo.setCurrentIndex(drop_index)
             if hasattr(self, "open_archives_own_tab_checkbox"):
                 self.open_archives_own_tab_checkbox.setChecked(
-                    config_dict["viewer"].get("open_archives_in_own_tab", True)
+                    config_dict["viewer"].get("open_archives_in_own_tab", ViewerDefaults.OPEN_ARCHIVES_IN_OWN_TAB.default)
                 )
             if hasattr(self, "open_folders_own_tab_checkbox"):
                 self.open_folders_own_tab_checkbox.setChecked(
-                    config_dict["viewer"].get("open_folders_in_own_tab", False)
+                    config_dict["viewer"].get("open_folders_in_own_tab", ViewerDefaults.OPEN_FOLDERS_IN_OWN_TAB.default)
                 )
             if hasattr(self, "current_tab_color_button"):
-                color = str(config_dict["viewer"].get("current_tab_color") or "#3a7bd5")
+                color = str(config_dict["viewer"].get("current_tab_color") or ViewerDefaults.CURRENT_TAB_COLOR.default)
                 self.config.viewer["current_tab_color"] = color
                 self.current_tab_color_button.setStyleSheet(
                     f"background-color: {color}; min-width: 100px; max-width: 150px; min-height: 20px;"
                 )
             if hasattr(self, "current_tab_alpha"):
-                raw_alpha = config_dict["viewer"].get("current_tab_alpha", 170)
+                raw_alpha = config_dict["viewer"].get("current_tab_alpha", ViewerDefaults.CURRENT_TAB_ALPHA.default)
                 try:
                     alpha = max(0, min(255, int(raw_alpha)))
                 except (TypeError, ValueError):
                     # 透過度が数値でなければ初期値にする。
-                    alpha = 170
+                    alpha = ViewerDefaults.CURRENT_TAB_ALPHA.default
                 self.current_tab_alpha.setValue(alpha)
             if hasattr(self, "current_tab_gradient_checkbox"):
                 self.current_tab_gradient_checkbox.setChecked(
-                    bool(config_dict["viewer"].get("current_tab_gradient", True))
+                    bool(config_dict["viewer"].get("current_tab_gradient", ViewerDefaults.CURRENT_TAB_GRADIENT.default))
                 )
 
         # デバッグ設定
         if "debug" in config_dict:
-            self.debug_mode_checkbox.setChecked(config_dict["debug"].get("enabled", False))
-            self.keep_archive_handles_checkbox.setChecked(config_dict["debug"].get("keep_archive_handles", False))
-            self.cache_archive_metadata_checkbox.setChecked(config_dict["debug"].get("cache_archive_metadata", True))
-            self.show_error_log_checkbox.setChecked(config_dict["debug"].get("show_error_log", False))
+            self.debug_mode_checkbox.setChecked(config_dict["debug"].get("enabled", DebugDefaults.ENABLED.default))
+            self.keep_archive_handles_checkbox.setChecked(config_dict["debug"].get("keep_archive_handles", DebugDefaults.KEEP_ARCHIVE_HANDLES.default))
+            self.cache_archive_metadata_checkbox.setChecked(config_dict["debug"].get("cache_archive_metadata", DebugDefaults.CACHE_ARCHIVE_METADATA.default))
+            self.show_error_log_checkbox.setChecked(config_dict["debug"].get("show_error_log", DebugDefaults.SHOW_ERROR_LOG.default))
 
         # キャッシュ設定
         if "cache" in config_dict:
-            self.cache_memory_limit.setText(config_dict["cache"].get("memory_limit", "256MB"))
-            self.cache_prefetch_pages.setValue(config_dict["cache"].get("prefetch_pages", 5))
+            self.cache_memory_limit.setText(config_dict["cache"].get("memory_limit", CacheDefaults.MEMORY_LIMIT.default))
+            self.cache_prefetch_pages.setValue(config_dict["cache"].get("prefetch_pages", CacheDefaults.PREFETCH_PAGES.default))
             self._set_image_loader_workers_value(
                 config_dict["cache"].get("image_loader_workers", "auto")
             )
             if hasattr(self, 'optimize_large_images_checkbox'):
-                self.optimize_large_images_checkbox.setChecked(config_dict["cache"].get("optimize_large_images", True))
+                self.optimize_large_images_checkbox.setChecked(config_dict["cache"].get("optimize_large_images", CacheDefaults.OPTIMIZE_LARGE_IMAGES.default))
             if hasattr(self, 'optimize_threshold'):
-                self.optimize_threshold.setText(config_dict["cache"].get("optimize_threshold", "50MB"))
+                self.optimize_threshold.setText(config_dict["cache"].get("optimize_threshold", CacheDefaults.OPTIMIZE_THRESHOLD.default))
             if hasattr(self, 'optimize_max_resolution'):
-                self.optimize_max_resolution.setValue(config_dict["cache"].get("optimize_max_resolution", 4000))
-            self.optimize_large_images_checkbox.setChecked(config_dict["cache"].get("optimize_large_images", True))
-            self.optimize_threshold.setText(config_dict["cache"].get("optimize_threshold", "50MB"))
-            self.optimize_max_resolution.setValue(config_dict["cache"].get("optimize_max_resolution", 4000))
+                self.optimize_max_resolution.setValue(config_dict["cache"].get("optimize_max_resolution", CacheDefaults.OPTIMIZE_MAX_RESOLUTION.default))
+            self.optimize_large_images_checkbox.setChecked(config_dict["cache"].get("optimize_large_images", CacheDefaults.OPTIMIZE_LARGE_IMAGES.default))
+            self.optimize_threshold.setText(config_dict["cache"].get("optimize_threshold", CacheDefaults.OPTIMIZE_THRESHOLD.default))
+            self.optimize_max_resolution.setValue(config_dict["cache"].get("optimize_max_resolution", CacheDefaults.OPTIMIZE_MAX_RESOLUTION.default))
 
         # UIフォント設定
         # 選択されたバリアントを使用（バリアントが選択されていない場合はファミリー名）
@@ -1614,7 +1623,7 @@ class SettingsDialog(QDialog):
 
         # デバッグモードが有効になった場合、ログファイル作成の旨をダイアログで通知
         debug_enabled = self.debug_mode_checkbox.isChecked()
-        if debug_enabled and not self.config.debug.get("enabled", False):
+        if debug_enabled and not self.config.debug.get("enabled", DebugDefaults.ENABLED.default):
             QMessageBox.information(
                 self,
                 get_text("dialogs.information"),
@@ -1705,7 +1714,7 @@ class SettingsDialog(QDialog):
         # 言語設定
         selected_language = self.language_combo.currentData()
         language_changed = False
-        if selected_language and selected_language != self.config.language.get("code", "system"):
+        if selected_language and selected_language != self.config.language.get("code", LanguageDefaults.CODE.default):
             self.config.language["code"] = selected_language
             language_changed = True
 
@@ -1731,12 +1740,12 @@ class SettingsDialog(QDialog):
         self.config.viewer["spread_selected_as_axis"] = self.spread_selected_as_axis_checkbox.isChecked()
         spread_pref = self.spread_toggle_preference_combo.currentData()
         if spread_pref not in ("keep_previous", "prefer_right", "prefer_left"):
-            spread_pref = "keep_previous"
+            spread_pref = ViewerDefaults.SPREAD_TOGGLE_PREFERENCE.default
         self.config.viewer["spread_toggle_preference"] = spread_pref
         self.config.viewer["drop_opens_new_tab"] = bool(self.drop_opens_combo.currentData())
         self.config.viewer["open_archives_in_own_tab"] = self.open_archives_own_tab_checkbox.isChecked()
         self.config.viewer["open_folders_in_own_tab"] = self.open_folders_own_tab_checkbox.isChecked()
-        self.config.viewer["current_tab_color"] = self.config.viewer.get("current_tab_color", "#3a7bd5")
+        self.config.viewer["current_tab_color"] = self.config.viewer.get("current_tab_color", ViewerDefaults.CURRENT_TAB_COLOR.default)
         self.config.viewer["current_tab_alpha"] = self.current_tab_alpha.value()
         self.config.viewer["current_tab_gradient"] = self.current_tab_gradient_checkbox.isChecked()
         try:
@@ -1808,8 +1817,8 @@ class SettingsDialog(QDialog):
             self.config.cache["memory_limit"] = cache_memory_limit_text
         except ValueError:
             # 無効な場合はデフォルト値に戻す
-            self.config.cache["memory_limit"] = "256MB"
-            self.cache_memory_limit.setText("256MB")
+            self.config.cache["memory_limit"] = CacheDefaults.MEMORY_LIMIT.default
+            self.cache_memory_limit.setText(CacheDefaults.MEMORY_LIMIT.default)
             QMessageBox.warning(
                 self,
                 get_text("dialogs.warning"),
@@ -1832,8 +1841,8 @@ class SettingsDialog(QDialog):
             self.config.cache["optimize_threshold"] = optimize_threshold_text
         except ValueError:
             # 無効な場合はデフォルト値に戻す
-            self.config.cache["optimize_threshold"] = "50MB"
-            self.optimize_threshold.setText("50MB")
+            self.config.cache["optimize_threshold"] = CacheDefaults.OPTIMIZE_THRESHOLD.default
+            self.optimize_threshold.setText(CacheDefaults.OPTIMIZE_THRESHOLD.default)
             QMessageBox.warning(
                 self,
                 get_text("dialogs.warning"),
@@ -1890,7 +1899,7 @@ class SettingsDialog(QDialog):
 
         # デバッグモードが有効になった場合、ログファイル作成の旨をダイアログで通知
         debug_enabled = self.debug_mode_checkbox.isChecked()
-        if debug_enabled and not self.config.debug.get("enabled", False):
+        if debug_enabled and not self.config.debug.get("enabled", DebugDefaults.ENABLED.default):
             QMessageBox.information(
                 self,
                 get_text("dialogs.information"),
@@ -1912,9 +1921,9 @@ class SettingsDialog(QDialog):
                 parent._update_page_slider()
         if parent and hasattr(getattr(parent, "tab_widget", None), "set_current_tab_mark"):
             parent.tab_widget.set_current_tab_mark(
-                self.config.viewer.get("current_tab_color", "#3a7bd5"),
-                self.config.viewer.get("current_tab_alpha", 170),
-                self.config.viewer.get("current_tab_gradient", True),
+                self.config.viewer.get("current_tab_color", ViewerDefaults.CURRENT_TAB_COLOR.default),
+                self.config.viewer.get("current_tab_alpha", ViewerDefaults.CURRENT_TAB_ALPHA.default),
+                self.config.viewer.get("current_tab_gradient", ViewerDefaults.CURRENT_TAB_GRADIENT.default),
             )
         return True
 

@@ -12,6 +12,7 @@ from PySide6.QtGui import QPixmap, QImage, QMouseEvent, QWheelEvent, QPainter, Q
 from PIL import Image
 from PIL.ImageQt import ImageQt as PILImageQt
 from ez_co.config import Config
+from ez_co.enums.config_defaults import DebugDefaults, ViewerDefaults
 from ez_co.gestures.mouse_gesture import MouseGesture
 from ez_co.enums.actions import Actions, get_action_display_name
 from ez_co.enums.mouse_buttons import MouseButtons
@@ -53,14 +54,14 @@ class ImageView(QWidget):
         self._mouse_repeat_action = None
         # マウスリピート設定をconfigから読み込む
         if config and hasattr(config, 'viewer'):
-            self._mouse_repeat_initial_delay = config.viewer.get("mouse_repeat_initial_delay", 100)
-            self._mouse_repeat_acceleration_start = config.viewer.get("mouse_repeat_acceleration_start", 100)
-            self._mouse_repeat_min_interval = config.viewer.get("mouse_repeat_min_interval", 30)
+            self._mouse_repeat_initial_delay = config.viewer.get("mouse_repeat_initial_delay", ViewerDefaults.MOUSE_REPEAT_INITIAL_DELAY.default)
+            self._mouse_repeat_acceleration_start = config.viewer.get("mouse_repeat_acceleration_start", ViewerDefaults.MOUSE_REPEAT_ACCELERATION_START.default)
+            self._mouse_repeat_min_interval = config.viewer.get("mouse_repeat_min_interval", ViewerDefaults.MOUSE_REPEAT_MIN_INTERVAL.default)
         else:
             # デフォルト値（configがない場合）
-            self._mouse_repeat_initial_delay = 100
-            self._mouse_repeat_acceleration_start = 100
-            self._mouse_repeat_min_interval = 30
+            self._mouse_repeat_initial_delay = ViewerDefaults.MOUSE_REPEAT_INITIAL_DELAY.default
+            self._mouse_repeat_acceleration_start = ViewerDefaults.MOUSE_REPEAT_ACCELERATION_START.default
+            self._mouse_repeat_min_interval = ViewerDefaults.MOUSE_REPEAT_MIN_INTERVAL.default
         self._mouse_repeat_interval = self._mouse_repeat_initial_delay  # ms - 現在の間隔
         self._mouse_repeat_start_time = 0  # リピート開始時刻
         self._right_press_pos = None  # 右クリック押下位置
@@ -80,12 +81,12 @@ class ImageView(QWidget):
             # ジェスチャーを用意できないときは捨てて、操作なしで続ける。
             self.mouse_gesture = None
         # 起動時に背景色を設定
-        color = "#c0ffc0"
+        color = ViewerDefaults.BACKGROUND_COLOR.default
         if self.config:
             if hasattr(self.config, 'viewer') and isinstance(self.config.viewer, dict):
-                color = self.config.viewer.get("background_color", "#c0ffc0")
+                color = self.config.viewer.get("background_color", ViewerDefaults.BACKGROUND_COLOR.default)
             elif isinstance(self.config, dict):
-                color = self.config.get("viewer", {}).get("background_color", "#c0ffc0")
+                color = self.config.get("viewer", {}).get("background_color", ViewerDefaults.BACKGROUND_COLOR.default)
         self.set_background_color(color)
 
     def setup_ui(self):
@@ -97,7 +98,7 @@ class ImageView(QWidget):
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignCenter)  # 画像を中央揃えにする
         # Configの背景色を使用（デフォルトは薄い緑）
-        default_bg_color = "#c0ffc0"
+        default_bg_color = ViewerDefaults.BACKGROUND_COLOR.default
         if self.config and "background_color" in self.config.viewer:
             default_bg_color = self.config.viewer["background_color"]
         self.image_label.setStyleSheet(f"background-color: {default_bg_color};")
@@ -126,7 +127,7 @@ class ImageView(QWidget):
                 self.config
                 and hasattr(self.config, "debug")
                 and isinstance(self.config.debug, dict)
-                and self.config.debug.get("enabled", False)
+                and self.config.debug.get("enabled", DebugDefaults.ENABLED.default)
             )
             convert_started = time.perf_counter() if perf_enabled else None
             rgba = image.convert("RGBA")
@@ -214,12 +215,12 @@ class ImageView(QWidget):
         left = fit_height(left, max_h)
         right = fit_height(right, max_h)
 
-        bg_color = "#c0ffc0"
+        bg_color = ViewerDefaults.BACKGROUND_COLOR.default
         if self.config:
             if hasattr(self.config, 'viewer') and isinstance(self.config.viewer, dict):
-                bg_color = self.config.viewer.get("background_color", "#c0ffc0")
+                bg_color = self.config.viewer.get("background_color", ViewerDefaults.BACKGROUND_COLOR.default)
             elif isinstance(self.config, dict):
-                bg_color = self.config.get("viewer", {}).get("background_color", "#c0ffc0")
+                bg_color = self.config.get("viewer", {}).get("background_color", ViewerDefaults.BACKGROUND_COLOR.default)
         bg = QColor(bg_color)
         combined = Image.new(
             "RGBA",
@@ -242,8 +243,8 @@ class ImageView(QWidget):
                 viewer = self.config.viewer
             elif isinstance(self.config, dict):
                 viewer = self.config.get("viewer", {})
-        mode = viewer.get("zoom_navigation_mode", "page")
-        return mode if mode in ("page", "left", "right") else "page"
+        mode = viewer.get("zoom_navigation_mode", ViewerDefaults.ZOOM_NAVIGATION_MODE.default)
+        return mode if mode in ("page", "left", "right") else ViewerDefaults.ZOOM_NAVIGATION_MODE.default
 
     def _zoom_navigation_geometry(
         self,
@@ -455,12 +456,12 @@ class ImageView(QWidget):
         if self.image_label.width() == 0 or self.image_label.height() == 0:
             return
         # fit_to_window_minimumが有効な場合は最小ズームを100%（全画面表示）に制限
-        fit_min = True
+        fit_min = ViewerDefaults.FIT_TO_WINDOW_MINIMUM.default
         if self.config:
             if hasattr(self.config, 'viewer') and isinstance(self.config.viewer, dict):
-                fit_min = self.config.viewer.get("fit_to_window_minimum", True)
+                fit_min = self.config.viewer.get("fit_to_window_minimum", ViewerDefaults.FIT_TO_WINDOW_MINIMUM.default)
             elif isinstance(self.config, dict):
-                fit_min = self.config.get("viewer", {}).get("fit_to_window_minimum", True)
+                fit_min = self.config.get("viewer", {}).get("fit_to_window_minimum", ViewerDefaults.FIT_TO_WINDOW_MINIMUM.default)
         # 画像の全画面表示時のズーム率を計算
         if fit_min:
             min_zoom = 1.0
@@ -528,7 +529,7 @@ class ImageView(QWidget):
                     logger.debug(get_log_text("debug_update_image_display_offset_clamped", old_offset=old_offset, new_offset=self.image_offset))
                 # 画像の表示位置を調整するための新しいQPixmapを作成
                 # 背景色で塗りつぶされたQPixmapを作成
-                background_color = QColor(self.config.viewer["background_color"] if self.config else "#c0ffc0")
+                background_color = QColor(self.config.viewer["background_color"] if self.config else ViewerDefaults.BACKGROUND_COLOR.default)
                 display_pixmap = QPixmap(label_size)
                 display_pixmap.fill(background_color)
                 # 移動後の位置を計算
@@ -1223,7 +1224,7 @@ class ImageView(QWidget):
         # MouseGestureの閾値を更新
         if self.mouse_gesture and config:
             if hasattr(config, 'viewer') and isinstance(config.viewer, dict):
-                threshold = config.viewer.get("gesture_threshold", 50)
+                threshold = config.viewer.get("gesture_threshold", ViewerDefaults.GESTURE_THRESHOLD.default)
                 self.mouse_gesture.set_threshold(threshold)
         # 背景色も反映
         if self.config:
@@ -1233,9 +1234,9 @@ class ImageView(QWidget):
                 self.set_background_color(self.config.get("viewer", {}).get("background_color", "#000000"))
         # マウスリピート設定を更新
         if config and hasattr(config, 'viewer'):
-            self._mouse_repeat_initial_delay = config.viewer.get("mouse_repeat_initial_delay", 100)
-            self._mouse_repeat_acceleration_start = config.viewer.get("mouse_repeat_acceleration_start", 100)
-            self._mouse_repeat_min_interval = config.viewer.get("mouse_repeat_min_interval", 30)
+            self._mouse_repeat_initial_delay = config.viewer.get("mouse_repeat_initial_delay", ViewerDefaults.MOUSE_REPEAT_INITIAL_DELAY.default)
+            self._mouse_repeat_acceleration_start = config.viewer.get("mouse_repeat_acceleration_start", ViewerDefaults.MOUSE_REPEAT_ACCELERATION_START.default)
+            self._mouse_repeat_min_interval = config.viewer.get("mouse_repeat_min_interval", ViewerDefaults.MOUSE_REPEAT_MIN_INTERVAL.default)
 
     def keyPressEvent(self, event):
         """キーをショートカットとして扱う。

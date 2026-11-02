@@ -20,6 +20,14 @@ from PySide6.QtGui import (
 )
 import shiboken6
 from ez_co.config import Config
+from ez_co.enums.config_defaults import (
+    DebugDefaults,
+    HistoryDefaults,
+    LanguageDefaults,
+    UiFontDefaults,
+    ViewerDefaults,
+    WindowDefaults,
+)
 from ez_co.filters.builtin import BUILTIN_FILTER_ID, register_builtin
 from ez_co.filters.pipeline import apply_pipe
 from ez_co.filters.registry import get_filter_registry
@@ -156,7 +164,7 @@ class GestureOverlayWidget(QWidget):
         font_family = ui_font.get('font_family', 'Meiryo')
         font_size = ui_font.get('font_size', 18)
         font_color = ui_font.get('font_color', '#0000ff')
-        bg_color = ui_font.get('bg_color', '#ffffff')
+        bg_color = ui_font.get('bg_color', UiFontDefaults.BG_COLOR.default)
         alpha = ui_font.get('alpha', 170)
         # 色に透過度を合成
         def color_with_alpha(base, a):
@@ -223,7 +231,7 @@ class MainWindow(QMainWindow):
             self.db_manager.config = config
         self._closed_tabs = []
         self._closing = False
-        self._window_was_maximized = bool(config.window.get("maximized", False))
+        self._window_was_maximized = bool(config.window.get("maximized", WindowDefaults.MAXIMIZED.default))
         self._pending_maximize = False
         self._fullscreen_restore = None
         from ez_co.ui.plugins.plugin_session import PluginSession
@@ -231,7 +239,7 @@ class MainWindow(QMainWindow):
         # マウスロック関連
         self.mouse_locked = False
         self.mouse_lock_state = MouseLockState()
-        self.mouse_lock_state.persistent = bool(config.viewer.get("mouse_lock", False))
+        self.mouse_lock_state.persistent = bool(config.viewer.get("mouse_lock", ViewerDefaults.MOUSE_LOCK.default))
         self.mouse_lock_center = None
         self.mouse_lock_restore_global_pos = None
         self.original_cursor = None
@@ -509,7 +517,7 @@ class MainWindow(QMainWindow):
         # メニューバーの設定
         self.setup_menu()
         # 常に手前に表示フラグ反映
-        self.setWindowFlag(Qt.WindowStaysOnTopHint, self.config.window.get("always_on_top", False))
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, self.config.window.get("always_on_top", WindowDefaults.ALWAYS_ON_TOP.default))
         # メインウィジェットの設定
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
@@ -542,9 +550,9 @@ class MainWindow(QMainWindow):
         self._tab_gesture = MouseGesture(self.config)
         self.tab_widget.set_gesture_recognizer(self._tab_gesture)
         self.tab_widget.set_current_tab_mark(
-            self.config.viewer.get("current_tab_color", "#3a7bd5"),
-            self.config.viewer.get("current_tab_alpha", 170),
-            self.config.viewer.get("current_tab_gradient", True),
+            self.config.viewer.get("current_tab_color", ViewerDefaults.CURRENT_TAB_COLOR.default),
+            self.config.viewer.get("current_tab_alpha", ViewerDefaults.CURRENT_TAB_ALPHA.default),
+            self.config.viewer.get("current_tab_gradient", ViewerDefaults.CURRENT_TAB_GRADIENT.default),
         )
 
         # ダイアログの参照
@@ -634,34 +642,34 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self.fullscreen_action)
         self.show_tabs_in_fullscreen_action = QAction(get_text("ui.show_tabs_in_fullscreen"), self)
         self.show_tabs_in_fullscreen_action.setCheckable(True)
-        self.show_tabs_in_fullscreen_action.setChecked(self.config.viewer.get("show_tabs_in_fullscreen", False))
+        self.show_tabs_in_fullscreen_action.setChecked(self.config.viewer.get("show_tabs_in_fullscreen", ViewerDefaults.SHOW_TABS_IN_FULLSCREEN.default))
         self.show_tabs_in_fullscreen_action.triggered.connect(self.toggle_show_tabs_in_fullscreen)
         view_menu.addAction(self.show_tabs_in_fullscreen_action)
         self.show_page_slider_in_fullscreen_action = QAction(get_text("ui.show_page_slider_in_fullscreen"), self)
         self.show_page_slider_in_fullscreen_action.setCheckable(True)
         self.show_page_slider_in_fullscreen_action.setChecked(
-            self.config.viewer.get("show_page_slider_in_fullscreen", False)
+            self.config.viewer.get("show_page_slider_in_fullscreen", ViewerDefaults.SHOW_PAGE_SLIDER_IN_FULLSCREEN.default)
         )
         self.show_page_slider_in_fullscreen_action.triggered.connect(self.toggle_show_page_slider_in_fullscreen)
         view_menu.addAction(self.show_page_slider_in_fullscreen_action)
         # 常に手前に表示
         self.always_on_top_action = QAction(get_text("ui.always_on_top"), self)
         self.always_on_top_action.setCheckable(True)
-        self.always_on_top_action.setChecked(self.config.window.get("always_on_top", False))
+        self.always_on_top_action.setChecked(self.config.window.get("always_on_top", WindowDefaults.ALWAYS_ON_TOP.default))
         self.always_on_top_action.triggered.connect(self.toggle_always_on_top)
         self._apply_action_shortcut(self.always_on_top_action, Actions.ALWAYS_ON_TOP.value)
         view_menu.addAction(self.always_on_top_action)
         # 最小縮小率
         self.min_scale_action = QAction(get_text("ui.min_scale_toggle"), self)
         self.min_scale_action.setCheckable(True)
-        self.min_scale_action.setChecked(self.config.viewer.get("fit_to_window_minimum", True))
+        self.min_scale_action.setChecked(self.config.viewer.get("fit_to_window_minimum", ViewerDefaults.FIT_TO_WINDOW_MINIMUM.default))
         self.min_scale_action.triggered.connect(self.toggle_min_scale)
         self._apply_action_shortcut(self.min_scale_action, Actions.MIN_SCALE_TOGGLE.value)
         view_menu.addAction(self.min_scale_action)
         # マウスロック
         self.mouse_lock_action = QAction(get_text("ui.toggle_mouse_lock"), self)
         self.mouse_lock_action.setCheckable(True)
-        self.mouse_lock_action.setChecked(self.config.viewer.get("mouse_lock", False))
+        self.mouse_lock_action.setChecked(self.config.viewer.get("mouse_lock", ViewerDefaults.MOUSE_LOCK.default))
         self.mouse_lock_action.triggered.connect(self.toggle_mouse_lock)
         self._apply_action_shortcut(self.mouse_lock_action, Actions.TOGGLE_MOUSE_LOCK.value)
         view_menu.addAction(self.mouse_lock_action)
@@ -682,7 +690,7 @@ class MainWindow(QMainWindow):
             self.zoom_navigation_menu.addAction(action)
             self._apply_action_shortcut(action, action_id)
             self.zoom_navigation_actions[mode] = action
-        self._sync_zoom_navigation_menu(self.config.viewer.get("zoom_navigation_mode", "page"))
+        self._sync_zoom_navigation_menu(self.config.viewer.get("zoom_navigation_mode", ViewerDefaults.ZOOM_NAVIGATION_MODE.default))
         self.zoom_navigation_group.triggered.connect(self.on_zoom_navigation_mode_changed)
 
         view_menu.addSeparator()
@@ -721,7 +729,7 @@ class MainWindow(QMainWindow):
         self._apply_action_shortcut(self.comic_spread_left_action, Actions.PAGE_MODE_SPREAD_LEFT.value)
         view_menu.addAction(self.comic_spread_left_action)
 
-        page_mode = self.config.viewer.get("page_mode", "single")
+        page_mode = self.config.viewer.get("page_mode", ViewerDefaults.PAGE_MODE.default)
         if page_mode == "spread_left":
             self.comic_spread_left_action.setChecked(True)
         elif page_mode == "spread_right":
@@ -1027,7 +1035,7 @@ class MainWindow(QMainWindow):
         self._apply_mouse_lock_config()
         from ez_co.utils.language_manager import set_language
         try:
-            set_language(self.config.language.get("code", "system"))
+            set_language(self.config.language.get("code", LanguageDefaults.CODE.default))
         except Exception:
             # 言語コードが適用できないときは捨てて、残りの設定反映を続ける。
             pass
@@ -1045,25 +1053,25 @@ class MainWindow(QMainWindow):
             # フォント適用に失敗したらログして、残りの設定反映を続ける。
             logger.error(get_log_text("main_window_font_apply_failed", error=e))
 
-        always_on_top = self.config.window.get("always_on_top", False)
+        always_on_top = self.config.window.get("always_on_top", WindowDefaults.ALWAYS_ON_TOP.default)
         self.setWindowFlag(Qt.WindowStaysOnTopHint, always_on_top)
         self.show()
         self.setMinimumSize(
-            self.config.window.get("min_width", 400),
-            self.config.window.get("min_height", 300),
+            self.config.window.get("min_width", WindowDefaults.MIN_WIDTH.default),
+            self.config.window.get("min_height", WindowDefaults.MIN_HEIGHT.default),
         )
 
         for pane in self._iter_panes():
-            pane.image_view.set_background_color(self.config.viewer.get("background_color", "#c0ffc0"))
+            pane.image_view.set_background_color(self.config.viewer.get("background_color", ViewerDefaults.BACKGROUND_COLOR.default))
             pane.image_view.set_config(self.config)
         if hasattr(self, "tab_widget") and hasattr(self.tab_widget, "set_current_tab_mark"):
             self.tab_widget.set_current_tab_mark(
-                self.config.viewer.get("current_tab_color", "#3a7bd5"),
-                self.config.viewer.get("current_tab_alpha", 170),
-                self.config.viewer.get("current_tab_gradient", True),
+                self.config.viewer.get("current_tab_color", ViewerDefaults.CURRENT_TAB_COLOR.default),
+                self.config.viewer.get("current_tab_alpha", ViewerDefaults.CURRENT_TAB_ALPHA.default),
+                self.config.viewer.get("current_tab_gradient", ViewerDefaults.CURRENT_TAB_GRADIENT.default),
             )
         if hasattr(self, "mouse_gesture") and self.mouse_gesture:
-            new_threshold = self.config.viewer.get("gesture_threshold", 50)
+            new_threshold = self.config.viewer.get("gesture_threshold", ViewerDefaults.GESTURE_THRESHOLD.default)
             if hasattr(self.mouse_gesture, "set_threshold"):
                 self.mouse_gesture.set_threshold(new_threshold)
             if hasattr(self, "_tab_gesture"):
@@ -1226,7 +1234,7 @@ class MainWindow(QMainWindow):
         font_family = ui_font.get('font_family', 'Meiryo')
         font_size = ui_font.get('font_size', 18)
         font_color = ui_font.get('font_color', '#0000ff')
-        bg_color = ui_font.get('bg_color', '#ffffff')
+        bg_color = ui_font.get('bg_color', UiFontDefaults.BG_COLOR.default)
         alpha = ui_font.get('alpha', 170)
         # CSS用rgba形式に変換
         def to_rgba(css_hex, a):
@@ -1273,7 +1281,7 @@ class MainWindow(QMainWindow):
             mode: page、left、right のいずれか。
         """
         if mode not in ("page", "left", "right"):
-            mode = "page"
+            mode = ViewerDefaults.ZOOM_NAVIGATION_MODE.default
         if not self.config or self.config.is_runtime_overridden("viewer.zoom_navigation_mode"):
             return
         self.config.viewer["zoom_navigation_mode"] = mode
@@ -1291,7 +1299,7 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "zoom_navigation_group"):
             return
         if mode not in self.zoom_navigation_actions:
-            mode = "page"
+            mode = ViewerDefaults.ZOOM_NAVIGATION_MODE.default
         self.zoom_navigation_group.blockSignals(True)
         self.zoom_navigation_actions[mode].setChecked(True)
         self.zoom_navigation_group.blockSignals(False)
@@ -1326,7 +1334,7 @@ class MainWindow(QMainWindow):
             mode: single、spread_left、spread_right のいずれか。
         """
         if mode not in ("single", "spread_left", "spread_right"):
-            mode = "single"
+            mode = ViewerDefaults.PAGE_MODE.default
         if self.config and self.config.is_runtime_overridden("viewer.page_mode"):
             return
         if not self.config:
@@ -1367,14 +1375,14 @@ class MainWindow(QMainWindow):
         Returns:
             spread_left か spread_right。
         """
-        preference = self.config.viewer.get("spread_toggle_preference", "keep_previous") if self.config else "keep_previous"
+        preference = self.config.viewer.get("spread_toggle_preference", ViewerDefaults.SPREAD_TOGGLE_PREFERENCE.default) if self.config else ViewerDefaults.SPREAD_TOGGLE_PREFERENCE.default
         if preference == "prefer_left":
             return "spread_left"
         if preference == "prefer_right":
             return "spread_right"
         last_mode = self.config.viewer.get("last_spread_mode") if self.config else None
         if last_mode not in ("spread_left", "spread_right"):
-            return "spread_right"
+            return ViewerDefaults.LAST_SPREAD_MODE.default
         return last_mode
 
     def toggle_comic_spread(self):
@@ -1423,7 +1431,7 @@ class MainWindow(QMainWindow):
         """
         if not self.config:
             return False
-        return self.config.viewer.get("page_mode", "single") in ("spread_left", "spread_right")
+        return self.config.viewer.get("page_mode", ViewerDefaults.PAGE_MODE.default) in ("spread_left", "spread_right")
 
     def _is_spread_selected_as_axis(self) -> bool:
         """両開きで選択ページを軸に N と N+1 を表示するか
@@ -1433,7 +1441,7 @@ class MainWindow(QMainWindow):
         """
         if not self.config:
             return False
-        return bool(self.config.viewer.get("spread_selected_as_axis", False))
+        return bool(self.config.viewer.get("spread_selected_as_axis", ViewerDefaults.SPREAD_SELECTED_AS_AXIS.default))
 
     def _clear_spread_force_single(self):
         """スライダー等で明示的にページを選んだときは単ページ固定を解除"""
@@ -1445,7 +1453,7 @@ class MainWindow(QMainWindow):
         Returns:
             右始まりにするとき True。
         """
-        return self.config.viewer.get("page_mode", "single") != "spread_left"
+        return self.config.viewer.get("page_mode", ViewerDefaults.PAGE_MODE.default) != "spread_left"
 
     def _spread_display_start(self, index: int) -> int:
         """見開き表示の先頭インデックス。選択ページは変えず、表示ペアだけ決める。
@@ -1585,7 +1593,7 @@ class MainWindow(QMainWindow):
         if self._has_spread_pair():
             perf_enabled = bool(
                 isinstance(self.config.debug, dict)
-                and self.config.debug.get("enabled", False)
+                and self.config.debug.get("enabled", DebugDefaults.ENABLED.default)
             )
             spread_started = time.perf_counter() if perf_enabled else None
             start = self._spread_display_start(self.file_handler.current_index)
@@ -1641,7 +1649,7 @@ class MainWindow(QMainWindow):
             return None
         perf_enabled = bool(
             isinstance(self.config.debug, dict)
-            and self.config.debug.get("enabled", False)
+            and self.config.debug.get("enabled", DebugDefaults.ENABLED.default)
         )
         started = time.perf_counter() if perf_enabled else None
         path = ""
@@ -1904,7 +1912,7 @@ class MainWindow(QMainWindow):
         """設定に残したドックの配置を戻す。"""
         if not hasattr(self, "bookmark_dock"):
             return
-        raw = self.config.window.get("dock_state") or ""
+        raw = self.config.window.get("dock_state") or WindowDefaults.DOCK_STATE.default
         if raw:
             try:
                 data = QByteArray.fromBase64(str(raw).encode("ascii"))
@@ -1941,7 +1949,7 @@ class MainWindow(QMainWindow):
 
         # マウスジェスチャーの設定を更新
         if hasattr(self, 'mouse_gesture') and self.mouse_gesture:
-            new_threshold = self.config.viewer.get("gesture_threshold", 50)
+            new_threshold = self.config.viewer.get("gesture_threshold", ViewerDefaults.GESTURE_THRESHOLD.default)
             logger.info(get_log_text("mouse_gesture_current_settings", current_threshold=self.mouse_gesture.threshold, config_threshold=new_threshold))
             if self.mouse_gesture.threshold != new_threshold:
                 self.mouse_gesture.set_threshold(new_threshold)
@@ -1975,7 +1983,7 @@ class MainWindow(QMainWindow):
             logger.info(get_log_text("main_window_files_dropped", file_list=files))
             if any(path and not is_session_file(path) for path in files):
                 self._focus_tab_under_drop(event.position().toPoint())
-            self.open_paths(files, new_tab=self.config.viewer.get("drop_opens_new_tab", False))
+            self.open_paths(files, new_tab=self.config.viewer.get("drop_opens_new_tab", ViewerDefaults.DROP_OPENS_NEW_TAB.default))
             event.acceptProposedAction()
 
     def _focus_tab_under_drop(self, pos):
@@ -2011,7 +2019,7 @@ class MainWindow(QMainWindow):
         """フルスクリーンの設定と面の数に合わせてタブバーを出し、一覧も更新する。"""
         if not hasattr(self, "tab_widget"):
             return
-        show = not (self.is_fullscreen and not self.config.viewer.get("show_tabs_in_fullscreen", False))
+        show = not (self.is_fullscreen and not self.config.viewer.get("show_tabs_in_fullscreen", ViewerDefaults.SHOW_TABS_IN_FULLSCREEN.default))
         self.tab_widget.set_tab_bars_allowed(show)
         self._refresh_tab_list()
         self._update_reopen_tab_action()
@@ -2437,8 +2445,8 @@ class MainWindow(QMainWindow):
         Returns:
             種類とパスの束。
         """
-        archive_own = bool(self.config.viewer.get("open_archives_in_own_tab", True))
-        folder_own = bool(self.config.viewer.get("open_folders_in_own_tab", False))
+        archive_own = bool(self.config.viewer.get("open_archives_in_own_tab", ViewerDefaults.OPEN_ARCHIVES_IN_OWN_TAB.default))
+        folder_own = bool(self.config.viewer.get("open_folders_in_own_tab", ViewerDefaults.OPEN_FOLDERS_IN_OWN_TAB.default))
         items: list[tuple[str, list[str]]] = []
         bundle: list[str] = []
         bundle_inserted = False
@@ -3546,7 +3554,7 @@ class MainWindow(QMainWindow):
             self.image_slide_action.setChecked(False)
 
         if hasattr(self, "page_slider_dock") and self.page_slider_dock.isVisible():
-            if not self.config.viewer.get("show_page_slider_in_fullscreen", False):
+            if not self.config.viewer.get("show_page_slider_in_fullscreen", ViewerDefaults.SHOW_PAGE_SLIDER_IN_FULLSCREEN.default):
                 self.page_slider_dock.hide()
                 self.page_slider_action.setChecked(False)
 
@@ -4147,8 +4155,8 @@ class MainWindow(QMainWindow):
         Returns:
             収めた左、上、幅、高さ。
         """
-        min_width = int(self.config.window.get("min_width", 400))
-        min_height = int(self.config.window.get("min_height", 300))
+        min_width = int(self.config.window.get("min_width", WindowDefaults.MIN_WIDTH.default))
+        min_height = int(self.config.window.get("min_height", WindowDefaults.MIN_HEIGHT.default))
         width = max(width, min_width)
         height = max(height, min_height)
         screen = QApplication.screenAt(QPoint(x, y)) or QApplication.primaryScreen()
@@ -4167,16 +4175,16 @@ class MainWindow(QMainWindow):
             self.config.window["min_height"],
         )
         x, y, width, height = self._clamp_window_geometry(
-            int(self.config.window.get("x", 100)),
-            int(self.config.window.get("y", 100)),
-            int(self.config.window.get("width", 800)),
-            int(self.config.window.get("height", 600)),
+            int(self.config.window.get("x", WindowDefaults.X.default)),
+            int(self.config.window.get("y", WindowDefaults.Y.default)),
+            int(self.config.window.get("width", WindowDefaults.WIDTH.default)),
+            int(self.config.window.get("height", WindowDefaults.HEIGHT.default)),
         )
         self.resize(width, height)
         self.move(x, y)
         restore_maximized = bool(
-            self.config.window.get("maximize_on_startup", False)
-            or self.config.window.get("maximized", False)
+            self.config.window.get("maximize_on_startup", WindowDefaults.MAXIMIZE_ON_STARTUP.default)
+            or self.config.window.get("maximized", WindowDefaults.MAXIMIZED.default)
         )
         self._pending_maximize = restore_maximized
         self._window_was_maximized = restore_maximized or self._window_was_maximized
@@ -4688,7 +4696,7 @@ class MainWindow(QMainWindow):
             )
             if success:
                 # 履歴の最大数を制限
-                max_count = self.config.history.get("max_count", 20)
+                max_count = self.config.history.get("max_count", HistoryDefaults.MAX_COUNT.default)
                 self.db_manager.cleanup_old_history(max_count)
                 # 履歴ツールバーを更新
                 if hasattr(self, 'history_toolbar'):
@@ -4802,7 +4810,7 @@ class MainWindow(QMainWindow):
     def _apply_mouse_lock_config(self):
         """設定のマウスロックを状態へ反映する。"""
         self.mouse_lock_state.clear_temporary()
-        self.mouse_lock_state.persistent = bool(self.config.viewer.get("mouse_lock", False))
+        self.mouse_lock_state.persistent = bool(self.config.viewer.get("mouse_lock", ViewerDefaults.MOUSE_LOCK.default))
         self._sync_mouse_lock_state()
 
     def _sync_mouse_lock_state(self):
@@ -4810,7 +4818,7 @@ class MainWindow(QMainWindow):
         if self.mouse_lock_state.locked:
             self.enable_mouse_lock()
             if self.mouse_locked:
-                hide = self.mouse_lock_state.temporary or self.config.viewer.get("mouse_lock_hide_cursor", True)
+                hide = self.mouse_lock_state.temporary or self.config.viewer.get("mouse_lock_hide_cursor", ViewerDefaults.MOUSE_LOCK_HIDE_CURSOR.default)
                 self.setCursor(Qt.BlankCursor if hide else self.original_cursor)
         else:
             self.disable_mouse_lock()
@@ -4826,7 +4834,7 @@ class MainWindow(QMainWindow):
         self.mouse_lock_restore_global_pos = QPoint(cursor_pos)
         self.mouse_lock_center = self.mapFromGlobal(cursor_pos)
         self.original_cursor = self.cursor()
-        if self.mouse_lock_state.temporary or self.config.viewer.get("mouse_lock_hide_cursor", True):
+        if self.mouse_lock_state.temporary or self.config.viewer.get("mouse_lock_hide_cursor", ViewerDefaults.MOUSE_LOCK_HIDE_CURSOR.default):
             self.setCursor(Qt.BlankCursor)
         QCursor.setPos(self.mapToGlobal(self.mouse_lock_center))
         QApplication.instance().installEventFilter(self)
@@ -4885,7 +4893,7 @@ class MainWindow(QMainWindow):
                             self.image_view.current_qimage):
 
                             # 移動感度を適用
-                            sensitivity = self.config.viewer.get("image_move_sensitivity", 2.0) if self.config else 2.0
+                            sensitivity = self.config.viewer.get("image_move_sensitivity", ViewerDefaults.IMAGE_MOVE_SENSITIVITY.default) if self.config else ViewerDefaults.IMAGE_MOVE_SENSITIVITY.default
                             adjusted_delta = mouse_delta * sensitivity
 
                             # 画像のオフセットを更新（マウス移動と逆方向）
@@ -4974,7 +4982,7 @@ class MainWindow(QMainWindow):
         Returns:
             復元したページ番号。使わないときは 1。
         """
-        if not self.config.history.get("restore_page_on_reopen", False):
+        if not self.config.history.get("restore_page_on_reopen", HistoryDefaults.RESTORE_PAGE_ON_REOPEN.default):
             return 1
 
         # フォルダかファイルかを判定

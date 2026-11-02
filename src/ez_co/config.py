@@ -5,6 +5,16 @@ import os
 from PySide6.QtGui import QFontDatabase
 from typing import Dict, Any, List
 from ez_co.enums.arrows import Arrow
+from ez_co.enums.config_defaults import (
+    CacheDefaults,
+    DebugDefaults,
+    HistoryDefaults,
+    ImageListDefaults,
+    LanguageDefaults,
+    UiFontDefaults,
+    ViewerDefaults,
+    WindowDefaults,
+)
 from ez_co.filters.builtin import BUILTIN_FILTER_ID, default_basic_settings, normalize_basic_settings
 from ez_co.enums.archives import ArchiveInfo, ArchiveType
 from ez_co.enums.actions import Actions
@@ -139,13 +149,13 @@ def _current_tab_alpha(value):
         value: 設定から読んだ値。
 
     Returns:
-        0 から 255 の整数。読めなければ 170。
+        0 から 255 の整数。読めなければ初期値。
     """
     try:
         number = int(value)
     except (TypeError, ValueError):
         # 数値でなければ初期の透過度を返す。
-        return 170
+        return ViewerDefaults.CURRENT_TAB_ALPHA.default
     return max(0, min(255, number))
 
 
@@ -160,67 +170,67 @@ class Config:
         self._image_loader_logical_cpu_count = None
 
         self.window = {
-            "width": 800,
-            "height": 600,
-            "x": 100,
-            "y": 100,
-            "auto_resize": False,
-            "min_width": 400,
-            "min_height": 300,
-            "always_on_top": False,
-            "save_window_state": True,
-            "maximize_on_startup": False,
-            "maximized": False,
-            "dock_state": "",
+            "width": WindowDefaults.WIDTH.default,
+            "height": WindowDefaults.HEIGHT.default,
+            "x": WindowDefaults.X.default,
+            "y": WindowDefaults.Y.default,
+            "auto_resize": WindowDefaults.AUTO_RESIZE.default,
+            "min_width": WindowDefaults.MIN_WIDTH.default,
+            "min_height": WindowDefaults.MIN_HEIGHT.default,
+            "always_on_top": WindowDefaults.ALWAYS_ON_TOP.default,
+            "save_window_state": WindowDefaults.SAVE_WINDOW_STATE.default,
+            "maximize_on_startup": WindowDefaults.MAXIMIZE_ON_STARTUP.default,
+            "maximized": WindowDefaults.MAXIMIZED.default,
+            "dock_state": WindowDefaults.DOCK_STATE.default,
         }
         self.viewer = {
-            "background_color": "#c0ffc0",
-            "fit_to_window": False,
-            "fit_to_window_minimum": True,
-            "mouse_lock": False,
-            "mouse_lock_hide_cursor": True,
-            "image_move_sensitivity": 2.0,
-            "gesture_threshold": 50,
-            "mouse_repeat_initial_delay": 100,  # ms - 長押し時の最初の間隔
-            "mouse_repeat_acceleration_start": 100,  # ms - 加速開始時刻
-            "mouse_repeat_min_interval": 30,  # ms - 最小間隔
-            "page_mode": "single",  # single / spread_left / spread_right
-            "zoom_navigation_mode": "page",  # page / left / right
-            "spread_selected_as_axis": False,  # 両開き時、選択ページを軸に N と N+1 を表示
-            "spread_toggle_preference": "keep_previous",  # keep_previous / prefer_right / prefer_left
-            "last_spread_mode": "spread_right",  # 両開き／単ページ切替用の前回両開き方向
-            "drop_opens_new_tab": False,
-            "open_archives_in_own_tab": True,
-            "open_folders_in_own_tab": False,
-            "show_tabs_in_fullscreen": False,
-            "show_page_slider_in_fullscreen": False,
-            "current_tab_color": "#3a7bd5",
-            "current_tab_alpha": 170,
-            "current_tab_gradient": True,
+            "background_color": ViewerDefaults.BACKGROUND_COLOR.default,
+            "fit_to_window": ViewerDefaults.FIT_TO_WINDOW.default,
+            "fit_to_window_minimum": ViewerDefaults.FIT_TO_WINDOW_MINIMUM.default,
+            "mouse_lock": ViewerDefaults.MOUSE_LOCK.default,
+            "mouse_lock_hide_cursor": ViewerDefaults.MOUSE_LOCK_HIDE_CURSOR.default,
+            "image_move_sensitivity": ViewerDefaults.IMAGE_MOVE_SENSITIVITY.default,
+            "gesture_threshold": ViewerDefaults.GESTURE_THRESHOLD.default,
+            "mouse_repeat_initial_delay": ViewerDefaults.MOUSE_REPEAT_INITIAL_DELAY.default,
+            "mouse_repeat_acceleration_start": ViewerDefaults.MOUSE_REPEAT_ACCELERATION_START.default,
+            "mouse_repeat_min_interval": ViewerDefaults.MOUSE_REPEAT_MIN_INTERVAL.default,
+            "page_mode": ViewerDefaults.PAGE_MODE.default,
+            "zoom_navigation_mode": ViewerDefaults.ZOOM_NAVIGATION_MODE.default,
+            "spread_selected_as_axis": ViewerDefaults.SPREAD_SELECTED_AS_AXIS.default,
+            "spread_toggle_preference": ViewerDefaults.SPREAD_TOGGLE_PREFERENCE.default,
+            "last_spread_mode": ViewerDefaults.LAST_SPREAD_MODE.default,
+            "drop_opens_new_tab": ViewerDefaults.DROP_OPENS_NEW_TAB.default,
+            "open_archives_in_own_tab": ViewerDefaults.OPEN_ARCHIVES_IN_OWN_TAB.default,
+            "open_folders_in_own_tab": ViewerDefaults.OPEN_FOLDERS_IN_OWN_TAB.default,
+            "show_tabs_in_fullscreen": ViewerDefaults.SHOW_TABS_IN_FULLSCREEN.default,
+            "show_page_slider_in_fullscreen": ViewerDefaults.SHOW_PAGE_SLIDER_IN_FULLSCREEN.default,
+            "current_tab_color": ViewerDefaults.CURRENT_TAB_COLOR.default,
+            "current_tab_alpha": ViewerDefaults.CURRENT_TAB_ALPHA.default,
+            "current_tab_gradient": ViewerDefaults.CURRENT_TAB_GRADIENT.default,
         }
         self.cache = {
-            "memory_limit": "256MB",
-            "prefetch_pages": 5,
+            "memory_limit": CacheDefaults.MEMORY_LIMIT.default,
+            "prefetch_pages": CacheDefaults.PREFETCH_PAGES.default,
             "image_loader_workers": AUTO_IMAGE_LOADER_WORKERS,
-            "optimize_large_images": True,
-            "optimize_threshold": "50MB",
-            "optimize_max_resolution": 4000
+            "optimize_large_images": CacheDefaults.OPTIMIZE_LARGE_IMAGES.default,
+            "optimize_threshold": CacheDefaults.OPTIMIZE_THRESHOLD.default,
+            "optimize_max_resolution": CacheDefaults.OPTIMIZE_MAX_RESOLUTION.default,
         }
         self.history = {
-            "max_count": 20,
-            "restore_page_on_reopen": False,
-            "open_last_file_on_startup": False
+            "max_count": HistoryDefaults.MAX_COUNT.default,
+            "restore_page_on_reopen": HistoryDefaults.RESTORE_PAGE_ON_REOPEN.default,
+            "open_last_file_on_startup": HistoryDefaults.OPEN_LAST_FILE_ON_STARTUP.default,
         }
         # 言語設定
         self.language = {
-            "code": "system"
+            "code": LanguageDefaults.CODE.default,
         }
         # デバッグ設定
         self.debug = {
-            "enabled": False,
-            "keep_archive_handles": False,
-            "cache_archive_metadata": True,
-            "show_error_log": False,
+            "enabled": DebugDefaults.ENABLED.default,
+            "keep_archive_handles": DebugDefaults.KEEP_ARCHIVE_HANDLES.default,
+            "cache_archive_metadata": DebugDefaults.CACHE_ARCHIVE_METADATA.default,
+            "show_error_log": DebugDefaults.SHOW_ERROR_LOG.default,
         }
         # アーカイブ設定をenumから初期化
         self.archive = {"enabled": True}
@@ -299,15 +309,15 @@ class Config:
         default_font = FontFamilyManager.get_default_font_for_language(lang_code)
         self.ui_font = {
             "font_family": default_font,
-            "font_size": 10,
-            "font_color": "#00008d",
-            "bg_color": "#ffffff",
-            "alpha": 150
+            "font_size": UiFontDefaults.FONT_SIZE.default,
+            "font_color": UiFontDefaults.FONT_COLOR.default,
+            "bg_color": UiFontDefaults.BG_COLOR.default,
+            "alpha": UiFontDefaults.ALPHA.default,
         }
 
         # 画像一覧ダイアログ設定
         self.image_list = {
-            "close_after_select": True
+            "close_after_select": ImageListDefaults.CLOSE_AFTER_SELECT.default,
         }
         self.plugins = {
             "extension_handlers": {},
@@ -396,7 +406,7 @@ class Config:
         page_mode = viewer_data.get("page_mode")
         if page_mode in ("spread_left", "spread_right"):
             return page_mode
-        return "spread_right"
+        return ViewerDefaults.LAST_SPREAD_MODE.default
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Config':
@@ -414,58 +424,58 @@ class Config:
         if "window" in merged_data:
             window_data = merged_data["window"]
             config.window.update({
-                "width": window_data.get("width", 800),
-                "height": window_data.get("height", 600),
-                "x": window_data.get("x", 100),
-                "y": window_data.get("y", 100),
-                "auto_resize": window_data.get("auto_resize", False),
-                "min_width": window_data.get("min_width", 400),
-                "min_height": window_data.get("min_height", 300),
-                "always_on_top": window_data.get("always_on_top", False),
-                "save_window_state": window_data.get("save_window_state", True),
-                "maximize_on_startup": window_data.get("maximize_on_startup", False),
-                "maximized": bool(window_data.get("maximized", False)),
-                "dock_state": str(window_data.get("dock_state") or ""),
+                "width": window_data.get("width", WindowDefaults.WIDTH.default),
+                "height": window_data.get("height", WindowDefaults.HEIGHT.default),
+                "x": window_data.get("x", WindowDefaults.X.default),
+                "y": window_data.get("y", WindowDefaults.Y.default),
+                "auto_resize": window_data.get("auto_resize", WindowDefaults.AUTO_RESIZE.default),
+                "min_width": window_data.get("min_width", WindowDefaults.MIN_WIDTH.default),
+                "min_height": window_data.get("min_height", WindowDefaults.MIN_HEIGHT.default),
+                "always_on_top": window_data.get("always_on_top", WindowDefaults.ALWAYS_ON_TOP.default),
+                "save_window_state": window_data.get("save_window_state", WindowDefaults.SAVE_WINDOW_STATE.default),
+                "maximize_on_startup": window_data.get("maximize_on_startup", WindowDefaults.MAXIMIZE_ON_STARTUP.default),
+                "maximized": bool(window_data.get("maximized", WindowDefaults.MAXIMIZED.default)),
+                "dock_state": str(window_data.get("dock_state") or WindowDefaults.DOCK_STATE.default),
             })
         if "viewer" in merged_data:
             viewer_data = merged_data["viewer"]
             config.viewer.update({
-                "background_color": viewer_data.get("background_color", "#c0ffc0"),
-                "fit_to_window": viewer_data.get("fit_to_window", False),
-                "fit_to_window_minimum": viewer_data.get("fit_to_window_minimum", True),
-                "mouse_lock": viewer_data.get("mouse_lock", False),
-                "mouse_lock_hide_cursor": viewer_data.get("mouse_lock_hide_cursor", True),
-                "image_move_sensitivity": viewer_data.get("image_move_sensitivity", 2.0),
-                "gesture_threshold": viewer_data.get("gesture_threshold", 50),
-                "mouse_repeat_initial_delay": viewer_data.get("mouse_repeat_initial_delay", 100),
-                "mouse_repeat_acceleration_start": viewer_data.get("mouse_repeat_acceleration_start", 100),
-                "mouse_repeat_min_interval": viewer_data.get("mouse_repeat_min_interval", 30),
-                "page_mode": viewer_data.get("page_mode", "single") if viewer_data.get("page_mode") in ("single", "spread_left", "spread_right") else "single",
+                "background_color": viewer_data.get("background_color", ViewerDefaults.BACKGROUND_COLOR.default),
+                "fit_to_window": viewer_data.get("fit_to_window", ViewerDefaults.FIT_TO_WINDOW.default),
+                "fit_to_window_minimum": viewer_data.get("fit_to_window_minimum", ViewerDefaults.FIT_TO_WINDOW_MINIMUM.default),
+                "mouse_lock": viewer_data.get("mouse_lock", ViewerDefaults.MOUSE_LOCK.default),
+                "mouse_lock_hide_cursor": viewer_data.get("mouse_lock_hide_cursor", ViewerDefaults.MOUSE_LOCK_HIDE_CURSOR.default),
+                "image_move_sensitivity": viewer_data.get("image_move_sensitivity", ViewerDefaults.IMAGE_MOVE_SENSITIVITY.default),
+                "gesture_threshold": viewer_data.get("gesture_threshold", ViewerDefaults.GESTURE_THRESHOLD.default),
+                "mouse_repeat_initial_delay": viewer_data.get("mouse_repeat_initial_delay", ViewerDefaults.MOUSE_REPEAT_INITIAL_DELAY.default),
+                "mouse_repeat_acceleration_start": viewer_data.get("mouse_repeat_acceleration_start", ViewerDefaults.MOUSE_REPEAT_ACCELERATION_START.default),
+                "mouse_repeat_min_interval": viewer_data.get("mouse_repeat_min_interval", ViewerDefaults.MOUSE_REPEAT_MIN_INTERVAL.default),
+                "page_mode": viewer_data.get("page_mode", ViewerDefaults.PAGE_MODE.default) if viewer_data.get("page_mode") in ("single", "spread_left", "spread_right") else ViewerDefaults.PAGE_MODE.default,
                 "zoom_navigation_mode": (
-                    viewer_data.get("zoom_navigation_mode", "page")
+                    viewer_data.get("zoom_navigation_mode", ViewerDefaults.ZOOM_NAVIGATION_MODE.default)
                     if viewer_data.get("zoom_navigation_mode") in ("page", "left", "right")
-                    else "page"
+                    else ViewerDefaults.ZOOM_NAVIGATION_MODE.default
                 ),
                 "spread_selected_as_axis": bool(
                     viewer_data.get(
                         "spread_selected_as_axis",
-                        viewer_data.get("spread_cover_single", False),
+                        viewer_data.get("spread_cover_single", ViewerDefaults.SPREAD_SELECTED_AS_AXIS.default),
                     )
                 ),
                 "spread_toggle_preference": (
-                    viewer_data.get("spread_toggle_preference", "keep_previous")
+                    viewer_data.get("spread_toggle_preference", ViewerDefaults.SPREAD_TOGGLE_PREFERENCE.default)
                     if viewer_data.get("spread_toggle_preference") in ("keep_previous", "prefer_right", "prefer_left")
-                    else "keep_previous"
+                    else ViewerDefaults.SPREAD_TOGGLE_PREFERENCE.default
                 ),
                 "last_spread_mode": cls._resolve_last_spread_mode(data, viewer_data),
-                "drop_opens_new_tab": bool(viewer_data.get("drop_opens_new_tab", False)),
-                "open_archives_in_own_tab": bool(viewer_data.get("open_archives_in_own_tab", True)),
-                "open_folders_in_own_tab": bool(viewer_data.get("open_folders_in_own_tab", False)),
-                "show_tabs_in_fullscreen": bool(viewer_data.get("show_tabs_in_fullscreen", False)),
-                "show_page_slider_in_fullscreen": bool(viewer_data.get("show_page_slider_in_fullscreen", False)),
-                "current_tab_color": str(viewer_data.get("current_tab_color") or "#3a7bd5"),
-                "current_tab_alpha": _current_tab_alpha(viewer_data.get("current_tab_alpha", 170)),
-                "current_tab_gradient": bool(viewer_data.get("current_tab_gradient", True)),
+                "drop_opens_new_tab": bool(viewer_data.get("drop_opens_new_tab", ViewerDefaults.DROP_OPENS_NEW_TAB.default)),
+                "open_archives_in_own_tab": bool(viewer_data.get("open_archives_in_own_tab", ViewerDefaults.OPEN_ARCHIVES_IN_OWN_TAB.default)),
+                "open_folders_in_own_tab": bool(viewer_data.get("open_folders_in_own_tab", ViewerDefaults.OPEN_FOLDERS_IN_OWN_TAB.default)),
+                "show_tabs_in_fullscreen": bool(viewer_data.get("show_tabs_in_fullscreen", ViewerDefaults.SHOW_TABS_IN_FULLSCREEN.default)),
+                "show_page_slider_in_fullscreen": bool(viewer_data.get("show_page_slider_in_fullscreen", ViewerDefaults.SHOW_PAGE_SLIDER_IN_FULLSCREEN.default)),
+                "current_tab_color": str(viewer_data.get("current_tab_color") or ViewerDefaults.CURRENT_TAB_COLOR.default),
+                "current_tab_alpha": _current_tab_alpha(viewer_data.get("current_tab_alpha", ViewerDefaults.CURRENT_TAB_ALPHA.default)),
+                "current_tab_gradient": bool(viewer_data.get("current_tab_gradient", ViewerDefaults.CURRENT_TAB_GRADIENT.default)),
             })
         if "cache" in merged_data:
             cache_data = merged_data["cache"]
@@ -475,30 +485,30 @@ class Config:
             )
             # デフォルト値を設定（不足している場合）
             if "optimize_large_images" not in cache_data:
-                config.cache["optimize_large_images"] = True
+                config.cache["optimize_large_images"] = CacheDefaults.OPTIMIZE_LARGE_IMAGES.default
             if "optimize_threshold" not in cache_data:
-                config.cache["optimize_threshold"] = "50MB"
+                config.cache["optimize_threshold"] = CacheDefaults.OPTIMIZE_THRESHOLD.default
             if "optimize_max_resolution" not in cache_data:
-                config.cache["optimize_max_resolution"] = 4000
+                config.cache["optimize_max_resolution"] = CacheDefaults.OPTIMIZE_MAX_RESOLUTION.default
         if "history" in merged_data:
             history_data = merged_data["history"]
             config.history.update({
-                "max_count": min(99, max(1, history_data.get("max_count", 20))),
-                "restore_page_on_reopen": history_data.get("restore_page_on_reopen", False),
-                "open_last_file_on_startup": history_data.get("open_last_file_on_startup", False)
+                "max_count": min(99, max(1, history_data.get("max_count", HistoryDefaults.MAX_COUNT.default))),
+                "restore_page_on_reopen": history_data.get("restore_page_on_reopen", HistoryDefaults.RESTORE_PAGE_ON_REOPEN.default),
+                "open_last_file_on_startup": history_data.get("open_last_file_on_startup", HistoryDefaults.OPEN_LAST_FILE_ON_STARTUP.default),
             })
         if "language" in merged_data:
             language_data = merged_data["language"]
             config.language.update({
-                "code": language_data.get("code", "system")
+                "code": language_data.get("code", LanguageDefaults.CODE.default),
             })
         if "debug" in merged_data:
             debug_data = merged_data["debug"]
             config.debug.update({
-                "enabled": debug_data.get("enabled", False),
-                "keep_archive_handles": debug_data.get("keep_archive_handles", False),
-                "cache_archive_metadata": debug_data.get("cache_archive_metadata", True),
-                "show_error_log": debug_data.get("show_error_log", False),
+                "enabled": debug_data.get("enabled", DebugDefaults.ENABLED.default),
+                "keep_archive_handles": debug_data.get("keep_archive_handles", DebugDefaults.KEEP_ARCHIVE_HANDLES.default),
+                "cache_archive_metadata": debug_data.get("cache_archive_metadata", DebugDefaults.CACHE_ARCHIVE_METADATA.default),
+                "show_error_log": debug_data.get("show_error_log", DebugDefaults.SHOW_ERROR_LOG.default),
             })
         if "archive" in merged_data:
             archive_data = merged_data["archive"]

@@ -3,12 +3,8 @@ from PySide6.QtCore import QEvent, QMimeData, QRectF, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QBrush, QColor, QDrag, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import QAbstractButton, QApplication, QTabBar
 
+from ez_co.enums.config_defaults import ViewerDefaults
 from ez_co.ui.viewer.pane_layout import TAB_DRAG_MIME
-
-# カレントタブの初期色。
-_DEFAULT_MARK_COLOR = "#3a7bd5"
-# カレントタブの初期透過度。
-_DEFAULT_MARK_ALPHA = 170
 
 
 def current_tab_mark_color(color, alpha):
@@ -23,12 +19,12 @@ def current_tab_mark_color(color, alpha):
     """
     parsed = QColor(str(color or ""))
     if not parsed.isValid():
-        parsed = QColor(_DEFAULT_MARK_COLOR)
+        parsed = QColor(ViewerDefaults.CURRENT_TAB_COLOR.default)
     try:
         value = int(alpha)
     except (TypeError, ValueError):
         # 透過度が数値でなければ初期値にする。
-        value = _DEFAULT_MARK_ALPHA
+        value = ViewerDefaults.CURRENT_TAB_ALPHA.default
     parsed.setAlpha(max(0, min(255, value)))
     return parsed
 

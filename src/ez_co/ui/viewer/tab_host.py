@@ -2,6 +2,7 @@
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
+from ez_co.enums.config_defaults import ViewerDefaults
 from ez_co.ui.viewer.pane_focus import PaneFocus
 from ez_co.ui.viewer.pane_group import PaneGroup
 from ez_co.ui.viewer.pane_layout import PaneLayout
@@ -32,9 +33,9 @@ class TabHost(QWidget):
         self._closable = True
         self._gesture = None
         self._bars_allowed = True
-        self._mark_color = "#3a7bd5"
-        self._mark_alpha = 170
-        self._mark_gradient = True
+        self._mark_color = ViewerDefaults.CURRENT_TAB_COLOR.default
+        self._mark_alpha = ViewerDefaults.CURRENT_TAB_ALPHA.default
+        self._mark_gradient = ViewerDefaults.CURRENT_TAB_GRADIENT.default
         self._layout_panes = PaneLayout()
         self._layout_panes.set_drop_handler(self._on_edge_drop)
         layout = QVBoxLayout(self)
