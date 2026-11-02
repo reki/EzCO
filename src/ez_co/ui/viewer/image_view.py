@@ -102,7 +102,8 @@ class ImageView(QWidget):
         if self.config and "background_color" in self.config.viewer:
             default_bg_color = self.config.viewer["background_color"]
         self.image_label.setStyleSheet(f"background-color: {default_bg_color};")
-        self.image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # 画像の大きさで最小幅を取ると、分割の境目が動かなくなる。
+        self.image_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
         layout.addWidget(self.image_label)
         # イベントフィルタをインストール
         self.image_label.installEventFilter(self)

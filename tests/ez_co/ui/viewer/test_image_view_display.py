@@ -23,3 +23,19 @@ def test_pixmap_appears_after_the_label_gets_a_size(qapp):
     qapp.processEvents()
     shown = view.image_label.pixmap()
     assert shown is not None and not shown.isNull()
+
+
+def test_large_image_does_not_lock_minimum_size(qapp):
+    """大きい画像を出すと、面の最小幅か最小高さが今の面より小さくならない。"""
+    view = ImageView()
+    view.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+    view.resize(400, 300)
+    view.show()
+    qapp.processEvents()
+    view.set_image(Image.new("RGB", (1800, 2400), "red"))
+    qapp.processEvents()
+    hint = view.minimumSizeHint()
+    assert hint.width() < view.width()
+    assert hint.height() < view.height()
+    assert hint.width() < 1800
+    assert hint.height() < 2400
