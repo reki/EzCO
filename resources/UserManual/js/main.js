@@ -8,6 +8,7 @@ class EzCoManual {
         this.sections = [];
         this.currentSection = null;
         this.theme = localStorage.getItem('ezco-manual-theme') || 'light';
+        this.hashFollowsScroll = false;
         this.init();
     }
 
@@ -111,8 +112,9 @@ class EzCoManual {
                     const targetId = href.substring(1);
                     const target = document.getElementById(targetId);
                     if (target) {
-                        this.scrollToElement(target);
+                        this.hashFollowsScroll = true;
                         this.setActiveSection(targetId);
+                        this.scrollToElement(target);
                     }
                 });
             }
@@ -120,10 +122,14 @@ class EzCoManual {
         });
     }
 
+    documentTop(element) {
+        return element.getBoundingClientRect().top + window.scrollY;
+    }
+
     scrollToElement(element) {
-        const headerHeight = document.querySelector('.header').offsetHeight;
-        const elementPosition = element.offsetTop - headerHeight - 20;
-        
+        const headerHeight = document.querySelector('.header')?.offsetHeight || 0;
+        const elementPosition = this.documentTop(element) - headerHeight - 20;
+
         window.scrollTo({
             top: elementPosition,
             behavior: 'smooth'
@@ -136,6 +142,7 @@ class EzCoManual {
     setupScrollSpy() {
         // 目次にある節・小節を、見出しを通過した順に追跡する
         window.addEventListener('scroll', this.debounce(() => {
+            this.hashFollowsScroll = true;
             this.updateActiveSection();
         }, 100));
     }
@@ -151,7 +158,7 @@ class EzCoManual {
                 targets.push(target);
             }
         });
-        return targets.sort((left, right) => left.offsetTop - right.offsetTop);
+        return targets.sort((left, right) => this.documentTop(left) - this.documentTop(right));
     }
 
     setActiveSection(sectionId) {
@@ -167,11 +174,18 @@ class EzCoManual {
         }
 
         this.currentSection = sectionId;
-        
-        // Update URL without scrolling
-        if (history.replaceState) {
-            history.replaceState(null, null, `#${sectionId}`);
+
+        if (!this.hashFollowsScroll || !history.replaceState) {
+            return;
         }
+        const nextHash = `#${sectionId}`;
+        if (location.hash === nextHash) {
+            return;
+        }
+        const x = window.scrollX;
+        const y = window.scrollY;
+        history.replaceState(null, '', nextHash);
+        window.scrollTo(x, y);
     }
 
     updateActiveSection() {
@@ -181,7 +195,7 @@ class EzCoManual {
 
         for (let i = sections.length - 1; i >= 0; i--) {
             const section = sections[i];
-            if (section.offsetTop <= scrollPos) {
+            if (this.documentTop(section) <= scrollPos) {
                 this.setActiveSection(section.id);
                 break;
             }
