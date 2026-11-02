@@ -41,6 +41,7 @@ class PluginCandidate:
     plugin_id: str
     name: str
     version: str
+    description: str = ""
 
 
 @dataclass
@@ -53,6 +54,7 @@ class SkippedPlugin:
     version: str
     reason: str
     selected_name: Optional[str] = None
+    description: str = ""
 
 
 def sort_conflict_candidates(candidates: list[PluginCandidate]) -> list[PluginCandidate]:
@@ -445,6 +447,7 @@ class PluginManager:
                         plugin_id=str(peeked.get("id") or "").strip(),
                         name=str(peeked.get("name") or path.name).strip() or path.name,
                         version=str(peeked.get("version") or "").strip(),
+                        description=str(peeked.get("description") or ""),
                     )
                 )
             except Exception as exc:
@@ -678,6 +681,7 @@ class PluginManager:
                 version=item.version,
                 reason=reason,
                 selected_name=selected_name,
+                description=item.description,
             )
         )
         log_key = "plugin_skipped_duplicate" if reason == "duplicate" else "plugin_skipped_not_selected"

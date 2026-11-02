@@ -61,7 +61,7 @@ class ZipPythonBackend:
             path: 対象の ZIP またはディレクトリ。
 
         Returns:
-            id、name、version、formats、sidebar を持つ dict。
+            id、name、version、description、formats、sidebar を持つ dict。
         """
         return peek_manifest(path)
 

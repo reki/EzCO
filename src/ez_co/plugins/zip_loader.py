@@ -314,13 +314,13 @@ def peek_license(path: Path) -> dict[str, str] | None:
 
 
 def peek_manifest(path: Path) -> dict:
-    """実体化せず manifest.json から id / name / version / 提供物を読む。
+    """実体化せず manifest.json から id / name / version / description / 提供物を読む。
 
     Args:
         path: ZIP またはディレクトリ。
 
     Returns:
-        id、name、version、formats、sidebar を持つ dict。
+        id、name、version、description、formats、sidebar を持つ dict。
 
     Raises:
         ValueError: manifest が無い、オブジェクトでない、または id が空のとき。
@@ -347,6 +347,7 @@ def peek_manifest(path: Path) -> dict:
         "id": plugin_id,
         "name": name,
         "version": version,
+        "description": str(raw.get("description") or ""),
         "formats": [[spec.extension, spec.kind.value] for spec in formats],
         "sidebar": parse_sidebar(raw.get("sidebar")),
     }

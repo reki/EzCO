@@ -1226,6 +1226,7 @@
     "plugin_consent_no": "No",
     "plugin_consent_title": "Load plugins",
     "plugin_consent_yes": "Yes",
+    "plugin_description": "Description",
     "plugin_dialog_title": "Plugin Settings",
     "plugin_enabled": "Enabled",
     "plugin_extension": "Extension",

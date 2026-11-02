@@ -25,13 +25,27 @@ from ez_co.plugins.manager import get_plugin_manager
 from ez_co.utils.language_manager import get_text
 
 # プラグイン一覧の列キー。
-PLUGIN_COLUMNS = ("enabled", "name", "id", "version", "kind", "extensions", "status", "settings", "license")
+PLUGIN_COLUMNS = ("enabled", "name", "id", "version", "description", "kind", "extensions", "status", "settings", "license")
+# プラグイン一覧の列キーと、見出しの言語キー。
+PLUGIN_HEADER_KEYS = {
+    "enabled": "ui.plugin_enabled",
+    "name": "ui.plugin_name",
+    "id": "ui.plugin_id",
+    "version": "ui.version",
+    "description": "ui.plugin_description",
+    "kind": "ui.plugin_kind",
+    "extensions": "ui.plugin_supported_extensions",
+    "status": "ui.plugin_status",
+    "settings": "ui.settings",
+    "license": "ui.about_license",
+}
 # プラグイン一覧の初期列幅。
 PLUGIN_DEFAULT_WIDTHS = {
     "enabled": 56,
     "name": 160,
     "id": 200,
     "version": 72,
+    "description": 220,
     "kind": 90,
     "extensions": 90,
     "status": 220,
@@ -129,15 +143,7 @@ class PluginDialog(QDialog):
         layout.addLayout(list_header)
         self.plugin_table = QTableWidget(0, len(PLUGIN_COLUMNS))
         self.plugin_table.setHorizontalHeaderLabels([
-            get_text("ui.plugin_enabled"),
-            get_text("ui.plugin_name"),
-            get_text("ui.plugin_id"),
-            get_text("ui.version"),
-            get_text("ui.plugin_kind"),
-            get_text("ui.plugin_supported_extensions"),
-            get_text("ui.plugin_status"),
-            get_text("ui.settings"),
-            get_text("ui.about_license"),
+            get_text(PLUGIN_HEADER_KEYS[key]) for key in PLUGIN_COLUMNS
         ])
         self._prepare_table(self.plugin_table)
         self.plugin_table.setSortingEnabled(True)
@@ -235,7 +241,7 @@ class PluginDialog(QDialog):
         return state if isinstance(state, dict) else {}
 
     def _restore_table_layout(self, table: QTableWidget, keys, default_widths, state_key: str):
-        """保存された幅と列順を表へ戻す。
+        """保存された幅と列順を表へ戻す。保存に無い列は、既定順で直前にある列の次へ入れる。
 
         Args:
             table: 戻す表。
@@ -259,8 +265,14 @@ class PluginDialog(QDialog):
 
         order = [key for key in (state.get("order") or []) if key in keys]
         for key in keys:
-            if key not in order:
-                order.append(key)
+            if key in order:
+                continue
+            earlier = keys[:keys.index(key)]
+            anchor = next((item for item in reversed(earlier) if item in order), None)
+            if anchor is None:
+                order.insert(0, key)
+            else:
+                order.insert(order.index(anchor) + 1, key)
         header = table.horizontalHeader()
         for visual, key in enumerate(order):
             logical = keys.index(key)
@@ -346,19 +358,24 @@ class PluginDialog(QDialog):
             holder_layout.setContentsMargins(0, 0, 0, 0)
             holder_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
             holder_layout.addWidget(checkbox)
-            self.plugin_table.setCellWidget(index, 0, holder)
+            self.plugin_table.setCellWidget(index, self._column("enabled"), holder)
             extensions = ", ".join(spec.extension for spec in plugin.formats)
-            self.plugin_table.setItem(index, 1, self._text_item(plugin.name))
-            self.plugin_table.setItem(index, 2, self._text_item(plugin.plugin_id))
-            self.plugin_table.setItem(index, 3, self._text_item(plugin.manifest.version))
-            self.plugin_table.setItem(index, 4, self._text_item(self._plugin_kind_label(plugin)))
-            self.plugin_table.setItem(index, 5, self._text_item(extensions))
+            self.plugin_table.setItem(index, self._column("name"), self._text_item(plugin.name))
+            self.plugin_table.setItem(index, self._column("id"), self._text_item(plugin.plugin_id))
+            self.plugin_table.setItem(index, self._column("version"), self._text_item(plugin.manifest.version))
+            self.plugin_table.setItem(
+                index, self._column("description"), self._text_item(plugin.manifest.description or "")
+            )
+            self.plugin_table.setItem(index, self._column("kind"), self._text_item(self._plugin_kind_label(plugin)))
+            self.plugin_table.setItem(index, self._column("extensions"), self._text_item(extensions))
             if plugin.error:
                 status = get_text("ui.plugin_status_error").format(error=plugin.error)
-                self.plugin_table.setItem(index, 6, self._text_item(status))
+                self.plugin_table.setItem(index, self._column("status"), self._text_item(status))
                 self._set_dash_cells(index, "settings", "license")
             else:
-                self.plugin_table.setItem(index, 6, self._text_item(get_text("ui.plugin_status_ok")))
+                self.plugin_table.setItem(
+                    index, self._column("status"), self._text_item(get_text("ui.plugin_status_ok"))
+                )
                 self._set_action_cells(index, plugin)
         for offset, item in enumerate(skipped):
             index = len(rows) + offset
@@ -371,24 +388,26 @@ class PluginDialog(QDialog):
             display_name = item.name or item.path.name
             if item.path.name and item.path.name != display_name:
                 display_name = f"{display_name} ({item.path.name})"
-            self.plugin_table.setItem(index, 0, self._text_item("-"))
-            self.plugin_table.setItem(index, 1, self._text_item(display_name))
-            self.plugin_table.setItem(index, 2, self._text_item(item.plugin_id or "-"))
-            self.plugin_table.setItem(index, 3, self._text_item(item.version or "-"))
-            self.plugin_table.setItem(index, 4, self._text_item("-"))
-            self.plugin_table.setItem(index, 5, self._text_item("-"))
-            self.plugin_table.setItem(index, 6, self._text_item(status))
+            self.plugin_table.setItem(index, self._column("enabled"), self._text_item("-"))
+            self.plugin_table.setItem(index, self._column("name"), self._text_item(display_name))
+            self.plugin_table.setItem(index, self._column("id"), self._text_item(item.plugin_id or "-"))
+            self.plugin_table.setItem(index, self._column("version"), self._text_item(item.version or "-"))
+            self.plugin_table.setItem(index, self._column("description"), self._text_item(item.description or ""))
+            self.plugin_table.setItem(index, self._column("kind"), self._text_item("-"))
+            self.plugin_table.setItem(index, self._column("extensions"), self._text_item("-"))
+            self.plugin_table.setItem(index, self._column("status"), self._text_item(status))
             self._set_dash_cells(index, "settings", "license")
         for offset, (path, error) in enumerate(failed):
             index = len(rows) + len(skipped) + offset
             status = get_text("ui.plugin_status_error").format(error=error)
-            self.plugin_table.setItem(index, 0, self._text_item("-"))
-            self.plugin_table.setItem(index, 1, self._text_item(path.name))
-            self.plugin_table.setItem(index, 2, self._text_item("-"))
-            self.plugin_table.setItem(index, 3, self._text_item("-"))
-            self.plugin_table.setItem(index, 4, self._text_item("-"))
-            self.plugin_table.setItem(index, 5, self._text_item("-"))
-            self.plugin_table.setItem(index, 6, self._text_item(status))
+            self.plugin_table.setItem(index, self._column("enabled"), self._text_item("-"))
+            self.plugin_table.setItem(index, self._column("name"), self._text_item(path.name))
+            self.plugin_table.setItem(index, self._column("id"), self._text_item("-"))
+            self.plugin_table.setItem(index, self._column("version"), self._text_item("-"))
+            self.plugin_table.setItem(index, self._column("description"), self._text_item("-"))
+            self.plugin_table.setItem(index, self._column("kind"), self._text_item("-"))
+            self.plugin_table.setItem(index, self._column("extensions"), self._text_item("-"))
+            self.plugin_table.setItem(index, self._column("status"), self._text_item(status))
             self._set_dash_cells(index, "settings", "license")
         if self.plugin_table.rowCount() == 0:
             self.plugin_table.setRowCount(1)

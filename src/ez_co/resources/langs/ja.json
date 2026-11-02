@@ -1226,6 +1226,7 @@
     "plugin_consent_no": "いいえ",
     "plugin_consent_title": "プラグインの導入",
     "plugin_consent_yes": "はい",
+    "plugin_description": "説明",
     "plugin_dialog_title": "プラグイン設定",
     "plugin_enabled": "有効",
     "plugin_extension": "拡張子",

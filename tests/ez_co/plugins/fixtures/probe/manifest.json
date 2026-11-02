@@ -2,6 +2,7 @@
   "id": "com.ezco.test.probe",
   "name": "Probe",
   "version": "1.0.0",
+  "description": "Probe description",
   "api_version": 1,
   "entry": "plugin:ProbePlugin",
   "formats": [[".probe", "image"]]

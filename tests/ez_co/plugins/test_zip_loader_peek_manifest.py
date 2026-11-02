@@ -13,11 +13,12 @@ FIXTURE_ZIP = Path(__file__).parent / "fixtures" / "probe.zip"
 
 
 def test_peek_manifest_from_directory():
-    """ディレクトリの id、name、version、formats、sidebar の偽が読めない。"""
+    """ディレクトリの id、name、version、description、formats、sidebar の偽が読めない。"""
     info = peek_manifest(FIXTURE_DIR)
     assert info["id"] == "com.ezco.test.probe"
     assert info["name"] == "Probe"
     assert info["version"] == "1.0.0"
+    assert info["description"] == "Probe description"
     assert info["formats"] == [[".probe", "image"]]
     assert info["sidebar"] is False
 
