@@ -1,7 +1,7 @@
 {
   "title": "Auto page",
   "interval": "Page interval",
-  "interval_help": "Interval for tabs whose seconds have not been edited. From 1 to 86400 seconds.",
+  "interval_help": "Interval for tabs whose value has not been edited. From 0.1 to 600 seconds, with one decimal place.",
   "seconds": "sec",
   "start_page": "Start page",
   "end_page": "End page",
@@ -9,5 +9,7 @@
   "to_current": "Through current page",
   "start": "Start",
   "stop": "Stop",
-  "loop": "Loop"
+  "loop": "Loop",
+  "loop_default": "Loop default",
+  "loop_default_help": "Loop for tabs whose checkbox has not been changed."
 }

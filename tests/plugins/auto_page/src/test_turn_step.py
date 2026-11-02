@@ -144,16 +144,18 @@ def test_new_tab_loop_starts_on():
 
 
 def test_file_change_resets_range_and_stops():
-    """別のファイルになっても、開始と終了が残るか、動き続ける。"""
+    """別のファイルになっても、開始と終了が残るか、動き続けるか、ループの選択が戻る。"""
     book, state = _state(page=5, start=3, end=8)
     state.loop = False
     state.interval_custom = True
+    state.loop_custom = True
     assert book.note_document("a", "other", 20, 1) is True
     assert state.running is False
     assert state.start == 1
     assert state.end == 20
     assert state.loop is False
     assert state.interval_custom is True
+    assert state.loop_custom is True
 
 
 def test_default_interval_skips_edited_tabs():
@@ -165,3 +167,49 @@ def test_default_interval_skips_edited_tabs():
     book.apply_default_interval(4)
     assert state.interval == 9
     assert other.interval == 4
+
+
+def test_interval_rounds_to_one_decimal_second():
+    """間隔が小数第1位の秒に収まらず、範囲の外が残る。"""
+    book = turn.TurnBook()
+    state = book.touch("a", 1, 10, "doc", 1.26)
+    assert state.interval == 1.3
+    book.apply_default_interval(0.04)
+    assert state.interval == 0.1
+    book.apply_default_interval(1000)
+    assert state.interval == 600.0
+
+
+def test_wait_converts_seconds_to_milliseconds():
+    """0.1秒が100ミリ秒、1.5秒が1500ミリ秒の待ちにならない。"""
+    assert turn.interval_wait_ms(0.1) == 100
+    assert turn.interval_wait_ms(1.5) == 1500
+
+
+def test_touch_uses_given_loop_default():
+    """渡したループ初期値が、新しいタブのループに入らない。"""
+    book = turn.TurnBook()
+    state = book.touch("a", 1, 10, "doc", 1000, False)
+    assert state.loop is False
+    assert state.loop_custom is False
+
+
+def test_default_loop_skips_edited_tabs():
+    """ループを触ったタブまで、設定の初期値で上書きされる。"""
+    book, state = _state("a", loop=False)
+    state.loop_custom = True
+    other = book.touch("b", 1, 5, "other", 1000, True)
+    book.apply_default_loop(False)
+    assert state.loop is False
+    assert other.loop is False
+    book.apply_default_loop(True)
+    assert state.loop is False
+    assert other.loop is True
+
+
+def test_empty_page_count_cannot_begin():
+    """ページが無いタブを開始でき、ページがあるタブを開始できない。"""
+    assert turn.can_begin(0) is False
+    assert turn.can_begin(None) is False
+    assert turn.can_begin("none") is False
+    assert turn.can_begin(1) is True

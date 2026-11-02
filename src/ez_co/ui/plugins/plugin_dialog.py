@@ -146,6 +146,7 @@ class PluginDialog(QDialog):
             get_text(PLUGIN_HEADER_KEYS[key]) for key in PLUGIN_COLUMNS
         ])
         self._prepare_table(self.plugin_table)
+        self.plugin_table.cellClicked.connect(self._on_plugin_cell_clicked)
         self.plugin_table.setSortingEnabled(True)
         layout.addWidget(self.plugin_table, 1)
         self._fill_plugin_table()
@@ -360,7 +361,9 @@ class PluginDialog(QDialog):
             holder_layout.addWidget(checkbox)
             self.plugin_table.setCellWidget(index, self._column("enabled"), holder)
             extensions = ", ".join(spec.extension for spec in plugin.formats)
-            self.plugin_table.setItem(index, self._column("name"), self._text_item(plugin.name))
+            name_item = self._text_item(plugin.name)
+            name_item.setData(Qt.ItemDataRole.UserRole, plugin.plugin_id)
+            self.plugin_table.setItem(index, self._column("name"), name_item)
             self.plugin_table.setItem(index, self._column("id"), self._text_item(plugin.plugin_id))
             self.plugin_table.setItem(index, self._column("version"), self._text_item(plugin.manifest.version))
             self.plugin_table.setItem(
@@ -418,6 +421,31 @@ class PluginDialog(QDialog):
             return
         self.plugin_table.resizeRowsToContents()
         self.plugin_table.setSortingEnabled(True)
+
+    def _on_plugin_cell_clicked(self, row: int, column: int):
+        """設定項目がある行なら、ライセンスと有効以外のクリックで設定を開く。
+
+        Args:
+            row: 行番号。
+            column: 列番号。
+        """
+        if column in (self._column("license"), self._column("enabled")):
+            return
+        item = self.plugin_table.item(row, self._column("name"))
+        if item is None:
+            return
+        plugin_id = item.data(Qt.ItemDataRole.UserRole)
+        if not plugin_id:
+            return
+        plugin = next(
+            (entry for entry in self.plugin_manager.plugins if entry.plugin_id == plugin_id),
+            None,
+        )
+        if plugin is None or plugin.error:
+            return
+        if not self.plugin_manager.host.configs_for(plugin.plugin_id):
+            return
+        self._open_plugin_config(plugin)
 
     def _column(self, key: str) -> int:
         """列キーの番号を返す。

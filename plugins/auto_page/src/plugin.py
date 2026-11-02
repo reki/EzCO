@@ -6,6 +6,7 @@
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (
     QCheckBox,
+    QDoubleSpinBox,
     QFormLayout,
     QHBoxLayout,
     QLabel,
@@ -15,16 +16,25 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from turn import GOTO, NEXT, TurnBook
+from turn import (
+    GOTO,
+    INTERVAL_DEFAULT,
+    INTERVAL_MAX,
+    INTERVAL_MIN,
+    INTERVAL_STEP,
+    NEXT,
+    TurnBook,
+    can_begin,
+    interval_seconds,
+    interval_wait_ms,
+)
 
-# 改ページ間隔の下限（秒）。
-_INTERVAL_MIN = 1
-# 改ページ間隔の上限（秒）。設定とサイドバーで揃える。
-_INTERVAL_MAX = 86400
 # ページ欄の上限。
 _PAGE_MAX = 999999
 # プラグイン設定の間隔キー。
 _INTERVAL_KEY = "interval"
+# プラグイン設定のループ初期値キー。
+_LOOP_KEY = "loop"
 
 
 class AutoPagePlugin:
@@ -56,7 +66,7 @@ class AutoPagePlugin:
         self._loop = None
 
     def load(self, root, get_text, host):
-        """引数を保持し、間隔の初期値を登録する。
+        """引数を保持し、間隔とループの初期値を登録する。
 
         Args:
             root: プラグインルート。このプラグインでは使わない。
@@ -68,14 +78,21 @@ class AutoPagePlugin:
         self.host = host
         self.host.register_config(
             _INTERVAL_KEY,
-            "int_range",
-            default=_INTERVAL_MIN,
+            "float_range",
+            default=INTERVAL_DEFAULT,
             label="{interval}",
             description="{interval_help}",
-            minimum=_INTERVAL_MIN,
-            maximum=_INTERVAL_MAX,
-            step=1,
+            minimum=INTERVAL_MIN,
+            maximum=INTERVAL_MAX,
+            step=INTERVAL_STEP,
             suffix="{seconds}",
+        )
+        self.host.register_config(
+            _LOOP_KEY,
+            "bool",
+            default=True,
+            label="{loop_default}",
+            description="{loop_default_help}",
         )
 
     def setup(self):
@@ -114,8 +131,10 @@ class AutoPagePlugin:
         self._interval_label = QLabel()
         self._start = self._page_spin()
         self._end = self._page_spin()
-        self._interval = QSpinBox()
-        self._interval.setRange(_INTERVAL_MIN, _INTERVAL_MAX)
+        self._interval = QDoubleSpinBox()
+        self._interval.setRange(INTERVAL_MIN, INTERVAL_MAX)
+        self._interval.setDecimals(1)
+        self._interval.setSingleStep(INTERVAL_STEP)
         self._from_button = QPushButton()
         self._to_button = QPushButton()
         self._run_button = QPushButton()
@@ -173,17 +192,32 @@ class AutoPagePlugin:
         self._run_button.setText(self.get_text(key))
 
     def _default_interval(self):
-        """設定の間隔を、1 秒以上で返す。
+        """設定の間隔を、小数第1位の秒で返す。
 
         Returns:
             間隔（秒）。
         """
         try:
-            value = int(self.host.get_config(_INTERVAL_KEY, _INTERVAL_MIN))
+            value = float(self.host.get_config(_INTERVAL_KEY, INTERVAL_DEFAULT))
         except (TypeError, ValueError):
-            # 設定が整数でなければ、登録した初期値に戻す。
-            value = _INTERVAL_MIN
-        return min(_INTERVAL_MAX, max(_INTERVAL_MIN, value))
+            # 設定が数値でなければ、登録した初期値に戻す。
+            value = INTERVAL_DEFAULT
+        return interval_seconds(value)
+
+    def _default_loop(self):
+        """設定のループ初期値を返す。
+
+        Returns:
+            オンのとき True。
+        """
+        try:
+            value = self.host.get_config(_LOOP_KEY, True)
+        except (TypeError, ValueError):
+            # 設定が読めなければ、登録した初期値のオンに戻す。
+            return True
+        if isinstance(value, bool):
+            return value
+        return True
 
     def _on_current(self, _payload=None):
         """ページかタブが変わったら、送りの停止と欄を合わせる。
@@ -194,14 +228,18 @@ class AutoPagePlugin:
         self._refresh_form()
 
     def _on_config(self, payload=None):
-        """間隔の初期値が変わったら、欄を触っていないタブへ反映する。
+        """間隔かループの初期値が変わったら、欄を触っていないタブへ反映する。
 
         Args:
-            payload: key と value。間隔以外は見ない。
+            payload: key と value。間隔とループ以外は見ない。
         """
-        if isinstance(payload, dict) and payload.get("key") not in (None, _INTERVAL_KEY):
+        key = payload.get("key") if isinstance(payload, dict) else None
+        if key not in (None, _INTERVAL_KEY, _LOOP_KEY):
             return
-        self.book.apply_default_interval(self._default_interval())
+        if key in (None, _INTERVAL_KEY):
+            self.book.apply_default_interval(self._default_interval())
+        if key in (None, _LOOP_KEY):
+            self.book.apply_default_loop(self._default_loop())
         self._refresh_form()
 
     def _on_start_page(self, value):
@@ -239,11 +277,11 @@ class AutoPagePlugin:
         state = self._shown_state()
         if state is None:
             return
-        state.interval = min(_INTERVAL_MAX, max(_INTERVAL_MIN, int(value)))
+        state.interval = interval_seconds(value)
         state.interval_custom = True
 
     def _on_loop(self, checked):
-        """表示中タブのループを切り替える。
+        """表示中タブのループを切り替え、そのタブは設定の初期値に戻さない。
 
         Args:
             checked: オンのとき True。
@@ -251,8 +289,10 @@ class AutoPagePlugin:
         if self._filling:
             return
         state = self._shown_state()
-        if state is not None:
-            state.loop = bool(checked)
+        if state is None:
+            return
+        state.loop = bool(checked)
+        state.loop_custom = True
 
     def _on_from_current(self):
         """開始ページを、ショートカット対象のいまのページにする。"""
@@ -287,6 +327,8 @@ class AutoPagePlugin:
             state.hold = False
             self._disarm(tab_id)
             self._refresh_form()
+            return
+        if not can_begin(row.get("total")):
             return
         action = self.book.begin(tab_id, row.get("page") or 1, bool(row.get("shown")))
         if action[0] == GOTO:
@@ -339,7 +381,7 @@ class AutoPagePlugin:
                 document = row.get("path") or ""
             page = int(row.get("page") or 1)
             total = int(row.get("total") or 0)
-            self.book.touch(tab_id, page, total, document, interval)
+            self.book.touch(tab_id, page, total, document, interval, self._default_loop())
             if self.book.note_document(tab_id, document, total, page):
                 self._disarm(tab_id)
                 continue
@@ -411,7 +453,7 @@ class AutoPagePlugin:
             self._disarm(closed)
 
     def _arm(self, tab_id):
-        """そのタブの次の間隔を、いまの秒数で予約する。
+        """そのタブの次の間隔を、いまの秒数から予約する。
 
         Args:
             tab_id: タブ id。
@@ -425,7 +467,7 @@ class AutoPagePlugin:
             timer.setSingleShot(True)
             timer.timeout.connect(lambda tab_id=tab_id: self._on_tick(tab_id))
             self._timers[tab_id] = timer
-        timer.start(state.interval * 1000)
+        timer.start(interval_wait_ms(state.interval))
 
     def _disarm(self, tab_id):
         """そのタブのタイマーを止めて捨てる。
@@ -466,12 +508,16 @@ class AutoPagePlugin:
             self._shown_id = row.get("id")
             state = self._shown_state()
             if state is None:
+                self._run_button.setEnabled(False)
+                self._apply_run_button()
                 return
             self._start.setValue(int(state.start))
             self._end.setValue(int(state.end))
-            self._interval.setValue(int(state.interval))
+            self._interval.setValue(float(state.interval))
             self._loop.setChecked(bool(state.loop))
             self._apply_run_button()
+            if not state.running:
+                self._run_button.setEnabled(can_begin(row.get("total")))
         finally:
             self._filling = False
 

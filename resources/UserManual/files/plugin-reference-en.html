@@ -783,7 +783,7 @@ host.run_action("goto_page", page=1, tab=tab_id)</pre>
                             <li><code>multiple=True</code> stores a JSON array. <code>[]</code> is kept as-is (zero items are allowed). <code>required=True</code> (default False) rejects empty values on save. An empty default may still be registered. If the type cannot represent empty, <code>required</code> has no extra effect.</li>
                             <li><code>suffix</code> is display-only to the right of numeric fields and is not stored. <code>description</code> is a tooltip only when set (no fallback to the label).</li>
                             <li><code>label</code> / <code>description</code> / <code>suffix</code> / choice labels translate at display time only when the whole string is <code>{key}</code>. <code>"A{title}B"</code> stays literal.</li>
-                            <li>Registering at least one field adds a Settings button on the plugin row. Otherwise the cell is <code>-</code>.</li>
+                            <li>Registering at least one field adds a Settings button on the plugin row. Clicking that row, except the License button and the Enabled checkbox, opens the same settings. Otherwise the cell is <code>-</code>.</li>
                         </ul>
 
                         <h4>Read and write</h4>

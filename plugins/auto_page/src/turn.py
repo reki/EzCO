@@ -1,4 +1,5 @@
 """タブごとの自動改ページで、次の1手と停止を決める。"""
+import math
 
 # この回は送らない。
 WAIT = "wait"
@@ -10,29 +11,91 @@ GOTO = "goto"
 STOP = "stop"
 # 動いていない。
 IDLE = "idle"
+# 改ページ間隔の下限（秒）。
+INTERVAL_MIN = 0.1
+# 改ページ間隔の上限（秒）。10分。
+INTERVAL_MAX = 600.0
+# 改ページ間隔の既定（秒）。
+INTERVAL_DEFAULT = 1.0
+# 改ページ間隔の刻み（秒）。小数第1位。
+INTERVAL_STEP = 0.1
+
+
+def interval_seconds(value) -> float:
+    """間隔を、小数第1位の秒に収める。
+
+    Args:
+        value: 秒。数値でなければ既定。
+
+    Returns:
+        0.1 以上 600.0 以下の秒。
+    """
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        # 数値でなければ既定の 1.0 秒に戻す。
+        number = INTERVAL_DEFAULT
+    if math.isnan(number):
+        number = INTERVAL_DEFAULT
+    number = round(number, 1)
+    return min(INTERVAL_MAX, max(INTERVAL_MIN, number))
+
+
+
+def interval_wait_ms(seconds) -> int:
+    """秒を、タイマーの待ちミリ秒にする。
+
+    Args:
+        seconds: 秒。
+
+    Returns:
+        待ちミリ秒。
+    """
+    return int(round(interval_seconds(seconds) * 1000))
+
+
+
+def can_begin(total) -> bool:
+    """ページが1枚でもあれば開始できる。
+
+    Args:
+        total: ページ数。
+
+    Returns:
+        1以上なら True。
+    """
+    try:
+        count = int(total or 0)
+    except (TypeError, ValueError):
+        # ページ数が整数でなければ、開始できないものとして扱う。
+        return False
+    return count > 0
+
 
 
 class TabState:
     """1タブの範囲、間隔、動作中。"""
 
-    def __init__(self, page, total, document, interval):
-        """開始 1、終了はページ数、ループはオン、間隔は秒で置く。
+    def __init__(self, page, total, document, interval, loop=True):
+        """開始 1、終了はページ数、ループは渡した値、間隔は小数第1位の秒で置く。
 
         Args:
             page: いまのページ。
             total: ページ数。
             document: 開いているファイルまたはフォルダ。ページが変わっても同じ値。
             interval: 間隔（秒）。
+            loop: ループの初期値。
         """
         self.start = 1
         self.end = max(int(total or 1), 1)
-        self.loop = True
+        self.loop = bool(loop)
         self.running = False
         self.page = int(page or 1)
         self.document = document
         self.hold = False
-        self.interval = max(1, int(interval or 1))
+        self.interval = interval_seconds(interval)
         self.interval_custom = False
+        self.loop_custom = False
 
 
 class TurnBook:
@@ -42,7 +105,7 @@ class TurnBook:
         """タブ id から状態への対応を空で作る。"""
         self.tabs = {}
 
-    def touch(self, tab_id, page, total, document, interval):
+    def touch(self, tab_id, page, total, document, interval, loop=True):
         """タブが初めてなら状態を作り、あればそれを返す。
 
         Args:
@@ -51,13 +114,14 @@ class TurnBook:
             total: ページ数。
             document: 開いているファイルまたはフォルダ。
             interval: まだ欄を触っていないときの間隔（秒）。
+            loop: まだチェックを触っていないときのループ。
 
         Returns:
             そのタブの状態。
         """
         state = self.tabs.get(tab_id)
         if state is None:
-            state = TabState(page, total, document, interval)
+            state = TabState(page, total, document, interval, loop)
             self.tabs[tab_id] = state
         return state
 
@@ -67,10 +131,21 @@ class TurnBook:
         Args:
             seconds: 設定の間隔（秒）。
         """
-        value = max(1, int(seconds or 1))
+        value = interval_seconds(seconds)
         for state in self.tabs.values():
             if not state.interval_custom:
                 state.interval = value
+
+    def apply_default_loop(self, enabled):
+        """チェックを触っていないタブのループを、設定の値へ揃える。
+
+        Args:
+            enabled: 設定のループ。オンのとき True。
+        """
+        value = bool(enabled)
+        for state in self.tabs.values():
+            if not state.loop_custom:
+                state.loop = value
 
     def begin(self, tab_id, page, shown):
         """自動送りを開始し、範囲外で見えていればすぐ開始ページへ行く指示を返す。

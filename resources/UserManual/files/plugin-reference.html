@@ -783,7 +783,7 @@ host.run_action("goto_page", page=1, tab=tab_id)</pre>
                             <li><code>multiple=True</code> は JSON 配列です。<code>[]</code> は補完しません（0件を保存できます）。<code>required=True</code>（既定 False）は empty を保存しません。空 default は登録できます。空を表現できない型では <code>required</code> は実質追加制約になりません。</li>
                             <li><code>suffix</code> は数値入力の右に出す表示だけで、保存値には付きません。<code>description</code> があるときだけホバーします（ラベルへのフォールバックはありません）。</li>
                             <li><code>label</code> / <code>description</code> / <code>suffix</code> / choice の label は、文字列全体が <code>{key}</code> のときだけ表示時に訳します。<code>"A{title}B"</code> はそのままです。</li>
-                            <li>1つでも登録すると、プラグイン設定の一覧の設定列に「設定」ボタンが出ます。無い行は <code>-</code> です。</li>
+                            <li>1つでも登録すると、プラグイン設定の一覧の設定列に「設定」ボタンが出ます。その行は、ライセンスと有効以外のクリックでも同じ設定を開きます。ライセンスボタンはライセンスのままです。無い行は <code>-</code> です。</li>
                         </ul>
 
                         <h4>読み書き</h4>
