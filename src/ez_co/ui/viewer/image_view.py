@@ -576,6 +576,8 @@ class ImageView(QWidget):
             if event.type() == QEvent.MouseButtonPress or event.type() == QEvent.MouseButtonDblClick:
                 mouse_text = self.mouse_to_string(event)
                 main_window = self.window()
+                if hasattr(main_window, "focus_pane_from_view"):
+                    main_window.focus_pane_from_view(self.parent())
                 if (
                     mouse_text
                     and hasattr(main_window, "press_temporary_mouse_lock")

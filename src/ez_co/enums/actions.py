@@ -26,6 +26,14 @@ class Actions(Enum):
     FIRST_TAB = "first_tab"
     # 末尾のタブへ移るアクション
     LAST_TAB = "last_tab"
+    # 右へ分割するアクション
+    SPLIT_RIGHT = "split_right"
+    # 下へ分割するアクション
+    SPLIT_DOWN = "split_down"
+    # 4面に並べるアクション
+    SPLIT_GRID = "split_grid"
+    # 1面に戻すアクション
+    JOIN_VIEW = "join_view"
     # 1番目のタブを表示するアクション
     SHOW_TAB_1 = "show_tab_1"
     # 2番目のタブを表示するアクション

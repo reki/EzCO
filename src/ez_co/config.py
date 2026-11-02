@@ -132,6 +132,23 @@ def normalize_filters(raw) -> dict:
     }
 
 
+def _current_tab_alpha(value):
+    """カレントタブの透過度を 0 から 255 に収める。
+
+    Args:
+        value: 設定から読んだ値。
+
+    Returns:
+        0 から 255 の整数。読めなければ 170。
+    """
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        # 数値でなければ初期の透過度を返す。
+        return 170
+    return max(0, min(255, number))
+
+
 class Config:
     """ウィンドウや閲覧、キャッシュなどのアプリ設定を保持する。"""
     def __init__(self):
@@ -177,6 +194,9 @@ class Config:
             "open_folders_in_own_tab": False,
             "show_tabs_in_fullscreen": False,
             "show_page_slider_in_fullscreen": False,
+            "current_tab_color": "#3a7bd5",
+            "current_tab_alpha": 170,
+            "current_tab_gradient": True,
         }
         self.cache = {
             "memory_limit": "256MB",
@@ -253,6 +273,10 @@ class Config:
             Actions.SHOW_TAB_7.value: [f"{ModifierKeys.CTRL.value}+{KeyboardKeys.KEY_7.value}"],
             Actions.SHOW_TAB_8.value: [f"{ModifierKeys.CTRL.value}+{KeyboardKeys.KEY_8.value}"],
             Actions.SHOW_TAB_9.value: [f"{ModifierKeys.CTRL.value}+{KeyboardKeys.KEY_9.value}"],
+            Actions.SPLIT_RIGHT.value: [f"{ModifierKeys.CTRL.value}+{ModifierKeys.SHIFT.value}+{KeyboardKeys.RIGHT.value}"],
+            Actions.SPLIT_DOWN.value: [f"{ModifierKeys.CTRL.value}+{ModifierKeys.SHIFT.value}+{KeyboardKeys.DOWN.value}"],
+            Actions.SPLIT_GRID.value: [f"{ModifierKeys.CTRL.value}+{ModifierKeys.SHIFT.value}+{KeyboardKeys.UP.value}"],
+            Actions.JOIN_VIEW.value: [f"{ModifierKeys.CTRL.value}+{ModifierKeys.SHIFT.value}+{KeyboardKeys.LEFT.value}"],
         }
         self.gesture_map = {
             Arrow.LEFT.value: Actions.PREV_COMIC.value,
@@ -262,7 +286,11 @@ class Config:
             Arrow.UP.value + Arrow.DOWN.value: Actions.REOPEN_LAST_FILE.value,
             Arrow.RIGHT.value + Arrow.LEFT.value: Actions.FIRST_PAGE.value,
             Arrow.LEFT.value + Arrow.RIGHT.value: Actions.LAST_PAGE.value,
-            Arrow.DOWN.value + Arrow.RIGHT.value + Arrow.LEFT.value: Actions.PAGE_SLIDER_DIALOG.value
+            Arrow.DOWN.value + Arrow.RIGHT.value + Arrow.LEFT.value: Actions.PAGE_SLIDER_DIALOG.value,
+            Arrow.RIGHT.value + Arrow.UP.value: Actions.SPLIT_RIGHT.value,
+            Arrow.RIGHT.value + Arrow.DOWN.value: Actions.SPLIT_DOWN.value,
+            Arrow.LEFT.value + Arrow.UP.value + Arrow.RIGHT.value: Actions.SPLIT_GRID.value,
+            Arrow.LEFT.value + Arrow.DOWN.value: Actions.JOIN_VIEW.value,
         }
         # 言語コード取得してデフォルトフォントを決定
         lang_code = locale.getdefaultlocale()[0]
@@ -435,6 +463,9 @@ class Config:
                 "open_folders_in_own_tab": bool(viewer_data.get("open_folders_in_own_tab", False)),
                 "show_tabs_in_fullscreen": bool(viewer_data.get("show_tabs_in_fullscreen", False)),
                 "show_page_slider_in_fullscreen": bool(viewer_data.get("show_page_slider_in_fullscreen", False)),
+                "current_tab_color": str(viewer_data.get("current_tab_color") or "#3a7bd5"),
+                "current_tab_alpha": _current_tab_alpha(viewer_data.get("current_tab_alpha", 170)),
+                "current_tab_gradient": bool(viewer_data.get("current_tab_gradient", True)),
             })
         if "cache" in merged_data:
             cache_data = merged_data["cache"]

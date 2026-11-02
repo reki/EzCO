@@ -138,6 +138,16 @@
                                         <td>Light green</td>
                                     </tr>
                                     <tr>
+                                        <td>Current tab color while split (<code>viewer.current_tab_color</code>, <code>viewer.current_tab_alpha</code>)</td>
+                                        <td>Background and opacity (0 clear, 255 opaque) of the tab that receives shortcuts while its tab bar is shown. A single tab that is not split has no tab bar, so it is not colored</td>
+                                        <td>#3a7bd5, 170</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Gradient (<code>viewer.current_tab_gradient</code>)</td>
+                                        <td>When on, that tab fades from the configured opacity on the left to clear on the right. When off, the color is solid. A saved setting without this key is also on</td>
+                                        <td>true</td>
+                                    </tr>
+                                    <tr>
                                         <td>Fit to window</td>
                                         <td>Automatically scale images to fit the window</td>
                                         <td>Disabled</td>
@@ -459,10 +469,10 @@
                             <li>Middle-click a tab to close it. Closing the last tab closes the window.</li>
                         </ul>
                         <ul>
-                            <li><strong>viewer.drop_opens_new_tab:</strong> false = drop into the current tab, true = drop into a new tab. After the first group, archives or folders set to own-tab open as extra tabs. Default: false</li>
+                            <li><strong>viewer.drop_opens_new_tab:</strong> false = the tab under the drop, true = a new tab on that pane. Empty tab-bar space, or the area outside the panes, keeps the current tab. After the first group, archives or folders set to own-tab open as extra tabs. Default: false</li>
                             <li><strong>viewer.open_archives_in_own_tab:</strong> true = each archive is its own tab; false = include archives as pages with images. Kind follows Plugin Settings. Default: true</li>
                             <li><strong>viewer.open_folders_in_own_tab:</strong> true = each folder is its own tab; false = include folders as pages with images. Default: false</li>
-                            <li><strong>viewer.show_tabs_in_fullscreen:</strong> View menu checkbox <code>Don't Hide Tabs in Fullscreen</code>. false hides the tab bar in fullscreen. The tab bar is also hidden when only one tab is open. Default: false</li>
+                            <li><strong>viewer.show_tabs_in_fullscreen:</strong> View menu checkbox <code>Don't Hide Tabs in Fullscreen</code>. false hides every tab bar in fullscreen. With one pane, the bar is also hidden when only one tab is open. While split, each pane shows its bar even with one tab. Default: false</li>
                             <li><strong>viewer.show_page_slider_in_fullscreen:</strong> View menu checkbox <code>Don't Hide Page Slider in Fullscreen</code>. false hides the page slider in fullscreen like other docks. true keeps it visible. The mouse is locked to the center in fullscreen, so the slider cannot be used. Default: false</li>
                             <li>Tab width is fixed. Long names are elided; hover shows the full name. Assigned keyboard shortcuts appear on the right of matching menu items</li>
                         </ul>

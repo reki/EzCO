@@ -363,6 +363,11 @@ class SettingsDialog(QDialog):
         self._disable_if_overridden("viewer.drop_opens_new_tab", "drop_opens_new_tab", self.drop_opens_combo)
         self._disable_if_overridden("viewer.open_archives_in_own_tab", "open_archives_in_own_tab", self.open_archives_own_tab_checkbox)
         self._disable_if_overridden("viewer.open_folders_in_own_tab", "open_folders_in_own_tab", self.open_folders_own_tab_checkbox)
+        self._disable_if_overridden("viewer.current_tab_color", "current_tab_color", self.current_tab_color_button)
+        self._disable_if_overridden("viewer.current_tab_alpha", "current_tab_color", self.current_tab_alpha)
+        self._disable_if_overridden(
+            "viewer.current_tab_gradient", "current_tab_gradient", self.current_tab_gradient_checkbox
+        )
         self._disable_if_overridden("cache.memory_limit", "cache_memory_limit", self.cache_memory_limit)
         self._disable_if_overridden("cache.prefetch_pages", "cache_prefetch_pages", self.cache_prefetch_pages)
         self._disable_if_overridden("cache.image_loader_workers", "cache_image_loader_workers", self.cache_image_loader_workers)
@@ -538,6 +543,25 @@ class SettingsDialog(QDialog):
         self.bg_color_button.clicked.connect(self.select_background_color)
         viewer_layout.addRow(self._form_label("background_color"), self.bg_color_button)
         self._apply_setting_tip("background_color", self.bg_color_button)
+
+        current_tab_color = self.config.viewer.get("current_tab_color", "#3a7bd5")
+        self.current_tab_color_button = QPushButton()
+        self.current_tab_color_button.setStyleSheet(
+            f"background-color: {current_tab_color}; min-width: 100px; max-width: 150px; min-height: 20px;"
+        )
+        self.current_tab_color_button.clicked.connect(self.select_current_tab_color)
+        viewer_layout.addRow(self._form_label("current_tab_color"), self.current_tab_color_button)
+        self._apply_setting_tip("current_tab_color", self.current_tab_color_button)
+        self.current_tab_alpha = QSpinBox()
+        self.current_tab_alpha.setMaximumWidth(100)
+        self.current_tab_alpha.setRange(0, 255)
+        self.current_tab_alpha.setValue(int(self.config.viewer.get("current_tab_alpha", 170)))
+        viewer_layout.addRow(self._form_label("transparency"), self.current_tab_alpha)
+        self._apply_setting_tip("current_tab_color", self.current_tab_alpha)
+        self.current_tab_gradient_checkbox = QCheckBox(get_text("settings.current_tab_gradient"))
+        self.current_tab_gradient_checkbox.setChecked(bool(self.config.viewer.get("current_tab_gradient", True)))
+        self._apply_setting_tip("current_tab_gradient", self.current_tab_gradient_checkbox)
+        viewer_layout.addRow(self.current_tab_gradient_checkbox)
 
         # 画像をウィンドウに合わせる
         self.fit_to_window_checkbox = QCheckBox(get_text("settings.fit_to_window"))
@@ -1089,6 +1113,19 @@ class SettingsDialog(QDialog):
 
         self.tab_widget.addTab(scroll_area, get_text("settings.tab_development"))
 
+    def select_current_tab_color(self):
+        """分割中のカレントタブの色を選び、ボタンの背景にする。無効な色なら変えない。"""
+        color = QColorDialog.getColor(
+            QColor(self.config.viewer.get("current_tab_color", "#3a7bd5")),
+            self,
+            get_text("settings.select_current_tab_color"),
+        )
+        if color.isValid():
+            self.config.viewer["current_tab_color"] = color.name()
+            self.current_tab_color_button.setStyleSheet(
+                f"background-color: {color.name()}; min-width: 100px; max-width: 150px; min-height: 20px;"
+            )
+
     def select_background_color(self):
         """背景色を選択"""
         color = QColorDialog.getColor(
@@ -1486,6 +1523,24 @@ class SettingsDialog(QDialog):
                 self.open_folders_own_tab_checkbox.setChecked(
                     config_dict["viewer"].get("open_folders_in_own_tab", False)
                 )
+            if hasattr(self, "current_tab_color_button"):
+                color = str(config_dict["viewer"].get("current_tab_color") or "#3a7bd5")
+                self.config.viewer["current_tab_color"] = color
+                self.current_tab_color_button.setStyleSheet(
+                    f"background-color: {color}; min-width: 100px; max-width: 150px; min-height: 20px;"
+                )
+            if hasattr(self, "current_tab_alpha"):
+                raw_alpha = config_dict["viewer"].get("current_tab_alpha", 170)
+                try:
+                    alpha = max(0, min(255, int(raw_alpha)))
+                except (TypeError, ValueError):
+                    # 透過度が数値でなければ初期値にする。
+                    alpha = 170
+                self.current_tab_alpha.setValue(alpha)
+            if hasattr(self, "current_tab_gradient_checkbox"):
+                self.current_tab_gradient_checkbox.setChecked(
+                    bool(config_dict["viewer"].get("current_tab_gradient", True))
+                )
 
         # デバッグ設定
         if "debug" in config_dict:
@@ -1681,6 +1736,9 @@ class SettingsDialog(QDialog):
         self.config.viewer["drop_opens_new_tab"] = bool(self.drop_opens_combo.currentData())
         self.config.viewer["open_archives_in_own_tab"] = self.open_archives_own_tab_checkbox.isChecked()
         self.config.viewer["open_folders_in_own_tab"] = self.open_folders_own_tab_checkbox.isChecked()
+        self.config.viewer["current_tab_color"] = self.config.viewer.get("current_tab_color", "#3a7bd5")
+        self.config.viewer["current_tab_alpha"] = self.current_tab_alpha.value()
+        self.config.viewer["current_tab_gradient"] = self.current_tab_gradient_checkbox.isChecked()
         try:
             sensitivity_value = float(self.sensitivity_input.text())
             # 範囲チェック
@@ -1852,6 +1910,12 @@ class SettingsDialog(QDialog):
             parent.update_image()
             if hasattr(parent, '_update_page_slider'):
                 parent._update_page_slider()
+        if parent and hasattr(getattr(parent, "tab_widget", None), "set_current_tab_mark"):
+            parent.tab_widget.set_current_tab_mark(
+                self.config.viewer.get("current_tab_color", "#3a7bd5"),
+                self.config.viewer.get("current_tab_alpha", 170),
+                self.config.viewer.get("current_tab_gradient", True),
+            )
         return True
 
     def reject(self):

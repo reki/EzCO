@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
     QFileDialog, QMessageBox, QInputDialog,
     QApplication, QLabel, QDockWidget,
     QDialog,
-    QTabWidget,
 )
 from PySide6.QtCore import Qt, QTimer, QRect, QEvent, QPoint, QByteArray
 from PySide6.QtGui import (
@@ -26,6 +25,7 @@ from ez_co.filters.pipeline import apply_pipe
 from ez_co.filters.registry import get_filter_registry
 from ez_co.handlers.file_handler import FileHandler
 from ez_co.utils.database import DatabaseManager
+from ez_co.ui.viewer.tab_host import TabHost
 from ez_co.ui.viewer.viewer_pane import ViewerPane
 from ez_co.ui.mouse_lock_state import MouseLockState
 from ez_co.handlers.session_file import (
@@ -48,13 +48,11 @@ from ez_co.ui.dialogs.bookmark_dialog import BookmarkDialog
 from ez_co.ui.docks.image_slide_sidebar import ImageSlideSidebar
 from ez_co.ui.docks.page_slider import PageSlider
 from ez_co.ui.dialogs.pdf_password_dialog import CLOSE_APP_RESULT, ArchivePasswordDialog
-from ez_co.ui.viewer.viewer_tab_bar import ViewerTabBar
 from ez_co.ui.viewer.tab_commands import (
     close_left_indexes,
     close_other_indexes,
     close_right_indexes,
     pin_selection,
-    regroup_order,
     snap_pinned_drop,
     tab_copy_texts,
 )
@@ -519,20 +517,20 @@ class MainWindow(QMainWindow):
         # レイアウトの設定
         layout = QVBoxLayout()
         main_widget.setLayout(layout)
-        self.tab_widget = QTabWidget()
-        self.tab_widget.setTabBar(ViewerTabBar(self.tab_widget))
+        self.tab_widget = TabHost(self)
         self.tab_widget.setDocumentMode(True)
         self.tab_widget.setMovable(True)
         self.tab_widget.setTabsClosable(True)
         self.tab_widget.tabCloseRequested.connect(self._close_tab_at)
         self._tab_move_guard = False
-        self.tab_widget.tabBar().customContextMenuRequested.connect(self._show_tab_bar_context_menu)
+        self.tab_widget.tabContextMenuRequested.connect(self._show_tab_context_menu)
         layout.addWidget(self.tab_widget)
         self.tab_widget.blockSignals(True)
         self._add_tab(switch=True)
         self.tab_widget.blockSignals(False)
         self.tab_widget.currentChanged.connect(self._on_tab_changed)
-        self.tab_widget.tabBar().tabMoved.connect(self._on_tab_moved)
+        self.tab_widget.groupTabMoved.connect(self._on_group_tab_moved)
+        self.tab_widget.gestureRecognized.connect(self._on_tab_bar_gesture)
         self._sync_tab_bar()
         # ツールバーの設定
         self.setup_toolbars()
@@ -541,6 +539,13 @@ class MainWindow(QMainWindow):
         # マウスジェスチャーの設定
         self.mouse_gesture = MouseGesture(self.config)
         self.mouse_gesture.set_target_widget(self)
+        self._tab_gesture = MouseGesture(self.config)
+        self.tab_widget.set_gesture_recognizer(self._tab_gesture)
+        self.tab_widget.set_current_tab_mark(
+            self.config.viewer.get("current_tab_color", "#3a7bd5"),
+            self.config.viewer.get("current_tab_alpha", 170),
+            self.config.viewer.get("current_tab_gradient", True),
+        )
 
         # ダイアログの参照
         self.image_list_dialog = None
@@ -758,6 +763,23 @@ class MainWindow(QMainWindow):
         last_tab_action.triggered.connect(self.last_tab)
         self._apply_action_shortcut(last_tab_action, Actions.LAST_TAB.value)
         tab_menu.addAction(last_tab_action)
+        tab_menu.addSeparator()
+        split_right_action = QAction(get_text("ui.split_right"), self)
+        split_right_action.triggered.connect(self.split_right)
+        self._apply_action_shortcut(split_right_action, Actions.SPLIT_RIGHT.value)
+        tab_menu.addAction(split_right_action)
+        split_down_action = QAction(get_text("ui.split_down"), self)
+        split_down_action.triggered.connect(self.split_down)
+        self._apply_action_shortcut(split_down_action, Actions.SPLIT_DOWN.value)
+        tab_menu.addAction(split_down_action)
+        split_grid_action = QAction(get_text("ui.split_grid"), self)
+        split_grid_action.triggered.connect(self.split_grid)
+        self._apply_action_shortcut(split_grid_action, Actions.SPLIT_GRID.value)
+        tab_menu.addAction(split_grid_action)
+        join_view_action = QAction(get_text("ui.join_view"), self)
+        join_view_action.triggered.connect(self.join_view)
+        self._apply_action_shortcut(join_view_action, Actions.JOIN_VIEW.value)
+        tab_menu.addAction(join_view_action)
         self._update_reopen_tab_action()
 
         self._setup_profile_menu(menubar)
@@ -1034,10 +1056,18 @@ class MainWindow(QMainWindow):
         for pane in self._iter_panes():
             pane.image_view.set_background_color(self.config.viewer.get("background_color", "#c0ffc0"))
             pane.image_view.set_config(self.config)
+        if hasattr(self, "tab_widget") and hasattr(self.tab_widget, "set_current_tab_mark"):
+            self.tab_widget.set_current_tab_mark(
+                self.config.viewer.get("current_tab_color", "#3a7bd5"),
+                self.config.viewer.get("current_tab_alpha", 170),
+                self.config.viewer.get("current_tab_gradient", True),
+            )
         if hasattr(self, "mouse_gesture") and self.mouse_gesture:
             new_threshold = self.config.viewer.get("gesture_threshold", 50)
             if hasattr(self.mouse_gesture, "set_threshold"):
                 self.mouse_gesture.set_threshold(new_threshold)
+            if hasattr(self, "_tab_gesture"):
+                self._tab_gesture.set_threshold(new_threshold)
 
         from ez_co.plugins.manager import get_plugin_manager
         manager = get_plugin_manager()
@@ -1915,6 +1945,8 @@ class MainWindow(QMainWindow):
             logger.info(get_log_text("mouse_gesture_current_settings", current_threshold=self.mouse_gesture.threshold, config_threshold=new_threshold))
             if self.mouse_gesture.threshold != new_threshold:
                 self.mouse_gesture.set_threshold(new_threshold)
+                if hasattr(self, "_tab_gesture"):
+                    self._tab_gesture.set_threshold(new_threshold)
                 logger.info(get_log_text("mouse_gesture_threshold_updated", old_threshold=self.mouse_gesture.threshold, new_threshold=new_threshold))
 
     def zoom_reset(self):
@@ -1932,17 +1964,28 @@ class MainWindow(QMainWindow):
             event.acceptProposedAction()
 
     def dropEvent(self, event: QDropEvent):
-        """ドロップイベントの処理
+        """ファイルやフォルダを、落とした位置のタブで開く。
 
         Args:
-            event: ドロップイベント。
+            event: ドロップ。
         """
         mime_data = event.mimeData()
         if mime_data.hasUrls():
             files = [url.toLocalFile() for url in mime_data.urls()]
             logger.info(get_log_text("main_window_files_dropped", file_list=files))
+            if any(path and not is_session_file(path) for path in files):
+                self._focus_tab_under_drop(event.position().toPoint())
             self.open_paths(files, new_tab=self.config.viewer.get("drop_opens_new_tab", False))
             event.acceptProposedAction()
+
+    def _focus_tab_under_drop(self, pos):
+        """落とした位置のタブをカレントにする。空きや外なら変えない。
+
+        Args:
+            pos: ウィンドウ上の位置。
+        """
+        if hasattr(self, "tab_widget"):
+            self.tab_widget.focus_tab_from(self, pos)
 
     def _add_tab(self, switch: bool = True) -> ViewerPane:
         """閲覧ペインのタブを足す。
@@ -1965,13 +2008,11 @@ class MainWindow(QMainWindow):
         return pane
 
     def _sync_tab_bar(self):
-        """タブが複数のときだけタブバーを出し、一覧も更新する。"""
+        """フルスクリーンの設定と面の数に合わせてタブバーを出し、一覧も更新する。"""
         if not hasattr(self, "tab_widget"):
             return
-        show = self.tab_widget.count() > 1
-        if self.is_fullscreen and not self.config.viewer.get("show_tabs_in_fullscreen", False):
-            show = False
-        self.tab_widget.tabBar().setVisible(show)
+        show = not (self.is_fullscreen and not self.config.viewer.get("show_tabs_in_fullscreen", False))
+        self.tab_widget.set_tab_bars_allowed(show)
         self._refresh_tab_list()
         self._update_reopen_tab_action()
 
@@ -2114,8 +2155,10 @@ class MainWindow(QMainWindow):
             self.close_application()
             return
         pane = self.tab_widget.widget(index)
-        self.tab_widget.setCurrentIndex(index)
+        previous = self.tab_widget.currentWidget()
+        self.tab_widget.note_only(pane)
         self.save_current_file_history()
+        self.tab_widget.note_only(previous)
         if isinstance(pane, ViewerPane):
             self._push_closed_tab(pane)
         self.tab_widget.removeTab(index)
@@ -2132,16 +2175,6 @@ class MainWindow(QMainWindow):
         """
         for tab_index in indexes:
             self._close_tab_at(tab_index)
-
-    def _show_tab_bar_context_menu(self, pos):
-        """タブバー上の位置にあるタブのメニューを出す。
-
-        Args:
-            pos: タブバー上の位置。
-        """
-        index = self.tab_widget.tabBar().tabAt(pos)
-        if index >= 0:
-            self._show_tab_context_menu(index)
 
     def _show_tab_context_menu(self, index: int):
         """タブのコンテキストメニューを出す。
@@ -2243,10 +2276,7 @@ class MainWindow(QMainWindow):
         Args:
             select: 並べたあと選択するウィジェット。
         """
-        flags = self._pinned_flags()
-        order = regroup_order(flags)
-        if order != list(range(len(order))):
-            self._move_tabs_to_order(order)
+        self.tab_widget.regroup_pins()
         self._sync_pin_chrome()
         if select is not None:
             index = self.tab_widget.indexOf(select)
@@ -2254,54 +2284,34 @@ class MainWindow(QMainWindow):
                 self.tab_widget.setCurrentIndex(index)
         self._sync_tab_bar()
 
-    def _move_tabs_to_order(self, order: list[int]):
-        """タブを指定の順へ動かす。
-
-        Args:
-            order: 新しい順の、元の位置。
-        """
-        bar = self.tab_widget.tabBar()
-        current = list(range(len(order)))
-        self._tab_move_guard = True
-        try:
-            for new_index, old_index in enumerate(order):
-                now = current.index(old_index)
-                if now == new_index:
-                    continue
-                bar.moveTab(now, new_index)
-                item = current.pop(now)
-                current.insert(new_index, item)
-        finally:
-            self._tab_move_guard = False
-
     def _sync_pin_chrome(self):
-        """タブバーのピン表示を更新する。"""
-        bar = self.tab_widget.tabBar()
-        if isinstance(bar, ViewerTabBar):
-            bar.apply_pin_chrome()
+        """各面のタブバーのピン表示を更新する。"""
+        self.tab_widget.apply_pin_chrome()
 
-    def _on_tab_moved(self, _from_index: int, to_index: int):
-        """タブを動かしたあと、ピンの範囲へ戻すか一覧を更新する。
+    def _on_group_tab_moved(self, group, _from_index: int, to_index: int):
+        """面の中でタブを動かしたあと、その面のピンの範囲へ戻す。
 
         Args:
-            _from_index: 移動前の位置。処理では使わない。
-            to_index: 移動後の位置。
+            group: 動かした面。
+            _from_index: 移動前の、その面の中の位置。処理では使わない。
+            to_index: 移動後の、その面の中の位置。
         """
         if self._tab_move_guard:
             self._refresh_tab_list()
             return
-        target = snap_pinned_drop(self._pinned_flags(), to_index)
+        flags = [isinstance(pane, ViewerPane) and pane.pinned is True for pane in group.panes()]
+        target = snap_pinned_drop(flags, to_index)
         if target is not None and target != to_index:
             source = to_index
             dest = target
 
             def snap():
-                """ピンの範囲へタブを戻し、一覧を更新する。"""
-                if source >= self.tab_widget.count():
+                """その面のピンの範囲へタブを戻し、一覧を更新する。"""
+                if source >= group.count():
                     return
                 self._tab_move_guard = True
                 try:
-                    self.tab_widget.tabBar().moveTab(source, dest)
+                    group.move_local(source, dest)
                 finally:
                     self._tab_move_guard = False
                 self._refresh_tab_list()
@@ -2353,6 +2363,46 @@ class MainWindow(QMainWindow):
         count = self.tab_widget.count()
         if count > 0:
             self.tab_widget.setCurrentIndex(count - 1)
+
+    def split_right(self):
+        """最後に操作したタブの右へ、どの面でも選ばれていない次のタブを出す。"""
+        self.tab_widget.split_toward("right")
+
+    def split_down(self):
+        """最後に操作したタブの下へ、どの面でも選ばれていない次のタブを出す。"""
+        self.tab_widget.split_toward("down")
+
+    def split_grid(self):
+        """最後に操作したタブから最大4つを、左上から横へ並べる。"""
+        self.tab_widget.split_grid()
+
+    def join_view(self):
+        """すべてのタブを最後に操作したタブの面へ集め、ほかの面を畳む。"""
+        self.tab_widget.join_view()
+
+    def focus_pane_from_view(self, pane):
+        """画像上の操作で、そのタブをショートカット対象にする。
+
+        Args:
+            pane: 操作した閲覧ペイン。
+        """
+        if not isinstance(pane, ViewerPane):
+            return
+        index = self.tab_widget.indexOf(pane)
+        if index >= 0:
+            self.tab_widget.setCurrentIndex(index)
+
+    def _on_tab_bar_gesture(self, index, gesture):
+        """タブバーで始まったジェスチャーを、そのタブへ実行する。
+
+        Args:
+            index: 開始したタブの位置。
+            gesture: 認識した方向列。
+        """
+        self.tab_widget.note_gesture_tab(index)
+        pane = self.current_pane
+        if pane is not None and hasattr(pane, "image_view"):
+            pane.image_view.handle_gesture(gesture)
 
     def _path_open_kind(self, path: str) -> str:
         """パスを開き方の種類へ分ける。
@@ -2500,6 +2550,10 @@ class MainWindow(QMainWindow):
             Actions.PREV_TAB.value: self.prev_tab,
             Actions.FIRST_TAB.value: self.first_tab,
             Actions.LAST_TAB.value: self.last_tab,
+            Actions.SPLIT_RIGHT.value: self.split_right,
+            Actions.SPLIT_DOWN.value: self.split_down,
+            Actions.SPLIT_GRID.value: self.split_grid,
+            Actions.JOIN_VIEW.value: self.join_view,
             Actions.OPEN_FILE_IN_NEW_TAB.value: self.open_file_in_new_tab,
             Actions.OPEN_FOLDER.value: self.open_folder,
             Actions.SAVE_SESSION.value: self.save_session_as,

@@ -38,6 +38,14 @@ def test_from_dict_falls_back_for_invalid_zoom_navigation_mode():
     assert config.viewer["zoom_navigation_mode"] == "page"
 
 
+def test_from_dict_turns_a_missing_tab_gradient_on():
+    """カレントタブのグラデーションは、キーが無いとオフになり、明示したオフがオンになる。"""
+    missing = Config.from_dict({"viewer": {"current_tab_color": "#112233"}})
+    off = Config.from_dict({"viewer": {"current_tab_gradient": False}})
+    assert missing.viewer["current_tab_gradient"] is True
+    assert off.viewer["current_tab_gradient"] is False
+
+
 def test_from_dict_fills_missing_sections():
     """空の辞書でもウィンドウ幅と拡張子ハンドラが埋まり、フィルタ pipe は空で gamma は 1.0 になる。"""
     config = Config.from_dict({})

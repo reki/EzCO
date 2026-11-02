@@ -1,7 +1,59 @@
 """幅固定タブバーと閉じるボタン。"""
-from PySide6.QtCore import QEvent, QRectF, QSize, Qt
-from PySide6.QtGui import QColor, QPainter, QPen
+from PySide6.QtCore import QEvent, QMimeData, QRectF, QSize, Qt, QTimer, Signal
+from PySide6.QtGui import QBrush, QColor, QDrag, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import QAbstractButton, QApplication, QTabBar
+
+from ez_co.ui.viewer.pane_layout import TAB_DRAG_MIME
+
+# カレントタブの初期色。
+_DEFAULT_MARK_COLOR = "#3a7bd5"
+# カレントタブの初期透過度。
+_DEFAULT_MARK_ALPHA = 170
+
+
+def current_tab_mark_color(color, alpha):
+    """カレントタブに塗る色を返す。
+
+    Args:
+        color: 16進の色。読めなければ初期色。
+        alpha: 0 から 255。数値でなければ初期値。
+
+    Returns:
+        塗る色。
+    """
+    parsed = QColor(str(color or ""))
+    if not parsed.isValid():
+        parsed = QColor(_DEFAULT_MARK_COLOR)
+    try:
+        value = int(alpha)
+    except (TypeError, ValueError):
+        # 透過度が数値でなければ初期値にする。
+        value = _DEFAULT_MARK_ALPHA
+    parsed.setAlpha(max(0, min(255, value)))
+    return parsed
+
+
+def current_tab_mark_brush(rect, color, gradient):
+    """カレントタブに塗るブラシを返す。グラデーションは左から右へ薄くなる。
+
+    Args:
+        rect: 塗る範囲。
+        color: 塗る色。無ければ塗らない。
+        gradient: 左の透過度から右の 0 へ薄くするとき True。
+
+    Returns:
+        塗るブラシ。色が無ければ None。
+    """
+    if color is None:
+        return None
+    if not gradient:
+        return QBrush(color)
+    fade = QLinearGradient(rect.left(), rect.top(), rect.right(), rect.top())
+    fade.setColorAt(0, color)
+    end = QColor(color)
+    end.setAlpha(0)
+    fade.setColorAt(1, end)
+    return QBrush(fade)
 
 
 def _is_dark_color_scheme(widget) -> bool:
@@ -73,6 +125,9 @@ class TabCloseButton(QAbstractButton):
 class ViewerTabBar(QTabBar):
     """幅固定。長い名前は省略し、ホバーで全文をツールチップ表示する。"""
 
+    gestureRecognized = Signal(int, str)
+    tabDropped = Signal(str, int)
+
     # 通常タブの幅。
     TAB_WIDTH = 160
     # ピン留めタブの幅。
@@ -85,6 +140,12 @@ class ViewerTabBar(QTabBar):
             parent: 親ウィジェット。
         """
         super().__init__(parent)
+        self._mark_color = None
+        self._mark_gradient = False
+        self._drag_index = -1
+        self._split_drag_started = False
+        self._gesture = None
+        self._gesture_index = -1
         self.setExpanding(False)
         self.setElideMode(Qt.TextElideMode.ElideRight)
         self.setUsesScrollButtons(True)
@@ -96,6 +157,44 @@ class ViewerTabBar(QTabBar):
         hints = QApplication.styleHints()
         if hints is not None and hasattr(hints, "colorSchemeChanged"):
             hints.colorSchemeChanged.connect(self._refresh_close_buttons)
+
+    def set_current_mark(self, color, gradient=False):
+        """カレントタブに塗る色を置く。塗らないときは None。
+
+        Args:
+            color: 塗る色。塗らないときは None。
+            gradient: 左から右へ薄くするとき True。
+        """
+        self._mark_color = color
+        self._mark_gradient = bool(gradient)
+        self.update()
+
+    def set_gesture_recognizer(self, gesture):
+        """タブバー上の右ドラッグを、この認識器で記録する。
+
+        Args:
+            gesture: 方向を記録する認識器。
+        """
+        self._gesture = gesture
+
+    def paintEvent(self, event):
+        """通常のタブを描き、分割中のカレントタブだけ背景色を重ねる。
+
+        Args:
+            event: 描画イベント。
+        """
+        super().paintEvent(event)
+        selected = self.currentIndex()
+        if selected < 0:
+            return
+        rect = self.tabRect(selected)
+        brush = current_tab_mark_brush(rect, self._mark_color, self._mark_gradient)
+        if brush is None:
+            return
+        painter = QPainter(self)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(brush)
+        painter.drawRect(rect)
 
     def tabSizeHint(self, index: int):
         """未固定は固定幅、固定タブは狭くする。
@@ -164,6 +263,14 @@ class ViewerTabBar(QTabBar):
         Args:
             event: マウス押下イベント。
         """
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_index = self.tabAt(event.position().toPoint())
+            self._split_drag_started = False
+        if event.button() == Qt.MouseButton.RightButton and self._gesture is not None:
+            self._gesture_index = self.tabAt(event.position().toPoint())
+            self._gesture.start(event.position().toPoint())
+            event.accept()
+            return
         if event.button() == Qt.MouseButton.MiddleButton:
             index = self.tabAt(event.position().toPoint())
             if index >= 0:
@@ -175,6 +282,29 @@ class ViewerTabBar(QTabBar):
             return
         super().mousePressEvent(event)
 
+    def mouseMoveEvent(self, event):
+        """タブバーの外へ出た左ドラッグは分割用にする。右ドラッグはジェスチャーを記録する。
+
+        Args:
+            event: マウス移動イベント。
+        """
+        if event.buttons() & Qt.MouseButton.RightButton and self._gesture is not None and self._gesture.is_active():
+            self._gesture.update(event.position().toPoint())
+            event.accept()
+            return
+        pos = event.position().toPoint()
+        if (
+            not self._split_drag_started
+            and event.buttons() & Qt.MouseButton.LeftButton
+            and self._drag_index >= 0
+            and not self.rect().contains(pos)
+        ):
+            self._split_drag_started = True
+            index = self._drag_index
+            QTimer.singleShot(0, lambda: self._start_split_drag(index))
+            return
+        super().mouseMoveEvent(event)
+
     def mouseReleaseEvent(self, event):
         """右ボタンの離しはメニューだけを出し、親のクリック割り当てへ渡さない。
 
@@ -183,11 +313,82 @@ class ViewerTabBar(QTabBar):
         """
         if event.button() == Qt.MouseButton.RightButton:
             event.accept()
+            gesture = None
+            if self._gesture is not None and self._gesture.is_active():
+                gesture = self._gesture.end()
+            index = self._gesture_index
+            self._gesture_index = -1
+            if gesture and index >= 0:
+                self.gestureRecognized.emit(index, gesture)
+                return
             pos = event.position().toPoint()
             if self.tabAt(pos) >= 0:
                 self.customContextMenuRequested.emit(pos)
             return
         super().mouseReleaseEvent(event)
+
+    def dragEnterEvent(self, event):
+        """別のタブバーからのタブを受け入れる。
+
+        Args:
+            event: ドラッグ進入。
+        """
+        if event.mimeData().hasFormat(TAB_DRAG_MIME):
+            event.acceptProposedAction()
+            return
+        event.ignore()
+
+    def dragMoveEvent(self, event):
+        """タブバー上の移動を受け入れる。
+
+        Args:
+            event: ドラッグ移動。
+        """
+        if event.mimeData().hasFormat(TAB_DRAG_MIME):
+            event.acceptProposedAction()
+            return
+        event.ignore()
+
+    def dropEvent(self, event):
+        """落とされたタブの識別子と挿入位置を知らせる。
+
+        Args:
+            event: ドロップ。
+        """
+        if not event.mimeData().hasFormat(TAB_DRAG_MIME):
+            event.ignore()
+            return
+        token = bytes(event.mimeData().data(TAB_DRAG_MIME)).decode("utf-8")
+        if not token:
+            event.ignore()
+            return
+        local = self.tabAt(event.position().toPoint())
+        if local < 0:
+            local = self.count()
+        self.tabDropped.emit(token, local)
+        event.acceptProposedAction()
+
+    def _start_split_drag(self, index):
+        """タブの識別子を載せて、分割用のドラッグを始める。マウス処理の外から呼ぶ。
+
+        Args:
+            index: ドラッグするタブの位置。
+        """
+        if index < 0:
+            return
+        if not (QApplication.mouseButtons() & Qt.MouseButton.LeftButton):
+            return
+        parent = self.parent()
+        if parent is None:
+            return
+        pane = parent.widget(index)
+        if pane is None:
+            return
+        drag = QDrag(self)
+        mime = QMimeData()
+        mime.setData(TAB_DRAG_MIME, str(id(pane)).encode("utf-8"))
+        drag.setMimeData(mime)
+        drag.exec(Qt.DropAction.MoveAction)
 
     def _tab_width(self, index: int) -> int:
         """タブの表示幅を返す。

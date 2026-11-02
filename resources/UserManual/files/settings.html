@@ -204,6 +204,26 @@ window:
 
                         <div class="setting-item">
                             <div class="setting-header">
+                                <span class="setting-name">分割中のカレントタブの色</span>
+                                <span class="setting-key">viewer.current_tab_color</span>
+                                <span class="setting-type">文字列</span>
+                            </div>
+                            <p>タブバーが出ているとき、ショートカットが効くタブの背景色です。タブが1枚で分割していないときはタブバーが出ないので塗りません。透過度は <code>viewer.current_tab_alpha</code>（0が透明、255が不透明）です。</p>
+                            <div class="setting-value">デフォルト: "#3a7bd5"、透過度 170</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
+                                <span class="setting-name">グラデーション</span>
+                                <span class="setting-key">viewer.current_tab_gradient</span>
+                                <span class="setting-type">真偽値</span>
+                            </div>
+                            <p>オンのとき、左は設定した透過度、右は透明になるグラデーションで塗ります。オフのときは単色です。キーが無い既存の設定もオンになります。</p>
+                            <div class="setting-value">デフォルト: true</div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="setting-header">
                                 <span class="setting-name">ウィンドウに合わせる</span>
                                 <span class="setting-key">viewer.fit_to_window</span>
                                 <span class="setting-type">真偽値</span>
@@ -734,7 +754,7 @@ image_list:
                                 <span class="setting-key">viewer.drop_opens_new_tab</span>
                                 <span class="setting-type">真偽値</span>
                             </div>
-                            <p>false なら既存タブ、true なら新しいタブ。先頭グループのあと、別タブ指定のアーカイブ／フォルダなどは追加タブになります。最後のタブを閉じるとウィンドウも閉じます。</p>
+                            <p>false なら落とした位置のタブ、true ならその面の新しいタブ。タブバーの空きや面の外では今のタブです。先頭グループのあと、別タブ指定のアーカイブ／フォルダなどは追加タブになります。最後のタブを閉じるとウィンドウも閉じます。</p>
                             <div class="setting-value">デフォルト: false</div>
                         </div>
                         <div class="setting-item">
@@ -761,7 +781,7 @@ image_list:
                                 <span class="setting-key">viewer.show_tabs_in_fullscreen</span>
                                 <span class="setting-type">真偽値</span>
                             </div>
-                            <p>表示メニューのチェックで切り替えます。false ならフルスクリーン中はタブバーを隠します。タブが 1 枚だけのときは、通常時もタブバーは出ません。</p>
+                            <p>表示メニューのチェックで切り替えます。false ならフルスクリーン中は全部のタブバーを隠します。分割していないとき、タブが 1 枚ならタブバーは出ません。分割中は、タブが 1 枚の面にもタブバーを出します。</p>
                             <div class="setting-value">デフォルト: false</div>
                         </div>
                         <div class="setting-item">
