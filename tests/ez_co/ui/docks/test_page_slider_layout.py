@@ -1,7 +1,8 @@
 """対象: ez_co.ui.docks.page_slider — 結合1行と浮き窓3段。"""
 from types import SimpleNamespace
 
-from PySide6.QtWidgets import QWidget, QSizePolicy
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QDockWidget, QMainWindow, QSizePolicy, QWidget
 
 import pytest
 
@@ -22,7 +23,7 @@ def _slider():
 
 
 def test_compact_is_one_row_slider_stretch_controls_fixed():
-    """結合時にページ情報が残り、スライダーが伸びず、スピンや端ボタンの幅が固定されない。"""
+    """結合時にページ情報が残り、スライダーが伸びず、スピンや端ボタンの幅が固定されず、フロートと閉じるが操作列に無い。"""
     slider = _slider()
     slider.set_compact(True)
     assert slider._compact is True
@@ -38,10 +39,14 @@ def test_compact_is_one_row_slider_stretch_controls_fixed():
     assert slider.page_slider.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Expanding
     assert slider.first_button.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Fixed
     assert slider.last_button.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Fixed
+    assert slider.float_button.isHidden() is False
+    assert slider.close_button.isHidden() is False
+    assert slider._row.indexOf(slider.float_button) == 3
+    assert slider._row.indexOf(slider.close_button) == 4
 
 
 def test_floating_keeps_three_rows_and_fixed_size():
-    """浮き窓でページ情報が隠れ、段数が3以外になり、スピンがスライダーより後ろに来る。"""
+    """浮き窓でページ情報が隠れ、段数が3以外になり、スピンがスライダーより後ろに来て、フロートと閉じるが残る。"""
     slider = _slider()
     slider.set_compact(False)
     assert slider.page_info_label.isHidden() is False
@@ -50,6 +55,32 @@ def test_floating_keeps_three_rows_and_fixed_size():
     assert slider.height() == _FLOATING_SIZE[1]
     assert slider._row.indexOf(slider.page_spinbox) == 0
     assert slider._row.indexOf(slider.page_slider) == 1
+    assert slider.float_button.isHidden()
+    assert slider.close_button.isHidden()
+    assert slider._row.indexOf(slider.float_button) == -1
+    assert slider._row.indexOf(slider.close_button) == -1
+
+
+def test_docked_title_bar_has_no_height_and_returns_when_floating():
+    """結合中にタイトル帯が残り、浮き窓にしても標準の帯へ戻らない。"""
+    window = QMainWindow()
+    slider = _slider()
+    dock = QDockWidget(window)
+    dock.setWidget(slider)
+    window.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dock)
+    slider.set_compact(True)
+    slider.bind_dock(dock)
+    assert dock.titleBarWidget() is slider._blank_title
+    assert dock.titleBarWidget().sizeHint().height() == 0
+    assert dock.titleBarWidget().minimumSizeHint().height() == 0
+    slider.float_button.click()
+    assert dock.isFloating()
+    slider.set_compact(False)
+    assert dock.titleBarWidget() is None
+    slider.set_compact(True)
+    assert dock.titleBarWidget() is slider._blank_title
+    slider.close_button.click()
+    assert dock.isVisible() is False
 
 
 def test_compact_then_floating_does_not_raise():

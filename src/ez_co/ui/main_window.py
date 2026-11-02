@@ -1110,6 +1110,7 @@ class MainWindow(QMainWindow):
         page_slider_dock.setAllowedAreas(Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
         self.addDockWidget(Qt.BottomDockWidgetArea, page_slider_dock)
         self.page_slider.set_compact(True)
+        self.page_slider.bind_dock(page_slider_dock)
 
         # デフォルトでは非表示
         bookmark_dock.hide()

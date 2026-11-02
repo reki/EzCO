@@ -2,9 +2,9 @@
 import logging
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QSlider, QSpinBox, QPushButton,
-    QSizePolicy, QStyleFactory,
+    QSizePolicy, QStyle, QStyleFactory, QToolButton,
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from ez_co.utils.language_manager import get_text, get_log_text
 
 logger = logging.getLogger(__name__)
@@ -15,6 +15,37 @@ _FLOATING_SIZE = (300, 110)
 _COMPACT_HEIGHT = 32
 # ページ番号入力の幅。
 _SPIN_WIDTH = 60
+# 結合中のフロートと閉じるの一辺。
+_DOCK_BUTTON = 22
+
+
+class _BlankDockTitle(QWidget):
+    """結合中のドックから、タイトル帯の高さを消す。"""
+
+    def __init__(self, parent=None):
+        """高さを持たないタイトル帯を作る。
+
+        Args:
+            parent: 親ウィジェット。
+        """
+        super().__init__(parent)
+        self.setFixedHeight(0)
+
+    def sizeHint(self):
+        """タイトル帯を高さ 0 として返す。
+
+        Returns:
+            幅も高さも 0 の寸法。
+        """
+        return QSize(0, 0)
+
+    def minimumSizeHint(self):
+        """タイトル帯の最小寸法を高さ 0 として返す。
+
+        Returns:
+            幅も高さも 0 の寸法。
+        """
+        return QSize(0, 0)
 
 
 class PageSlider(QWidget):
@@ -36,6 +67,8 @@ class PageSlider(QWidget):
         self._updating = False
         self._compact = False
         self._rtl_slider = None
+        self._dock = None
+        self._blank_title = None
 
         self.setup_ui()
         self.setup_connections()
@@ -77,19 +110,30 @@ class PageSlider(QWidget):
         self.button_layout.addWidget(self.first_button)
         self.button_layout.addWidget(self.last_button)
 
+        self.float_button = self._make_dock_button(
+            QStyle.StandardPixmap.SP_TitleBarNormalButton,
+            get_text("ui.dock_float"),
+        )
+        self.close_button = self._make_dock_button(
+            QStyle.StandardPixmap.SP_TitleBarCloseButton,
+            get_text("ui.close"),
+        )
+
         self._row = QHBoxLayout()
         self._row.setContentsMargins(0, 0, 0, 0)
         self._row.setSpacing(6)
 
     def setup_connections(self):
-        """スライダー、番号、先頭、末尾をページ移動へつなぐ。"""
+        """スライダー、番号、先頭、末尾、フロート、閉じるをつなぐ。"""
         self.page_slider.valueChanged.connect(self.on_slider_changed)
         self.page_spinbox.valueChanged.connect(self.on_spinbox_changed)
         self.first_button.clicked.connect(self.go_to_first_page)
         self.last_button.clicked.connect(self.go_to_last_page)
+        self.float_button.clicked.connect(self._float_dock)
+        self.close_button.clicked.connect(self._close_dock)
 
     def set_compact(self, compact: bool):
-        """結合時は1行、浮き窓は3段。
+        """結合時は1行にしてタイトル帯を消し、浮き窓は3段にして帯を戻す。
 
         Args:
             compact: 1行にするとき True。
@@ -106,6 +150,7 @@ class PageSlider(QWidget):
             self.setFixedSize(*_FLOATING_SIZE)
             self.page_slider.setMinimumHeight(24)
             self.page_info_label.show()
+        self._apply_title_bar()
         rtl = self._rtl_slider
         self._rtl_slider = None
         self._apply_slider_direction()
@@ -122,6 +167,10 @@ class PageSlider(QWidget):
             self._row.addWidget(self.page_slider, 1)
             self._row.addWidget(self.page_spinbox, 0)
             self._row.addLayout(self.button_layout, 0)
+            self._row.addWidget(self.float_button, 0)
+            self._row.addWidget(self.close_button, 0)
+            self.float_button.show()
+            self.close_button.show()
             self._root.addLayout(self._row)
         else:
             self._root.addWidget(self.page_info_label)
@@ -129,6 +178,56 @@ class PageSlider(QWidget):
             self._row.addWidget(self.page_slider, 1)
             self._root.addLayout(self._row)
             self._root.addLayout(self.button_layout)
+            self.float_button.hide()
+            self.close_button.hide()
+
+    def _make_dock_button(self, icon, tip):
+        """結合中の操作列に置く、アイコンだけのボタンを作る。
+
+        Args:
+            icon: 標準アイコンの種類。
+            tip: ツールチップ。
+
+        Returns:
+            一辺を固定したボタン。
+        """
+        button = QToolButton()
+        button.setAutoRaise(True)
+        button.setFixedSize(_DOCK_BUTTON, _DOCK_BUTTON)
+        button.setIcon(self.style().standardIcon(icon))
+        button.setToolTip(tip)
+        return button
+
+    def bind_dock(self, dock):
+        """載せているドックを覚え、結合中はタイトル帯を消す。
+
+        Args:
+            dock: このスライダーを載せているドック。
+        """
+        self._dock = dock
+        self._apply_title_bar()
+
+    def _apply_title_bar(self):
+        """結合中はタイトル帯を高さ 0 にし、浮き窓では標準の帯に戻す。"""
+        dock = self._dock
+        if dock is None:
+            return
+        if self._compact:
+            if self._blank_title is None:
+                self._blank_title = _BlankDockTitle()
+            dock.setTitleBarWidget(self._blank_title)
+        else:
+            dock.setTitleBarWidget(None)
+
+    def _float_dock(self):
+        """ドックがあれば浮き窓にする。"""
+        if self._dock is not None:
+            self._dock.setFloating(True)
+
+    def _close_dock(self):
+        """ドックがあれば閉じる。"""
+        if self._dock is not None:
+            self._dock.close()
 
     def _clear_empty_state(self):
         """本がないときの表示。操作は不可、閉じた本の数字は残さない。"""
