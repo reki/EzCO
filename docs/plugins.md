@@ -355,6 +355,7 @@ class _Entry:
 状態:
 
 - `host.get_current(key)` — `"path"` / `"folder"` / `"page"`
+- `host.open_tabs()` — 開いているタブの `id` / `page` / `total` / `path` / `document` / `shown` / `current`。`id` はそのタブが開いているあいだだけ有効。`document` はページが変わっても同じ、開いているファイルまたはフォルダ。`shown` は分割で見えているか。`current` はショートカット対象か
 - `host.reload_current(page=None)` — 現在のファイルを開き直す（画像キャッシュも消える）。`page` は 1 始まり。省略時は今のページ
 - `host.on(event, callback)` / `host.off(event, callback)` — `"current_changed"` / `"config_changed"`。`off` は有効中に外すとき。無効化は `clear_plugin`。サイドバーを登録したプラグインへの `"current_changed"` は、ドックが表示中か `permissions.inactive_callback` があるときに限る。`"config_changed"` は間引かない
 - `host.get_app_config()` — `language` / `viewer` / `cache` / `ui_font` の読み取り専用
@@ -583,6 +584,32 @@ self.host.unregister_filter("sharp")
 
 ---
 
+### `open_tabs`
+
+```text
+open_tabs() -> list[dict]
+```
+
+開いているタブを返す。隠しているタブも含む。
+
+| キー | 説明 |
+| --- | --- |
+| `id` | そのタブが開いているあいだだけ有効な文字列 |
+| `page` | 1 始まりのページ |
+| `total` | ページ数 |
+| `path` | いまのページのパス。無ければ `None` |
+| `document` | ページが変わっても同じ、開いているファイルまたはフォルダ。空なら `""` |
+| `shown` | その面で見えているとき `True` |
+| `current` | ショートカット対象のとき `True` |
+
+```python
+for tab in self.host.open_tabs():
+    if tab["shown"]:
+        self.host.run_action("next_page", tab=tab["id"])
+```
+
+---
+
 ### `run_action`
 
 ```text
@@ -595,10 +622,18 @@ run_action(action_id: str, **kwargs) -> bool
 
 | 名前 | 型 | 説明 |
 | --- | --- | --- |
-| `action_id` | `str` | 本体の `Actions` の値（例: `new_tab`）またはプラグインの公開 ID |
-| `**kwargs` | | 未使用 |
+| `action_id` | `str` | 本体の `Actions` の値（例: `new_tab`）またはプラグインの公開 ID。`next_page` と `goto_page` もここ |
+| `tab` | `str` | `next_page` と `goto_page` の対象。無ければショートカット対象。あるときはそのタブだけを送り、ショートカット対象は変えない |
+| `page` | `int` | `goto_page` の 1 始まりのページ。無い呼び出しは何もしない |
 
-**戻り値:** 実行できれば `True`。未対応の本体アクションは `False`。
+`goto_page` はページが要るので、ショートカット／ジェスチャーの一覧には出ない。`next_page` は一覧にある。`tab` の無い呼び方は、マウスやキーと同じくショートカット対象を送る。
+
+```python
+self.host.run_action("next_page", tab=tab_id)
+self.host.run_action("goto_page", page=1, tab=tab_id)
+```
+
+**戻り値:** 実行できれば `True`。未対応の本体アクション、開いていない `tab`、`page` の無い `goto_page` は `False`。
 
 ---
 
@@ -701,6 +736,7 @@ UI は「プラグイン設定」ダイアログです。ON/OFF と読み込み�
 | `plugins/product_info/` | 商品情報サイドバー。`resources/ui/sidebar.ui` を `load_ui` で読む。`info.json` が無くフォルダ／ファイル名が DLsite / DMM 番号なら、標準ライブラリだけで非同期取得（ディスクには書かない。設定で OFF 可） |
 | `plugins/config_types/` | 確認用。設定種別を全部登録し、保存値をサイドバーに出す |
 | `plugins/example_filter/` | 確認用。表示フィルター。色とラベルを重ね、文字サイズを `int_range`（`sync` と `reload`）で変える |
+| `plugins/auto_page/` | 見えているタブごとに `next_page` または `goto_page` で送る。間隔の初期値はプラグイン設定 |
 
 ソースの `plugin.py` 先頭にホスト契約のコメントがあります。確認するときはプラグイン設定で当該拡張子の読み込み方式をサンプル側にして OK / 適用してください。フィルターはプラグインを ON にしたあと、フィルターメニューで有効にしてください。開いているファイルはすぐ再読み込みされます。新しく ZIP やフォルダを置いた直後だけ再起動してください。
 

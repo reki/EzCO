@@ -327,6 +327,13 @@
                             </table>
                         </div>
 
+                        <div class="info-box">
+                            <h3>Auto page</h3>
+                            <p>The plugin sidebar has a start page, an end page, an interval in seconds, From current page, Through current page, Start, and Loop. Loop starts checked. While running, Start becomes Stop. The initial interval is a plugin setting, and the default is 1 second. Tabs whose seconds have not been edited use that value, and a new setting applies to those tabs from the next interval. A tab whose seconds were edited in the sidebar keeps its own value.</p>
+                            <p>Each tab can run on its own. The sidebar shows the shortcut-target tab. Switching tabs shows that tab's values and Start or Stop. Only a visible tab advances. Hidden time is not caught up; after the tab is visible again, it stays on the current page until one interval passes. A split view advances a visible tab. Turning still works while the page slider is closed.</p>
+                            <p>Inside the range, it advances from the current page. Starting outside the range moves to the start page immediately. On the end page, Loop returns to the start page. With Loop unchecked, it stops. A manual page change stops that tab. When the file changes, start returns to 1, end returns to the new page count, and the tab stops.</p>
+                        </div>
+
                         <h3 id="zoom">Zoom Features</h3>
                         <div class="control-table">
                             <table>

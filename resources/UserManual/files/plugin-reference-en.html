@@ -56,6 +56,7 @@
                                 <li><a href="#get-current" class="toc-link">get_current</a></li>
                                 <li><a href="#load-ui" class="toc-link">load_ui</a></li>
                                 <li><a href="#on-off" class="toc-link">on / off</a></li>
+                                <li><a href="#open-tabs" class="toc-link">open_tabs</a></li>
                                 <li><a href="#register-action" class="toc-link">register_action</a></li>
                                 <li><a href="#register-config" class="toc-link">register_config</a></li>
                                 <li><a href="#register-config-json" class="toc-link">register_config_json</a></li>
@@ -547,6 +548,7 @@ if password is None:
 <pre class="api-example">folder = host.get_current("folder")
 path = host.get_current("path")
 page = host.get_current("page")</pre>
+                                <p class="api-see">See also: <a href="#open-tabs"><code>open_tabs</code></a></p>
                             </div>
                         </article>
                         <article id="load-ui" class="api-member">
@@ -571,6 +573,28 @@ def _on_config(payload):
 host.on("current_changed", _on_current)
 host.on("config_changed", _on_config)
 host.off("current_changed")</pre>
+                            </div>
+                        </article>
+                        <article id="open-tabs" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.open_tabs() -&gt; list</code></div>
+                            <div class="api-body">
+                                <p>Returns the open tabs, including tabs that are not visible. <code>id</code> is valid only while that tab stays open.</p>
+                                <table>
+                                    <thead><tr><th>Key</th><th>Value</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><code>id</code></td><td>Tab id</td></tr>
+                                        <tr><td><code>page</code></td><td>1-based page</td></tr>
+                                        <tr><td><code>total</code></td><td>Page count</td></tr>
+                                        <tr><td><code>path</code></td><td>Current page path, or <code>None</code></td></tr>
+                                        <tr><td><code>document</code></td><td>Open file or folder. Stays the same when the page changes</td></tr>
+                                        <tr><td><code>shown</code></td><td><code>True</code> when that pane is showing the tab</td></tr>
+                                        <tr><td><code>current</code></td><td><code>True</code> for the shortcut target</td></tr>
+                                    </tbody>
+                                </table>
+<pre class="api-example">for tab in host.open_tabs():
+    if tab["shown"]:
+        host.run_action("next_page", tab=tab["id"])</pre>
+                                <p class="api-see">See also: <a href="#run-action"><code>run_action</code></a> / <a href="#get-current"><code>get_current</code></a></p>
                             </div>
                         </article>
                         <article id="register-action" class="api-member">
@@ -692,9 +716,11 @@ layout.addWidget(widget)</pre>
                         <article id="run-action" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.run_action(action_id, **kwargs) -&gt; bool</code></div>
                             <div class="api-body">
-                                <p>Runs a host action (e.g. <code>new_tab</code>) or a registered plugin action. Returns <code>False</code> if unsupported.</p>
-<pre class="api-example">host.run_action("new_tab")</pre>
-                                <p class="api-see">See also: <a href="#register-action"><code>register_action</code></a></p>
+                                <p>Runs a host action (e.g. <code>new_tab</code>) or a registered plugin action. Returns <code>False</code> if unsupported. <code>next_page</code> and <code>goto_page</code> are called here too. Without <code>tab</code>, the shortcut target moves. With <code>tab</code>, only that tab moves and the shortcut target stays. <code>goto_page</code> needs <code>page</code> (1-based). A call without <code>page</code> does nothing. <code>goto_page</code> is not in the shortcut or gesture list.</p>
+<pre class="api-example">host.run_action("new_tab")
+host.run_action("next_page", tab=tab_id)
+host.run_action("goto_page", page=1, tab=tab_id)</pre>
+                                <p class="api-see">See also: <a href="#register-action"><code>register_action</code></a> / <a href="#open-tabs"><code>open_tabs</code></a></p>
                             </div>
                         </article>
                         <article id="set-config" class="api-member">

@@ -1,0 +1,13 @@
+{
+  "title": "自動改ページ",
+  "interval": "改ページ間隔",
+  "interval_help": "欄をまだ変えていないタブの間隔です。1秒から86400秒です。",
+  "seconds": "秒",
+  "start_page": "開始ページ",
+  "end_page": "終了ページ",
+  "from_current": "現在のページから",
+  "to_current": "現在のページまで",
+  "start": "開始",
+  "stop": "停止",
+  "loop": "ループ"
+}

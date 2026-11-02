@@ -89,6 +89,7 @@ class PluginSession:
         config,
         db_manager=None,
         current=None,
+        open_tabs=None,
         reload_current=None,
         run_action=None,
         app_config=None,
@@ -109,6 +110,7 @@ class PluginSession:
             config: 有効化に使う設定。
             db_manager: ホストへ渡すデータベース。
             current: path、folder、page を取る処理。
+            open_tabs: 開いているタブの一覧を返す処理。
             reload_current: 現在の表示を読み直す処理。
             run_action: アクションを実行する処理。
             app_config: アプリ設定を読む処理。
@@ -125,6 +127,7 @@ class PluginSession:
         self._window = window
         self._config = config
         self._current = current
+        self._open_tabs = open_tabs
         self._reload_current = reload_current
         self._run_action = run_action
         self._app_config = app_config
@@ -145,6 +148,7 @@ class PluginSession:
             db_manager=db_manager,
             run_action=run_action,
             get_current=current,
+            open_tabs=open_tabs,
             reload_current=reload_current,
             get_app_config=app_config,
             mount_sidebar=self.mount_sidebar,

@@ -56,6 +56,7 @@
                                 <li><a href="#get-current" class="toc-link">get_current</a></li>
                                 <li><a href="#load-ui" class="toc-link">load_ui</a></li>
                                 <li><a href="#on-off" class="toc-link">on / off</a></li>
+                                <li><a href="#open-tabs" class="toc-link">open_tabs</a></li>
                                 <li><a href="#register-action" class="toc-link">register_action</a></li>
                                 <li><a href="#register-config" class="toc-link">register_config</a></li>
                                 <li><a href="#register-config-json" class="toc-link">register_config_json</a></li>
@@ -547,6 +548,7 @@ if password is None:
 <pre class="api-example">folder = host.get_current("folder")
 path = host.get_current("path")
 page = host.get_current("page")</pre>
+                                <p class="api-see">関連: <a href="#open-tabs"><code>open_tabs</code></a></p>
                             </div>
                         </article>
                         <article id="load-ui" class="api-member">
@@ -571,6 +573,28 @@ def _on_config(payload):
 host.on("current_changed", _on_current)
 host.on("config_changed", _on_config)
 host.off("current_changed")</pre>
+                            </div>
+                        </article>
+                        <article id="open-tabs" class="api-member">
+                            <div class="api-sig"><span class="api-kind">method</span><code>host.open_tabs() -&gt; list</code></div>
+                            <div class="api-body">
+                                <p>開いているタブを返します。隠しているタブも含みます。<code>id</code> はそのタブが開いているあいだだけ有効です。</p>
+                                <table>
+                                    <thead><tr><th>キー</th><th>内容</th></tr></thead>
+                                    <tbody>
+                                        <tr><td><code>id</code></td><td>タブ id</td></tr>
+                                        <tr><td><code>page</code></td><td>1 始まりのページ</td></tr>
+                                        <tr><td><code>total</code></td><td>ページ数</td></tr>
+                                        <tr><td><code>path</code></td><td>いまのページのパス。無ければ <code>None</code></td></tr>
+                                        <tr><td><code>document</code></td><td>ページが変わっても同じ、開いているファイルまたはフォルダ</td></tr>
+                                        <tr><td><code>shown</code></td><td>その面で見えているとき <code>True</code></td></tr>
+                                        <tr><td><code>current</code></td><td>ショートカット対象のとき <code>True</code></td></tr>
+                                    </tbody>
+                                </table>
+<pre class="api-example">for tab in host.open_tabs():
+    if tab["shown"]:
+        host.run_action("next_page", tab=tab["id"])</pre>
+                                <p class="api-see">関連: <a href="#run-action"><code>run_action</code></a> / <a href="#get-current"><code>get_current</code></a></p>
                             </div>
                         </article>
                         <article id="register-action" class="api-member">
@@ -692,9 +716,11 @@ layout.addWidget(widget)</pre>
                         <article id="run-action" class="api-member">
                             <div class="api-sig"><span class="api-kind">method</span><code>host.run_action(action_id, **kwargs) -&gt; bool</code></div>
                             <div class="api-body">
-                                <p>本体アクション（例 <code>new_tab</code>）または登録済みプラグインアクションを呼びます。未対応なら <code>False</code>。</p>
-<pre class="api-example">host.run_action("new_tab")</pre>
-                                <p class="api-see">関連: <a href="#register-action"><code>register_action</code></a></p>
+                                <p>本体アクション（例 <code>new_tab</code>）または登録済みプラグインアクションを呼びます。未対応なら <code>False</code>。<code>next_page</code> と <code>goto_page</code> もここから呼びます。<code>tab</code> が無ければショートカット対象、<code>tab</code> があるときはそのタブだけを送り、ショートカット対象は変えません。<code>goto_page</code> は <code>page</code>（1 始まり）が必要です。無い呼び出しは何もしません。<code>goto_page</code> はショートカット／ジェスチャーの一覧には出ません。</p>
+<pre class="api-example">host.run_action("new_tab")
+host.run_action("next_page", tab=tab_id)
+host.run_action("goto_page", page=1, tab=tab_id)</pre>
+                                <p class="api-see">関連: <a href="#register-action"><code>register_action</code></a> / <a href="#open-tabs"><code>open_tabs</code></a></p>
                             </div>
                         </article>
                         <article id="set-config" class="api-member">

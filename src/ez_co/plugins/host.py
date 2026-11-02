@@ -1348,6 +1348,7 @@ class PluginHost:
         self._run_action = None
         self._bridge = None
         self._get_current = None
+        self._open_tabs = None
         self._reload_current = None
         self._get_app_config = None
         self._mount_sidebar = None
@@ -1387,6 +1388,7 @@ class PluginHost:
         db_manager=None,
         run_action: Optional[Callable] = None,
         get_current: Optional[Callable] = None,
+        open_tabs: Optional[Callable] = None,
         reload_current: Optional[Callable] = None,
         get_app_config: Optional[Callable] = None,
         mount_sidebar: Optional[Callable] = None,
@@ -1402,6 +1404,7 @@ class PluginHost:
             db_manager: プラグイン設定を読む DB。
             run_action: 本体アクションを実行する関数。
             get_current: 現在のページやパスを返す関数。
+            open_tabs: 開いているタブの一覧を返す関数。
             reload_current: 現在の表示を読み直す関数。
             get_app_config: アプリ設定の読み取り関数。
             mount_sidebar: サイドバーを載せる関数。
@@ -1414,6 +1417,7 @@ class PluginHost:
         self._db = db_manager
         self._run_action = run_action
         self._get_current = get_current
+        self._open_tabs = open_tabs
         self._reload_current = reload_current
         self._get_app_config = get_app_config
         self._mount_sidebar = mount_sidebar
@@ -2416,6 +2420,32 @@ class PluginHost:
             logger.debug(get_log_text("plugin_current_failed", key=key, error=exc))
             return None
 
+    def open_tabs(self):
+        """UI スレッドで、開いているタブの一覧を返す。
+
+        Returns:
+            id、page、total、path、document、shown、current を持つ辞書のリスト。
+        """
+        return self._call_on_ui(self._open_tabs_ui)
+
+    def _open_tabs_ui(self):
+        """開いているタブの一覧を本体から読む。
+
+        Returns:
+            辞書のリスト。未接続や失敗は空。
+        """
+        if self._open_tabs is None:
+            return []
+        try:
+            rows = self._open_tabs()
+        except Exception as exc:
+            # 一覧を読めなければ記録して、空として続ける。
+            logger.debug(get_log_text("plugin_event_failed", event="open_tabs", error=exc))
+            return []
+        if not isinstance(rows, list):
+            return []
+        return [dict(row) for row in rows if isinstance(row, dict)]
+
     def reload_current(self, page=None) -> bool:
         """UI スレッドで現在の表示を読み直す。
 
@@ -2835,6 +2865,14 @@ class ScopedPluginHost:
             読めた値。失敗時は None。
         """
         return self._host._current_value(key)
+
+    def open_tabs(self):
+        """開いているタブの id、ページ、ページ数、パス、表示、対象を返す。
+
+        Returns:
+            タブごとの辞書。タブが無ければ空。id は開いているあいだだけ有効。
+        """
+        return self._host.open_tabs()
 
     def reload_current(self, page=None) -> bool:
         """現在の表示を読み直す。

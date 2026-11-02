@@ -1,0 +1,13 @@
+{
+  "title": "Auto page",
+  "interval": "Page interval",
+  "interval_help": "Interval for tabs whose seconds have not been edited. From 1 to 86400 seconds.",
+  "seconds": "sec",
+  "start_page": "Start page",
+  "end_page": "End page",
+  "from_current": "From current page",
+  "to_current": "Through current page",
+  "start": "Start",
+  "stop": "Stop",
+  "loop": "Loop"
+}

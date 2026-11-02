@@ -1,0 +1,13 @@
+{
+  "id": "com.ezco.auto_page",
+  "name": "Auto Page",
+  "version": "1.0.0",
+  "api_version": 1,
+  "entry": "plugin:AutoPagePlugin",
+  "description": "Turns pages on a timer for each visible tab.",
+  "author": "EzCo",
+  "sidebar": true,
+  "permissions": {
+    "inactive_callback": true
+  }
+}

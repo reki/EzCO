@@ -33,6 +33,7 @@ from ez_co.filters.pipeline import apply_pipe
 from ez_co.filters.registry import get_filter_registry
 from ez_co.handlers.file_handler import FileHandler
 from ez_co.utils.database import DatabaseManager
+from ez_co.ui.viewer.page_action import resolve_page_target
 from ez_co.ui.viewer.tab_host import TabHost
 from ez_co.ui.viewer.viewer_pane import ViewerPane
 from ez_co.ui.mouse_lock_state import MouseLockState
@@ -328,15 +329,109 @@ class MainWindow(QMainWindow):
 
     @property
     def current_pane(self) -> Optional[ViewerPane]:
-        """現在のタブの閲覧ペインを返す。
+        """ページ操作中の閲覧ペインを返す。操作中でなければショートカット対象。
 
         Returns:
             閲覧ペイン。無ければ None。
+        """
+        pane = getattr(self, "_action_pane", None)
+        if pane is not None:
+            return pane
+        return self._shortcut_pane()
+
+    def _shortcut_pane(self) -> Optional[ViewerPane]:
+        """ショートカットが効く閲覧ペインを返す。
+
+        Returns:
+            最後に操作したタブ。無ければ None。
         """
         if not hasattr(self, "tab_widget"):
             return None
         widget = self.tab_widget.currentWidget()
         return widget if isinstance(widget, ViewerPane) else None
+
+    def _tab_token(self, pane) -> str:
+        """タブが開いているあいだだけ有効な id を返す。
+
+        Args:
+            pane: 閲覧ペイン。
+
+        Returns:
+            そのタブの id。
+        """
+        token = getattr(pane, "plugin_tab_id", None)
+        if token:
+            return str(token)
+        self._plugin_tab_seq = getattr(self, "_plugin_tab_seq", 0) + 1
+        token = str(self._plugin_tab_seq)
+        pane.plugin_tab_id = token
+        return token
+
+    def _pane_document(self, pane) -> str:
+        """ページが変わっても同じ、開いているファイルまたはフォルダを返す。
+
+        Args:
+            pane: 閲覧ペイン。
+
+        Returns:
+            アーカイブ、フォルダ、またはファイルのパス。無ければ空文字。
+        """
+        handler = pane.file_handler
+        if handler is not None and hasattr(handler, "get_current_archive_path"):
+            archive = handler.get_current_archive_path()
+            if archive:
+                return str(archive)
+        if pane.base_dir_path:
+            return str(pane.base_dir_path)
+        if pane.current_file_path:
+            return str(pane.current_file_path)
+        return ""
+
+    def _page_action_updates_chrome(self) -> bool:
+        """このページ操作で、ウィンドウのタイトルやスライダーも更新するかを返す。
+
+        Returns:
+            ショートカット対象を操作しているとき True。
+        """
+        pane = getattr(self, "_action_pane", None)
+        if pane is None:
+            return True
+        return pane is self._shortcut_pane()
+
+    def open_tabs(self):
+        """開いているタブの id、ページ、ページ数、パス、文書、表示、対象を返す。
+
+        Returns:
+            タブごとの辞書。タブが無ければ空。
+        """
+        shown = []
+        if hasattr(self, "tab_widget"):
+            shown = list(self.tab_widget.shown_panes())
+        shortcut = self._shortcut_pane()
+        rows = []
+        for pane in self._iter_panes():
+            handler = pane.file_handler
+            page = int(pane.current_page or 1)
+            total = int(pane.total_pages or 0)
+            path = None
+            if handler is not None and handler.current_files:
+                index = handler.current_index
+                total = len(handler.current_files)
+                if 0 <= index < total:
+                    page = index + 1
+                    path = str(handler.current_files[index])
+            rows.append(
+                {
+                    "id": self._tab_token(pane),
+                    "page": page,
+                    "total": total,
+                    "path": path,
+                    "document": self._pane_document(pane),
+                    "shown": pane in shown,
+                    "current": pane is shortcut,
+                }
+            )
+        return rows
 
     def _iter_panes(self):
         """タブの閲覧ペインを順に返す。
@@ -2005,6 +2100,7 @@ class MainWindow(QMainWindow):
             追加した閲覧ペイン。
         """
         pane = ViewerPane(self.config, self)
+        self._tab_token(pane)
         pane.image_view.next_page_requested.connect(self.next_page)
         pane.image_view.prev_page_requested.connect(self.prev_page)
         pane.image_view.zoom_changed.connect(self.update_zoom_display)
@@ -2117,19 +2213,20 @@ class MainWindow(QMainWindow):
             index: 切り替えたタブの位置。
         """
         if index < 0 or self.current_pane is None:
+            self._notify_plugin_current_changed()
             return
         self._hide_zoom_overlay()
         if self.file_handler and self.file_handler.current_files:
             self.update_image()
             self._update_image_list_dialog()
             self._update_image_slide_sidebar()
-            self._notify_plugin_current_changed()
             comic = self._get_current_comic_path()
             if comic is not None and hasattr(self, "bookmark_toolbar"):
                 self.set_current_file(str(comic), self.current_page)
         self._update_page_slider()
         self.update_title()
         self._refresh_tab_list()
+        self._notify_plugin_current_changed()
 
     def _push_closed_tab(self, pane: ViewerPane):
         """閉じたタブの状態を、開き直す列へ積む。
@@ -2174,6 +2271,7 @@ class MainWindow(QMainWindow):
             pane.dispose()
             pane.deleteLater()
         self._sync_tab_bar()
+        self._notify_plugin_current_changed()
 
     def _close_tabs_at(self, indexes: list[int]):
         """指定した位置のタブを順に閉じる。
@@ -2537,11 +2635,12 @@ class MainWindow(QMainWindow):
             self.load_file(file_path, page_number)
         self._sync_current_tab_title()
 
-    def run_window_action(self, action_name: str) -> bool:
+    def run_window_action(self, action_name: str, **kwargs) -> bool:
         """ウィンドウ操作かプラグインの登録アクションを実行する。
 
         Args:
             action_name: 実行するアクション名。
+            **kwargs: tab と、goto_page の page。
 
         Returns:
             実行したとき True。
@@ -2550,6 +2649,10 @@ class MainWindow(QMainWindow):
         if session is not None and session.invoke_registered(action_name):
             return True
         action_name = canonical_action_id(action_name)
+        if action_name == Actions.NEXT_PAGE.value:
+            return self._run_tab_page_action("next", kwargs.get("tab"), None)
+        if action_name == "goto_page":
+            return self._run_tab_page_action("goto", kwargs.get("tab"), kwargs.get("page"))
         handlers = {
             Actions.NEW_TAB.value: self.new_tab,
             Actions.CLOSE_TAB.value: self.close_current_tab,
@@ -2586,6 +2689,69 @@ class MainWindow(QMainWindow):
             return False
         handler()
         return True
+
+    def _run_tab_page_action(self, kind: str, tab, page) -> bool:
+        """next_page か goto_page を、指定タブかショートカット対象で実行する。
+
+        Args:
+            kind: next または goto。
+            tab: 対象タブの id。無ければショートカット対象。
+            page: goto のページ。1 始まり。
+
+        Returns:
+            対象が決まって実行したとき True。page が無い goto と、開いていない tab は False。
+        """
+        number = None
+        if kind == "goto":
+            if page is None or isinstance(page, bool):
+                return False
+            try:
+                number = int(page)
+            except (TypeError, ValueError):
+                # ページ番号にできなければ、タブは変えずに何もしない。
+                return False
+        requested = None if tab is None or tab == "" else str(tab)
+        shortcut = self._shortcut_pane()
+        shortcut_id = self._tab_token(shortcut) if shortcut is not None else None
+        open_ids = tuple(self._tab_token(pane) for pane in self._iter_panes())
+        target_id, _changes_shortcut = resolve_page_target(shortcut_id, requested, open_ids)
+        if target_id is None:
+            return False
+        pane = None
+        for item in self._iter_panes():
+            if self._tab_token(item) == target_id:
+                pane = item
+                break
+        if pane is None:
+            return False
+        previous = getattr(self, "_action_pane", None)
+        self._action_pane = pane
+        try:
+            if kind == "next":
+                self.next_page()
+            else:
+                self._goto_page_number(number)
+        finally:
+            self._action_pane = previous
+        return True
+
+    def _goto_page_number(self, number: int):
+        """操作中のタブを、範囲へ収めたページで開く。
+
+        Args:
+            number: 1 始まりのページ。
+        """
+        if not self.file_handler or not self.file_handler.current_files:
+            return
+        total = len(self.file_handler.current_files)
+        self.current_page = max(1, min(total, number))
+        self.load_current_page()
+        if not self._page_action_updates_chrome():
+            return
+        self._update_page_slider()
+        self._update_image_list_dialog()
+        self._update_image_slide_sidebar()
+        self._notify_plugin_current_changed()
 
     def open_file(self):
         """ファイルを開く"""
@@ -3149,11 +3315,13 @@ class MainWindow(QMainWindow):
         logger.info(get_log_text("debug_update_image_get_current_image_result", has_image=current_image is not None, image_size=current_image.size if current_image else "N/A"))
         # 背景色を常に反映
         self.image_view.set_background_color(self.config.viewer["background_color"])
+        updates_chrome = self._page_action_updates_chrome()
         if current_image:
             logger.info(get_log_text("main_window_updating_image_display", image_size=current_image.size, image_mode=current_image.mode))
-            title = self.get_current_title()
-            self.setWindowTitle(title)
-            if self.config.window["auto_resize"]:
+            if updates_chrome:
+                title = self.get_current_title()
+                self.setWindowTitle(title)
+            if updates_chrome and self.config.window["auto_resize"]:
                 img_width, img_height = current_image.size
                 window_width = self.width()
                 window_height = self.height()
@@ -3177,14 +3345,15 @@ class MainWindow(QMainWindow):
             # 表示を更新
             self.image_view.update_image_display()
             # ブックマークツールバーを更新
-            if hasattr(self, 'bookmark_toolbar'):
+            if updates_chrome and hasattr(self, 'bookmark_toolbar'):
                 current_file = self.file_handler.current_files[self.file_handler.current_index]
                 file_path = str(current_file)
                 page_number = self.file_handler.current_index + 1
                 self.bookmark_toolbar.set_current_file(file_path, page_number)
         else:
             logger.warning(get_log_text("main_window_no_image_to_display"))
-            self.setWindowTitle(get_text('app_name'))
+            if updates_chrome:
+                self.setWindowTitle(get_text('app_name'))
             self.image_view.set_image(None)
 
     def get_current_title(self):
@@ -3235,10 +3404,11 @@ class MainWindow(QMainWindow):
             logger.info(get_log_text("debug_next_page_calling_update_image", current_index=self.file_handler.current_index))
             self.update_image(preserve_zoom_navigation=True)
             logger.info(get_log_text("debug_next_page_update_image_completed"))
-            self._update_page_slider()
-            self._update_image_list_dialog()
-            self._update_image_slide_sidebar()
-            self._notify_plugin_current_changed()
+            if self._page_action_updates_chrome():
+                self._update_page_slider()
+                self._update_image_list_dialog()
+                self._update_image_slide_sidebar()
+                self._notify_plugin_current_changed()
         else:
             self.image_view.cancel_pending_zoom_navigation()
             logger.info(get_log_text("main_window_already_at_last_page"))
